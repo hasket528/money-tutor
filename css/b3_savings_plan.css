@@ -1,0 +1,2159 @@
+/* =================================================================
+   FILE: css/b3_savings_plan.css — B3 存錢計畫 專屬樣式
+   ================================================================= */
+
+/* ── 目標商品卡片 ─────────────────────────────────────────────── */
+.b3-goal-card {
+    text-align: center;
+    padding: 20px 16px;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 2px solid #fde68a;
+    border-radius: 16px;
+    animation: bFadeIn 0.35s ease;
+}
+
+.b3-goal-icon {
+    font-size: 72px;
+    line-height: 1;
+    display: block;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+    cursor: pointer;
+}
+
+.b3-goal-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.b3-goal-price-label {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+.b3-goal-price {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #d97706;
+    line-height: 1.2;
+}
+
+/* ── 每週存款資訊條 ───────────────────────────────────────────── */
+.b3-weekly-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: #ecfdf5;
+    border: 2px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 17px;
+    font-weight: bold;
+    color: #065f46;
+    animation: bFadeIn 0.4s ease 0.1s both;
+}
+
+.b3-weekly-amount {
+    color: #10b981;
+    font-size: 1.5rem;
+}
+
+/* ── 問題文字 ─────────────────────────────────────────────────── */
+.b3-question-box {
+    text-align: center;
+    font-size: 19px;
+    font-weight: bold;
+    color: #1f2937;
+    animation: bFadeIn 0.4s ease 0.15s both;
+}
+
+/* ── 答題區卡片 ─────────────────────────────────────────────── */
+.b3-answer-card {
+    background: #fff;
+    border: 2px solid #a7f3d0;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.12);
+    animation: bFadeIn 0.3s ease 0.2s both;
+}
+
+/* ── 選擇題按鈕（簡單模式）──────────────────────────────────── */
+.b3-choices {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: bFadeIn 0.4s ease 0.2s both;
+}
+
+.b3-choice-btn {
+    padding: 16px 28px;
+    background: #fffbeb;
+    border: 3px solid #fde68a;
+    border-radius: 16px;
+    font-size: 26px;
+    font-weight: bold;
+    color: #d97706;
+    cursor: pointer;
+    transition: all 0.18s;
+    min-width: 100px;
+    text-align: center;
+    user-select: none;
+}
+
+.b3-choice-btn:hover {
+    border-color: #f59e0b;
+    background: #fef3c7;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(245,158,11,0.25);
+}
+
+.b3-choice-btn:active { transform: scale(0.95); }
+
+.b3-choice-btn.correct {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+    pointer-events: none;
+}
+
+.b3-choice-btn.wrong {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+    animation: b3Shake 0.4s ease;
+    pointer-events: none;
+}
+
+.b3-choice-btn:disabled { pointer-events: none; }
+
+.b3-choice-suffix {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: normal;
+    display: block;
+    margin-top: 2px;
+}
+
+/* ── 撲滿動畫區 ──────────────────────────────────────────────── */
+.b3-anim-card {
+    background: #fff;
+    border: 2px solid #fde68a;
+    border-radius: 16px;
+    padding: 18px 14px;
+    text-align: center;
+    animation: bFadeIn 0.35s ease;
+}
+
+.b3-piggy-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.b3-piggy-emoji {
+    font-size: 52px;
+    line-height: 1;
+    display: block;
+    transition: transform 0.1s;
+}
+
+.b3-piggy-emoji.shake {
+    animation: b3PiggyShake 0.5s ease;
+}
+
+.b3-slots-track {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    max-width: 300px;
+}
+
+.b3-slot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    filter: grayscale(1) opacity(0.4);
+    transition: filter 0.2s, transform 0.2s;
+}
+
+.b3-slot.filled {
+    filter: grayscale(0) opacity(1);
+    animation: b3CoinDrop 0.35s ease;
+}
+
+.b3-weeks-label {
+    font-size: 15px;
+    color: #374151;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+/* ── 數字鍵盤（普通/困難）────────────────────────────────────── */
+.b3-numpad-section {
+    background: #fff;
+    border: 2px solid #fde68a;
+    border-radius: 16px;
+    padding: 16px;
+    animation: bFadeIn 0.4s ease 0.2s both;
+}
+
+.b3-input-display {
+    background: #1f2937;
+    color: #f59e0b;
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: right;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    min-height: 58px;
+    letter-spacing: 2px;
+}
+
+.b3-input-display .b3-unit-hint {
+    font-size: 1rem;
+    color: #9ca3af;
+    margin-left: 4px;
+}
+
+.b3-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.b3-numpad-btn {
+    padding: 14px 8px;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    user-select: none;
+}
+
+.b3-numpad-btn:hover  { background: #fef3c7; border-color: #f59e0b; }
+.b3-numpad-btn:active { transform: scale(0.93); }
+.b3-numpad-btn.btn-del  { color: #ef4444; }
+.b3-numpad-btn.btn-ok   { background: #10b981; border-color: #10b981; color: #fff; font-size: 18px; }
+.b3-numpad-btn.btn-ok:hover { background: #059669; }
+.b3-numpad-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+.b3-correct-hint {
+    text-align: center;
+    font-size: 16px;
+    color: #059669;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* ── 除法公式提示（答錯後顯示）────────────────────────────────── */
+.b3-div-hint {
+    background: #fef9c3;
+    border: 2px solid #fde047;
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-top: 10px;
+    font-size: 17px;
+    font-weight: bold;
+    color: #92400e;
+    text-align: center;
+    animation: b3FadeIn 0.3s ease;
+}
+
+.b3-hint-label {
+    display: block;
+    font-size: 12px;
+    font-weight: normal;
+    color: #78350f;
+    margin-bottom: 4px;
+}
+
+.b3-hint-op  { color: #b45309; margin: 0 4px; }
+.b3-hint-ans { color: #059669; font-size: 19px; }
+
+@keyframes b3FadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 里程碑徽章 ──────────────────────────────────────────────── */
+@keyframes b3MilestonePop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+    80%  { transform: translate(-50%, -50%) scale(0.96); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes b3MilestoneFade {
+    0%   { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -60%); }
+}
+.b3-milestone-badge {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 3px solid #f59e0b;
+    border-radius: 40px;
+    padding: 14px 28px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #92400e;
+    box-shadow: 0 8px 28px rgba(245,158,11,0.4);
+    pointer-events: none;
+    animation: b3MilestonePop 0.4s ease forwards,
+               b3MilestoneFade 2.2s ease forwards;
+}
+.b3-milestone-pct {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #b45309;
+}
+
+/* ── 動畫 ─────────────────────────────────────────────────────── */
+@keyframes b3CoinDrop {
+    0%   { transform: translateY(-18px) scale(0.5); opacity: 0; }
+    60%  { transform: translateY(3px) scale(1.15); }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes b3PiggyShake {
+    0%, 100% { transform: rotate(0deg); }
+    20%      { transform: rotate(-8deg) scale(1.05); }
+    40%      { transform: rotate(8deg) scale(1.05); }
+    60%      { transform: rotate(-5deg); }
+    80%      { transform: rotate(5deg); }
+}
+
+@keyframes b3Shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-8px); }
+    60%      { transform: translateX(8px); }
+}
+
+/* ── 存錢目標開題彈窗（B2 task modal pattern）─────────────── */
+.b3-goal-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    animation: bFadeIn 0.2s ease;
+}
+.b3-goal-modal-inner {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 36px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    min-width: 200px;
+    max-width: min(420px, 88vw);
+    width: auto;
+    overflow: hidden;
+}
+.b3-goal-modal-icon  { margin-bottom: 8px; font-size: 96px; line-height: 1; }
+.b3-goal-modal-name  {
+    font-size: 1.25rem; font-weight: bold;
+    color: #1e293b; margin-bottom: 4px;
+}
+.b3-goal-modal-price {
+    font-size: 2.2rem; font-weight: bold; color: #d97706; margin: 8px 0;
+}
+.b3-goal-modal-tap   { font-size: 13px; color: #94a3b8; margin-top: 12px; }
+
+/* ── RWD ───────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .b3-goal-name   { font-size: 18px; }
+    .b3-goal-price  { font-size: 1.6rem; }
+    .b3-choice-btn  { padding: 12px 20px; font-size: 22px; min-width: 84px; }
+    .b3-numpad-btn  { padding: 12px 4px; font-size: 18px; }
+    .b3-slot        { width: 28px; height: 28px; font-size: 15px; }
+}
+
+/* ── 日曆存錢設定頁 ─────────────────────────────────────────── */
+.b3-date-input {
+    padding: 8px 12px;
+    border: 2px solid #a7f3d0;
+    border-radius: 10px;
+    font-size: 15px;
+    color: #1f2937;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+}
+.b3-date-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+.b3-days-preview {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #fbbf24;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #92400e;
+    line-height: 1.7;
+    animation: bFadeIn 0.3s ease;
+}
+
+/* ── 日曆目標條 ───────────────────────────────────────────────── */
+.b3-cal-goal-strip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 2px solid #fde68a;
+    border-radius: 16px;
+    padding: 14px 16px;
+    animation: bFadeIn 0.3s ease;
+}
+.b3-cal-goal-icon { font-size: 44px; flex-shrink: 0; }
+.b3-cal-goal-info { flex: 1; }
+.b3-cal-goal-name { font-size: 18px; font-weight: bold; color: #1f2937; }
+.b3-cal-goal-price { font-size: 14px; color: #d97706; font-weight: bold; }
+.b3-cal-acc-info { text-align: right; flex-shrink: 0; }
+.b3-cal-acc-value { font-size: 24px; font-weight: bold; color: #10b981; line-height: 1; }
+.b3-cal-acc-unit { font-size: 14px; }
+.b3-cal-acc-label { font-size: 12px; color: #6b7280; }
+
+/* ── 進度條 ───────────────────────────────────────────────────── */
+.b3-cal-progress-wrap { animation: bFadeIn 0.3s ease 0.1s both; }
+.b3-cal-progress-bar {
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.b3-cal-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+.b3-cal-progress-text { font-size: 13px; color: #6b7280; text-align: center; margin-top: 4px; }
+
+/* ── 每日存款標籤 ──────────────────────────────────────────── */
+.b3-cal-daily-label {
+    text-align: center;
+    font-size: 16px;
+    color: #374151;
+    background: #ecfdf5;
+    border: 2px solid #a7f3d0;
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: bFadeIn 0.3s ease 0.15s both;
+}
+
+/* ── B3 月曆頁版面容器 ───────────────────────────────────────── */
+.b3-cal-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    padding: 14px 14px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+/* ── 左欄：商品卡片 ─────────────────────────────────────────── */
+.b3-cal-item-col {
+    flex: 0 0 220px;
+    min-width: 200px;
+}
+
+/* ── 中間欄：日曆 ────────────────────────────────────────────── */
+.b3-cal-center-col {
+    flex: 1.5;
+    min-width: 0;
+}
+
+/* ── 撲滿卡片 ────────────────────────────────────────────────── */
+.b3-pig-card {
+    flex: 1;
+    min-width: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(245,158,11,0.2), 0 1px 4px rgba(0,0,0,0.05);
+    border-top: 4px solid #f59e0b;
+    display: flex;
+    flex-direction: column;
+    animation: bFadeIn 0.35s ease 0.25s both;
+    position: relative;
+    background: #fffbf0;
+}
+/* 標題列（含合計） */
+.b3-pig-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 9px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-bottom: 1px solid #fcd34d;
+    flex-shrink: 0;
+}
+.b3-pig-header-left { display: flex; align-items: center; gap: 6px; }
+.b3-pig-pig-icon {
+    font-size: 20px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.12));
+}
+.b3-pig-title { font-size: 14px; font-weight: 800; color: #92400e; letter-spacing: 0.5px; }
+.b3-pig-header-total { display: flex; align-items: baseline; gap: 2px; }
+.b3-pig-total-num  { font-size: 20px; font-weight: 900; color: #92400e; line-height: 1; }
+.b3-pig-total-unit { font-size: 12px; font-weight: 700; color: #b45309; }
+/* 主體：可滾動 */
+.b3-pig-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #fde68a transparent;
+}
+.b3-pig-empty {
+    font-size: 13px;
+    color: #d97706;
+    text-align: center;
+    padding: 28px 16px;
+    line-height: 1.7;
+}
+/* ── 幣種群組（硬幣 / 紙鈔）────────────────────────────────── */
+.b3-pig-group { display: flex; flex-direction: column; gap: 0; }
+.b3-pig-group-hd {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: 0.6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f3e8b0;
+    margin-bottom: 2px;
+}
+.b3-pig-group-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #fde68a 30%, #fde68a 70%, transparent);
+    border-radius: 1px;
+    margin: 4px 0;
+}
+/* ── 面額列（表格列）─────────────────────────────────────────── */
+.b3-pig-row {
+    display: grid;
+    grid-template-columns: 76px 1fr;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px dashed #fef3c7;
+}
+.b3-pig-row:last-child { border-bottom: none; }
+/* 左欄：面額標籤 */
+.b3-pig-row-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
+    background: #fff8e8;
+    border-radius: 10px;
+    border: 1px solid #fde68a;
+    min-height: 56px;
+}
+.b3-pig-row-thumb {
+    height: auto;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.18));
+}
+.b3-pig-row-denom {
+    font-size: 12px;
+    font-weight: 800;
+    color: #92400e;
+    white-space: nowrap;
+}
+/* 右欄：金錢圖示 */
+.b3-pig-row-imgs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    align-content: flex-start;
+    padding: 4px 0;
+}
+.b3-pig-img-wrap {
+    display: inline-flex;
+    align-items: center;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+    transition: transform 0.18s;
+}
+.b3-pig-img-wrap:hover { transform: scale(1.08); }
+.b3-pig-img-new {
+    animation: b3PigCoinIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.b3-pig-denom-overflow {
+    font-size: 11px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-weight: 700;
+    border: 1px solid #fde68a;
+    align-self: center;
+}
+/* ── 手動兌換按鈕 ────────────────────────────────────────────── */
+.b3-pig-exch-btn {
+    display: block;
+    margin: 6px 0 2px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(16,185,129,0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.b3-pig-exch-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(16,185,129,0.45);
+}
+.b3-pig-exch-btn:active { transform: scale(0.96); }
+
+/* ── 換算提示 badge ─────────────────────────────────────────── */
+.b3-pig-exchange-badge {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff;
+    border-radius: 14px;
+    padding: 10px 20px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(16,185,129,0.45);
+    animation: b3ExchPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+}
+.b3-pig-exchange-badge.b3-pig-exch-out { animation: b3ExchFade 0.4s ease forwards; }
+.b3-pig-exch-eq  { font-size: 14px; font-weight: 800; letter-spacing: 0.3px; }
+.b3-pig-exch-sub { font-size: 12px; opacity: 0.88; margin-top: 3px; }
+/* ── 動畫 ────────────────────────────────────────────────────── */
+@keyframes b3PigCoinIn {
+    0%   { transform: translateY(-20px) scale(0.4) rotate(-12deg); opacity: 0; }
+    70%  { transform: translateY(3px) scale(1.15) rotate(3deg);    opacity: 1; }
+    100% { transform: translateY(0) scale(1) rotate(0deg);         opacity: 1; }
+}
+@keyframes b3ExchPop {
+    from { opacity: 0; transform: translateX(-50%) scale(0.7); }
+    to   { opacity: 1; transform: translateX(-50%) scale(1);   }
+}
+@keyframes b3ExchFade {
+    to { opacity: 0; transform: translateX(-50%) translateY(-14px); }
+}
+/* ── 右欄容器（含每日可存金錢 + 撲滿）──────────────────────── */
+.b3-pig-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+}
+/* b3-pig-card 在 b3-pig-col 內需填滿剩餘空間 */
+.b3-pig-col .b3-pig-card {
+    flex: 1;
+}
+
+/* ── 每日可存金錢來源卡片 ─────────────────────────────────── */
+.b3-daily-card {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 2px solid #fcd34d;
+    border-top: 4px solid #f59e0b;
+    border-radius: 20px;
+    padding: 12px 14px 14px;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.18), 0 1px 4px rgba(0,0,0,0.06);
+    animation: bFadeIn 0.3s ease both;
+    flex-shrink: 0;
+}
+.b3-daily-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+.b3-daily-header {
+    font-size: 13px;
+    font-weight: 800;
+    color: #92400e;
+    letter-spacing: 0.5px;
+}
+.b3-daily-hint-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.b3-daily-hint-mascot {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    animation: b3MascotFloat 2.8s ease-in-out infinite;
+}
+@keyframes b3MascotFloat {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-4px); }
+}
+.b3-daily-hint-btn {
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    background: rgba(254,243,199,0.9);
+    border: 1.5px solid #fcd34d;
+    border-radius: 14px;
+    padding: 3px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+}
+.b3-daily-hint-btn:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+.b3-daily-subtitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: #a78040;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    opacity: 0.8;
+}
+.b3-daily-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    min-height: 64px;
+}
+
+/* ── 可拖曳金錢圖示 ─────────────────────────────────────── */
+.b3-drag-coin {
+    cursor: grab;
+    border-radius: 10px;
+    padding: 4px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    background: rgba(255,255,255,0.7);
+    border: 2px solid transparent;
+}
+.b3-drag-coin:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.35);
+    border-color: #fcd34d;
+}
+.b3-drag-coin:active,
+.b3-drag-coin.b3-dragging {
+    cursor: grabbing;
+    opacity: 0.45;
+    transform: scale(0.95);
+}
+.b3-drag-coin.b3-coin-placed {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* ── 撲滿放置槽區域 ─────────────────────────────────────── */
+.b3-pig-drop-zone {
+    padding: 10px 14px 12px;
+    border-bottom: 2px dashed #fbbf24;
+    background: rgba(253,246,178,0.5);
+    flex-shrink: 0;
+    animation: bFadeIn 0.25s ease;
+}
+.b3-pig-drop-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #92400e;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.b3-drop-zone-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b45309;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+/* ── 我的撲滿區塊標題 ──────────────────────────────────── */
+.b3-pig-section-hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 8px 14px 6px;
+    border-bottom: 1px solid #fcd34d;
+    flex-shrink: 0;
+}
+.b3-pig-section-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #92400e;
+    letter-spacing: 0.5px;
+}
+.b3-pig-section-total {
+    font-size: 13px;
+    color: #b45309;
+}
+.b3-pig-section-total strong {
+    font-size: 20px;
+    font-weight: 900;
+    color: #92400e;
+}
+.b3-drop-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    min-height: 72px;
+}
+
+/* ── 淡化放置槽（未填充）───────────────────────────────── */
+.b3-drop-slot {
+    position: relative;
+    text-align: center;
+    padding: 6px;
+    background: rgba(255,255,255,0.75);
+    border: 3px dashed #fcd34d;
+    border-radius: 10px;
+    opacity: 0.4;
+    filter: grayscale(75%);
+    transition: opacity 0.2s, filter 0.2s, border-color 0.2s, transform 0.15s;
+    cursor: default;
+}
+.b3-drop-slot.b3-drop-hover {
+    opacity: 0.75;
+    filter: grayscale(20%);
+    border-color: #f59e0b;
+    transform: scale(1.08);
+}
+.b3-drop-slot.b3-drop-wrong {
+    animation: b3DropWrong 0.45s ease;
+    border-color: #ef4444;
+    background: rgba(254,202,202,0.5);
+}
+.b3-drop-slot.b3-slot-filled {
+    opacity: 1;
+    filter: none;
+    border: 3px solid #10b981;
+    background: rgba(209,250,229,0.6);
+    animation: b3SlotFill 0.35s ease both;
+}
+.b3-slot-check {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: #10b981;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: b3CheckPop 0.3s ease both;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    .b3-cal-layout      { flex-direction: column; align-items: center; }
+    .b3-cal-item-col    { flex: none; width: 100%; min-width: 0; }
+    .b3-cal-center-col  { flex: none; width: 100%; }
+    .b3-pig-col         { flex: none; width: 100%; }
+    .b3-pig-col .b3-pig-card { flex: none; }
+    .b3-pig-card        { flex: none; width: 100%; }
+}
+
+/* ── 月曆卡片 ────────────────────────────────────────────────── */
+.b3-cal-card {
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.12), 0 1px 4px rgba(0,0,0,0.05);
+    animation: bFadeIn 0.35s ease 0.15s both;
+}
+.b3-cal-month-header {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #a78bfa 100%);
+    color: #fff;
+    text-align: center;
+    font-size: 19px;
+    font-weight: bold;
+    padding: 14px 10px;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+.b3-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    padding: 8px;
+    background: #f3f4f6;
+}
+.b3-cal-weekday {
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #6366f1;
+    padding: 8px 2px;
+    background: #eef2ff;
+    border-radius: 6px;
+}
+.b3-cal-cell {
+    background: #fff;
+    border-radius: 8px;
+    min-height: 62px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-size: 13px;
+    cursor: default;
+    user-select: none;
+    transition: all 0.15s;
+}
+.b3-cal-blank { background: transparent; }
+.b3-cal-before { background: #f9fafb; opacity: 0.5; }
+.b3-cal-done {
+    background: #d1fae5;
+    border: 2px solid #10b981;
+}
+.b3-cal-done .b3-cal-day-num { color: #065f46; font-weight: bold; }
+.b3-cal-done .b3-cal-saved-amt { font-size: 12px; color: #059669; }
+.b3-cal-done .b3-cal-check { font-size: 16px; }
+.b3-cal-active {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 2px solid #f59e0b;
+    cursor: pointer;
+    animation: b3CalPulse 1.5s ease-in-out infinite;
+    font-weight: bold;
+}
+.b3-cal-active:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(245,158,11,0.4); }
+.b3-cal-active .b3-cal-coin { font-size: 20px; display: block; }
+.b3-cal-future { background: #f9fafb; color: #d1d5db; }
+.b3-cal-day-num { font-size: 16px; font-weight: bold; line-height: 1; }
+
+/* ── 完成畫面 ── 成功商品展示 ─────────────────────────────── */
+.b3-cal-success-item {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 2px solid #6ee7b7;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    animation: bFadeIn 0.4s ease;
+}
+.b3-cal-success-icon { font-size: 64px; display: block; margin-bottom: 8px; }
+.b3-cal-success-name { font-size: 20px; font-weight: bold; color: #065f46; }
+.b3-cal-success-price { font-size: 16px; color: #10b981; margin-top: 4px; }
+
+/* ── 動畫 ─────────────────────────────────────────────────────── */
+@keyframes b3CalPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+    50%       { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
+}
+
+/* ── 任務彈窗（簡單模式進入時）──────────────────────────────── */
+.b3-task-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9500;
+    animation: bFadeIn 0.2s ease;
+}
+.b3-task-popup {
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px 20px 20px;
+    max-width: min(560px, 92vw);
+    width: 92%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+    border-top: 6px solid #f59e0b;
+    animation: b3SlotPop 0.4s ease;
+    overflow: hidden;
+}
+.b3-task-popup-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #d97706;
+    margin-bottom: 16px;
+}
+.b3-task-item-icon-wrap {
+    font-size: min(480px, 72vw);
+    line-height: 1;
+    margin-bottom: 4px;
+    display: block;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,0.12));
+}
+.b3-task-item-icon-wrap img {
+    width: min(480px, 72vw) !important;
+    height: auto !important;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+.b3-task-item-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 6px;
+}
+.b3-task-item-price {
+    font-size: 18px;
+    color: #d97706;
+    margin-bottom: 14px;
+}
+.b3-task-item-price strong { font-size: 22px; }
+.b3-task-meta {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.b3-task-meta strong { color: #1f2937; }
+.b3-task-start-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    border: none;
+    padding: 14px 36px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.45);
+    transition: all 0.18s;
+    letter-spacing: 0.5px;
+}
+.b3-task-start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(245,158,11,0.55);
+}
+
+/* ── 資訊卡（上方物品卡）────────────────────────────────────── */
+.b3-cal-info-card {
+    position: relative;
+    background: linear-gradient(145deg, #fffbf0 0%, #fff8eb 50%, #fff 100%);
+    border-radius: 20px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 4px 20px rgba(245,158,11,0.14), 0 1px 4px rgba(0,0,0,0.05);
+    border-top: 4px solid #f59e0b;
+    animation: bFadeIn 0.3s ease;
+}
+
+/* 🔊 絕對定位右上角 */
+.b3-cal-replay-btn {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+}
+
+/* 物品區：置中 icon+name+target，% badge 緊鄰右側 */
+.b3-cal-item-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.b3-cal-item-center-col {
+    text-align: center;
+}
+.b3-cal-item-icon-lg {
+    font-size: 96px;
+    line-height: 1;
+    display: block;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,0.12));
+}
+.b3-cal-item-icon-lg img {
+    max-width: 100px;
+    height: auto;
+    object-fit: contain;
+}
+.b3-cal-item-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1f2937;
+}
+.b3-cal-item-target {
+    font-size: 15px;
+    color: #d97706;
+    font-weight: 600;
+    margin-top: 3px;
+}
+
+/* % 圓形徽章 */
+.b3-cal-pct-badge {
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(52,211,153,0.18));
+    border: 2px solid rgba(16,185,129,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: bold;
+    color: #059669;
+    transition: background 0.4s, border-color 0.4s;
+}
+
+/* 進度區 */
+.b3-cal-progress-section {
+    border-top: 1px solid #fde68a;
+    padding-top: 12px;
+}
+.b3-cal-prog-bar-wrap {
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.b3-cal-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #10b981);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+.b3-cal-acc-num {
+    font-size: 20px;
+    font-weight: bold;
+    color: #10b981;
+}
+.b3-cal-rem-num {
+    font-size: 16px;
+    font-weight: bold;
+    color: #d97706;
+}
+
+/* 統計區（垂直置中） */
+.b3-cal-stats-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 6px;
+}
+.b3-cal-stats-line {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+}
+.b3-cal-stat-sep {
+    color: #d1d5db;
+    line-height: 1;
+}
+
+/* ── 自訂物品清單（設定頁）─────────────────────────────────── */
+.b3-custom-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px;
+    background: #fafafa;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 4px;
+}
+.b3-custom-empty {
+    font-size: 13px;
+    color: #9ca3af;
+    align-self: center;
+    padding: 4px 0;
+}
+.b3-custom-item-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 6px 8px;
+    box-shadow: 0 1px 4px rgba(245,158,11,0.1);
+}
+.b3-custom-item-img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 7px;
+}
+.b3-custom-item-info {
+    display: flex;
+    flex-direction: column;
+}
+.b3-custom-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.b3-custom-item-price {
+    font-size: 12px;
+    color: #d97706;
+}
+.b3-custom-remove-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 5px;
+    line-height: 1;
+    transition: background 0.15s;
+}
+.b3-custom-remove-btn:hover { background: #fee2e2; }
+
+/* ── 自訂物品 Modal ──────────────────────────────────────────── */
+.b3-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10300;
+    animation: bFadeIn 0.18s ease;
+}
+.b3-modal-box {
+    background: #fff;
+    border-radius: 18px;
+    padding: 0;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.28);
+    overflow: hidden;
+    animation: b3SlotPop 0.35s ease;
+}
+.b3-modal-header {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: #fff;
+    font-size: 17px;
+    font-weight: bold;
+    padding: 14px 20px;
+    text-align: center;
+}
+.b3-modal-body {
+    padding: 18px 20px 12px;
+}
+.b3-modal-preview-img {
+    width: 110px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.b3-modal-field {
+    margin-bottom: 12px;
+}
+.b3-modal-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+}
+.b3-modal-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+.b3-modal-input:focus { border-color: #4ECDC4; box-shadow: 0 0 0 3px rgba(78,205,196,0.15); }
+.b3-modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 12px 20px 18px;
+}
+.b3-modal-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.b3-modal-btn-cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+.b3-modal-btn-cancel:hover { background: #e5e7eb; }
+.b3-modal-btn-confirm {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(16,185,129,0.35);
+}
+.b3-modal-btn-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(16,185,129,0.45);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   普通模式：設定頁 — 預設金額動畫鎖定
+   ══════════════════════════════════════════════════════════════ */
+.b3-preset-locked {
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 0 0 4px rgba(245,158,11,0.25);
+    animation: b3PresetGlow 0.4s ease;
+}
+@keyframes b3PresetGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
+    50%  { box-shadow: 0 0 0 10px rgba(245,158,11,0.2); }
+    100% { box-shadow: 0 0 0 4px rgba(245,158,11,0.25); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   普通模式：今日可存金錢卡 — 目標金額顯示
+   ══════════════════════════════════════════════════════════════ */
+.b3-normal-target-wrap {
+    text-align: center;
+    padding: 10px 0 6px;
+}
+.b3-normal-target-amount {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #1e40af;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+.b3-normal-target-unit {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #3b82f6;
+    margin-top: 2px;
+}
+
+/* ── 面額來源區 ─────────────────────────────────────────────── */
+.b3-normal-denom-sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 8px 4px 4px;
+}
+.b3-ndrag-denom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: grab;
+    border-radius: 10px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.8);
+    border: 2px solid transparent;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+.b3-ndrag-denom:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99,102,241,0.3);
+    border-color: #a5b4fc;
+}
+.b3-ndrag-denom:active,
+.b3-ndrag-denom.b3-ndragging {
+    cursor: grabbing;
+    opacity: 0.45;
+    transform: scale(0.95);
+}
+.b3-ndrag-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #4338ca;
+    white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   普通模式：撲滿放置區（自由放置 drop zone）
+   ══════════════════════════════════════════════════════════════ */
+.b3-normal-placed-area {
+    width: 100%;
+    min-height: 80px;
+    border: 2.5px dashed #a5b4fc;
+    border-radius: 12px;
+    background: rgba(238,242,255,0.5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 10px;
+    transition: border-color 0.15s, background 0.15s;
+}
+.b3-normal-placed-area.b3-ndrop-hover {
+    border-color: #f59e0b;
+    background: rgba(254,243,199,0.6);
+    box-shadow: inset 0 0 12px rgba(245,158,11,0.15);
+}
+.b3-nplaced-item {
+    display: flex;
+    align-items: center;
+    animation: b3NDenomIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    transition: opacity 0.25s ease;
+}
+/* 提示模式：未填 ghost slot（淡化，動畫結尾保持淡化）*/
+.b3-nplaced-ghost-slot {
+    animation: b3NDenomInGhost 0.3s cubic-bezier(0.34,1.56,0.64,1) both !important;
+}
+@keyframes b3NDenomInGhost {
+    from { opacity: 0;    transform: translateY(-12px) scale(0.7); }
+    to   { opacity: 0.35; transform: translateY(0) scale(1); }
+}
+/* 困難模式提示彈窗 */
+.b3-hint-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10200;
+}
+.b3-hint-modal {
+    background: #fffbeb;
+    border: 3px solid #fcd34d;
+    border-radius: 20px;
+    padding: 20px 24px 16px;
+    max-width: 340px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 8px 32px rgba(245,158,11,0.25);
+}
+.b3-hint-modal-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #92400e;
+}
+.b3-hint-modal-imgs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+.b3-hint-modal-close {
+    padding: 7px 24px;
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.b3-hint-modal-close:hover { background: #d97706; }
+.b3-nplace-hint {
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+    padding: 12px 8px;
+    line-height: 1.6;
+}
+@keyframes b3NDenomIn {
+    from { opacity: 0; transform: translateY(-12px) scale(0.7); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes b3NPlacedReturn {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(-18px) scale(0.65); }
+}
+.b3-nplaced-return {
+    animation: b3NPlacedReturn 0.22s ease-in forwards !important;
+}
+
+/* ── 合計列 ─────────────────────────────────────────────────── */
+.b3-normal-total-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #374151;
+    padding: 6px 0 2px;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 4px;
+}
+
+/* ── 操作按鈕列 ─────────────────────────────────────────────── */
+.b3-normal-action-row {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+.b3-normal-clear-btn {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.b3-normal-clear-btn:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
+.b3-normal-confirm-btn {
+    flex: 1;
+    padding: 10px 8px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(99,102,241,0.35);
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.b3-normal-confirm-btn:not([disabled]):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(99,102,241,0.45);
+}
+.b3-normal-confirm-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ── 錯誤3次提示：高亮面額格子 ─────────────────────────────── */
+.b3-ndrag-hint {
+    border-color: #f59e0b !important;
+    background: rgba(254,243,199,0.95) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.4) !important;
+    animation: b3NDragHint 1.2s ease-in-out infinite !important;
+}
+@keyframes b3NDragHint {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,0.4); }
+    50%       { box-shadow: 0 0 0 9px rgba(245,158,11,0.1); }
+}
+
+/* ── 存錢目標清單（完成畫面）────────────────────────────────── */
+.b3-res-goals {
+    margin: 16px 0;
+    padding: 14px 16px;
+    background: #fdf4ff;
+    border: 2px solid #e879f9;
+    border-radius: 14px;
+}
+.b3-res-goals h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: #7e22ce;
+}
+.b3-goal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.b3-goal-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1.5px solid #f0abfc;
+    border-radius: 10px;
+    font-size: 13px;
+}
+.b3-goal-icon  { font-size: 24px; flex-shrink: 0; }
+#b3-goal-icon-click { font-size: 72px; line-height: 1; display: block; margin-bottom: 8px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12)); cursor: pointer; }
+.b3-goal-name  { font-weight: bold; color: #581c87; flex: 1; }
+.b3-goal-price { font-weight: bold; color: #d97706; min-width: 52px; text-align: right; }
+.b3-goal-weeks { font-size: 12px; color: #6b7280; min-width: 110px; text-align: right; }
+
+/* ── 存錢統計摘要（完成畫面）────────────────────────────────── */
+.b3-goal-summary {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: space-between;
+}
+.b3-gs-item {
+    flex: 1;
+    text-align: center;
+    padding: 10px 6px;
+    background: #f5f3ff;
+    border: 1.5px solid #c4b5fd;
+    border-radius: 10px;
+}
+.b3-gs-label { display: block; font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+.b3-gs-val   { display: block; font-size: 16px; font-weight: bold; color: #581c87; }
+
+/* ── B3 Streak Badge (Round 24) ── */
+.b3-streak-badge {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 9850; pointer-events: none;
+    animation: b3SbPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.b3-streak-badge.b3-sb-fade { opacity: 0; transition: opacity 0.4s ease; }
+@keyframes b3SbPop { from { opacity:0; transform:translate(-50%,-50%) scale(0.5); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+.b3-sb-inner {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 20px; padding: 18px 36px; text-align: center;
+    box-shadow: 0 8px 32px rgba(217,119,6,0.45);
+}
+.b3-sb-label { font-size: 32px; font-weight: 900; color: white; }
+.b3-sb-msg   { font-size: 15px; color: rgba(255,255,255,0.85); margin-top: 4px; }
+
+/* ── B3 Week Preview Blocks (Round 21) ── */
+.b3-week-preview { text-align: center; margin: 8px 0 4px; min-height: 36px; }
+.b3-week-blocks { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-bottom: 4px; }
+.b3-week-block {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: #d1d5db; border: 1px solid #9ca3af;
+    display: inline-block;
+    animation: b3BlockPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.b3-week-block.correct { background: #10b981; border-color: #059669; }
+@keyframes b3BlockPop { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: scale(1); } }
+.b3-week-label { font-size: 13px; color: #6b7280; font-weight: 600; display: block; margin-top: 2px; }
+.b3-week-extra { font-size: 13px; color: #f59e0b; font-weight: 700; padding: 0 4px; }
+
+/* ── B3 倒數提示 (Round 24) ── */
+.b3-countdown-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    z-index: 9000;
+    animation: b3CdIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    pointer-events: none;
+}
+.b3-cd-num {
+    font-size: 22px;
+    font-weight: 900;
+    color: #d97706;
+}
+.b3-cd-label {
+    font-size: 15px;
+    color: #92400e;
+}
+.b3-cd-fade {
+    transition: opacity 0.4s;
+    opacity: 0;
+}
+@keyframes b3CdIn {
+    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+    to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+
+/* ── B3 距完成天數 (Round 26) ── */
+.b3-days-left-line { font-size: 13px; }
+.b3-days-left-num {
+    font-weight: 900;
+    color: #3b82f6;
+    font-size: 15px;
+    transition: color 0.3s;
+}
+.b3-days-left-num.near { color: #10b981; animation: b3DlPulse 1s ease-in-out 2; }
+@keyframes b3DlPulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.25); }
+}
+
+/* ── B3 Goal Summary Highlight (Round 28) ── */
+.b3-gs-item.highlight {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 6px;
+}
+.b3-gs-item.highlight .b3-gs-val { color: #92400e; }
+
+/* ── Round 30：B3 進度環 ── */
+.b3-progress-ring-wrap { display: flex; align-items: center; justify-content: center; }
+.b3-progress-ring {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: conic-gradient(#f59e0b 0deg, #e5e7eb 0deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.5s ease;
+}
+.b3-progress-ring-inner {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+/* ── Round 31：B3 最佳存法提示 ── */
+.b3-best-hint {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 12px;
+    animation: bFadeIn 0.4s ease;
+}
+.b3-bh-label { font-weight: 700; color: #92400e; display: block; margin-bottom: 4px; }
+.b3-bh-rows { display: flex; flex-direction: column; gap: 3px; }
+.b3-bh-row { padding: 2px 6px; border-radius: 4px; }
+.b3-bh-row.slow    { color: #6b7280; background: #f3f4f6; }
+.b3-bh-row.correct { color: #065f46; background: #d1fae5; font-weight: 700; }
+.b3-bh-row.fast    { color: #1e3a8a; background: #dbeafe; }
+
+/* ── Round 34：B3 選項配速預覽 ── */
+.b3-choice-pace {
+    display: block;
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 400;
+    margin-top: 3px;
+    line-height: 1.2;
+}
+.b3-choice-btn.correct .b3-choice-pace { color: #065f46; }
+
+/* ── Round 37：B3 完成預測日期 ── */
+.b3-est-date {
+    font-size: 11px;
+    color: #6b7280;
+    text-align: center;
+    padding: 2px 4px;
+    margin-top: 2px;
+    border-radius: 4px;
+    transition: color 0.3s;
+}
+.b3-est-date.soon    { color: #d97706; font-weight: 700; }
+.b3-est-date.reached { color: #059669; font-weight: 700; }
+
+/* ── Round 38：B3 存錢粒子 ── */
+@keyframes b3SparkleUp {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.5); }
+}
+.b3-sparkle {
+    position: fixed;
+    font-size: 22px;
+    pointer-events: none;
+    z-index: 5000;
+    animation: b3SparkleUp 1.2s ease forwards;
+}
+
+/* ── Round 39：B3 即時剩餘金額標籤 ── */
+.b3-week-rem {
+    font-size: 11px;
+    color: #92400e;
+    font-weight: 600;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    padding: 2px 8px;
+    margin-left: 6px;
+}
+.b3-week-rem.enough {
+    color: #065f46;
+    background: #d1fae5;
+    border-color: #6ee7b7;
+}
+
+/* ── 週存視覺模擬（F4 方塊動畫 + C2 逐一計數 pattern）── */
+.b3-wsim {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #fde68a;
+}
+.b3-wsim-title {
+    font-size: 12px;
+    color: #92400e;
+    margin-bottom: 6px;
+}
+.b3-wsim-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+@keyframes b3WsimPop {
+    0%   { opacity: 0; transform: scale(0.5) translateY(6px); }
+    60%  { opacity: 1; transform: scale(1.1) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.b3-wsim-block {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
+    border-radius: 8px;
+    padding: 4px 7px;
+    text-align: center;
+    min-width: 52px;
+    opacity: 0;
+    animation: b3WsimPop 0.35s ease forwards;
+}
+.b3-wsim-week {
+    font-size: 10px;
+    color: #78350f;
+    font-weight: 600;
+}
+.b3-wsim-acc {
+    font-size: 12px;
+    color: #064e3b;
+    font-weight: 700;
+}
+.b3-wsim-more {
+    background: #e0e7ff;
+    border: 1px solid #a5b4fc;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #3730a3;
+    font-weight: 600;
+    align-self: center;
+}
+/* ── Round 42：4選項 2×2 格局（C1 adaptive pool pattern）── */
+.b3-choices-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+.b3-choices-4 .b3-choice-btn { width: 100%; }
+
+/* ── Round 43：困難模式每週存款隱藏 ── */
+.b3-weekly-hidden {
+    filter: blur(5px);
+    user-select: none;
+    transition: filter 0.3s;
+    letter-spacing: 1px;
+}
+.b3-reveal-weekly-btn {
+    margin-left: 8px;
+    padding: 3px 10px;
+    font-size: 0.82rem;
+    background: #fef3c7;
+    border: 1.5px solid #f59e0b;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #92400e;
+    transition: background 0.2s;
+}
+.b3-reveal-weekly-btn:hover:not(:disabled) { background: #fde68a; }
+.b3-reveal-weekly-btn:disabled { opacity: 0.6; cursor: default; background: #f0fdf4; border-color: #86efac; color: #166534; }
+
+/* ═══════════════════════════════════════════════════════════════
+   省錢清單（showResults 第一頁）卡片版面
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 購買成功橫幅 ─────────────────────────────────────────────── */
+.b3-res-success-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #fef9c3, #fef3c7);
+    border: 2px solid #fde68a;
+    border-radius: 16px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(251,191,36,0.18);
+    animation: bFadeIn 0.4s ease;
+}
+.b3-rsb-icon { flex-shrink: 0; }
+.b3-rsb-text { flex: 1; min-width: 0; }
+.b3-rsb-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 4px;
+}
+.b3-rsb-price {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #b45309;
+}
+
+/* ── 目標卡片網格 ─────────────────────────────────────────────── */
+.b3-goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+/* ── 單一目標卡片 ─────────────────────────────────────────────── */
+.b3-goal-result-card {
+    position: relative;
+    border: 2px solid #c4b5fd;
+    border-radius: 18px;
+    padding: 14px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    animation: bFadeIn 0.4s ease both;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.b3-goal-result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* 頂部類別徽章 */
+.b3-grc-top-badge {
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #7c3aed;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 0 0 10px 10px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.b3-grc-icon { margin-top: 18px; }
+.b3-grc-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #7c3aed;
+    line-height: 1.2;
+}
+.b3-grc-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+.b3-grc-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.b3-grc-price {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #7c3aed;
+    line-height: 1.1;
+}
+.b3-grc-weekly {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #374151;
+}
+.b3-grc-icons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 2px;
+}
+.b3-grc-divider {
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #d1d5db, transparent);
+    margin: 2px 0;
+}
+.b3-grc-weeks-badge {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    padding: 4px 14px;
+    margin-top: 4px;
+}
+.b3-grc-weeks-badge strong { font-size: 14px; color: #b45309; }
+
+/* ── 統計行（三欄）─────────────────────────────────────────────── */
+.b3-res-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.b3-res-stat-card {
+    border-radius: 16px;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    animation: bFadeIn 0.45s ease both;
+}
+.b3-rsc-purple { background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 2px solid #c4b5fd; }
+.b3-rsc-orange { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #fde68a; }
+.b3-rsc-green  { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #86efac; }
+.b3-rsc-icon { font-size: 1.5rem; line-height: 1; }
+.b3-rsc-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1f2937;
+    line-height: 1.1;
+}
+.b3-rsc-purple .b3-rsc-val { color: #6d28d9; }
+.b3-rsc-orange .b3-rsc-val { color: #b45309; }
+.b3-rsc-green  .b3-rsc-val { color: #15803d; }
+.b3-rsc-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: 0.02em;
+}
+.b3-rsc-icons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+/* ── 響應式調整 ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .b3-goals-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .b3-res-stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .b3-rsc-val { font-size: 1.3rem; }
+    .b3-grc-price { font-size: 1.1rem; }
+}
+@media (max-width: 340px) {
+    .b3-goals-grid { grid-template-columns: 1fr; }
+    .b3-res-stats-row { grid-template-columns: 1fr; }
+}
+
+/* ── 圖示放大彈窗 ──────────────────────────────────────────────── */
+.b3-icon-zoom-trigger { cursor: pointer; }
+.b3-icon-zoom-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 9500;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    animation: bFadeIn 0.2s ease;
+}
+.b3-icon-zoom-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px 28px;
+    text-align: center;
+    box-sizing: border-box;
+    max-width: 88vw;
+}
+.b3-zoom-img {
+    width: min(480px, 72vw);
+    height: min(480px, 72vw);
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto;
+}
+.b3-zoom-emoji {
+    font-size: min(200px, 52vw);
+    line-height: 1;
+    display: block;
+}
+.b3-zoom-label {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-top: 12px;
+    color: #1f2937;
+}
+.b3-zoom-tap {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 8px;
+}

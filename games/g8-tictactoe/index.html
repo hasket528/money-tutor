@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>圈圈叉叉</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --o-color:    #4ECDC4;
+      --x-color:    #FF9F43;
+      --panel:      rgba(255,255,255,0.06);
+      --border:     rgba(255,255,255,0.12);
+      --board-size: min(88vw, 340px);
+    }
+    @media (min-width: 480px)  { :root { --board-size: min(85vw, 420px); } }
+    @media (min-width: 768px)  { :root { --board-size: min(70vw, 520px); } }
+    @media (min-width: 1024px) { :root { --board-size: min(50vw, 460px); } }
+    @media (min-width: 1400px) { :root { --board-size: 480px; } }
+
+    /* 重力模式用較寬棋盤 */
+    body.gravity { --board-size: min(99vw, 460px); }
+    @media (min-width: 480px)  { body.gravity { --board-size: min(96vw, 540px); } }
+    @media (min-width: 768px)  { body.gravity { --board-size: min(80vw, 600px); } }
+    @media (min-width: 1024px) { body.gravity { --board-size: min(62vw, 580px); } }
+    @media (min-width: 1400px) { body.gravity { --board-size: 600px; } }
+
+    body {
+      min-height: 100dvh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      user-select: none; touch-action: manipulation;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      width: 100%; max-width: 480px;
+      padding: 16px 16px 0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .back-btn {
+      color: rgba(255,255,255,0.55); font-size: 0.88rem; font-weight: 600;
+      padding: 6px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer; transition: background 0.2s; white-space: nowrap; font-family: inherit;
+    }
+    .back-btn:active { background: rgba(255,255,255,0.14); color: #fff; }
+
+    /* ── Setup Overlay ── */
+    .gue-difficulty-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9000; padding: 20px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .gue-difficulty-card {
+      background: linear-gradient(145deg, #1e1e3a, #16213e);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 22px; padding: 28px 24px;
+      max-width: 320px; width: 100%; text-align: center;
+      animation: gue-card-slide-up 0.3s cubic-bezier(0.25,0.46,0.45,0.94) both;
+    }
+    @keyframes gue-card-slide-up {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .gue-difficulty-title {
+      font-size: 1.5rem; font-weight: 900; margin-bottom: 6px;
+      color: #FFD700; text-shadow: 0 0 14px rgba(255,215,0,0.4);
+    }
+    .gue-difficulty-sub {
+      font-size: 0.85rem; color: rgba(255,255,255,0.4);
+      margin-bottom: 22px; line-height: 1.4;
+    }
+    .gue-diff-btn {
+      display: block; width: 100%; padding: 14px 16px; margin-bottom: 10px;
+      border: none; border-radius: 13px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+      font-family: inherit; text-align: left; touch-action: manipulation;
+    }
+    .gue-diff-btn:last-of-type { margin-bottom: 0; }
+    .gue-diff-btn:active { transform: scale(0.97); filter: brightness(0.88); }
+    .gue-diff-easy    { background: linear-gradient(135deg,#2ed573,#17c550); color:#fff; box-shadow:0 4px 14px rgba(46,213,115,0.35); }
+    .gue-diff-normal  { background: linear-gradient(135deg,#FFD700,#FF8C00); color:#fff; box-shadow:0 4px 14px rgba(255,215,0,0.35); }
+    .gue-diff-hard    { background: linear-gradient(135deg,#FF4757,#A55EEA); color:#fff; box-shadow:0 4px 14px rgba(165,94,234,0.35); }
+    .gue-diff-gravity { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; box-shadow:0 4px 14px rgba(102,126,234,0.4); }
+    .gue-diff-badge   { font-size: 0.75rem; opacity: 0.78; font-weight: 500; float: right; line-height: 1.5; }
+    .g8-back-link {
+      display: inline-block; margin-bottom: 18px;
+      color: rgba(255,255,255,0.45); font-size: 0.82rem; font-weight: 600;
+      text-decoration: none; padding: 6px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.2s; cursor: pointer; font-family: inherit;
+    }
+    .g8-back-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    @media (min-width: 480px)  { .gue-difficulty-card { max-width: 380px; } }
+    @media (min-width: 768px)  { .gue-difficulty-card { max-width: 460px; padding: 32px 28px; } }
+    @media (min-width: 1200px) { .gue-difficulty-card { max-width: 540px; padding: 36px 32px; } }
+
+    /* ── Game Screen ── */
+    #game-screen {
+      width: 100%; display: none; flex-direction: column;
+      align-items: center; flex: 1; padding-bottom: 24px;
+    }
+    #game-screen.visible { display: flex; }
+    #game-screen .page-header { max-width: calc(var(--board-size) + 40px); width: 100%; }
+
+    /* Scoreboard */
+    .scoreboard { display: flex; gap: 12px; margin: 14px 0; width: var(--board-size); }
+    .score-card {
+      flex: 1; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 12px 10px; text-align: center; min-width: 80px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .score-card.active-turn { transform: scale(1.05); box-shadow: 0 0 18px var(--glow); }
+    .score-symbol { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .score-card.o-card .score-symbol { color: var(--o-color); }
+    .score-card.x-card .score-symbol { color: var(--x-color); }
+    .score-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+    .score-num   { font-size: 1.5rem; font-weight: 900; }
+    .score-mid {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 0.7rem; color: rgba(255,255,255,0.3); gap: 4px;
+    }
+    .draw-num { font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.55); }
+    @media (min-width: 768px) {
+      .score-symbol { font-size: 2.6rem; } .score-num { font-size: 2rem; }
+      .score-label  { font-size: 0.82rem; } .score-card { padding: 16px 14px; border-radius: 20px; }
+      .draw-num     { font-size: 1.4rem; }
+    }
+    @media (min-width: 1024px) { .score-symbol { font-size: 3rem; } .score-num { font-size: 2.4rem; } }
+
+    /* Status bar */
+    .status-bar {
+      font-size: 1.05rem; font-weight: 700; margin-bottom: 12px;
+      min-height: 30px; text-align: center; transition: color 0.3s; width: var(--board-size);
+    }
+    .status-o    { color: var(--o-color); }
+    .status-x    { color: var(--x-color); }
+    .status-draw { color: rgba(255,255,255,0.7); }
+    @media (min-width: 768px)  { .status-bar { font-size: 1.25rem; margin-bottom: 14px; } }
+    @media (min-width: 1024px) { .status-bar { font-size: 1.4rem; } }
+
+    /* ── Drop Arrow Row (重力模式) ── */
+    #drop-arrow-row {
+      display: none; width: var(--board-size);
+      gap: clamp(4px, 1vw, 7px);
+      padding: 0 clamp(6px, 1.2vw, 10px);
+      margin-bottom: 4px;
+    }
+    body.gravity #drop-arrow-row { display: grid; }
+    .drop-arrow {
+      display: flex; align-items: center; justify-content: center;
+      height: 26px; border-radius: 7px; font-size: 0.82rem;
+      color: rgba(255,255,255,0.18);
+      transition: color 0.12s, background 0.12s; cursor: pointer;
+    }
+    .drop-arrow.col-hover { background: rgba(255,255,255,0.09); }
+    .drop-arrow.col-full  { color: rgba(255,255,255,0.06) !important; cursor: not-allowed; background: none !important; }
+
+    /* ── Board ── */
+    .board {
+      width: var(--board-size);
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: clamp(8px, 1.8vw, 14px); padding: clamp(8px, 1.8vw, 14px);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: clamp(16px, 3vw, 26px); margin-bottom: 18px; position: relative;
+    }
+    body.gravity .board {
+      grid-template-columns: repeat(7, 1fr);
+      gap: clamp(4px, 1vw, 7px); padding: clamp(6px, 1.2vw, 10px);
+      border-radius: clamp(12px, 2vw, 20px);
+    }
+
+    .cell {
+      width: 100%; aspect-ratio: 1;
+      background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.1);
+      border-radius: clamp(10px, 2.2vw, 18px);
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(2.4rem, calc(var(--board-size) * 0.093), 5.8rem);
+      font-weight: 900; cursor: pointer;
+      transition: background 0.15s, transform 0.1s, border-color 0.2s; line-height: 1;
+    }
+    body.gravity .cell {
+      font-size: clamp(1rem, calc(var(--board-size) * 0.038), 2rem);
+      border-radius: clamp(6px, 1.2vw, 10px);
+    }
+    .cell:not(.taken):hover  { background: rgba(255,255,255,0.13); transform: scale(1.04); }
+    .cell:not(.taken):active { transform: scale(0.95); }
+    .cell.taken { cursor: default; }
+    .cell.o { color: var(--o-color); border-color: rgba(78,205,196,0.35); }
+    .cell.x { color: var(--x-color); border-color: rgba(255,159,67,0.35); }
+    .cell.win-cell { animation: winPulse 0.6s ease-in-out 2; }
+    @keyframes winPulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.1); } }
+    .cell.win-cell.o { background: rgba(78,205,196,0.2);  border-color: var(--o-color); }
+    .cell.win-cell.x { background: rgba(255,159,67,0.2);  border-color: var(--x-color); }
+    .cell.pop { animation: cellPop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes cellPop { from { transform:scale(0.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+    .cell.grav-drop { animation: gravDrop var(--fall-dur, 0.32s) cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+    @keyframes gravDrop {
+      0%   { transform: translateY(var(--fall-dist, -120px)) scale(0.82); opacity: 0.35; }
+      80%  { transform: translateY(0) scale(1);    opacity: 1; }
+      90%  { transform: translateY(-6px) scale(1); opacity: 1; }
+      100% { transform: translateY(0) scale(1);    opacity: 1; }
+    }
+    /* 欄位 hover 著色（重力模式） */
+    .cell.col-hover-o:not(.taken) { background: rgba(78,205,196,0.1); }
+    .cell.col-hover-x:not(.taken) { background: rgba(255,159,67,0.1); }
+
+    /* Thinking overlay */
+    .thinking {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.25); border-radius: inherit;
+      font-size: clamp(0.9rem, 2vw, 1.2rem); color: rgba(255,255,255,0.6);
+      pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    }
+    .thinking.show { opacity: 1; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; width: var(--board-size); }
+    .action-btn {
+      flex: 1; padding: 13px; border: none; border-radius: 14px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      transition: transform 0.12s; font-family: inherit;
+    }
+    .action-btn:active { transform: scale(0.96); }
+    .btn-restart     { background: linear-gradient(135deg, #4ECDC4, #2ea89f); color: #fff; }
+    .btn-reset-score {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.55); font-size: 0.82rem;
+    }
+    @media (min-width: 768px)  { .action-btn { padding:16px; font-size:1.05rem; border-radius:16px; } .btn-reset-score { font-size:0.9rem; } }
+    @media (min-width: 1024px) { .action-btn { padding:18px; font-size:1.15rem; border-radius:18px; } }
+  </style>
+  <script src="../js/game-audio.js"></script>
+</head>
+<body>
+
+  <div id="game-screen">
+    <div class="page-header" style="width:100%">
+      <button class="back-btn" onclick="goToSetup()">← 設定</button>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-card o-card" id="sc-o" style="--glow:rgba(78,205,196,0.45)">
+        <div class="score-symbol">O</div>
+        <div class="score-label" id="label-o">玩家 1</div>
+        <div class="score-num"  id="score-o">0</div>
+      </div>
+      <div class="score-mid">
+        <div class="draw-num" id="score-d">0</div>
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.25)">平局</div>
+      </div>
+      <div class="score-card x-card" id="sc-x" style="--glow:rgba(255,159,67,0.45)">
+        <div class="score-symbol">X</div>
+        <div class="score-label" id="label-x">玩家 2</div>
+        <div class="score-num"  id="score-x">0</div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:10px">
+      <button class="action-btn btn-restart"    id="restart-btn" onclick="restartGame()">再玩一次</button>
+      <button class="action-btn btn-reset-score" onclick="resetScore()">清除分數</button>
+    </div>
+
+    <div class="status-bar" id="status"></div>
+
+    <div id="drop-arrow-row"></div>
+
+    <div class="board" id="board">
+      <div class="thinking" id="thinking">🤖 思考中…</div>
+    </div>
+  </div>
+
+  <script>
+  'use strict';
+
+  window.gameAudio = new GameAudio().preload(
+    ...GameAudio.COMMON, 'g8-place-o', 'g8-place-x'
+  );
+
+  // ── 遊戲設定 ─────────────────────────────────────────────────
+  let gravityMode = false;
+  const CLASSIC = { rows: 3, cols: 3, win: 3 };
+  const GRAVITY = { rows: 6, cols: 7, win: 4 };
+  function cfg() { return gravityMode ? GRAVITY : CLASSIC; }
+
+  let WIN_LINES = [];
+
+  function buildWinLines(rows, cols, win) {
+    const lines = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c <= cols - win; c++)
+        lines.push(Array.from({length: win}, (_, k) => r * cols + c + k));
+    for (let c = 0; c < cols; c++)
+      for (let r = 0; r <= rows - win; r++)
+        lines.push(Array.from({length: win}, (_, k) => (r + k) * cols + c));
+    for (let r = 0; r <= rows - win; r++)
+      for (let c = 0; c <= cols - win; c++)
+        lines.push(Array.from({length: win}, (_, k) => (r + k) * cols + c + k));
+    for (let r = 0; r <= rows - win; r++)
+      for (let c = win - 1; c < cols; c++)
+        lines.push(Array.from({length: win}, (_, k) => (r + k) * cols + c - k));
+    return lines;
+  }
+
+  let mode       = 'pvp';
+  let firstWho   = 'p1';
+  let humanMark  = 'O';
+  let aiFirst    = false;
+  let startTurn  = 'O';
+
+  let board    = [];
+  let turn     = 'O';
+  let gameOver = false;
+  let score    = { O: 0, X: 0, D: 0 };
+
+  let aiTimer      = null;
+  let aiThinkTimer = null;
+
+  // ── Setup Overlay ────────────────────────────────────────────
+  function _mkOv(html) {
+    const ov = document.createElement('div');
+    ov.className = 'gue-difficulty-overlay';
+    ov.id = 'g8-setup-ov';
+    ov.innerHTML = `<div class="gue-difficulty-card">${html}</div>`;
+    document.body.appendChild(ov);
+    return ov;
+  }
+
+  function showVariantCard() {
+    const ex = document.getElementById('g8-setup-ov');
+    if (ex) ex.remove();
+    const ov = _mkOv(`
+      <a href="../index.html" class="g8-back-link">← 遊戲選單</a>
+      <div class="gue-difficulty-title">⭕ 圈圈叉叉</div>
+      <div class="gue-difficulty-sub">選擇遊戲變體</div>
+      <button class="gue-diff-btn gue-diff-easy" data-v="classic">
+        ⭕ 標準圈叉 <span class="gue-diff-badge">3×3 連三獲勝</span>
+      </button>
+      <button class="gue-diff-btn gue-diff-gravity" data-v="gravity">
+        🌊 重力模式 <span class="gue-diff-badge">7×6 連四獲勝</span>
+      </button>
+    `);
+    ov.querySelectorAll('[data-v]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        gravityMode = btn.dataset.v === 'gravity';
+        ov.remove();
+        showModeCard();
+      })
+    );
+  }
+
+  function showModeCard() {
+    const ex = document.getElementById('g8-setup-ov');
+    if (ex) ex.remove();
+    const ov = _mkOv(`
+      <button class="g8-back-link" data-back>← 返回</button>
+      <div class="gue-difficulty-title">${gravityMode ? '🌊 重力模式' : '⭕ 標準圈叉'}</div>
+      <div class="gue-difficulty-sub">選擇遊戲類型</div>
+      <button class="gue-diff-btn gue-diff-easy" data-m="pvp">
+        👥 雙人對戰 <span class="gue-diff-badge">兩位玩家輪流落子</span>
+      </button>
+      <button class="gue-diff-btn gue-diff-normal" data-m="ai">
+        🤖 挑戰電腦 <span class="gue-diff-badge">與 AI 對決</span>
+      </button>
+    `);
+    ov.querySelectorAll('[data-m]').forEach(btn =>
+      btn.addEventListener('click', () => { mode = btn.dataset.m; ov.remove(); showFirstCard(); })
+    );
+    ov.querySelector('[data-back]').addEventListener('click', () => showVariantCard());
+  }
+
+  function showFirstCard() {
+    const ex = document.getElementById('g8-setup-ov');
+    if (ex) ex.remove();
+    const isPvP = mode === 'pvp';
+    const opts = isPvP
+      ? `<button class="gue-diff-btn gue-diff-easy" data-w="p1">
+           ⭕ 玩家 1 先 <span class="gue-diff-badge">O 先落子</span>
+         </button>
+         <button class="gue-diff-btn gue-diff-hard" data-w="p2">
+           ✖ 玩家 2 先 <span class="gue-diff-badge">X 先落子</span>
+         </button>`
+      : `<button class="gue-diff-btn gue-diff-easy" data-w="human">
+           👤 我先 <span class="gue-diff-badge">你先落子（O）</span>
+         </button>
+         <button class="gue-diff-btn gue-diff-hard" data-w="ai">
+           🤖 電腦先 <span class="gue-diff-badge">電腦先落子（O）</span>
+         </button>`;
+    const ov = _mkOv(`
+      <button class="g8-back-link" data-back>← 返回</button>
+      <div class="gue-difficulty-title">${isPvP ? '👥 雙人對戰' : '🤖 挑戰電腦'}</div>
+      <div class="gue-difficulty-sub">誰先落子？</div>
+      ${opts}
+    `);
+    ov.querySelectorAll('[data-w]').forEach(btn =>
+      btn.addEventListener('click', () => { firstWho = btn.dataset.w; ov.remove(); _startGame(); })
+    );
+    ov.querySelector('[data-back]').addEventListener('click', () => showModeCard());
+  }
+
+  // ── Start Game ───────────────────────────────────────────────
+  function _startGame() {
+    const { rows, cols, win } = cfg();
+    WIN_LINES = buildWinLines(rows, cols, win);
+    document.body.classList.toggle('gravity', gravityMode);
+
+    if (mode === 'pvp') {
+      humanMark = 'O'; aiFirst = false;
+      startTurn = (firstWho === 'p2') ? 'X' : 'O';
+    } else {
+      aiFirst   = (firstWho === 'ai');
+      humanMark = aiFirst ? 'X' : 'O';
+      startTurn = 'O';
+    }
+    if (mode === 'ai') {
+      document.getElementById('label-o').textContent = aiFirst ? '電腦' : '你';
+      document.getElementById('label-x').textContent = aiFirst ? '你'   : '電腦';
+    } else {
+      document.getElementById('label-o').textContent = '玩家 1';
+      document.getElementById('label-x').textContent = '玩家 2';
+    }
+    document.getElementById('game-screen').classList.add('visible');
+    document.getElementById('restart-btn').textContent = '再玩一次';
+    score = { O: 0, X: 0, D: 0 };
+    updateScoreDisplay();
+    renderBoard();
+    resetBoard();
+  }
+
+  function goToSetup() {
+    clearAiTimers();
+    document.getElementById('game-screen').classList.remove('visible');
+    showVariantCard();
+  }
+
+  // ── 棋盤生成 ─────────────────────────────────────────────────
+  function renderBoard() {
+    const { rows, cols } = cfg();
+    const boardEl = document.getElementById('board');
+    boardEl.querySelectorAll('.cell').forEach(el => el.remove());
+    boardEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+    for (let i = 0; i < rows * cols; i++) {
+      const col = i % cols;
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.i = i;
+      if (gravityMode) {
+        cell.addEventListener('click',      () => colDrop(col));
+        cell.addEventListener('mouseenter', () => hoverCol(col));
+        cell.addEventListener('mouseleave', () => clearColHover());
+      } else {
+        cell.addEventListener('click', () => cellClick(i));
+      }
+      boardEl.appendChild(cell);
+    }
+    renderDropArrows();
+  }
+
+  function renderDropArrows() {
+    const row = document.getElementById('drop-arrow-row');
+    row.innerHTML = '';
+    if (!gravityMode) return;
+    const { cols } = cfg();
+    row.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    for (let c = 0; c < cols; c++) {
+      const arr = document.createElement('div');
+      arr.className = 'drop-arrow';
+      arr.dataset.col = c;
+      arr.textContent = '▼';
+      arr.addEventListener('click',      () => colDrop(c));
+      arr.addEventListener('mouseenter', () => hoverCol(c));
+      arr.addEventListener('mouseleave', () => clearColHover());
+      row.appendChild(arr);
+    }
+  }
+
+  // ── 棋盤重置 ─────────────────────────────────────────────────
+  function resetBoard() {
+    clearAiTimers();
+    const { rows, cols } = cfg();
+    board    = Array(rows * cols).fill(null);
+    gameOver = false;
+    turn     = startTurn;
+
+    document.querySelectorAll('.cell').forEach(el => {
+      el.textContent = '';
+      el.className   = 'cell';
+    });
+    document.getElementById('thinking').classList.remove('show');
+    updateStatus();
+    updateTurnHighlight();
+    updateDropArrows();
+
+    if (mode === 'ai' && aiFirst) {
+      aiTimer = setTimeout(gravityMode ? aiMoveGravity : aiMove, 600);
+    }
+  }
+
+  // ── 標準模式：點格 ───────────────────────────────────────────
+  function cellClick(i) {
+    if (gameOver || board[i]) return;
+    if (mode === 'ai' && turn !== humanMark) return;
+    makeMove(i, false);
+    if (!gameOver && mode === 'ai') {
+      clearAiTimers();
+      aiTimer = setTimeout(aiMove, 480);
+    }
+  }
+
+  // ── 重力模式：投入欄位 ───────────────────────────────────────
+  function colDrop(col) {
+    if (gameOver) return;
+    if (mode === 'ai' && turn !== humanMark) return;
+    const dropRow = getDropRow(board, col);
+    if (dropRow === -1) return;
+    makeMove(dropRow * cfg().cols + col, true);
+    if (!gameOver && mode === 'ai') {
+      clearAiTimers();
+      aiTimer = setTimeout(aiMoveGravity, 480);
+    }
+  }
+
+  function getDropRow(b, col) {
+    const { rows, cols } = cfg();
+    for (let r = rows - 1; r >= 0; r--)
+      if (!b[r * cols + col]) return r;
+    return -1;
+  }
+
+  // ── 落子 ─────────────────────────────────────────────────────
+  function makeMove(i, gravAnim) {
+    board[i] = turn;
+    renderCell(i, gravAnim);
+    window.gameAudio?.play(board[i] === 'O' ? 'g8-place-o' : 'g8-place-x');
+    const result = checkWin(board);
+    if (result) {
+      endGame(result);
+    } else if (board.every(c => c)) {
+      endGame('draw');
+    } else {
+      turn = turn === 'O' ? 'X' : 'O';
+      updateStatus();
+      updateTurnHighlight();
+      updateDropArrows();
+    }
+  }
+
+  function renderCell(i, gravAnim) {
+    const el = document.querySelector(`.cell[data-i="${i}"]`);
+    if (!el) return;
+    el.textContent = board[i] === 'O' ? 'O' : 'X';
+    el.classList.add('taken', board[i] === 'O' ? 'o' : 'x');
+    if (gravAnim) {
+      const { cols } = cfg();
+      const row = Math.floor(i / cols);
+      const boardRect = document.getElementById('board').getBoundingClientRect();
+      const cellRect  = el.getBoundingClientRect();
+      const fallDist  = (cellRect.top - boardRect.top) + cellRect.height * 0.5;
+      const duration  = (0.18 + row * 0.065).toFixed(2);
+      el.style.setProperty('--fall-dist', `-${fallDist}px`);
+      el.style.setProperty('--fall-dur',  `${duration}s`);
+      el.classList.add('grav-drop');
+      el.addEventListener('animationend', () => {
+        el.classList.remove('grav-drop');
+        el.style.removeProperty('--fall-dist');
+        el.style.removeProperty('--fall-dur');
+      }, { once: true });
+    } else {
+      el.classList.add('pop');
+      el.addEventListener('animationend', () => el.classList.remove('pop'), { once: true });
+    }
+  }
+
+  // ── 欄位 hover（重力模式）────────────────────────────────────
+  function hoverCol(col) {
+    if (gameOver || !gravityMode) return;
+    clearColHover();
+    const { cols } = cfg();
+    const cls = turn === 'O' ? 'col-hover-o' : 'col-hover-x';
+    const color = turn === 'O' ? 'var(--o-color)' : 'var(--x-color)';
+    document.querySelectorAll('.cell').forEach(el => {
+      if (parseInt(el.dataset.i) % cols === col) el.classList.add(cls);
+    });
+    const arr = document.querySelector(`.drop-arrow[data-col="${col}"]`);
+    if (arr && !arr.classList.contains('col-full')) {
+      arr.classList.add('col-hover');
+      arr.style.color = color;
+    }
+  }
+
+  function clearColHover() {
+    document.querySelectorAll('.col-hover-o, .col-hover-x').forEach(el =>
+      el.classList.remove('col-hover-o', 'col-hover-x')
+    );
+    document.querySelectorAll('.drop-arrow').forEach(el => {
+      el.classList.remove('col-hover');
+      el.style.color = '';
+    });
+  }
+
+  function updateDropArrows() {
+    if (!gravityMode) return;
+    const { rows, cols } = cfg();
+    document.querySelectorAll('.drop-arrow').forEach(arr => {
+      const c    = parseInt(arr.dataset.col);
+      const full = Array.from({length: rows}, (_, r) => board[r * cols + c]).every(v => v);
+      arr.classList.toggle('col-full', full);
+    });
+  }
+
+  // ── 標準 AI ──────────────────────────────────────────────────
+  function aiMove() {
+    aiTimer = null;
+    if (gameOver) return;
+    document.getElementById('thinking').classList.add('show');
+    aiThinkTimer = setTimeout(() => {
+      aiThinkTimer = null;
+      document.getElementById('thinking').classList.remove('show');
+      if (gameOver) return;
+      const aiMark = humanMark === 'O' ? 'X' : 'O';
+      let best = Math.random() < 0.70 ? bestMoveClassic(board, aiMark) : -1;
+      if (best === -1) {
+        const empties = board.map((v,i) => v === null ? i : -1).filter(i => i !== -1);
+        best = empties[Math.floor(Math.random() * empties.length)] ?? -1;
+      }
+      if (best !== -1) makeMove(best, false);
+    }, 350);
+  }
+
+  function bestMoveClassic(b, mark) {
+    const opp = mark === 'O' ? 'X' : 'O';
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i] = mark; if (checkWin(b)) { b[i] = null; return i; } b[i] = null; }
+    }
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i] = opp;  if (checkWin(b)) { b[i] = null; return i; } b[i] = null; }
+    }
+    if (!b[4]) return 4;
+    const corners = [0,2,6,8].filter(i => !b[i]);
+    if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+    const empties = b.map((v,i) => v === null ? i : -1).filter(i => i !== -1);
+    return empties.length ? empties[Math.floor(Math.random() * empties.length)] : -1;
+  }
+
+  // ── 重力 AI ───────────────────────────────────────────────────
+  function aiMoveGravity() {
+    aiTimer = null;
+    if (gameOver) return;
+    document.getElementById('thinking').classList.add('show');
+    aiThinkTimer = setTimeout(() => {
+      aiThinkTimer = null;
+      document.getElementById('thinking').classList.remove('show');
+      if (gameOver) return;
+      const aiMark  = humanMark === 'O' ? 'X' : 'O';
+      const bestCol = gravityBestCol(board, aiMark);
+      if (bestCol !== -1) {
+        const dropRow = getDropRow(board, bestCol);
+        if (dropRow !== -1) makeMove(dropRow * cfg().cols + bestCol, true);
+      }
+    }, 420);
+  }
+
+  function gravityBestCol(b, mark) {
+    const { rows, cols } = cfg();
+    const opp = mark === 'O' ? 'X' : 'O';
+    const validCols = Array.from({length: cols}, (_, c) => c).filter(c => getDropRow(b, c) !== -1);
+    if (!validCols.length) return -1;
+
+    // 立即獲勝
+    for (const col of validCols) {
+      const r = getDropRow(b, col), idx = r * cols + col;
+      b[idx] = mark; const won = checkWin(b); b[idx] = null;
+      if (won) return col;
+    }
+    // 阻擋對手獲勝
+    for (const col of validCols) {
+      const r = getDropRow(b, col), idx = r * cols + col;
+      b[idx] = opp; const won = checkWin(b); b[idx] = null;
+      if (won) return col;
+    }
+    // 避免給對手送分（落子後上方位置讓對手直接獲勝）
+    const safeCols = validCols.filter(col => {
+      const r = getDropRow(b, col);
+      if (r === 0) return true;
+      const idx = r * cols + col;
+      b[idx] = mark;
+      const nextIdx = (r - 1) * cols + col;
+      b[nextIdx] = opp;
+      const danger = checkWin(b);
+      b[nextIdx] = null; b[idx] = null;
+      return !danger;
+    });
+    const pool   = safeCols.length ? safeCols : validCols;
+    const center = Math.floor(cols / 2);
+    if (pool.includes(center)) return center;
+    return [...pool].sort((a, c) => Math.abs(a - center) - Math.abs(c - center))[0] ?? -1;
+  }
+
+  // ── 勝負判斷 ─────────────────────────────────────────────────
+  function checkWin(b) {
+    for (const line of WIN_LINES) {
+      const [first, ...rest] = line;
+      if (b[first] && rest.every(i => b[i] === b[first]))
+        return { winner: b[first], line };
+    }
+    return null;
+  }
+
+  function endGame(result) {
+    gameOver = true;
+    clearAiTimers();
+    if (gravityMode) clearColHover();
+
+    const status = document.getElementById('status');
+    if (result === 'draw') {
+      score.D++;
+      status.textContent = '🤝 平局！';
+      status.className   = 'status-bar status-draw';
+      window.gameAudio?.play('game-over-common');
+    } else {
+      const w = result.winner;
+      score[w]++;
+      result.line.forEach(i =>
+        document.querySelector(`.cell[data-i="${i}"]`).classList.add('win-cell')
+      );
+      if (mode === 'ai') {
+        const win = w === humanMark;
+        window.gameAudio?.play(win ? 'win-round' : 'game-over-common');
+        status.textContent = win ? '🎉 你贏了！太厲害了！' : '🤖 電腦獲勝！再接再厲！';
+      } else {
+        window.gameAudio?.play('win-round');
+        status.textContent = `🎉 ${w === 'O' ? 'O 玩家 1' : 'X 玩家 2'} 獲勝！`;
+      }
+      status.className = `status-bar status-${w.toLowerCase()}`;
+    }
+    updateScoreDisplay();
+  }
+
+  // ── 重置 ─────────────────────────────────────────────────────
+  function restartGame() { resetBoard(); }
+
+  function resetScore() {
+    score = { O: 0, X: 0, D: 0 };
+    updateScoreDisplay();
+    resetBoard();
+  }
+
+  function clearAiTimers() {
+    if (aiTimer      !== null) { clearTimeout(aiTimer);      aiTimer      = null; }
+    if (aiThinkTimer !== null) { clearTimeout(aiThinkTimer); aiThinkTimer = null; }
+    const t = document.getElementById('thinking');
+    if (t) t.classList.remove('show');
+  }
+
+  // ── UI ────────────────────────────────────────────────────────
+  function updateStatus() {
+    if (gameOver) return;
+    const status = document.getElementById('status');
+    if (mode === 'pvp') {
+      status.textContent = `${turn === 'O' ? 'O 玩家 1' : 'X 玩家 2'} 的回合`;
+    } else {
+      status.textContent = turn === humanMark ? '👤 輪到你了！' : '🤖 電腦思考中…';
+    }
+    status.className = `status-bar status-${turn.toLowerCase()}`;
+  }
+
+  function updateTurnHighlight() {
+    document.getElementById('sc-o').classList.toggle('active-turn', turn === 'O' && !gameOver);
+    document.getElementById('sc-x').classList.toggle('active-turn', turn === 'X' && !gameOver);
+  }
+
+  function updateScoreDisplay() {
+    document.getElementById('score-o').textContent = score.O;
+    document.getElementById('score-x').textContent = score.X;
+    document.getElementById('score-d').textContent = score.D;
+  }
+
+  document.addEventListener('DOMContentLoaded', showVariantCard);
+  </script>
+</body>
+</html>

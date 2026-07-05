@@ -1,0 +1,131 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* 改善手機端觸控響應 - 選項按鈕 */
+        .option-btn,
+        .product-card {
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            cursor: pointer !important;
+            transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+        }
+        
+        .option-btn:active,
+        .product-card:active {
+            transform: scale(0.95) !important;
+        }
+        
+        .option-btn:hover,
+        .product-card:hover {
+            transform: scale(1.02) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        /* 防止圖片干擾觸控事件 */
+        .option-btn img,
+        .product-card img {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        
+        /* 設定按鈕和其他按鈕觸控優化 */
+        .selection-btn,
+        .start-btn,
+        .back-btn,
+        button {
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            cursor: pointer !important;
+            transition: transform 0.1s ease !important;
+        }
+        
+        .selection-btn:active,
+        .start-btn:active,
+        .back-btn:active,
+        button:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* 綠色打勾圖示樣式 - 出現在金錢圖示上方 */
+        .correct-check-mark {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #4CAF50;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+            animation: checkMarkAppear 0.3s ease-out;
+            z-index: 10;
+        }
+
+        @keyframes checkMarkAppear {
+            from {
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 紅色叉叉圖示樣式 - 出現在金錢圖示上方 */
+        .wrong-cross-mark {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #f44336;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+            animation: wrongMarkAppear 0.3s ease-out;
+            z-index: 10;
+        }
+
+        @keyframes wrongMarkAppear {
+            from {
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 確保選項容器可以容納打勾/叉叉圖示 */
+        .product-item {
+            position: relative;
+        }

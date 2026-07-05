@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>美味餐點大作戰</title>
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="toast.css">
+</head>
+<body>
+
+<!-- ══ 設定畫面 ══════════════════════════════════════════ -->
+<div id="ts-setup">
+  <div class="ts-bar">
+    <a href="../index.html" class="ts-back">‹</a>
+    <div class="ts-bar-title">🍽️ 美味餐點大作戰</div>
+    <div class="ts-bar-spacer"></div>
+  </div>
+  <div class="ts-setup-body">
+    <div class="ts-setup-sub">選擇你要製作餐點的服務對象！</div>
+    <div class="ts-char-grid" id="ts-char-grid"></div>
+  </div>
+</div>
+
+<!-- ══ 預覽畫面（模式二：記憶食物）════════════════════════ -->
+<div id="ts-preview" class="hidden">
+  <div class="ts-bar">
+    <button class="ts-back" id="ts-preview-back">‹</button>
+    <div class="ts-bar-title">🍽️ 美味餐點大作戰</div>
+    <div class="ts-bar-spacer"></div>
+  </div>
+  <div id="ts-preview-body">
+    <div id="ts-preview-char"></div>
+    <div id="ts-preview-name"></div>
+    <div id="ts-preview-foods"></div>
+    <div id="ts-preview-countdown">
+      <div id="ts-preview-timer">3</div>
+      <div class="ts-preview-timer-label">秒後開始</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 遊戲主畫面 ══════════════════════════════════════════ -->
+<div id="ts-game" class="hidden">
+
+  <!-- 標題列 -->
+  <div class="ts-bar">
+    <a href="../index.html" class="ts-back">‹</a>
+    <div class="ts-hud-center">
+      <span id="ts-hud-char"></span>
+      <span id="ts-hud-likes"></span>
+    </div>
+    <div class="ts-hud-right">
+      <div class="ts-hud-score">收集 <span id="ts-collect-count">0</span> 個</div>
+    </div>
+  </div>
+
+  <!-- 遊玩區域 -->
+  <div id="ts-play-area">
+    <!-- 道路背景（捲動）-->
+    <div id="ts-road"></div>
+
+    <!-- 遮蔽層：門選完後蓋住未選側 -->
+    <div id="ts-inactive-mask" class="hidden"></div>
+
+    <!-- 分界線（中央）-->
+    <div id="ts-divider"></div>
+
+    <!-- 世界（包含門、食物格、人臉）-->
+    <div id="ts-world"></div>
+
+    <!-- 盤子（固定底部）-->
+    <div id="ts-sandwich">
+      <span class="ts-plate">🍽️</span>
+      <span id="ts-fillings"></span>
+    </div>
+
+    <!-- 門選擇提示（gate_choice 階段顯示）-->
+    <div id="ts-gate-hint" class="hidden">
+      <div class="gate-hint-left">← 移到左邊</div>
+      <div class="gate-hint-right">移到右邊 →</div>
+    </div>
+
+    <!-- 拖曳提示（選門後顯示）-->
+    <div id="ts-drag-hint" class="hidden">← 左右移動盤子接食物 →</div>
+  </div>
+
+</div>
+
+<!-- ══ 送餐畫面 ══════════════════════════════════════════ -->
+<div id="ts-delivery" class="hidden">
+  <div id="td-char-wrap">
+    <div id="td-char"></div>
+    <div id="td-mouth">👄</div>
+  </div>
+  <div id="td-fly"></div>
+</div>
+
+<!-- ══ 結果畫面 ══════════════════════════════════════════ -->
+<div id="ts-result" class="hidden">
+  <div class="ts-result-card">
+    <div class="ts-rc-char" id="tr-char"></div>
+    <div class="ts-rc-reaction" id="tr-reaction"></div>
+    <div class="ts-rc-score-box">
+      <div class="ts-rc-score-label">得分</div>
+      <div class="ts-rc-score" id="tr-score">0</div>
+    </div>
+    <div class="ts-rc-foods" id="tr-foods"></div>
+    <div class="ts-rc-detail" id="tr-detail"></div>
+    <div class="ts-rc-btns">
+      <button id="tr-replay" class="ts-btn primary">🔄 再玩一次</button>
+      <button id="tr-menu"   class="ts-btn secondary">返回選單</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/audio-unlocker.js"></script>
+<script src="../../js/confetti.browser.min.js"></script>
+<script src="../js/game-engine.js"></script>
+<script src="../js/game-ui.js"></script>
+<script src="../js/game-audio.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

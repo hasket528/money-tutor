@@ -1,0 +1,244 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F4數字排序</title>
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/shared-game-base.css">
+    <link rel="stylesheet" href="../css/f4-number-sorting.css">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+
+</head>
+<body class="f4-unit f-series">
+    <div id="app">
+        </div>
+
+    <audio id="correct-sound" src="../audio/units/correct.mp3" preload="auto"></audio>
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+    <audio id="error-sound" src="../audio/units/error.mp3" preload="auto"></audio>
+    <audio id="select-sound" src="../audio/units/select.mp3" preload="auto"></audio>
+    <audio id="menu-select-sound" src="../audio/units/click.mp3" preload="auto"></audio>
+    <audio id="click-sound" src="../audio/units/click.mp3" preload="auto"></audio>
+
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-system.js"></script>
+    
+    <!-- Inline TouchDragUtility fallback -->
+    <script>
+        if (!window.TouchDragUtility) {
+            console.log('🎯 創建內嵌 TouchDragUtility');
+            
+            class TouchDragUtility {
+                constructor() {
+                    this.dropZones = new Map();
+                    this.dragStartHandlers = new Map();
+                    this.dropHandlers = new Map();
+                    this.touchState = {
+                        isDragging: false,
+                        element: null,
+                        startX: 0,
+                        startY: 0
+                    };
+                    
+                    document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+                    document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+                    document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+                    
+                    console.log('🎯 內嵌 TouchDragUtility 初始化完成');
+                }
+                
+                registerDraggable(container, selector, handlers) {
+                    const containerId = this.getElementId(container);
+                    this.dragStartHandlers.set(containerId, {
+                        container,
+                        selector,
+                        handler: handlers.onDragStart || (() => {})
+                    });
+                    this.dropHandlers.set(containerId, handlers.onDrop || (() => {}));
+                    console.log('🎯 註冊拖拽元素:', selector);
+                }
+                
+                registerDropZone(element, validator) {
+                    const id = this.getElementId(element);
+                    this.dropZones.set(id, { element, validator });
+                    console.log('🎯 註冊放置區域:', element.className);
+                }
+                
+                getElementId(element) {
+                    if (!element.dataset.touchDragId) {
+                        element.dataset.touchDragId = 'td_' + Math.random().toString(36).substr(2, 9);
+                    }
+                    return element.dataset.touchDragId;
+                }
+                
+                handleTouchStart(event) {
+                    const draggableInfo = this.findDraggableElement(event.target);
+                    if (!draggableInfo) return;
+                    
+                    const { element, containerId } = draggableInfo;
+                    const dragStartInfo = this.dragStartHandlers.get(containerId);
+                    
+                    event.preventDefault();
+                    
+                    const result = dragStartInfo.handler(element, event);
+                    if (result === false) return;
+                    
+                    const touch = event.touches[0];
+                    this.touchState = {
+                        isDragging: true,
+                        element: element,
+                        containerId: containerId,
+                        startX: touch.clientX,
+                        startY: touch.clientY,
+                        dragClone: null
+                    };
+                    
+                    // 🔧 [修正] 創建拖拽複製元素提供視覺回饋
+                    this.createDragClone(element, touch.clientX, touch.clientY);
+                    element.style.opacity = '0.3';
+                    element.classList.add('dragging');
+                    console.log('🎯 觸控拖拽開始:', element.textContent);
+                }
+                
+                handleTouchMove(event) {
+                    if (!this.touchState.isDragging) return;
+                    event.preventDefault();
+                    
+                    // 🔧 [修正] 更新拖拽複製元素位置
+                    if (this.touchState.dragClone) {
+                        const touch = event.touches[0];
+                        this.updateDragClone(touch.clientX, touch.clientY);
+                    }
+                }
+                
+                handleTouchEnd(event) {
+                    if (!this.touchState.isDragging) return;
+                    
+                    event.preventDefault();
+                    
+                    const touch = event.changedTouches[0];
+                    const dropZone = this.findDropZoneAt(touch.clientX, touch.clientY);
+                    
+                    if (dropZone && this.touchState.containerId) {
+                        const dropHandler = this.dropHandlers.get(this.touchState.containerId);
+                        if (dropHandler) {
+                            dropHandler(this.touchState.element, dropZone, event);
+                        }
+                    }
+                    
+                    if (this.touchState.element) {
+                        this.touchState.element.style.opacity = '1';
+                        this.touchState.element.classList.remove('dragging');
+                    }
+                    
+                    // 🔧 [修正] 清除拖拽複製元素
+                    this.removeDragClone();
+                    
+                    this.touchState = { isDragging: false, element: null };
+                    console.log('🎯 觸控拖拽結束');
+                }
+                
+                findDraggableElement(target) {
+                    for (const [containerId, info] of this.dragStartHandlers) {
+                        const { container, selector } = info;
+                        if (container.contains(target)) {
+                            const draggableElement = target.closest(selector);
+                            if (draggableElement && container.contains(draggableElement)) {
+                                return { element: draggableElement, containerId };
+                            }
+                        }
+                    }
+                    return null;
+                }
+                
+                findDropZoneAt(x, y) {
+                    const elementAt = document.elementFromPoint(x, y);
+                    if (!elementAt) return null;
+                    
+                    for (const [id, info] of this.dropZones) {
+                        const { element, validator } = info;
+                        if (element === elementAt || element.contains(elementAt)) {
+                            if (validator(this.touchState.element, element)) {
+                                return element;
+                            }
+                        }
+                    }
+                    return null;
+                }
+                
+                // 🔧 [新增] 創建拖拽複製元素
+                createDragClone(originalElement, x, y) {
+                    const clone = originalElement.cloneNode(true);
+                    clone.id = 'drag-clone';
+                    clone.style.cssText = `
+                        position: fixed;
+                        top: ${y - 25}px;
+                        left: ${x - 25}px;
+                        width: 50px;
+                        height: 50px;
+                        background: ${window.getComputedStyle(originalElement).background};
+                        border: 2px solid #007bff;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: #333;
+                        z-index: 9999;
+                        pointer-events: none;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        transform: scale(1.1);
+                        transition: none;
+                    `;
+                    document.body.appendChild(clone);
+                    this.touchState.dragClone = clone;
+                }
+                
+                // 🔧 [新增] 更新拖拽複製元素位置
+                updateDragClone(x, y) {
+                    if (this.touchState.dragClone) {
+                        this.touchState.dragClone.style.left = `${x - 25}px`;
+                        this.touchState.dragClone.style.top = `${y - 25}px`;
+                    }
+                }
+                
+                // 🔧 [新增] 移除拖拽複製元素
+                removeDragClone() {
+                    if (this.touchState.dragClone) {
+                        document.body.removeChild(this.touchState.dragClone);
+                        this.touchState.dragClone = null;
+                    }
+                }
+            }
+            
+            window.TouchDragUtility = new TouchDragUtility();
+            console.log('🎯 內嵌 TouchDragUtility 已設置到 window 對象');
+        }
+    </script>
+    
+    <script src="../js/touch-drag-utility.js?v=2.4"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <script src="../js/f4_number_sorting.js?v=2.2"></script>
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+</body>
+</html>

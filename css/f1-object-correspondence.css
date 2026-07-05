@@ -1,0 +1,486 @@
+/* ================================================================
+ * F1 單元：數與物的對應
+ * f1-object-correspondence.css
+ * 從 html/f1_object_correspondence.html inline <style> 搬移而來
+ * ================================================================ */
+
+/* Prevents script tags from being displayed */
+script {
+    display: none !important;
+}
+
+/* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+   同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+html, body, #app {
+    overscroll-behavior-y: contain;
+}
+
+/* ================================================================
+ * SortableJS 跨平台拖曳樣式
+ * ================================================================ */
+
+.sortable-fallback {
+    background: rgba(76, 175, 80, 0.9) !important;
+    border: 2px solid #4CAF50 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(1.05) !important;
+    opacity: 0.9 !important;
+    z-index: 9999 !important;
+    pointer-events: none !important;
+}
+
+.sortable-ghost {
+    opacity: 0.4 !important;
+    background: #e3f2fd !important;
+    border: 2px dashed #2196F3 !important;
+}
+
+.sortable-chosen {
+    background: rgba(76, 175, 80, 0.1) !important;
+    border: 2px solid #4CAF50 !important;
+    transform: scale(1.02) !important;
+}
+
+/* 深色模式支援 */
+[data-theme="dark"] .sortable-fallback {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid var(--success-color) !important;
+}
+
+[data-theme="dark"] .sortable-ghost {
+    background: rgba(66, 165, 245, 0.2) !important;
+    border: 2px dashed var(--primary-color) !important;
+}
+
+/* ================================================================
+ * 觸控互動樣式（手機友好）
+ * ================================================================ */
+
+/* 點擊選擇功能樣式 */
+.money-item.selected-item,
+.draggable-item.selected-item {
+    outline: 3px solid #4CAF50 !important;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+    z-index: 10 !important;
+    background: rgba(76, 175, 80, 0.1) !important;
+    transition: outline 0.3s ease, box-shadow 0.3s ease, background 0.3s ease !important;
+}
+
+/* 確保手機觸控友好性 - 修正點擊閃爍問題 */
+.draggable-item,
+.money-item {
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    outline: none !important;
+}
+
+.draggable-item:focus,
+.money-item:focus,
+.draggable-item:focus-visible,
+.money-item:focus-visible {
+    outline: none !important;
+}
+
+/* 點擊反饋效果 - 解決手機端圖示點擊閃爍問題（移除縮放以防止鄰近圖示視覺位移） */
+.draggable-item:active,
+.money-item:active,
+.clickable-item:active {
+    transition: none !important;
+}
+
+/* 響應式優化 - 桌面端更細微的效果 */
+@media (min-width: 768px) {
+    .draggable-item:active,
+    .money-item:active,
+    .clickable-item:active {
+        transform: scale(0.98) !important;
+        transition: transform 0.05s ease !important;
+    }
+}
+
+/* ================================================================
+ * 主題系統
+ * ================================================================ */
+
+/* 主題過渡動畫 */
+.theme-transitioning * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 顏色拾取器高亮效果 */
+.color-picker-highlight {
+    box-shadow: 0 0 10px 2px rgba(102, 126, 234, 0.6) !important;
+    position: relative;
+    z-index: 1000;
+}
+
+/* ================================================================
+ * 拖曳放置區域佈局
+ * ================================================================ */
+
+/* 只對簡單模式的特定容器生效，完全不影響普通/困難模式 */
+.easy-mode .placement-zone {
+    display: block !important;
+    position: relative !important;
+    min-height: 80px !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+}
+
+.easy-mode .placement-zone .draggable-item,
+.easy-mode .placement-zone .money-item {
+    display: inline-block !important;
+    position: static !important;
+    margin: 0 auto !important;
+    vertical-align: middle !important;
+}
+
+.easy-mode .placement-zone > * {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0 auto !important;
+    display: inline-block !important;
+}
+
+/* 強制確保普通和困難模式的 flex 佈局不受任何影響 */
+.placement-grid-normal {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.placement-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+}
+
+/* 困難模式：修正放置框(#placement-zone)內格子的盒模型
+   確保 width: 90px 的設定就是最終渲染寬度，與 JS 計算完全相符 */
+#placement-zone .target-grid-item {
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 困難模式：目標框(.target-grid)內的靜態圖示 */
+.target-grid .static-item {
+    box-sizing: border-box !important;
+}
+
+/* 手機端優化：拖曳進入時的視覺提示 */
+.placement-zone.sortable-drag-over {
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    border-color: #4CAF50 !important;
+    transform: scale(1.02) !important;
+}
+
+/* ================================================================
+ * 普通模式容器尺寸
+ * ================================================================ */
+
+/* 強制將內層網格容器設定為 15 個項目的最大寬度，並置中 */
+.normal-grid-wrapper,
+.target-item-container {
+    max-width: 1490px !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* 強制確保所有普通模式的物品/格子使用 border-box 且大小統一為 90px */
+.normal-source .draggable-item,
+.normal-target .draggable-item,
+.target-item-container .draggable-item,
+.normal-placement-zone .drop-zone {
+    width: 90px !important;
+    height: 90px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+
+/* ================================================================
+ * 煙火特效
+ * ================================================================ */
+
+.fireworks-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    display: block;
+}
+
+@keyframes fireworkExplode {
+    0% {
+        opacity: 1;
+        transform: scale(0) rotate(0deg);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(2) rotate(180deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(4) rotate(360deg);
+    }
+}
+
+.firework-particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: fireworkExplode 1s ease-out forwards;
+}
+
+/* ================================================================
+ * 對應模式（簡單模式）容器佈局
+ * 原本由 JS dynamic-turn-styles 動態注入，Phase 2 搬移至此
+ * ================================================================ */
+
+/* 對應配對框：設定相對定位，作為動畫的座標基準 */
+.correspondence-frame {
+    position: relative;
+}
+
+/* 對應配對容器 */
+.correspondence-pairs-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    padding: 10px;
+    border: 2px dashed #a0a0a0;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.5);
+    min-height: 120px;
+}
+
+/* 單一配對組（上下排列） */
+.correspondence-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 配對組內的靜態物品 */
+.correspondence-pair .static-item {
+    opacity: 0.8;
+    cursor: default;
+    border-style: solid;
+    border-color: #666;
+}
+
+/* 來源物品容器 */
+.source-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+.source-container .draggable-item {
+    flex-shrink: 0;
+}
+
+/* ================================================================
+ * 完成按鈕（普通模式 & 困難模式共用）
+ * 原本由 JS modern-complete-btn-styles 動態注入（×2 重複），Phase 3 搬移至此
+ * ================================================================ */
+
+.modern-complete-btn {
+    position: relative;
+    padding: 16px 32px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    min-width: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 auto;
+}
+
+.modern-complete-btn:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+    background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+}
+
+.modern-complete-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+}
+
+.modern-complete-btn:disabled {
+    background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 4px 16px rgba(160, 174, 192, 0.3);
+}
+
+.btn-icon {
+    font-size: 20px;
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+.btn-text {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: 0.5px;
+}
+
+.btn-effect {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.6s ease;
+    pointer-events: none;
+}
+
+.modern-complete-btn:hover .btn-effect {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+}
+
+/* @keyframes sparkle, pulse, shake 定義於 injectGlobalAnimationStyles() */
+
+.modern-complete-btn.ready {
+    animation: pulse 3s ease-in-out infinite;
+}
+
+.modern-complete-btn.success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+    transform: scale(1.1) !important;
+}
+
+.modern-complete-btn.error {
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%) !important;
+    animation: shake 0.6s ease-in-out;
+}
+
+/* ================================================================
+ * 提示按鈕 & 標題列（困難模式）
+ * 原本由 JS modern-hint-btn-styles 動態注入，Phase 4 搬移至此
+ * ================================================================ */
+
+.header-with-hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.header-with-hint h3 {
+    flex: 1;
+    margin: 0;
+    text-align: left;
+    min-width: 250px;
+}
+
+.modern-hint-btn {
+    position: relative;
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-width: 100px;
+    flex-shrink: 0;
+    margin: 0 !important;
+    float: none !important;
+    align-self: flex-end !important;
+}
+
+.modern-hint-btn:hover {
+    background: linear-gradient(45deg, #45a049, #4CAF50);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.modern-hint-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+.hint-icon {
+    font-size: 18px;
+    animation: pulse 2s infinite;
+}
+
+.hint-text {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.hint-effect {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.modern-hint-btn:hover .hint-effect {
+    left: 100%;
+}
+
+/* 響應式：手機版標題列改為垂直排列 */
+@media (max-width: 600px) {
+    .header-with-hint {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .header-with-hint h3 {
+        text-align: center;
+        min-width: auto;
+    }
+}

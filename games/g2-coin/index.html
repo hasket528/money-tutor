@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>錢幣接接樂</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="coin.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+
+    <!-- 目標面板（含點擊模式計時條）-->
+    <div id="target-panel">
+      <div id="target-row">
+        <span class="tp-label">目標</span>
+        <span id="target-display">--</span>
+        <span class="tp-unit">元</span>
+        <span class="tp-arrow">→</span>
+        <span class="tp-label" id="wallet-label">錢包</span>
+        <span id="wallet-display">0</span>
+        <span class="tp-unit" id="wallet-unit">元</span>
+      </div>
+      <div id="target-timer-track">
+        <div id="target-timer-fill"></div>
+      </div>
+    </div>
+
+    <!-- 進度條 -->
+    <div id="wallet-bar">
+      <div id="wallet-progress"></div>
+    </div>
+
+    <!-- 操作提示 -->
+    <div id="hint-text">點擊硬幣收集，剛好湊到目標金額！</div>
+
+    <!-- 硬幣動態插入此處 -->
+
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="coin.js"></script>
+</body>
+</html>

@@ -1,0 +1,671 @@
+/* ══════════════════════════════════════════════════════════
+   G12 猜拳大戰 CSS
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:       #1a1a2e;
+  --panel:    rgba(255,255,255,0.07);
+  --border:   rgba(255,255,255,0.12);
+  --accent:   #4ECDC4;
+  --p1-color: #4ECDC4;
+  --p2-color: #FF6B6B;
+  --win-color: #2ed573;
+  --lose-color:#FF4757;
+  --tie-color: #FFA502;
+  --text:     #fff;
+  --text-dim: rgba(255,255,255,0.55);
+  --radius:   16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  user-select: none;
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ══ 共用標題列（G1 style）══════════════════════════════════ */
+
+.rps-title-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  min-height: 56px;
+  flex-shrink: 0;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+/* 讓設定畫面的標題列 sticky */
+#rps-setup .rps-title-bar {
+  position: sticky;
+  top: 0;
+}
+
+/* 與 G1 .gue-back-btn 一致：30×30px */
+.rps-tb-back {
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  font-size: 1.5rem;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+.rps-tb-back:active { background: rgba(255,255,255,0.16); color: #fff; }
+
+.rps-tb-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--p1-color), var(--p2-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.02em;
+}
+
+.rps-tb-spacer { width: 36px; flex-shrink: 0; }
+
+/* ══ 設定畫面 ══════════════════════════════════════════════ */
+
+#rps-setup {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 24px;
+}
+
+.rps-setup-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin: auto;        /* 水平置中 */
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.rps-logo {
+  font-size: 2.5rem;
+  text-align: center;
+  letter-spacing: 8px;
+  animation: logoBounce 2s ease-in-out infinite;
+}
+@keyframes logoBounce {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+.rps-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--p1-color), var(--p2-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-top: -16px;
+}
+
+.rps-step { display: flex; flex-direction: column; gap: 12px; }
+
+.rps-step-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rps-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rps-setup-btn {
+  flex: 1;
+  min-width: 90px;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  padding: 14px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.rps-setup-btn .btn-icon { font-size: 1.8rem; }
+.rps-setup-btn .btn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.rps-setup-btn small {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.rps-setup-btn:hover,
+.rps-setup-btn.selected {
+  border-color: var(--accent);
+  background: rgba(78,205,196,0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(78,205,196,0.25);
+}
+.rps-setup-btn:active { transform: translateY(0); }
+
+/* ══ 遮擋畫面 ══════════════════════════════════════════════ */
+
+#rps-cover {
+  position: fixed; inset: 0;
+  background: #0f0f1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.cover-inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.cover-icon  { font-size: 4rem; }
+.cover-msg   { font-size: 1.5rem; font-weight: 900; }
+.cover-sub   { font-size: 0.9rem; color: var(--text-dim); }
+
+.rps-ready-btn {
+  margin-top: 8px;
+  padding: 14px 40px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.rps-ready-btn:active { transform: scale(0.96); }
+
+/* ══ 遊戲主畫面容器 ═══════════════════════════════════════ */
+
+#rps-game {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;   /* 子元素預設撐滿寬度（HUD 滿版） */
+}
+/* arena / choices 有 max-width，用 margin auto 置中 */
+#rps-arena, #rps-choices, #rps-next-btn {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ══ HUD（遊戲中）══════════════════════════════════════════ */
+
+#rps-hud { max-width: 100%; }
+
+/*
+  左右欄 auto-size（不佔固定等寬），只有中間分數欄 flex:1
+  → 返回按鈕與局數標籤都縮到剛好包住自己的內容
+*/
+#rps-hud > *         { flex: 0 0 auto; }
+#rps-hud .rps-hud-score { flex: 1; }
+
+.rps-hud-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.hud-name { color: var(--text-dim); font-weight: 700; font-size: 0.85rem; }
+.hud-score {
+  font-size: 1.5rem;
+  font-weight: 900;
+  min-width: 28px;
+  text-align: center;
+}
+#hud-score-1 { color: var(--p1-color); }
+#hud-score-2 { color: var(--p2-color); }
+.hud-sep { color: var(--text-dim); font-size: 1.1rem; }
+
+/* 右側容器：局數文字 + 局數點垂直堆疊，靠右 */
+.rps-hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  align-self: center;
+}
+
+/* 局數文字標籤 */
+.hud-round {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* HUD 內的局數點（比主區域小） */
+#rps-history {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+/* ══ 對戰區 ═════════════════════════════════════════════════ */
+
+#rps-arena {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 0;
+  /* 移除 flex:1，不再撐開整個版面，讓出拳按鈕緊靠問號下方 */
+}
+
+.rps-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ── 手勢舞台 ─────────────────────────────────────────── */
+
+.hand-stage {
+  width: 130px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hand-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.hand-question {
+  font-size: 4rem;
+  color: rgba(255,255,255,0.2);
+  font-weight: 900;
+  position: absolute;
+}
+
+/* ── 出拳抖動動畫 ──────────────────────────────────────── */
+.hand-wrap.pumping {
+  animation: handPump 0.35s ease-in-out infinite;
+}
+@keyframes handPump {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-14px); }
+}
+
+/* ── 揭曉動畫 ─────────────────────────────────────────── */
+.hand-wrap.revealing {
+  animation: handReveal 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes handReveal {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+.hand-wrap.win-bounce {
+  animation: winBounce 0.5s ease-out;
+}
+@keyframes winBounce {
+  0%,100% { transform: translateY(0); }
+  40%     { transform: translateY(-16px); }
+  70%     { transform: translateY(-8px); }
+}
+
+.hand-wrap.lose-shake {
+  animation: loseShake 0.4s ease-out;
+}
+@keyframes loseShake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-8px); }
+  40%,80% { transform: translateX(8px); }
+}
+
+/* ══ 手勢 emoji（大）══════════════════════════════════════ */
+
+.rps-hand {
+  font-size: 5.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35));
+  transition: filter 0.2s;
+}
+
+/*
+  emoji 旋轉讓雙方對拳：
+  P1（左側）rotate(90deg)  → ✊ 朝右，對著 P2
+  P2（右側）rotate(-90deg) → ✊ 朝左，對著 P1
+*/
+.rps-hand.facing-right { transform: rotate(90deg); }
+.rps-hand.facing-left  { transform: rotate(-90deg); }
+
+.hand-wrap.win-state  .rps-hand { filter: drop-shadow(0 0 16px rgba(46,213,115,0.7)); }
+.hand-wrap.lose-state .rps-hand { filter: drop-shadow(0 0 12px rgba(255,71,87,0.5)) grayscale(0.3); }
+
+/* 勝負 filter 與旋轉並用 */
+.hand-wrap.win-state  .rps-hand.facing-right { transform: rotate(90deg); }
+.hand-wrap.win-state  .rps-hand.facing-left  { transform: rotate(-90deg); }
+.hand-wrap.lose-state .rps-hand.facing-right { transform: rotate(90deg); }
+.hand-wrap.lose-state .rps-hand.facing-left  { transform: rotate(-90deg); }
+
+/* ══ 出拳按鈕（小）════════════════════════════════════════ */
+
+#rps-choices {
+  width: 100%;
+  max-width: 520px;
+  padding: 2px 12px 8px;  /* 減少上方間距，靠近問號 */
+}
+
+.choice-prompt {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.choice-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.choice-btn {
+  flex: 1;
+  max-width: 120px;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  padding: 14px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: all 0.16s;
+}
+.choice-btn:hover  { border-color: var(--accent); background: rgba(78,205,196,0.12); transform: translateY(-3px); }
+.choice-btn:active { transform: translateY(0) scale(0.96); }
+.choice-btn .choice-emoji { font-size: 2.4rem; line-height: 1; }
+.choice-btn .choice-label { color: var(--text-dim); font-size: 0.8rem; }
+
+/* ══ 中間區域 ══════════════════════════════════════════════ */
+
+#rps-center {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#center-vs {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+#center-countdown {
+  font-size: 3rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--p1-color), var(--p2-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: cdPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes cdPop {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#center-result {
+  font-size: 1.4rem;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.3;
+}
+#center-result.win  { color: var(--win-color); }
+#center-result.lose { color: var(--lose-color); }
+#center-result.tie  { color: var(--tie-color); }
+
+/* ══ 局結果標籤 ════════════════════════════════════════════ */
+
+.round-result-tag {
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+}
+.round-result-tag.win  { background: rgba(46,213,115,0.2); color: var(--win-color);  border: 1px solid rgba(46,213,115,0.4); }
+.round-result-tag.lose { background: rgba(255,71,87,0.2);  color: var(--lose-color); border: 1px solid rgba(255,71,87,0.4); }
+.round-result-tag.tie  { background: rgba(255,165,2,0.2);  color: var(--tie-color);  border: 1px solid rgba(255,165,2,0.4); }
+
+/* ══ 局數記錄點（在 HUD 內）══════════════════════════════ */
+
+.history-dot {
+  width: 8px; height: 8px;   /* HUD 內縮小尺寸 */
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.history-dot.p1  { background: var(--p1-color); }
+.history-dot.p2  { background: var(--p2-color); }
+.history-dot.tie { background: var(--tie-color); }
+
+/* ══ 下一局按鈕 ════════════════════════════════════════════ */
+
+#rps-next-btn {
+  margin: 6px 0 12px;
+  padding: 12px 1.8em;
+  align-self: center;       /* 覆蓋 #rps-game 的 align-items:stretch */
+  width: auto;
+  background: linear-gradient(135deg, var(--p1-color), #3BBDB5);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 16px rgba(78,205,196,0.35);
+  white-space: nowrap;
+}
+#rps-next-btn:active { transform: scale(0.96); }
+
+/* ══ 結果畫面 ══════════════════════════════════════════════ */
+
+#rps-end {
+  position: fixed; inset: 0;
+  background: rgba(10,10,20,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.end-card {
+  width: 90%;
+  max-width: 380px;
+  background: linear-gradient(145deg, #1e2a4a, #162038);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.end-trophy {
+  font-size: 4rem;
+  animation: trophyBounce 0.6s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes trophyBounce {
+  0%   { transform: scale(0) rotate(-20deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.end-winner {
+  font-size: 1.6rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--p1-color), var(--p2-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.end-score {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.end-history {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.end-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.end-btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s;
+}
+.end-btn:active { transform: scale(0.96); }
+.end-btn.primary   { background: var(--accent); color: #000; }
+.end-btn.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+
+/* ══ 連勝提示 ══════════════════════════════════════════════ */
+
+.streak-banner {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #FF6B35, #FF4757);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  z-index: 50;
+  animation: streakIn 0.4s cubic-bezier(0.34,1.56,0.64,1), streakOut 0.3s 1.8s ease-in forwards;
+}
+@keyframes streakIn  { from { transform: translateX(-50%) scale(0); opacity: 0; } }
+@keyframes streakOut { to   { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+
+/* ══ 平手再戰閃光 ══════════════════════════════════════════ */
+.tie-flash {
+  animation: tieFlash 0.6s ease-out;
+}
+@keyframes tieFlash {
+  0%,100% { background: transparent; }
+  30%,70% { background: rgba(255,165,2,0.08); }
+}
+
+/* ══ 響應式 ════════════════════════════════════════════════ */
+
+@media (max-width: 380px) {
+  .hand-stage { width: 100px; height: 120px; }
+  .rps-hand   { transform: scale(0.85); }
+  .choice-btn { padding: 10px 4px; }
+  #rps-arena  { padding: 4px 6px; }
+}
+
+@media (min-height: 700px) {
+  .hand-stage { height: 170px; }
+}

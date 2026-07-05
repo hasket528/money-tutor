@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>猜拳大戰</title>
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="rps.css">
+</head>
+<body>
+
+<!-- ══ 設定畫面 ══════════════════════════════════════════ -->
+<div id="rps-setup">
+
+  <!-- 標題列（G1 style）-->
+  <div class="rps-title-bar">
+    <a href="../index.html" class="rps-tb-back">‹</a>
+    <div class="rps-tb-title">✊ 猜拳大戰</div>
+    <div class="rps-tb-spacer"></div>
+  </div>
+
+  <div class="rps-setup-card">
+    <div class="rps-logo">✊🤚✌️</div>
+    <h1 class="rps-title">猜拳大戰</h1>
+
+    <!-- Step 1: 模式 -->
+    <div class="rps-step" id="step-mode">
+      <div class="rps-step-label">選擇模式</div>
+      <div class="rps-btn-row">
+        <button class="rps-setup-btn" data-mode="pvc">
+          <span class="btn-icon">🤖</span>
+          <span class="btn-text">玩家 vs 電腦</span>
+        </button>
+        <button class="rps-setup-btn" data-mode="pvp">
+          <span class="btn-icon">🤜🤛</span>
+          <span class="btn-text">玩家 vs 玩家</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: 難度（PvC 才顯示） -->
+    <div class="rps-step hidden" id="step-diff">
+      <div class="rps-step-label">電腦難度</div>
+      <div class="rps-btn-row">
+        <button class="rps-setup-btn diff-btn" data-diff="easy">
+          <span class="btn-icon">😊</span>
+          <span class="btn-text">簡單<small>純隨機</small></span>
+        </button>
+        <button class="rps-setup-btn diff-btn" data-diff="normal">
+          <span class="btn-icon">🤔</span>
+          <span class="btn-text">普通<small>會學習</small></span>
+        </button>
+        <button class="rps-setup-btn diff-btn" data-diff="hard">
+          <span class="btn-icon">😈</span>
+          <span class="btn-text">困難<small>分析出拳</small></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: 局數 -->
+    <div class="rps-step hidden" id="step-rounds">
+      <div class="rps-step-label">局數</div>
+      <div class="rps-btn-row">
+        <button class="rps-setup-btn round-btn" data-rounds="3">3 局<small>2 勝</small></button>
+        <button class="rps-setup-btn round-btn" data-rounds="5">5 局<small>3 勝</small></button>
+        <button class="rps-setup-btn round-btn" data-rounds="7">7 局<small>4 勝</small></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 遮擋畫面（PvP 換手用）══════════════════════════════ -->
+<div id="rps-cover" class="hidden">
+  <div class="cover-inner">
+    <div class="cover-icon">🙈</div>
+    <div class="cover-msg" id="cover-msg"></div>
+    <div class="cover-sub">請換手給對方</div>
+    <button id="cover-ready-btn" class="rps-ready-btn">準備好了</button>
+  </div>
+</div>
+
+<!-- ══ 遊戲主畫面 ══════════════════════════════════════════ -->
+<div id="rps-game" class="hidden">
+
+  <!-- 頂部：對戰資訊 -->
+  <div id="rps-hud" class="rps-title-bar">
+    <a href="../index.html" class="rps-tb-back">‹</a>
+    <div class="rps-hud-score">
+      <span class="hud-name" id="hud-name-1">玩家 1</span>
+      <span class="hud-score" id="hud-score-1">0</span>
+      <span class="hud-sep">—</span>
+      <span class="hud-score" id="hud-score-2">0</span>
+      <span class="hud-name" id="hud-name-2">電腦</span>
+    </div>
+    <!-- 右側：局數文字 + 局數點（並排） -->
+    <div class="rps-hud-right">
+      <span class="hud-round" id="hud-round">第 1 局</span>
+      <div id="rps-history"></div>
+    </div>
+  </div>
+
+  <!-- 對戰區 -->
+  <div id="rps-arena">
+
+    <!-- 左側（玩家 1 / 玩家） -->
+    <div class="rps-side" id="rps-side-left">
+      <div class="side-name" id="side-name-left">玩家 1</div>
+      <div class="hand-stage" id="hand-stage-left">
+        <div class="hand-wrap" id="hand-left">
+          <div class="rps-hand hidden" id="hand-display-left"></div>
+          <div class="hand-question">?</div>
+        </div>
+      </div>
+      <div class="round-result-tag hidden" id="result-tag-left"></div>
+    </div>
+
+    <!-- 中間：VS / 倒數 / 結果 -->
+    <div id="rps-center">
+      <div id="center-vs">VS</div>
+      <div id="center-countdown" class="hidden"></div>
+      <div id="center-result" class="hidden"></div>
+    </div>
+
+    <!-- 右側（玩家 2 / 電腦） -->
+    <div class="rps-side" id="rps-side-right">
+      <div class="side-name" id="side-name-right">電腦</div>
+      <div class="hand-stage" id="hand-stage-right">
+        <div class="hand-wrap" id="hand-right">
+          <div class="rps-hand hidden" id="hand-display-right"></div>
+          <div class="hand-question">?</div>
+        </div>
+      </div>
+      <div class="round-result-tag hidden" id="result-tag-right"></div>
+    </div>
+  </div>
+
+  <!-- 出拳按鈕（左側出拳時顯示在左，右側出拳時顯示在右） -->
+  <div id="rps-choices">
+    <div class="choice-prompt" id="choice-prompt"></div>
+    <div class="choice-btns">
+      <button class="choice-btn" data-move="rock">
+        <span class="choice-emoji">✊</span>
+        <span class="choice-label">石頭</span>
+      </button>
+      <button class="choice-btn" data-move="paper">
+        <span class="choice-emoji">✋</span>
+        <span class="choice-label">布</span>
+      </button>
+      <button class="choice-btn" data-move="scissors">
+        <span class="choice-emoji">✌️</span>
+        <span class="choice-label">剪刀</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 下一局按鈕 -->
+  <button id="rps-next-btn" class="rps-next-btn hidden">下一局 →</button>
+</div>
+
+<!-- ══ 結果畫面 ══════════════════════════════════════════ -->
+<div id="rps-end" class="hidden">
+  <div class="end-card">
+    <div class="end-trophy" id="end-trophy">🏆</div>
+    <div class="end-winner" id="end-winner"></div>
+    <div class="end-score" id="end-score"></div>
+    <div class="end-history" id="end-history"></div>
+    <div class="end-btns">
+      <button id="end-rematch-btn" class="end-btn primary">再來一場</button>
+      <button id="end-menu-btn"    class="end-btn secondary">返回選單</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/audio-unlocker.js"></script>
+<script src="../js/game-engine.js"></script>
+<script src="../js/game-ui.js"></script>
+<script src="../js/game-audio.js"></script>
+<script src="rps.js"></script>
+</body>
+</html>

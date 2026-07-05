@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A6模擬火車購票</title>
+
+    <!-- 簡化主題系統樣式 -->
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/a6_train_ticket.css?v=1.0.0">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+
+</head>
+<body class="a6-unit">
+    <!-- 跳過導航連結（無障礙功能） -->
+    <a href="#main-content" class="skip-link" aria-label="跳過導航，直接到主要內容">
+        跳到主要內容
+    </a>
+
+    <!-- 載入指示器 -->
+    <div id="loading-screen" class="loading-screen" aria-label="遊戲載入中">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">載入中...</div>
+    </div>
+
+    <!-- 主要應用程式容器 -->
+    <main id="app" role="main" aria-label="模擬火車購票遊戲主要內容">
+        <!-- 內容將由 JavaScript 動態生成 -->
+        <noscript>
+            <div class="noscript-message">
+                <h1>需要啟用 JavaScript</h1>
+                <p>此遊戲需要 JavaScript 才能正常運作，請在瀏覽器設定中啟用 JavaScript。</p>
+                <p>如需協助，請聯絡您的老師或家長。</p>
+            </div>
+        </noscript>
+    </main>
+
+    <!-- 錯誤邊界處理 -->
+    <div id="error-boundary" class="error-boundary" style="display: none;" role="alert">
+        <div class="error-content">
+            <h2>發生錯誤</h2>
+            <p>遊戲執行時發生問題，請重新整理頁面再試一次。</p>
+            <p>如果問題持續發生，請聯絡您的老師。</p>
+            <button onclick="location.reload()" class="reload-btn">重新載入</button>
+        </div>
+    </div>
+
+    <!-- 全域錯誤處理與載入控制 -->
+    <script>
+        // 錯誤處理（只處理 JS 執行錯誤，忽略音訊/圖片資源載入失敗）
+        window.addEventListener('error', function(event) {
+            if (!event.error) return; // event.error=null 表示資源載入失敗（非 JS 錯誤），忽略
+            console.error('JavaScript 錯誤:', event.error);
+            document.getElementById('error-boundary').style.display = 'flex';
+            document.getElementById('loading-screen').style.display = 'none';
+        });
+
+        // 載入完成後隱藏載入畫面
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1000);
+        });
+    </script>
+
+    <!-- 成功音效 -->
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+
+    <!-- Canvas Confetti 動畫庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <!-- 主題系統腳本 -->
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-system.js"></script>
+    <script src="../js/touch-drag-utility.js?v=2.3"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <!-- 主要遊戲腳本 -->
+    <script src="../js/a6_train_ticket.js?v=1.0.5"></script>
+
+    <!-- 效能監控（開發用） -->
+    <script>
+        // 簡單的效能監控（使用 PerformanceNavigationTiming API）
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    const navEntry = performance.getEntriesByType('navigation')[0];
+                    const loadTime = navEntry ? Math.round(navEntry.loadEventEnd) : 0;
+                    console.log('頁面載入時間:', loadTime + 'ms');
+
+                    // 如果載入時間過長，可以提供建議
+                    if (loadTime > 5000) {
+                        console.warn('載入時間較長，建議檢查網路連線');
+                    }
+                }, 0);
+            });
+        }
+    </script>
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+</body>
+</html>
+

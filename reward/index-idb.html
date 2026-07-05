@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生優良行為計分（IndexedDB 版）</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="title-row">
+            <div style="flex-grow:1; display:flex; align-items:center; justify-content:center; gap:10px;">
+                <img src="../images/common/hint_detective.png" alt="小金探" style="height:70px; width:auto; object-fit:contain; animation:settingsBounce 2.5s ease-in-out infinite;">
+                <style>@keyframes settingsBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }</style>
+                <h1 style="margin:0; flex-grow:0;">學生優良行為計分</h1>
+            </div>
+            <div class="zoom-controls">
+                <button id="zoomOutBtn" class="zoom-btn" title="縮小視窗">−</button>
+                <button id="zoomInBtn" class="zoom-btn" title="放大視窗">+</button>
+            </div>
+        </div>
+
+        <!-- IndexedDB 版本標示 + 容量資訊（對照用）-->
+        <div id="idbBadge" style="text-align:center; margin:6px 0 12px; font-size:13px; color:#0b6; font-weight:bold;">
+            💾 儲存方式：IndexedDB（容量大，不受 5MB 限制）
+        </div>
+
+        <!-- 區塊一：新增資料 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                <select id="studentSelectDropdown" style="height: 36px; border-radius: 6px; border: 1px solid #ccc; padding: 4px 10px; font-size: 14px; cursor: pointer; max-width: 160px;">
+                    <option value="">── 選擇學生 ──</option>
+                </select>
+                <button id="studentDeleteBtn" title="永久刪除選取的學生" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 16px; cursor: pointer;">🗑️</button>
+                <button id="addStudentBtn" class="upload-btn" style="background-color: #28a745;">➕ 新增學生</button>
+                <input type="file" id="iconUploadInput" accept="image/*" style="display: none;">
+                <label for="iconUploadInput" class="upload-btn" style="background-color: #17a2b8;">🖼️ 新增加分圖示</label>
+                <input type="file" id="soundUploadInput" accept="audio/*" style="display: none;">
+                <label for="soundUploadInput" class="upload-btn" style="background-color: #17a2b8;" title="建議 100KB 以內的短音效（3秒以內最佳），最大限制 300KB｜僅可上傳 1 個自訂音效">🔊 新增加分音效</label>
+            </div>
+        </div>
+
+        <!-- 區塊二：加分圖示與音效 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 40px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <!-- 左側：加分圖示 -->
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="select-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                        <label for="bonusIconSelect">加分圖示:</label>
+                        <select id="bonusIconSelect">
+                            <option value="⭐">⭐ 星星</option>
+                            <option value="🌟">🌟 閃亮星星</option>
+                            <option value="🏆">🏆 獎杯</option>
+                            <option value="🎖️">🎖️ 榮譽勳章</option>
+                            <option value="🏅">🏅 獎牌</option>
+                            <option value="💎">💎 鑽石</option>
+                            <option value="👍">👍 讚</option>
+                            <option value="🎯">🎯 達標</option>
+                            <option value="🌈">🌈 彩虹</option>
+                            <option value="🎁">🎁 禮物</option>
+                        </select>
+                        <button id="iconDeleteBtn" title="刪除選取的自訂圖示" style="height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 14px; cursor: pointer;">🗑️</button>
+                    </div>
+                    <div class="bonus-icon-preview-container">
+                        <img id="bonusIconPreview" src="" alt="加分圖示預覽" class="bonus-icon-preview">
+                    </div>
+                </div>
+
+                <!-- 右側：加分音效 -->
+                <div class="select-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="bonusSoundSelect">加分音效:</label>
+                    <select id="bonusSoundSelect">
+                        <option value="sound/bouns01.mp3">音效 1</option>
+                        <option value="sound/bouns02.mp3">音效 2</option>
+                        <option value="sound/bouns03.mp3">音效 3</option>
+                    </select>
+                    <button id="previewSoundBtn" class="preview-sound-btn" title="預聽音效">▶</button>
+                    <button id="soundDeleteBtn" title="刪除選取的自訂音效" style="height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 14px; cursor: pointer;">🗑️</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 區塊三：分數設定 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="rankButton" class="upload-btn">分數排名</button>
+                <button id="resetButton" class="upload-btn reset-btn">重設分數</button>
+                <button id="clearAllButton" class="upload-btn clear-all-btn">清除所有資料</button>
+            </div>
+        </div>
+
+        <p class="upload-hint">提示：學生資料會自動儲存到瀏覽器的 IndexedDB，關閉網頁後再開啟仍可保留。所有照片僅存於本機瀏覽器，不會上傳至任何外部伺服器。</p>
+
+        <div id="studentsContainer" class="students-container">
+            </div>
+
+    </div>
+    <script src="../js/emoji-library.js"></script>
+    <script src="script-idb.js"></script>
+</body>
+</html>

@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="購物練習">
+  <title>購物練習</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Skip-to-content（鍵盤/screen reader 快速跳到主要內容） -->
+  <a href="#screen-home" class="skip-link">跳到主要內容</a>
+
+  <!-- Edge 建議橫幅（非 Edge 時顯示；平板顯示不同文案） -->
+  <div id="edge-banner" style="display:none; background:#FFF3CD; color:#856404; padding:10px 16px; text-align:center; font-size:0.88em; border-bottom:1px solid #FFEAA7; position:relative;">
+    <span id="edge-banner-text">🔊 為獲得最佳語音體驗，建議使用
+    <strong>Microsoft Edge</strong> 瀏覽器開啟本頁。</span>
+    <a href="#" id="edge-banner-link" onclick="tryOpenEdge(event)" style="color:#856404; font-weight:700; margin-left:6px; text-decoration:underline;">用 Edge 開啟 ↗</a>
+    <button onclick="dismissEdgeBanner()" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1em; color:#856404;" aria-label="關閉提示">✕</button>
+  </div>
+  <script>
+  (function () {
+    const ua        = navigator.userAgent;
+    const isEdge    = /Edg\//.test(ua);
+    const isTablet  = /iPad|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const dismissed = localStorage.getItem('sp_edgeBannerDismissed') === '1';
+    if (!isEdge && !dismissed) {
+      if (isTablet) {
+        document.getElementById('edge-banner-text').innerHTML =
+          '🔊 平板裝置建議使用 <strong>Chrome</strong> 或 <strong>Edge</strong> App 開啟以使用語音功能；無法使用語音時，可改用「🔘 選擇對話」模式。';
+        document.getElementById('edge-banner-link').style.display = 'none';
+      }
+      document.getElementById('edge-banner').style.display = 'block';
+    }
+    window.dismissEdgeBanner = function () {
+      document.getElementById('edge-banner').style.display = 'none';
+      localStorage.setItem('sp_edgeBannerDismissed', '1');
+    };
+    window.tryOpenEdge = function (e) {
+      e.preventDefault();
+      window.open('microsoft-edge:' + location.href, '_blank');
+    };
+  })();
+  </script>
+
+  <!-- ════════════════════════════════════════
+       首頁：情境選擇
+  ════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+    <header class="home-header">
+      <button class="btn-settings-icon" id="btn-settings" aria-label="設定自訂情境">⚙️</button>
+      <h1>購物練習</h1>
+      <button class="btn-settings-icon" id="btn-history" aria-label="學習歷程" style="right:auto;left:12px;">📖</button>
+      <p class="subtitle">選擇想要練習的情境</p>
+      <div class="home-chip-row">
+        <button class="student-chip" id="btn-student" aria-label="選擇練習的學生">👤 選擇學生</button>
+        <button class="student-chip" id="btn-home-reward" aria-label="開啟獎勵系統">🎁 獎勵系統</button>
+      </div>
+      <div class="home-student-block">
+        <span class="home-student-label">🗣️ 選擇學生語音</span>
+        <div class="home-student-strip" id="home-student-strip" role="group" aria-label="選擇學生語音"></div>
+      </div>
+      <div class="header-tagline" aria-hidden="true">🎮 互動練習 &nbsp;·&nbsp; 語音對話 &nbsp;·&nbsp; 即時回饋</div>
+    </header>
+
+    <div class="scenario-grid" id="scenario-grid">
+      <!-- 由 script.js 動態產生 -->
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       情境選擇頁
+  ════════════════════════════════════════ -->
+  <div id="screen-situation" class="screen">
+    <header class="app-header">
+      <div class="ah-left">
+        <button class="btn-back-text" id="btn-sit-back">← 上一頁</button>
+      </div>
+      <div class="ah-center">
+        <div class="ah-ctitle">
+          <span class="ah-icon" id="sit-icon" aria-hidden="true"></span>
+          <span class="ah-title" id="sit-name"></span>
+        </div>
+      </div>
+      <div class="ah-right">
+        <button class="btn-back-text" id="btn-sit-home">🏠 返回主頁</button>
+      </div>
+    </header>
+    <main class="diff-main">
+      <div class="sit-mode-row" role="group" aria-label="步驟模式">
+        <button class="sit-mode-btn active" id="sit-mode-full"  data-mode="full">完整版</button>
+        <button class="sit-mode-btn"        id="sit-mode-simple" data-mode="simple">簡易版（前3步）</button>
+      </div>
+      <p class="diff-prompt">請選擇練習情境</p>
+      <div class="situation-options" id="situation-options" role="group" aria-label="情境選擇"></div>
+    </main>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       難度選擇頁
+  ════════════════════════════════════════ -->
+  <div id="screen-difficulty" class="screen">
+    <header class="app-header">
+      <div class="ah-left">
+        <button class="btn-back-text" id="btn-diff-back">← 上一頁</button>
+      </div>
+      <div class="ah-center">
+        <div class="ah-ctitle">
+          <span class="ah-icon" id="diff-icon" aria-hidden="true"></span>
+          <span class="ah-title" id="diff-name"></span>
+          <span class="ah-subtitle" id="diff-steps"></span>
+        </div>
+      </div>
+      <div class="ah-right">
+        <button class="btn-back-text" id="btn-diff-home">🏠 返回主頁</button>
+      </div>
+    </header>
+    <main class="diff-main">
+
+      <p class="diff-prompt">請選擇練習難度</p>
+
+      <div class="diff-options" role="group" aria-label="難度選擇">
+
+        <button class="diff-card" data-level="easy">
+          <div class="diff-card-header">
+            <span class="diff-dot" style="background:#16A34A"></span>
+            <span class="diff-level-name">初級</span>
+            <span class="diff-tag">音節寬鬆</span>
+          </div>
+          <p class="diff-desc">只要開口說、字數長度接近就給鼓勵（部分對），適合剛開始練習開口。</p>
+        </button>
+
+        <button class="diff-card diff-card--recommended" data-level="normal">
+          <div class="diff-card-header">
+            <span class="diff-dot" style="background:#D97706"></span>
+            <span class="diff-level-name">中級</span>
+            <span class="diff-tag diff-tag--highlight">關鍵字・推薦</span>
+          </div>
+          <p class="diff-desc">說到關鍵詞就算對，不必一字不差。</p>
+        </button>
+
+        <button class="diff-card" data-level="hard">
+          <div class="diff-card-header">
+            <span class="diff-dot" style="background:#DC2626"></span>
+            <span class="diff-level-name">高級</span>
+            <span class="diff-tag">完整語句</span>
+          </div>
+          <p class="diff-desc">要完整說出整句標準答案才算對，最嚴格的挑戰。</p>
+        </button>
+
+      </div>
+    </main>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       練習頁
+  ════════════════════════════════════════ -->
+  <div id="screen-practice" class="screen">
+
+    <!-- 頂部：標題列（滿版）-->
+    <header class="app-header">
+      <div class="ah-left">
+        <button class="btn-back-text" id="btn-prev">← 上一頁</button>
+        <span class="ah-icon" id="ph-scene-icon" aria-hidden="true"></span>
+        <span class="ah-title" id="ph-scene-name"></span>
+      </div>
+      <div class="ah-center progress-wrap">
+        <div class="progress-bar" role="progressbar" aria-label="練習進度">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="step-counter" id="step-counter"></span>
+      </div>
+      <div class="ah-right">
+        <button class="btn-icon" id="btn-cache-audio" title="下載語音包供離線使用" aria-label="下載語音包">📥</button>
+        <button class="btn-icon" id="btn-reward" title="獎勵系統" aria-label="獎勵系統">🎁</button>
+        <button class="btn-icon" id="btn-back" title="返回主頁" aria-label="返回主頁">🏠</button>
+      </div>
+    </header>
+
+    <!-- 主要練習區 -->
+    <main class="practice-main">
+
+      <!-- 店員對話 -->
+      <div class="shopkeeper-row">
+        <div class="shopkeeper-avatar" id="shopkeeper-avatar" aria-hidden="true">🧑‍💼</div>
+        <div class="shopkeeper-speech-wrap">
+          <div class="speech-bubble" id="shopkeeper-speech" aria-live="polite"><button class="btn-speak-clerk" id="btn-replay-clerk" aria-label="再聽一次店員說的話">🔊</button><span id="shopkeeper-speech-text"></span></div>
+        </div>
+      </div>
+
+      <!-- 商品圖示（置中獨立顯示） -->
+      <div class="step-image-card" id="step-image-card" hidden>
+        <img id="step-image" src="" alt="">
+        <span class="step-image-label" id="step-image-label"></span>
+      </div>
+
+      <!-- 任務提示（初級模式隱藏，只留下方「你可以這樣說」提示） -->
+      <div class="task-box" id="task-box" role="status">
+        <span class="task-label">你的任務</span>
+        <div class="task-text-row">
+          <button class="btn-task-speak" id="btn-task-speak" aria-label="朗讀你的任務">🔊</button>
+          <p class="task-text" id="task-text"></p>
+        </div>
+      </div>
+
+      <!-- 初級模式：內嵌提示（不用彈窗，避免蓋住店員對話） -->
+      <div class="easy-hint-box" id="easy-hint-box" hidden role="status">
+        <span class="easy-hint-label">💡 你可以這樣說</span>
+        <div class="hint-text-row" style="margin-bottom:0">
+          <button class="btn-hint-speak" id="btn-easy-hint-speak" aria-label="朗讀提示">🔊</button>
+          <p class="easy-hint-text" id="easy-hint-text"></p>
+        </div>
+      </div>
+
+
+    </main>
+
+    <!-- 底部：輸入區 -->
+    <footer class="practice-footer">
+
+      <!-- 選項模式 -->
+      <div class="options-grid" id="options-grid" hidden role="group" aria-label="選項"></div>
+
+      <!-- 看圖造句（句框填空）模式 -->
+      <div class="frame-slot" id="frame-slot" hidden role="group" aria-label="看圖造句">
+        <p class="frame-sentence" id="frame-sentence" aria-live="polite"></p>
+        <div class="frame-choices" id="frame-choices" role="group" aria-label="選一個填進句子"></div>
+      </div>
+
+      <!-- 詞庫組句模式（L2）：點詞卡依序排出句子 -->
+      <div class="word-bank" id="word-bank" hidden role="group" aria-label="排出句子">
+        <div class="wb-build" id="wb-build" aria-live="polite" aria-label="你排的句子"></div>
+        <div class="wb-pool" id="wb-pool" role="group" aria-label="可用的詞"></div>
+      </div>
+
+      <!-- 文字輸入模式 -->
+      <div class="text-input-row" id="text-input-row" hidden>
+        <label for="text-input" class="sr-only">請輸入你想說的話</label>
+        <input
+          class="text-input"
+          id="text-input"
+          type="text"
+          placeholder="請打字輸入…"
+          autocomplete="off"
+          autocorrect="off"
+        >
+        <button class="btn-send" id="btn-text-submit">送出</button>
+      </div>
+
+      <!-- 語音控制 -->
+      <div class="voice-row" id="voice-row">
+        <button class="btn-tool" id="btn-hint-trigger">💡 提示</button>
+        <button class="btn-mic" id="btn-mic" aria-label="點我說話">
+          <span class="mic-icon" aria-hidden="true">🎤</span>
+          <span class="mic-label">點我說話</span>
+        </button>
+      </div>
+
+      <!-- 輸入模式切換 -->
+      <div class="mode-switcher" role="group" aria-label="輸入方式">
+        <button class="mode-btn active" data-mode="voice" aria-pressed="true">🎤 說話</button>
+        <button class="mode-btn"        data-mode="options">🔘 選擇對話</button>
+        <button class="mode-btn"        data-mode="wordbank" hidden>🧱 詞庫排序</button>
+        <button class="mode-btn"        data-mode="text">⌨️ 打字</button>
+      </div>
+      <p class="voice-unsupported-note" id="voice-unsupported-note" hidden>
+        此瀏覽器不支援語音輸入，已自動改用「🔘 選擇對話」模式
+      </p>
+
+
+    </footer>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       完成頁
+  ════════════════════════════════════════ -->
+  <div id="screen-complete" class="screen">
+    <div class="complete-wrap">
+      <div class="complete-stars" id="complete-stars" aria-label="評分" role="img"></div>
+      <h2 class="complete-title" id="complete-title">練習完成！</h2>
+      <p class="complete-msg" id="complete-msg"></p>
+      <p class="complete-reward" id="complete-reward" aria-live="polite"></p>
+      <div class="complete-summary" id="complete-summary" aria-label="各步驟結果"></div>
+      <div class="complete-recommend" id="complete-recommend" hidden aria-label="推薦練習"></div>
+      <div class="complete-actions">
+        <button class="btn-primary btn-again-big" id="btn-again">🔁 再練習一次</button>
+        <button class="btn-secondary" id="btn-change-sit">換個情境</button>
+        <button class="btn-secondary" id="btn-home">回到首頁</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       學習歷程頁
+  ════════════════════════════════════════ -->
+  <div id="screen-history" class="screen">
+    <header class="editor-header">
+      <button class="btn-icon" id="btn-history-back" aria-label="返回">←</button>
+      <h2 class="editor-title">學習歷程</h2>
+      <button class="btn-header-action" id="btn-history-clear">清除紀錄</button>
+    </header>
+    <div class="editor-body">
+      <div class="hist-filter-row" id="hist-filter-row" hidden>
+        <label for="hist-student-filter">👤 學生</label>
+        <select id="hist-student-filter" class="hist-filter-select"></select>
+        <button class="btn-tool" id="btn-print-student-report" hidden>🖨️ 列印學習報告</button>
+      </div>
+      <div class="history-summary" id="history-summary"></div>
+      <div class="hist-overview" id="hist-overview"></div>
+      <div class="hist-trend" id="hist-trend"></div>
+      <div class="history-list"   id="history-list"></div>
+      <div class="history-empty"  id="history-empty" hidden>
+        <div class="empty-icon">📖</div>
+        <p class="empty-title">尚無練習紀錄</p>
+        <p class="empty-msg">完成第一次練習後就會出現在這裡</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       設定頁：自訂情境列表
+  ════════════════════════════════════════ -->
+  <div id="screen-settings" class="screen">
+    <header class="editor-header">
+      <button class="btn-icon" id="btn-settings-back" aria-label="返回">←</button>
+      <h2 class="editor-title">設定</h2>
+      <button class="btn-header-action" id="btn-add-scenario">＋ 新增情境</button>
+    </header>
+    <div class="editor-body">
+
+      <!-- 教學設計與隱私 -->
+      <details class="settings-block about-block">
+        <summary class="settings-block-title">📖 關於這個練習（教學設計・隱私）</summary>
+        <p class="editor-desc" style="margin-top:10px">本練習以特教常用的<strong>「句框教學＋提示褪除（鷹架）」</strong>設計，讓學生從固定句型逐步邁向獨立溝通。看圖造句採精確比對，<strong>不需要 AI、可完全離線、免費</strong>。</p>
+        <p class="editor-desc" style="margin-top:8px"><strong>四級鷹架（由多到少提示）：</strong></p>
+        <ul class="about-ladder">
+          <li><b>L4</b>　看圖造句，2 張卡選 1（最多提示）</li>
+          <li><b>L3</b>　看圖造句，4 張卡選 1</li>
+          <li><b>L2</b>　詞庫組句，自己排出句子</li>
+          <li><b>L1</b>　自由作答（最少提示，最獨立）</li>
+        </ul>
+        <p class="editor-desc" style="margin-top:8px">學生<strong>連續答對</strong>才會減少一級提示（可在下方調整次數）；答錯會自動給更多協助。學習歷程可看到每位學生的「鷹架褪除」進步，並可列印學習報告。</p>
+        <p class="editor-desc" style="margin-top:8px;color:var(--green)"><strong>🔒 隱私：</strong>所有學生姓名與練習紀錄都只存在這台裝置（瀏覽器本機），不會上傳雲端。</p>
+      </details>
+
+      <!-- 顯示與無障礙 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">顯示與無障礙</h3>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-label">字體大小</span>
+            <span class="settings-row-desc">調整全站文字顯示大小</span>
+          </div>
+          <div class="font-size-group" role="group" aria-label="選擇字體大小">
+            <button class="font-size-btn active" data-size="normal" aria-pressed="true">標準</button>
+            <button class="font-size-btn" data-size="large" aria-pressed="false">大</button>
+            <button class="font-size-btn" data-size="xlarge" aria-pressed="false">超大</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-label">高對比模式</span>
+            <span class="settings-row-desc">深色背景搭配白色文字，更易辨讀</span>
+          </div>
+          <button class="toggle-switch" id="btn-high-contrast"
+                  role="switch" aria-checked="false" aria-label="高對比模式">
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-label">AAC 溝通板模式</span>
+            <span class="settings-row-desc">練習時固定顯示選項按鈕，不需要說話</span>
+          </div>
+          <button class="toggle-switch" id="btn-aac-mode"
+                  role="switch" aria-checked="false" aria-label="AAC 溝通板模式">
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 學生語音已移至首頁「選擇學生語音」 -->
+
+      <!-- 資料匯出匯入 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">學習資料備份</h3>
+        <p class="editor-desc" style="margin-bottom:10px">將學習紀錄匯出為 JSON 檔案，或從備份檔案匯入（可用於換裝置時轉移資料）。</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="btn-export-data" style="font-size:0.85rem;padding:8px 14px">📤 匯出資料</button>
+          <label class="btn-secondary" id="btn-import-label" style="font-size:0.85rem;padding:8px 14px;cursor:pointer">
+            📥 匯入資料
+            <input type="file" id="input-import-file" accept=".json" hidden>
+          </label>
+        </div>
+        <p id="import-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
+      </div>
+
+      <!-- AI 評分引擎 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">AI 智能評分（進階・選用）</h3>
+        <p class="editor-desc" style="margin-bottom:10px"><strong>預設免費、可離線、不需金鑰</strong>，使用看圖造句精確比對與關鍵字比對。<br>若教師自備 Gemini API Key，可改用 AI 語意評分（理解「給我一個」等各種說法）；<strong>此選項會連網、可能產生費用</strong>，留空即維持免費模式。</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="input-api-key" type="password" class="form-input" placeholder="Gemini API Key（選填）"
+                 style="flex:1;font-size:0.85rem" autocomplete="off">
+          <button class="btn-primary" id="btn-save-api-key" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">儲存</button>
+        </div>
+        <p id="api-key-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
+      </div>
+
+      <!-- 提示褪除設定 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">提示褪除（看圖造句階梯）</h3>
+        <p class="editor-desc" style="margin-bottom:10px">學生連續答對幾次，才減少一級提示（從圖卡 2 選 1 → 4 選 1 → 詞庫組句 → 自由作答）。次數越高越嚴謹，避免猜對就降級。</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="form-label" for="select-mastery" style="margin:0">連續答對</label>
+          <select id="select-mastery" class="form-input" style="width:auto;font-size:0.9rem">
+            <option value="1">1 次（最快褪除）</option>
+            <option value="2">2 次（建議）</option>
+            <option value="3">3 次（最嚴謹）</option>
+          </select>
+          <span style="font-size:0.85rem;color:var(--gray-600)">才減少提示</span>
+        </div>
+      </div>
+
+      <!-- 內建情境關鍵字 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">內建情境關鍵字</h3>
+        <p class="editor-desc" style="margin-bottom:10px">修改內建情境在「說話／打字」模式下的判定關鍵字（存在本機、可隨時還原）。<strong>不影響語音、也不影響選擇/看圖造句模式</strong>。</p>
+        <button class="btn-secondary" id="btn-edit-keywords">🔑 編輯內建關鍵字</button>
+      </div>
+
+      <!-- 自訂情境 -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">自訂情境</h3>
+        <p class="editor-desc">建立你自己的購物對話練習情境，儲存在這個裝置上。</p>
+        <div id="custom-scenario-list" class="custom-list"></div>
+        <div id="custom-empty" class="custom-empty">
+          <div class="empty-icon">📝</div>
+          <p class="empty-title">尚無自訂情境</p>
+          <p class="empty-msg">點擊右上角「＋ 新增情境」開始建立</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       內建情境關鍵字編輯頁
+  ════════════════════════════════════════ -->
+  <div id="screen-keyword-editor" class="screen">
+    <header class="editor-header">
+      <button class="btn-icon" id="btn-kw-back" aria-label="返回">←</button>
+      <h2 class="editor-title">編輯內建關鍵字</h2>
+      <button class="btn-header-action" id="btn-kw-save">儲存</button>
+    </header>
+    <div class="editor-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="kw-scenario-select">情境</label>
+          <select class="form-input" id="kw-scenario-select"></select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="kw-situation-select">子情境</label>
+          <select class="form-input" id="kw-situation-select"></select>
+        </div>
+      </div>
+      <p class="editor-desc">每個步驟的判定關鍵字，逗號分隔。說出任一關鍵字＝部分正確；<strong>留空＝還原成內建預設</strong>。只在「說話／打字」模式生效，不影響語音。</p>
+      <div id="kw-step-list"></div>
+      <p id="kw-save-status" style="font-size:0.82rem;color:var(--green);margin-top:8px;min-height:1.2em"></p>
+      <button class="btn-secondary" id="btn-kw-reset-situation" style="margin-top:4px">↩ 還原本子情境的預設關鍵字</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       情境編輯頁
+  ════════════════════════════════════════ -->
+  <div id="screen-scenario-editor" class="screen">
+    <header class="editor-header">
+      <button class="btn-icon" id="btn-scenario-back" aria-label="返回">←</button>
+      <h2 class="editor-title" id="scenario-editor-title">新增情境</h2>
+      <button class="btn-header-action" id="btn-save-scenario">儲存</button>
+    </header>
+    <div class="editor-body">
+
+      <div class="form-section">
+        <div class="form-group">
+          <label class="form-label" for="edit-name">情境名稱 <span class="required">*</span></label>
+          <input class="form-input" id="edit-name" type="text" placeholder="例如：餐廳點餐" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 auto">
+            <label class="form-label" for="edit-icon">圖示</label>
+            <input class="form-input form-emoji" id="edit-icon" type="text" placeholder="🍽️" maxlength="4" autocomplete="off">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label class="form-label">主題色</label>
+            <div class="color-swatches" id="edit-color" role="group" aria-label="主題色選擇"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 輔助生成 -->
+      <div class="form-section ai-gen-section">
+        <div class="form-section-header">
+          <span class="section-label">✨ AI 輔助生成步驟</span>
+        </div>
+        <p class="form-hint" style="margin-bottom:8px">輸入情境主題，AI 自動草稿對話步驟（需在設定頁填入 Gemini API Key）</p>
+        <div style="display:flex;gap:8px">
+          <input id="ai-gen-topic" class="form-input" type="text" placeholder="例如：在麵包店詢問今日特價" style="flex:1">
+          <button class="btn-primary" id="btn-ai-gen" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">✨ 生成</button>
+        </div>
+        <p id="ai-gen-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600);min-height:1.2em"></p>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-label">對話步驟</span>
+          <button class="btn-text-add" id="btn-add-step">＋ 新增步驟</button>
+        </div>
+        <p id="step-list-empty" class="step-empty">尚無步驟，請點擊「＋ 新增步驟」</p>
+        <div id="step-list" class="step-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       步驟編輯頁
+  ════════════════════════════════════════ -->
+  <div id="screen-step-editor" class="screen">
+    <header class="editor-header">
+      <button class="btn-icon" id="btn-step-back" aria-label="返回">←</button>
+      <h2 class="editor-title" id="step-editor-title">新增步驟</h2>
+      <button class="btn-header-action" id="btn-save-step">儲存</button>
+    </header>
+    <div class="editor-body">
+
+      <div class="form-group">
+        <label class="form-label" for="edit-prompt">店員說的話 <span class="required">*</span></label>
+        <textarea class="form-input form-textarea" id="edit-prompt" rows="3"
+          placeholder="例如：你好！請問有什麼需要幫忙的嗎？"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-task">學生的任務說明 <span class="required">*</span></label>
+        <input class="form-input" id="edit-task" type="text" placeholder="例如：跟店員打招呼" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-answer">標準答案 <span class="required">*</span></label>
+        <input class="form-input" id="edit-answer" type="text" placeholder="例如：你好！" autocomplete="off">
+        <p class="form-hint">說出此句（或包含關鍵字）才算正確，也用於提示學生</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-keywords">關鍵字（可選，逗號分隔）</label>
+        <input class="form-input" id="edit-keywords" type="text" placeholder="例如：你好,您好,哈囉" autocomplete="off">
+        <p class="form-hint">說出任一關鍵字算部分正確；不填則整句都必須說對</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">錯誤選項（可選，最多三個）</label>
+        <div class="form-opts-group">
+          <input class="form-input" id="edit-opt1" type="text" placeholder="錯誤選項 1" autocomplete="off">
+          <input class="form-input" id="edit-opt2" type="text" placeholder="錯誤選項 2" autocomplete="off">
+          <input class="form-input" id="edit-opt3" type="text" placeholder="錯誤選項 3" autocomplete="off">
+        </div>
+        <p class="form-hint">點選模式使用；正確選項（標準答案）會自動加入</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-frame-template">看圖造句句框（進階・可選）</label>
+        <input class="form-input" id="edit-frame-template" type="text" placeholder="例如：我要 {物品}" autocomplete="off">
+        <input class="form-input" id="edit-frame-choices" type="text" placeholder="填空選項，逗號分隔，正解放第一個：餅乾,飲料,報紙,雨傘" autocomplete="off" style="margin-top:8px">
+        <p class="form-hint">填了才啟用「我要 ___」這種句框填空；留空則自動用上面的選項造句。圖示自動配對。</p>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       學生語音彈窗（主頁點學生頭像）
+  ════════════════════════════════════════ -->
+  <div id="student-voice-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="student-voice-name">
+    <div class="modal-backdrop" id="student-voice-backdrop"></div>
+    <div class="modal-card clerk-modal-card">
+      <img id="student-voice-img" class="clerk-modal-img" src="" alt="">
+      <div class="clerk-modal-name" id="student-voice-name"></div>
+      <div class="clerk-modal-role" id="student-voice-role"></div>
+      <div class="clerk-modal-actions">
+        <button class="btn-secondary" id="btn-student-voice-replay">🔊 再聽一次</button>
+        <button class="btn-primary" id="btn-student-voice-close">用這個聲音</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       學生選擇彈窗
+  ════════════════════════════════════════ -->
+  <div id="student-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
+    <div class="modal-backdrop" id="student-backdrop"></div>
+    <div class="modal-card">
+      <div class="hint-modal-header" style="color:var(--blue)">
+        <span aria-hidden="true">👤</span>
+        <span id="student-modal-title">現在是誰要練習？</span>
+      </div>
+      <div class="student-select-list" id="student-select-list"></div>
+      <p class="student-modal-hint" id="student-modal-hint">名冊與獎勵系統共用；要新增學生請到獎勵系統。</p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       店員介紹彈窗（主頁點店員頭像）
+  ════════════════════════════════════════ -->
+  <div id="clerk-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="clerk-modal-name">
+    <div class="modal-backdrop" id="clerk-backdrop"></div>
+    <div class="modal-card clerk-modal-card">
+      <img id="clerk-modal-img" class="clerk-modal-img" src="" alt="">
+      <div class="clerk-modal-name" id="clerk-modal-name"></div>
+      <div class="clerk-modal-role" id="clerk-modal-role"></div>
+      <div class="clerk-modal-actions">
+        <button class="btn-secondary" id="btn-clerk-replay">🔊 再聽一次</button>
+        <button class="btn-primary" id="btn-clerk-close">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       提示彈窗
+  ════════════════════════════════════════ -->
+  <div id="hint-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="hint-modal-title">
+    <div class="modal-backdrop" id="hint-backdrop"></div>
+    <div class="modal-card hint-modal-card">
+      <div class="hint-modal-header">
+        <span aria-hidden="true">💡</span>
+        <span id="hint-modal-title">提示</span>
+      </div>
+      <div class="hint-text-row">
+        <p class="hint-text" id="hint-text"></p>
+        <button class="btn-hint-speak" id="btn-hint-speak" aria-label="朗讀提示">🔊</button>
+      </div>
+      <button class="btn-primary" id="btn-hint-close">知道了</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       回饋彈窗
+  ════════════════════════════════════════ -->
+  <div id="feedback-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="feedback-result">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card feedback-modal-card">
+      <div class="feedback-result" id="feedback-result"></div>
+      <p class="feedback-msg" id="feedback-msg"></p>
+      <div class="feedback-heard">
+        <span class="label" id="feedback-heard-label">偵測到你說的</span>
+        <span id="heard-text"></span>
+      </div>
+      <div class="modal-actions" id="action-row">
+        <button class="btn-secondary" id="btn-retry">再試一次</button>
+        <button class="btn-primary"   id="btn-next">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 列印報告用隱藏區塊 -->
+  <div id="print-report-sheet"></div>
+
+  <!-- Confetti 容器 -->
+  <div id="confetti-container" class="confetti-container" aria-hidden="true"></div>
+
+  <!-- 除錯面板（?debug=1 時顯示） -->
+  <div id="debug-panel" hidden>
+    <div class="dbg-header">🛠 Debug</div>
+    <div class="dbg-row"><span class="dbg-label">情境</span><span id="dbg-scenario">—</span></div>
+    <div class="dbg-row"><span class="dbg-label">情境</span><span id="dbg-situation">—</span></div>
+    <div class="dbg-row"><span class="dbg-label">步驟</span><span id="dbg-step">—</span></div>
+    <div class="dbg-row"><span class="dbg-label">音檔</span><span id="dbg-audio">—</span></div>
+    <div class="dbg-row"><span class="dbg-label">STT 原始</span><span id="dbg-stt">—</span></div>
+    <div class="dbg-row dbg-jump-row">
+      <span class="dbg-label">跳步驟</span>
+      <input id="dbg-jump-input" type="number" min="0" value="0" class="dbg-jump-input">
+      <button id="dbg-jump-btn" class="dbg-btn">Go</button>
+    </div>
+    <div class="dbg-row">
+      <button id="dbg-force-next" class="dbg-btn dbg-btn-warn">強制下一步</button>
+    </div>
+  </div>
+
+  <script src="data/frames.js"></script>
+  <script src="data/scenarios.js"></script>
+  <script src="db.js"></script>
+  <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

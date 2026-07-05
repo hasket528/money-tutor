@@ -1,0 +1,421 @@
+/* ===================================================
+   G4 快速找零 — 遊戲專屬樣式
+=================================================== */
+
+/* ─── 遊戲區佈局 ─── */
+#game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 16px 20px;
+  gap: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* ─── 題目面板 ─── */
+#question-panel {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── 購買商品 ─── */
+#items-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+  min-height: 60px;
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 7px 12px;
+  min-width: 58px;
+  animation: item-appear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes item-appear {
+  from { transform: scale(0.4) translateY(10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.item-emoji { font-size: 1.55rem; line-height: 1; }
+
+.item-price {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #FFD700;
+}
+
+.item-plus {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.3);
+  align-self: center;
+}
+
+/* ─── 交易算式：付款 − 商品 = 找零 ─── */
+#transaction-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.txn-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 60px;  /* 三欄算式，稍微縮小以免溢出 */
+}
+
+.txn-label {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.38);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.txn-block > div:nth-child(2) {
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#paid-display      { color: #FFD700 !important; text-shadow: 0 0 10px rgba(255,215,0,0.4); }
+#price-sum-display { color: rgba(255,255,255,0.82) !important; }
+#change-display    { color: #2ed573 !important; text-shadow: 0 0 10px rgba(46,213,115,0.4); }
+
+.txn-unit {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  margin-top: -4px;
+}
+
+/* 算式運算子 − = */
+.txn-op {
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
+  align-self: center;
+  margin-top: 12px;  /* 與數字垂直對齊（數字上方有 label） */
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.txn-change #change-display {
+  color: #2ed573;
+}
+
+/* ─── 已選金額列 ─── */
+#selected-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sel-label {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+#selected-sum {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff;
+  min-width: 2.5ch;
+  text-align: right;
+  transition: color 0.2s;
+}
+
+.sel-unit {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+#selected-progress-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#selected-progress {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2ed573, #7bed9f);
+  border-radius: 3px;
+  transition: width 0.2s ease, background 0.3s;
+}
+
+/* ─── 計時進度條 ─── */
+#question-timer-bar {
+  width: 100%;
+  max-width: 480px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#question-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #2ed573, #7bed9f);
+  border-radius: 3px;
+  transition: background 0.3s;
+}
+
+#question-timer-fill.danger {
+  background: linear-gradient(90deg, #FF4757, #ff6b81);
+  animation: timer-pulse 0.5s infinite alternate;
+}
+
+@keyframes timer-pulse { to { opacity: 0.35; } }
+
+/* ─── 硬幣選盤 ─── */
+#coin-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+/* ─── 硬幣按鈕 ─── */
+.change-coin {
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  background:
+    radial-gradient(circle at 33% 28%, rgba(255,255,255,0.5) 0%, transparent 42%),
+    radial-gradient(circle, var(--inner) 48%, var(--outer) 100%);
+  box-shadow:
+    0 0 0 3px var(--outer),
+    0 0 0 5px rgba(0,0,0,0.2),
+    0 4px 14px rgba(0,0,0,0.4),
+    inset 0 -3px 6px rgba(0,0,0,0.2);
+  font-family: inherit;
+}
+
+.change-coin:active { filter: brightness(0.85); }
+
+.change-coin.selected {
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,0.9),
+    0 0 20px var(--glow),
+    0 0 40px rgba(255,255,255,0.15),
+    inset 0 -3px 6px rgba(0,0,0,0.15);
+  transform: scale(1.1);
+}
+
+.change-coin .c-label {
+  font-size: calc(var(--size) * 0.3);
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.change-coin .c-unit {
+  font-size: calc(var(--size) * 0.15);
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.7;
+  line-height: 1;
+}
+
+/* 數量徽章 */
+.change-coin .c-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FF4757;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #1a1a2e;
+  z-index: 5;
+  line-height: 1;
+}
+
+.change-coin .c-count[data-n="0"] { display: none; }
+
+/* ─── 確認按鈕 ─── */
+#confirm-btn {
+  width: 100%;
+  max-width: 480px;
+  padding: 15px;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s, filter 0.15s, background 0.2s;
+  background: linear-gradient(135deg, #2ed573, #17c550);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(46, 213, 115, 0.4);
+}
+
+#confirm-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+  cursor: default;
+}
+
+#confirm-btn:not(:disabled):active {
+  transform: scale(0.97);
+  filter: brightness(0.9);
+}
+
+/* 「最少硬幣」加分提示 */
+.min-coin-bonus {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  font-weight: 900;
+  color: #A55EEA;
+  text-shadow: 0 0 15px rgba(165, 94, 234, 0.8);
+  pointer-events: none;
+  z-index: 7500;
+  white-space: nowrap;
+  animation: speed-bonus-anim 0.9s ease forwards;
+}
+
+@keyframes speed-bonus-anim {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -60%) scale(1.1); opacity: 1; }
+  70%  { transform: translate(-50%, -62%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -80%) scale(0.85); opacity: 0; }
+}
+
+/* ─── 關卡提升 ─── */
+.level-up-flash {
+  position: fixed; inset: 0;
+  background: rgba(255, 215, 0, 0.18);
+  pointer-events: none; z-index: 8500;
+  animation: level-flash 0.6s ease forwards;
+}
+@keyframes level-flash { to { opacity: 0; } }
+
+.level-up-text {
+  position: fixed; top: 30%; left: 50%;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900; color: #FFD700;
+  text-shadow: 0 0 20px rgba(255,215,0,0.8);
+  pointer-events: none; z-index: 8500; white-space: nowrap;
+  animation: level-text-anim 1.2s ease forwards;
+}
+@keyframes level-text-anim {
+  0%   { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  20%  { transform: translateX(-50%) translateY(-10px) scale(1.05); opacity: 1; }
+  70%  { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-30px) scale(0.9); opacity: 0; }
+}
+
+/* ─── 硬幣尺寸（class 控制，方便 RWD） ─── */
+.change-coin-v1   { width: 48px;  height: 48px;  --size: 48px;  }
+.change-coin-v5   { width: 52px;  height: 52px;  --size: 52px;  }
+.change-coin-v10  { width: 58px;  height: 58px;  --size: 58px;  }
+.change-coin-v50  { width: 62px;  height: 62px;  --size: 62px;  }
+.change-coin-v100 { width: 68px;  height: 68px;  --size: 68px;  }
+.change-coin-v500 { width: 74px;  height: 74px;  --size: 74px;  }
+
+/* ─── 桌面端響應式（CSS Grid 雙欄）─── */
+@media (min-width: 768px) {
+  #game-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "timer  timer"
+      "panel  coins"
+      "panel  btn";
+    column-gap: 28px;
+    row-gap: 14px;
+    padding: 20px 28px;
+    max-width: 1020px;
+    margin: 0 auto;
+    overflow-y: visible;
+    align-items: start;
+  }
+
+  #question-timer-bar { grid-area: timer; max-width: none; height: 7px; }
+  #question-panel     { grid-area: panel; }
+  #coin-panel         { grid-area: coins; max-width: none; gap: 14px; justify-content: center; }
+  #confirm-btn        { grid-area: btn;   max-width: none; width: 100%; padding: 18px; font-size: 1.15rem; }
+
+  .item-card  { min-width: 72px; padding: 10px 16px; }
+  .item-emoji { font-size: 1.9rem; }
+  .item-price { font-size: 0.95rem; }
+
+  .txn-block > div:nth-child(2) { font-size: clamp(1.7rem, 3vw, 2.4rem); }
+  .txn-op { font-size: clamp(1.3rem, 2.5vw, 1.8rem); }
+  #selected-bar { font-size: 1.05rem; }
+  #selected-sum { font-size: 1.35rem; }
+
+  /* 硬幣放大 */
+  .change-coin-v1   { width: 68px;  height: 68px;  --size: 68px;  }
+  .change-coin-v5   { width: 74px;  height: 74px;  --size: 74px;  }
+  .change-coin-v10  { width: 84px;  height: 84px;  --size: 84px;  }
+  .change-coin-v50  { width: 90px;  height: 90px;  --size: 90px;  }
+  .change-coin-v100 { width: 100px; height: 100px; --size: 100px; }
+  .change-coin-v500 { width: 110px; height: 110px; --size: 110px; }
+}
+
+@media (min-width: 1100px) {
+  #game-area      { max-width: 1160px; column-gap: 40px; }
+
+  .change-coin-v1   { width: 78px;  height: 78px;  --size: 78px;  }
+  .change-coin-v5   { width: 86px;  height: 86px;  --size: 86px;  }
+  .change-coin-v10  { width: 96px;  height: 96px;  --size: 96px;  }
+  .change-coin-v50  { width: 104px; height: 104px; --size: 104px; }
+  .change-coin-v100 { width: 116px; height: 116px; --size: 116px; }
+  .change-coin-v500 { width: 128px; height: 128px; --size: 128px; }
+}

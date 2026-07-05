@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>硬幣翻翻樂</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="memory.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+    <!-- 盤面統計列 -->
+    <div id="mem-stat-bar">
+      <span id="mem-pairs-left">── 組剩餘</span>
+      <span id="mem-time-left" style="display:none"></span>
+      <span id="mem-miss-count">0 次錯誤</span>
+    </div>
+
+    <!-- 翻牌格子 -->
+    <div id="mem-grid"></div>
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="memory.js"></script>
+</body>
+</html>

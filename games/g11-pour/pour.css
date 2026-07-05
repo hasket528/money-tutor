@@ -1,0 +1,364 @@
+/* G11 汽水倒倒樂 — Flat Design 版（參考圖風格）*/
+
+/* ── Stage ── */
+#pour-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px 22px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  --soda-c1:   #5C1A00;
+  --soda-c2:   #A03A0A;
+  --soda-foam: #D4A55A;
+  --cup-line:  rgba(150,215,248,0.6);
+}
+
+/* ── Info bar ── */
+#pour-info-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+  padding: 2px 4px 0;
+}
+
+#pour-soda-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+#pour-round-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* ── Pitcher: floats absolutely in #pour-stage, same coord space as cups ── */
+#pour-bottle-container {
+  position: absolute;
+  /* top + left set by JS */
+  transform: translateX(-50%) rotate(-3deg);
+  transform-origin: 20% 60%;
+  transition: left 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+              top  0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.2s;
+  will-change: left, top, transform;
+  opacity: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#pour-stage.is-pouring #pour-bottle-container {
+  transform: translateX(-50%) rotate(110deg);
+}
+
+/* Pitcher SVG size — bigger to match reference image proportions */
+#pour-bottle-container svg {
+  width: 96px;
+  height: 96px;
+  display: block;
+  filter: drop-shadow(0 5px 16px rgba(0,0,0,0.30));
+  overflow: visible;
+}
+
+/* ── Cups row ── */
+#pour-cups-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 440px;
+  flex-shrink: 0;
+  /* Space above cups: pitcher floats above with clear gap */
+  margin-top: 130px;
+}
+
+/* ── Cup slot ── */
+.pour-cup-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+/*
+ * ── Stream: bridges pitcher pour-point to cup opening ──
+ * Pour point is ~34px above cup glass top after -50deg rotation.
+ * Stream extends from -38px (above glass) down 42px into the cup.
+ * left: 22% ≈ where pour point x lands (left portion of cup).
+ */
+/* Stream effect removed — not natural looking */
+
+/* ── Cup glass (flat design, wider to match reference image) ── */
+.pour-cup-glass {
+  width: 84px;
+  height: 148px;
+  position: relative;
+  clip-path: polygon(4% 0%, 96% 0%, 90% 100%, 10% 100%);
+  background: rgba(160,220,255,0.04);
+  overflow: hidden;
+  transition: filter 0.3s;
+}
+
+/* Cup outline via ::after */
+.pour-cup-slot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 84px;
+  height: 148px;
+  clip-path: polygon(4% 0%, 96% 0%, 90% 100%, 10% 100%);
+  border: 2.5px solid var(--cup-line);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 5;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Active cup glow */
+.pour-cup-slot.pour-cup-active::after {
+  border-color: rgba(150,215,248,0.9);
+  box-shadow: 0 0 16px rgba(150,215,248,0.22);
+}
+
+/* Scored colors */
+.pour-cup-slot.glass-perfect::after { border-color: #4ade80 !important; box-shadow: 0 0 18px rgba(74,222,128,0.45) !important; }
+.pour-cup-slot.glass-good::after    { border-color: #60a5fa !important; box-shadow: 0 0 14px rgba(96,165,250,0.35)  !important; }
+.pour-cup-slot.glass-ok::after      { border-color: #facc15 !important; }
+.pour-cup-slot.glass-bad::after     { border-color: #f87171 !important; box-shadow: 0 0 14px rgba(248,113,113,0.35) !important; }
+
+/* Overflow shake */
+.pour-cup-slot.pour-overflow-anim::after {
+  animation: glassShake 0.45s ease !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 22px rgba(248,113,113,0.55) !important;
+}
+
+@keyframes glassShake {
+  0%,100% { transform: translateX(-50%) translateX(0); }
+  22% { transform: translateX(-50%) translateX(-5px); }
+  44% { transform: translateX(-50%) translateX(5px); }
+  66% { transform: translateX(-50%) translateX(-3px); }
+  88% { transform: translateX(-50%) translateX(3px); }
+}
+
+/* ── Liquid (solid flat color) ── */
+.pour-liquid {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: var(--soda-c2);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Ripple on liquid surface while pouring */
+#pour-stage.is-pouring .pour-cup-slot.pour-cup-active .pour-liquid::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 20%;
+  width: 24px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  animation: splashRipple 0.4s ease-out infinite;
+}
+
+@keyframes splashRipple {
+  0%   { transform: scale(0.5) translateY(2px); opacity: 0.8; }
+  100% { transform: scale(2.0) translateY(-2px); opacity: 0; }
+}
+
+/* ── Bubbles ── */
+.pour-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  animation: bubbleRise var(--dur, 1.4s) ease-in var(--delay, 0s) infinite;
+}
+
+@keyframes bubbleRise {
+  0%   { transform: translateY(0) scale(1);       opacity: 0.55; }
+  75%  { opacity: 0.25; }
+  100% { transform: translateY(-200px) scale(0.3); opacity: 0; }
+}
+
+/* ── Foam ── */
+.pour-foam {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: var(--soda-foam);
+  opacity: 0;
+  z-index: 2;
+  border-radius: 2px 2px 0 0;
+  transition: opacity 0.3s;
+}
+.pour-foam.pour-foam-visible { opacity: 0.78; }
+
+/* ── Target line ── */
+.pour-target-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2.5px dashed rgba(255,255,255,0.72);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.pour-target-line::before,
+.pour-target-line::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 6px;
+  height: 9px;
+  background: rgba(255,255,255,0.75);
+}
+.pour-target-line::before { left: 0; }
+.pour-target-line::after  { right: 0; }
+
+/* ── Fill label (live %) ── */
+.pour-fill-label {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.0);
+  z-index: 6;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+  transition: color 0.2s;
+  pointer-events: none;
+}
+.pour-cup-slot.pour-cup-active .pour-fill-label { color: rgba(255,255,255,0.85); }
+
+/* ── Cup label below ── */
+.pour-cup-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pour-cup-num       { font-size: 0.82rem; font-weight: 700; color: rgba(255,255,255,0.65); }
+.pour-cup-target-pct { font-size: 0.72rem; color: rgba(255,255,255,0.38); }
+
+/* ── Score popup ── */
+.pour-score-popup {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.3rem;
+  font-weight: 900;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.pour-score-popup.score-visible {
+  animation: scoreFloat 1.6s ease-out forwards;
+}
+
+.pour-score-popup.score-perfect { color: #4ade80; }
+.pour-score-popup.score-good    { color: #60a5fa; }
+.pour-score-popup.score-ok      { color: #facc15; }
+.pour-score-popup.score-bad     { color: #f87171; }
+
+@keyframes scoreFloat {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.7); }
+  18%  { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1.15); }
+  65%  { opacity: 1; transform: translateX(-50%) translateY(-8px)  scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-22px) scale(0.9); }
+}
+
+/* ── Pour button ── */
+#pour-controls {
+  width: 100%;
+  max-width: 400px;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+
+#pour-btn {
+  width: 100%;
+  padding: 17px 20px;
+  background: #E8A020;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  letter-spacing: 0.02em;
+  transition: transform 0.08s, filter 0.08s;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 4px 0 #B07010, 0 6px 18px rgba(232,160,32,0.30);
+}
+
+#pour-btn:disabled {
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.25);
+  box-shadow: none;
+  cursor: default;
+}
+
+.pour-btn-icon { font-size: 1.4rem; }
+
+#pour-btn.is-holding {
+  transform: scale(0.97) translateY(2px);
+  box-shadow: 0 2px 0 #B07010, 0 4px 10px rgba(232,160,32,0.25);
+  filter: brightness(1.05);
+}
+
+/* ── Hint text ── */
+#pour-hint {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.38);
+  text-align: center;
+  min-height: 1.2em;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 360px) {
+  .pour-cup-glass       { width: 72px; height: 130px; }
+  .pour-cup-slot::after { width: 72px; height: 130px; }
+  #pour-cups-row        { gap: 8px; margin-top: 110px; }
+  #pour-bottle-container svg { width: 80px; height: 80px; }
+}
+
+@media (min-height: 720px) {
+  .pour-cup-glass       { height: 162px; }
+  .pour-cup-slot::after { height: 162px; }
+  #pour-cups-row        { margin-top: 144px; }
+}

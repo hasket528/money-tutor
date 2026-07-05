@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>打地鼠賺金幣</title>
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="mole.css">
+</head>
+<body class="game-body">
+
+<!-- ══ 設定畫面 ══════════════════════════════════════════ -->
+<div id="ml-setup">
+  <div class="ml-title-bar">
+    <a href="../index.html" class="ml-back">‹</a>
+    <div class="ml-title">🪙 打地鼠賺金幣</div>
+    <div class="ml-spacer"></div>
+  </div>
+  <div class="ml-setup-body">
+    <div class="ml-coin-row">$1 · $5 · $10 · $50</div>
+
+    <div class="ml-setup-sub">選擇模式</div>
+    <div class="ml-mode-grid" id="ml-mode-grid"></div>
+
+    <div class="ml-setup-sub">選擇難度</div>
+    <div class="ml-diff-grid" id="ml-diff-grid"></div>
+  </div>
+</div>
+
+<!-- ══ 遊戲畫面（GameUI HUD 由 JS 插入）══════════════════ -->
+<div id="ml-game" class="hidden">
+
+  <!-- 目標 + 計時列 -->
+  <div id="ml-target-bar">
+    <span class="ml-target-label" id="ml-target-label">打這個！</span>
+    <span id="ml-target-coin">$10</span>
+    <span class="ml-timer-sep">·</span>
+    <span id="ml-timer">60</span>
+    <span class="ml-timer-unit">秒</span>
+  </div>
+
+  <!-- 地洞格 -->
+  <div id="ml-grid"></div>
+
+</div>
+
+<script src="../../js/audio-unlocker.js"></script>
+<script src="../js/game-engine.js"></script>
+<script src="../js/game-ui.js"></script>
+<script src="../js/game-audio.js"></script>
+<script src="mole.js"></script>
+</body>
+</html>

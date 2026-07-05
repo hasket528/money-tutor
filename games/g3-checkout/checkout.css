@@ -1,0 +1,290 @@
+/* ===================================================
+   G3 超市閃電結帳 — 遊戲專屬樣式
+=================================================== */
+
+/* ─── 遊戲區佈局 ─── */
+#game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* ─── 題目區 ─── */
+#question-panel {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 20px 16px 16px;
+  margin-bottom: 12px;
+  text-align: center;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ─── 商品列表 ─── */
+#items-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-width: 72px;
+  animation: item-appear 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.item-card:nth-child(1) { animation-delay: 0.0s; }
+.item-card:nth-child(2) { animation-delay: 0.1s; }
+.item-card:nth-child(3) { animation-delay: 0.2s; }
+.item-card:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes item-appear {
+  from { transform: scale(0.4) translateY(20px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.item-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.item-price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #FFD700;
+}
+
+/* 加號分隔 */
+.item-plus {
+  font-size: 1.6rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 300;
+  align-self: center;
+}
+
+/* ─── 問題標籤 ─── */
+#total-label {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.03em;
+}
+
+/* ─── 計時進度條 ─── */
+#question-timer-bar {
+  width: 100%;
+  max-width: 480px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+#question-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #2ed573, #7bed9f);
+  border-radius: 3px;
+  transform-origin: left;
+  transition: background 0.3s;
+}
+
+#question-timer-fill.danger {
+  background: linear-gradient(90deg, #FF4757, #ff6b81);
+  animation: timer-pulse 0.5s infinite alternate;
+}
+
+@keyframes timer-pulse {
+  to { opacity: 0.35; }
+}
+
+/* ─── 選項按鈕 ─── */
+#options-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.option-btn {
+  padding: 18px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.option-btn::after {
+  content: '元';
+  font-size: 0.7em;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-left: 3px;
+}
+
+.option-btn:active {
+  transform: scale(0.95);
+}
+
+/* 答對 */
+.option-btn.correct {
+  background: linear-gradient(135deg, rgba(46, 213, 115, 0.3), rgba(23, 197, 80, 0.2));
+  border-color: #2ed573;
+  animation: option-correct 0.4s ease;
+}
+
+@keyframes option-correct {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* 答錯 */
+.option-btn.wrong {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.3), rgba(255, 71, 87, 0.15));
+  border-color: #FF4757;
+  animation: option-wrong 0.35s ease;
+}
+
+@keyframes option-wrong {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
+
+/* 速答提示 */
+.speed-bonus {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  font-weight: 900;
+  color: #7bed9f;
+  text-shadow: 0 0 15px rgba(123, 237, 159, 0.8);
+  pointer-events: none;
+  z-index: 7500;
+  white-space: nowrap;
+  animation: speed-bonus-anim 0.9s ease forwards;
+}
+
+@keyframes speed-bonus-anim {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -60%) scale(1.1); opacity: 1; }
+  70%  { transform: translate(-50%, -62%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -80%) scale(0.85); opacity: 0; }
+}
+
+/* ─── 遊戲訊息（等待下一題） ─── */
+.next-question-msg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+}
+
+/* ─── 桌面端響應式 ─── */
+@media (min-width: 768px) {
+  /* 雙欄佈局：題目左 ｜ 選項右 */
+  #game-area {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 28px;
+    gap: 20px 28px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* 計時條獨佔一行，置頂 */
+  #question-timer-bar {
+    flex: 0 0 100%;
+    order: -1;
+    max-width: none;
+    height: 7px;
+    margin-bottom: 0;
+  }
+
+  /* 題目面板（左欄） */
+  #question-panel {
+    flex: 1 1 340px;
+    max-width: 480px;
+    min-height: 260px;
+    padding: 24px 20px 20px;
+  }
+
+  .item-card {
+    min-width: 90px;
+    padding: 12px 18px;
+  }
+  .item-emoji { font-size: 2.5rem; }
+  .item-price { font-size: 1.1rem; }
+  .item-plus  { font-size: 1.8rem; }
+
+  #total-label { font-size: 1rem; }
+
+  /* 選項面板（右欄） */
+  #options-panel {
+    flex: 0 0 320px;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    max-width: none;
+    align-content: start;
+  }
+
+  .option-btn {
+    padding: 22px 10px;
+    font-size: 1.9rem;
+    border-radius: 18px;
+    border-width: 2px;
+  }
+}
+
+@media (min-width: 1024px) {
+  #game-area { max-width: 1100px; gap: 24px 36px; }
+  #question-panel { flex: 1 1 420px; max-width: 560px; padding: 28px 24px 24px; }
+  #options-panel  { flex: 0 0 380px; gap: 16px; }
+  .option-btn     { padding: 28px 12px; font-size: 2.2rem; }
+  .item-emoji     { font-size: 3rem; }
+  .item-price     { font-size: 1.25rem; }
+  #total-label    { font-size: 1.1rem; }
+}
+
+@media (min-width: 1400px) {
+  #options-panel { flex: 0 0 440px; }
+  .option-btn { font-size: 2.6rem; padding: 32px 14px; }
+}

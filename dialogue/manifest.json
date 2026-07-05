@@ -1,0 +1,19 @@
+{
+  "name": "購物練習",
+  "short_name": "購物練習",
+  "description": "購物情境語言學習系統，專為特教班設計",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F0F4FF",
+  "theme_color": "#2563EB",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

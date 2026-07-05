@@ -1,0 +1,2091 @@
+/* =================================================================
+   FILE: css/ai-theme.css - AI智能機器人小助教主題（整合版）
+   整合自：style.css + theme-system.css + theme-override.css
+   ================================================================= */
+
+/* =====================================================
+   CSS 變數定義 - AI智能機器人主題
+   ===================================================== */
+
+:root {
+    /* 🌈 活潑明亮色彩系統 */
+    
+    /* 背景色彩 - 天藍色系列 */
+    --ai-sky-blue: #87CEEB;             /* 天藍色：主背景 */
+    --ai-sky-blue-light: #B0E0E6;       /* 粉藍色：漸層搭配 */
+    --ai-sky-blue-dark: #4682B4;        /* 鋼藍色：邊框、強調 */
+    --ai-cloud-white: #FFFFFF;          /* 純白雲朵：卡片背景 */
+    --ai-light-blue: #E6F3FF;           /* 淺藍：次要背景 */
+    
+    /* 主要色調 - 鮮豔橙色 */
+    --ai-vibrant-orange: #00aeff;       /* 鮮豔橙：主要按鈕、字母方塊風格 */
+    --ai-vibrant-orange-hover: #FF8C00;  /* 深橙：懸浮效果 */
+    --ai-vibrant-orange-light: #FFD700;  /* 金橙：背景提示 */
+    --ai-vibrant-orange-shadow: #FF7F00; /* 橙影：立體陰影 */
+    
+    /* 次要色調 - 機器人綠色 */
+    --ai-robot-green: #3CB371;          /* 機器人綠：次要功能 */
+    --ai-robot-green-light: #90EE90;    /* 淺綠：背景 */
+    --ai-robot-green-dark: #228B22;     /* 深綠：邊框 */
+    
+    /* 強調色 - 粉紅色 */
+    --ai-cute-pink: #FF69B4;            /* 粉紅：強調色、冰淇淋風格 */
+    --ai-cute-pink-light: #FFB6C1;      /* 淺粉：背景 */
+    --ai-cute-pink-dark: #FF1493;       /* 深粉：邊框 */
+    
+    /* 特殊狀態色彩 */
+    --ai-success-green: #32CD32;        /* 草綠：成功狀態 */
+    --ai-error-red: #FF6347;            /* 番茄紅：錯誤狀態 */
+    --ai-gold-yellow: #FFD700;          /* 金黃：金幣區域 */
+    --ai-gold-gradient: linear-gradient(45deg, #FFD700, #FFA500); /* 金色漸層 */
+    
+    /* 文字色彩 */
+    --ai-text-dark: #2F4F4F;            /* 深灰綠：主要文字 */
+    --ai-text-medium: #696969;          /* 暗灰：次要文字 */
+    --ai-text-light: #A9A9A9;           /* 淺灰：輔助文字 */
+    --ai-text-white: #FFFFFF;           /* 純白：按鈕文字 */
+    
+    /* 🎨 主要色彩映射 */
+    --primary-color: var(--ai-vibrant-orange);
+    --primary-dark: var(--ai-vibrant-orange-hover);
+    --primary-light: var(--ai-vibrant-orange-light);
+    --secondary-color: var(--ai-robot-green);
+    --accent-color: var(--ai-cute-pink);
+    
+    /* 🌤️ 背景色彩 */
+    --background-primary: linear-gradient(135deg, var(--ai-sky-blue) 0%, var(--ai-sky-blue-light) 100%);
+    --background-secondary: var(--ai-cloud-white);
+    --background-card: var(--ai-cloud-white);
+    --background-overlay: rgba(255, 255, 255, 0.95);
+    --background-light: var(--ai-light-blue);
+    
+    /* 📝 文字色彩 */
+    --text-primary: var(--ai-text-dark);
+    --text-secondary: var(--ai-text-medium);
+    --text-muted: var(--ai-text-light);
+    --text-inverse: var(--ai-text-white);
+    
+    /* 🔲 邊框和分隔線 - 3px 卡通風格 */
+    --border-color: var(--ai-sky-blue-dark);
+    --border-light: var(--ai-sky-blue);
+    --border-thick: 3px;
+    --divider-color: var(--ai-sky-blue);
+    
+    /* ✨ 狀態色彩 */
+    --success-color: var(--ai-success-green);
+    --warning-color: var(--ai-gold-yellow);
+    --error-color: var(--ai-error-red);
+    --info-color: var(--ai-robot-green);
+    
+    /* 🌈 柔和陰影效果 - 參考ai-robot-demo */
+    --shadow-light: 0 2px 8px rgba(135, 206, 235, 0.2);
+    --shadow-medium: 0 4px 12px rgba(135, 206, 235, 0.25);
+    --shadow-heavy: 0 8px 20px rgba(135, 206, 235, 0.3);
+    --shadow-orange: 0 3px 10px rgba(255, 165, 0, 0.3);
+    --shadow-green: 0 3px 10px rgba(60, 179, 113, 0.3);
+    --shadow-pink: 0 3px 10px rgba(255, 105, 180, 0.3);
+    
+    /* 🔵 圓角設計 - 參考ai-robot-demo */
+    --radius-small: 12px;
+    --radius-medium: 16px;
+    --radius-large: 20px;
+    --radius-round: 50%;
+    
+    /* 動畫 */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    
+    /* 字體系統 */
+    --font-family-main: 'Helvetica', 'Arial', 'Microsoft JhengHei', '微軟正黑體', sans-serif;
+    --font-family-robot: 'Courier New', 'Monaco', monospace;
+    
+    /* 主題標識 */
+    --theme-name: "ai-robot";
+
+    /* ─── 金錢顯示尺寸 Design Tokens ─────────────────
+       統一定義錢幣/紙鈔圖示尺寸，供 C/F/A 系列共用。
+       各單元可在自身的容器 selector 上重新宣告變數
+       來覆寫尺寸，不需要 !important。
+       例：.my-wallet { --coin-size: 60px; }
+       ──────────────────────────────────────────────── */
+    --coin-size:         80px;   /* 標準硬幣（測驗/兌換區）*/
+    --coin-size-sm:      50px;   /* 小硬幣（錢包內）*/
+    --coin-size-hint:    60px;   /* 提示區硬幣 */
+    --banknote-size:    120px;   /* 標準紙鈔（測驗/兌換區）*/
+    --banknote-size-sm: 100px;   /* 小紙鈔（錢包/付款/找零）*/
+    --banknote-max-h:    72px;   /* 紙鈔最大高度（提示區）*/
+    --banknote-max-h-sm: 60px;   /* 紙鈔最大高度（錢包/付款/找零）*/
+
+    /* 向後相容別名（unit6.css 已使用 --u6-* 前綴，保留不變）*/
+    --u6-coin-size:          var(--coin-size);
+    --u6-coin-size-sm:       var(--coin-size-sm);
+    --u6-coin-size-hint:     var(--coin-size-hint);
+    --u6-banknote-size:      var(--banknote-size);
+    --u6-banknote-size-sm:   var(--banknote-size-sm);
+    --u6-banknote-max-h:     var(--banknote-max-h);
+    --u6-banknote-max-h-sm:  var(--banknote-max-h-sm);
+}
+
+/* =====================================================
+   全域基礎設定
+   ===================================================== */
+
+/* 🔧 [修正] 全域手機端觸控優化 - 徹底解決點擊閃爍問題 */
+* {
+    /* 移除所有瀏覽器的點擊高亮效果 */
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+
+    /* 優化觸控操作 */
+    touch-action: manipulation !important;
+}
+
+/* 🔧 [修正] 僅針對遊戲元素禁用文字選取，保留一般內容的選取功能 */
+.money-item, .exchange-money-item, .unit3-coin-container, .unit3-banknote-container,
+.exchange-item, [draggable="true"], .game-button, .control-button,
+.drag-item, .drop-zone, .game-area, .interactive-element {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+
+/* 特例：允許輸入框、文本區域和一般文字內容選擇文字 */
+input, textarea, [contenteditable="true"] {
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
+    -ms-user-select: auto !important;
+    user-select: auto !important;
+    -webkit-tap-highlight-color: rgba(0, 123, 255, 0.2) !important;
+}
+
+/* 允許一般文字內容被選取
+   ⚠️ 注意：移除了 div, span（過廣，會覆寫 .game-area 等 none 設定）
+   遊戲容器由 .money-item/.drop-zone/.game-area 等 class 控制（specificity 更高）*/
+p, h1, h2, h3, h4, h5, h6, article, section, main,
+.text-content, .instructions, .description, .explanation,
+.noscript-message, .error-content, .accessibility-content {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+/* 🔧 [修正] 自定義點擊反饋 - 替代系統閃爍 */
+button, .clickable, .clickable-item, .draggable-item, .money-item,
+.counting-item, .counting-item-easy, .counting-item-normal, .counting-item-hard,
+.touchable, [onclick], [role="button"], [class*="counting-item"] {
+    transition: transform 0.1s ease !important;
+}
+
+button:active, .clickable:active, .clickable-item:active, .draggable-item:active,
+.money-item:active, .counting-item:active, .counting-item-easy:active,
+.counting-item-normal:active, .counting-item-hard:active, .touchable:active,
+[onclick]:active, [role="button"]:active, [class*="counting-item"]:active {
+    transform: scale(0.95) !important;
+}
+
+/* 響應式優化 - 桌面端更細微的效果 */
+@media (min-width: 768px) {
+    button:active, .clickable:active, .clickable-item:active, .draggable-item:active,
+    .money-item:active, .counting-item:active, .counting-item-easy:active,
+    .counting-item-normal:active, .counting-item-hard:active, .touchable:active,
+    [onclick]:active, [role="button"]:active, [class*="counting-item"]:active {
+        transform: scale(0.98) !important;
+        transition: transform 0.05s ease !important;
+    }
+}
+
+/* 全域 box-sizing 設定 */
+html, body {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+
+/* 基本樣式 */
+body {
+    font-family: var(--font-family-main);
+    margin: 0;
+    background: var(--background-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0;
+    transition: all var(--transition-normal);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(135, 206, 235, 0.3);
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+/* 遊戲容器樣式 - 確保佈滿整個視窗 */
+#game-container {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+h1 {
+    text-align: center;
+}
+
+/* =====================================================
+   主選單容器
+   ===================================================== */
+
+#menu-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 32px 24px;
+    box-sizing: border-box;
+    background: var(--background-card);
+    border: var(--border-thick) solid var(--border-light);
+    box-shadow: var(--shadow-medium);
+    border-radius: var(--radius-large);
+    text-align: center;
+}
+
+/* 添加標題emoji */
+#menu-container h1::before {
+    content: '💰 ';
+    font-size: 1.2em;
+}
+
+/* 為單元按鈕添加emoji */
+.unit-btn[href*="unit1"]::before { content: '👁️ '; }
+.unit-btn[href*="unit2"]::before { content: '🔢 '; }
+.unit-btn[href*="unit3"]::before { content: '🔄 '; }
+.unit-btn[href*="unit4"]::before { content: '💯 '; }
+.unit-btn[href*="unit5"]::before { content: '💸 '; }
+.unit-btn[href*="unit6"]::before { content: '🛒 '; }
+
+#unit-selection {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* =====================================================
+   遊戲容器
+   ===================================================== */
+
+#game-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 30px 40px;
+    box-sizing: border-box;
+    background: var(--background-card);
+    color: var(--text-primary);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-medium);
+    border: var(--border-thick) solid var(--border-color);
+    position: relative;
+    text-align: center;
+    transition: all var(--transition-normal);
+}
+
+/* 遊戲標題 */
+#game-container h1 {
+    background: linear-gradient(135deg, var(--ai-sky-blue), var(--ai-sky-blue-light));
+    color: var(--text-primary);
+    padding: 20px;
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
+    text-align: center;
+    margin-bottom: 25px;
+    border: var(--border-thick) solid var(--ai-sky-blue-dark);
+}
+
+/* =====================================================
+   設定介面
+   ===================================================== */
+
+#setup-area {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    margin-bottom: 30px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+    background: var(--background-card);
+    border: var(--border-thick) solid var(--border-color);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-light);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.setup-section {
+    margin-bottom: 25px;
+}
+
+.setup-section h2 {
+    font-size: 1.3em;
+    color: var(--text-primary);
+    background: var(--ai-light-blue);
+    padding: 12px 15px;
+    border-radius: var(--radius-medium);
+    border: var(--border-thick) solid var(--ai-sky-blue-dark);
+    box-shadow: var(--shadow-light);
+    margin-bottom: 15px;
+}
+
+/* 為設定區塊標題添加emoji */
+.setup-section h2[data-section="category"]::before { content: '📚 '; }
+.setup-section h2[data-section="difficulty"]::before { content: '⚡ '; }
+.setup-section h2[data-section="mode"]::before { content: '🎮 '; }
+.setup-section h2[data-section="pair"]::before { content: '👥 '; }
+
+#category-selection, #difficulty-selection, #mode-selection, 
+#pair-selection, #main-category-selection, #item-selection {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    background: var(--ai-light-blue);
+    padding: 20px;
+    border-radius: var(--radius-medium);
+    border: var(--border-thick) solid var(--ai-sky-blue-dark);
+    box-shadow: var(--shadow-light);
+}
+
+/* =====================================================
+   按鈕系統
+   ===================================================== */
+
+/* 主要按鈕 - 柔和橙色效果 */
+.start-btn, .btn, .button, .primary-btn {
+    background: linear-gradient(145deg, var(--ai-vibrant-orange), var(--ai-vibrant-orange-hover));
+    color: var(--text-inverse);
+    border: 2px solid var(--ai-vibrant-orange-shadow);
+    border-radius: var(--radius-medium);
+    padding: 15px 30px;
+    font-weight: bold;
+    font-size: 1.1em;
+    box-shadow: var(--shadow-orange);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transform: translateY(0);
+    text-decoration: none;
+    display: inline-block;
+}
+
+/* 為開始按鈕添加emoji */
+.start-btn::before { content: '🚀 '; }
+.back-btn::before { content: '🔙 '; }
+.back-to-main-btn::before { content: '🏠 '; }
+
+.start-btn:hover, .back-to-main-btn:hover, .btn:hover, .button:hover, .primary-btn:hover {
+    background: linear-gradient(145deg, var(--ai-vibrant-orange-hover), var(--ai-vibrant-orange));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 165, 0, 0.4);
+}
+
+.start-btn:active, .back-to-main-btn:active, .btn:active, .button:active, .primary-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-orange);
+}
+
+/* 單元按鈕 */
+.unit-btn {
+    background: linear-gradient(135deg, var(--ai-vibrant-orange), var(--ai-vibrant-orange-light));
+    color: var(--text-inverse);
+    border: 2px solid var(--ai-vibrant-orange-shadow);
+    border-radius: var(--radius-medium);
+    padding: 15px 30px;
+    font-size: 1.2em;
+    font-weight: bold;
+    box-shadow: var(--shadow-orange);
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    display: block;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    cursor: pointer;
+    margin: 0;
+}
+
+.unit-btn:hover:not([disabled]) {
+    background: linear-gradient(135deg, var(--ai-vibrant-orange-light), var(--ai-vibrant-orange));
+    color: var(--text-inverse);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 165, 0, 0.4);
+}
+
+.unit-btn[disabled] {
+    background: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 選擇按鈕 */
+.selection-btn, .choice-btn {
+    background: var(--ai-light-blue);
+    color: var(--text-primary);
+    border: 2px solid var(--ai-sky-blue-dark);
+    border-radius: var(--radius-small);
+    padding: 10px 25px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-light);
+    font-weight: bold;
+    font-size: 1.1em;
+    cursor: pointer;
+    display: inline-block;
+}
+
+a.selection-btn {
+    color: #000 !important;
+    font-weight: bold !important;
+    text-decoration: none;
+}
+
+/* 遊戲選項按鈕（保持原本大小） */
+.option-btn {
+    background: var(--ai-light-blue);
+    color: var(--text-primary);
+    border: var(--border-thick) solid var(--ai-sky-blue-dark);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-light);
+    font-weight: bold;
+    font-size: 2em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 280px;
+    min-height: 140px;
+}
+
+.selection-btn:hover:not(:disabled), .choice-btn:hover:not(:disabled) {
+    background: var(--background-card);
+    color: var(--text-primary);
+    border-color: var(--ai-vibrant-orange);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-orange);
+}
+
+.option-btn:hover:not(:disabled) {
+    background: var(--background-card);
+    color: var(--text-primary);
+    border-color: var(--ai-vibrant-orange);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-orange);
+}
+
+.selection-btn.active, .choice-btn.active, .option-btn.active {
+    background: linear-gradient(145deg, var(--ai-robot-green), var(--ai-robot-green-light));
+    color: var(--text-inverse);
+    border-color: var(--ai-robot-green-dark);
+    box-shadow: var(--shadow-green);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.selection-btn:disabled, .choice-btn:disabled, .option-btn:disabled {
+    background: var(--ai-light-blue);
+    border-color: var(--border-light);
+    color: var(--text-muted);
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 返回按鈕 */
+.back-btn {
+    background: linear-gradient(145deg, var(--ai-cute-pink), var(--ai-cute-pink-light));
+    color: var(--text-inverse);
+    border: 2px solid var(--ai-cute-pink-dark);
+    border-radius: var(--radius-medium);
+    padding: 12px 25px;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-pink);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: linear-gradient(145deg, var(--ai-cute-pink-light), var(--ai-cute-pink));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 105, 180, 0.4);
+}
+
+/* 遊戲內返回主選單按鈕 */
+.back-to-menu-btn {
+    background: linear-gradient(135deg, var(--ai-cute-pink), var(--ai-cute-pink-light));
+    color: var(--text-inverse);
+    border: 2px solid var(--ai-cute-pink-dark);
+    border-radius: var(--radius-large);
+    padding: 12px 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-pink);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.back-to-menu-btn:hover {
+    background: linear-gradient(135deg, var(--ai-cute-pink-light), var(--ai-cute-pink));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 105, 180, 0.4);
+}
+
+/* 遊戲結束按鈕 */
+.play-again-btn, .main-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 30px;
+    border: none;
+    border-radius: var(--radius-large);
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    min-width: 160px;
+    justify-content: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.play-again-btn {
+    background: linear-gradient(135deg, var(--ai-robot-green), var(--ai-robot-green-light));
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-green);
+}
+
+.play-again-btn:hover {
+    background: linear-gradient(135deg, var(--ai-robot-green-light), var(--ai-robot-green));
+    box-shadow: 0 6px 20px rgba(60, 179, 113, 0.6);
+    transform: translateY(-2px);
+}
+
+.main-menu-btn {
+    background: linear-gradient(135deg, var(--ai-vibrant-orange), var(--ai-vibrant-orange-light));
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-orange);
+}
+
+.main-menu-btn:hover {
+    background: linear-gradient(135deg, var(--ai-vibrant-orange-light), var(--ai-vibrant-orange));
+    box-shadow: 0 6px 20px rgba(255, 165, 0, 0.6);
+    transform: translateY(-2px);
+}
+
+#in-quiz-back-btn {
+    position: fixed;
+    top: 20px;
+    right: 30px;
+    margin-top: 0;
+    z-index: 100;
+}
+
+#final-score-buttons .back-btn {
+    margin-top: 0;
+}
+
+/* 特殊狀態按鈕 */
+.option-btn.correct-option {
+    background: linear-gradient(145deg, var(--ai-success-green), #90EE90);
+    border-color: #228B22;
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-green);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.option-btn.incorrect-option {
+    background: linear-gradient(145deg, var(--ai-error-red), #FFA07A);
+    border-color: #CD5C5C;
+    color: var(--text-inverse);
+    box-shadow: 0 4px 12px rgba(255, 99, 71, 0.4);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    animation: shake 0.5s;
+}
+
+/* =====================================================
+   進度和反饋系統
+   ===================================================== */
+
+#progress-tracker {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: var(--text-secondary);
+    background: var(--background-card);
+    border-radius: var(--radius-small);
+    padding: 10px 15px;
+    box-shadow: var(--shadow-light);
+    text-align: right;
+    margin-bottom: 15px;
+    padding-right: 20px;
+}
+
+/* 進度追蹤器emoji */
+#progress-tracker::before {
+    content: '📊 ';
+    font-size: 0.8em;
+}
+
+#question-area, #options-area {
+    color: var(--text-primary);
+}
+
+#question-area p {
+    font-size: 1.5em;
+}
+
+.question-text-box {
+    display: inline-block;
+    padding: 20px 40px;
+    background: var(--ai-light-blue);
+    border: 4px solid var(--ai-vibrant-orange);
+    color: var(--text-primary);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-orange);
+    margin-top: 20px;
+}
+
+.question-text-box p {
+    margin: 0;
+    font-size: 2.5em;
+}
+
+#question-area img {
+    max-width: 250px;
+    height: auto;
+    margin-top: 20px;
+    animation-duration: 0.8s;
+    animation-fill-mode: both;
+}
+
+#options-area {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.option-btn img {
+    max-height: 100px;
+    max-width: 200px;
+    height: auto;
+}
+
+#feedback-area {
+    margin-top: 20px;
+    font-size: 1.8em;
+    font-weight: bold;
+    height: 50px;
+    color: var(--text-primary);
+    background: var(--ai-light-blue);
+    border: 2px solid var(--ai-sky-blue-dark);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-light);
+    padding: 15px;
+}
+
+/* 反饋區域emoji */
+#feedback-area.correct::before { content: '✅ '; }
+#feedback-area.incorrect::before { content: '❌ '; }
+#feedback-area.hint::before { content: '💡 '; }
+
+/* =====================================================
+   遊戲特殊區域
+   ===================================================== */
+
+/* 錢幣顯示區域 */
+#coin-display-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    min-height: 200px;
+    border: 3px dashed var(--ai-gold-yellow);
+    background: var(--ai-gold-gradient);
+    border-radius: var(--radius-medium);
+    box-shadow: inset 0 2px 8px rgba(255, 215, 0, 0.3);
+    margin-bottom: 20px;
+}
+
+.countable-item {
+    position: relative;
+    cursor: pointer;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.countable-item img {
+    max-height: 60px;
+    display: block;
+}
+
+.countable-item:hover {
+    transform: scale(1.1);
+}
+
+.countable-item.counted {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: scale(1);
+    background: var(--ai-light-blue);
+    border-radius: var(--radius-small);
+}
+
+.countable-item.counted::after {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4em;
+    color: #4CAF50;
+    text-shadow: 0 0 5px white;
+    pointer-events: none;
+}
+
+/* 金錢和兌換區域 */
+.exchange-area, #my-money-area,
+.money-container, .coin-container, .currency-container {
+    padding: 10px;
+    background: var(--ai-gold-gradient);
+    color: var(--text-primary);
+    border: var(--border-thick) solid var(--ai-gold-yellow);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
+}
+
+/* 拖放區域 */
+.easy-drop-zone, .easy-target-group, .easy-drop-zone-single,
+.normal-drop-zone, .normal-target-group, .normal-drop-zone-single {
+    width: 100%;
+    max-width: 1100px;
+    min-width: 0;
+    margin: 0 auto;
+    box-sizing: border-box;
+    background: var(--ai-light-blue);
+    border: 3px dashed var(--ai-sky-blue-dark);
+    color: var(--text-primary);
+    border-radius: var(--radius-medium);
+    box-shadow: inset 0 2px 6px rgba(135, 206, 235, 0.3);
+}
+
+/* 一格一幣樣式 - 簡單模式專用 */
+.drop-zone {
+    position: relative;
+    background: var(--ai-light-blue);
+    border: 3px dashed var(--ai-sky-blue-dark);
+    border-radius: var(--radius-small);
+    padding: 15px;
+    margin: 5px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 6px rgba(135, 206, 235, 0.2);
+}
+
+/* 拖放懸停效果 */
+.drop-zone.dragover {
+    background: var(--ai-accent-green);
+    border-color: var(--ai-forest-green);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* 已填充的格子 */
+.drop-zone.filled {
+    background: var(--ai-accent-green);
+    border: 3px solid var(--ai-forest-green);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* 已填充格子不再接受拖放 */
+.drop-zone.filled.dragover {
+    background: var(--ai-accent-orange);
+    border-color: var(--ai-warm-orange);
+    transform: none;
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+}
+
+/* 成功放置反饋動畫 */
+.drop-zone.success-flash {
+    animation: successFlash 0.8s ease-out;
+}
+
+@keyframes successFlash {
+    0% { 
+        background: var(--ai-light-blue);
+        border-color: var(--ai-sky-blue-dark);
+        transform: scale(1);
+        box-shadow: 0 2px 6px rgba(135, 206, 235, 0.2);
+    }
+    30% { 
+        background: var(--ai-accent-green);
+        border-color: var(--ai-forest-green);
+        transform: scale(1.08);
+        box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+    }
+    60% { 
+        background: var(--ai-accent-green);
+        border-color: var(--ai-forest-green);
+        transform: scale(1.03);
+        box-shadow: 0 4px 16px rgba(76, 175, 80, 0.4);
+    }
+    100% { 
+        background: var(--ai-accent-green);
+        border-color: var(--ai-forest-green);
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+}
+
+/* 錯誤反饋動畫 */
+.drop-zone.error-flash {
+    animation: errorFlash 0.6s ease-in-out;
+}
+
+@keyframes errorFlash {
+    0% { 
+        background: var(--ai-accent-orange);
+        border-color: var(--ai-warm-orange);
+        transform: scale(1);
+    }
+    25% { 
+        background: #ff5722;
+        border-color: #d32f2f;
+        transform: scale(1.02);
+    }
+    50% { 
+        background: var(--ai-accent-orange);
+        border-color: var(--ai-warm-orange);
+        transform: scale(1);
+    }
+    75% { 
+        background: #ff5722;
+        border-color: #d32f2f;
+        transform: scale(1.02);
+    }
+    100% { 
+        background: var(--ai-accent-green);
+        border-color: var(--ai-forest-green);
+        transform: scale(1);
+    }
+}
+
+/* 佔位符樣式 */
+.drop-zone .placeholder-money {
+    opacity: 0.4;
+    filter: grayscale(50%);
+    transition: opacity 0.3s ease;
+}
+
+/* 已放置的錢幣樣式 */
+.drop-zone .placed-coin {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: scale(1);
+    animation: coinPlace 0.4s ease-out;
+    cursor: not-allowed !important; /* 明確表示不可拖曳 */
+    user-select: none; /* 禁止選取 */
+    pointer-events: auto; /* 保留其他交互但不包括拖曳 */
+}
+
+/* 確保已放置錢幣的圖片也不可拖曳 */
+.drop-zone .placed-coin img {
+    cursor: not-allowed !important;
+    user-select: none;
+    pointer-events: none; /* 圖片完全不接受交互 */
+}
+
+@keyframes coinPlace {
+    0% {
+        transform: scale(0.8) rotate(-5deg);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.1) rotate(2deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+/* 格子容器佈局 */
+.drop-zones-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 15px;
+}
+
+/* 響應式設計 - 移動設備優化 */
+@media (max-width: 768px) {
+    .drop-zone {
+        min-height: 70px;
+        padding: 12px;
+        margin: 3px;
+    }
+    
+    .drop-zones-row {
+        gap: 8px;
+        padding: 10px;
+    }
+}
+
+/* 觸摸設備優化 */
+@media (hover: none) and (pointer: coarse) {
+    .drop-zone {
+        min-height: 85px;
+        padding: 18px;
+    }
+    
+    .drop-zone.dragover {
+        transform: scale(1.02); /* 減少觸摸設備的縮放效果 */
+    }
+}
+
+/* 無障礙支援 */
+.drop-zone[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(30%);
+}
+
+/* 高對比度模式支援 */
+@media (prefers-contrast: high) {
+    .drop-zone {
+        border-width: 4px;
+        border-style: solid;
+    }
+    
+    .drop-zone.filled {
+        border-width: 5px;
+    }
+}
+
+/* 兌換區佈局 - 限定作用範圍避免影響其他單元 */
+.exchange-area .equation-row, 
+.exchange-area .easy-mode, 
+.exchange-area .normal-mode {
+    display: grid;
+    grid-template-columns: 1fr 60px 60px;
+    align-items: center;
+    gap: 0;
+}
+
+.easy-equals-sign, .normal-equals-sign {
+    text-align: center;
+    font-size: 2em;
+}
+
+.checkmark {
+    position: static;
+    width: 40px;
+    height: 40px;
+    z-index: 2;
+    display: block;
+    margin: 0;
+    justify-self: end;
+}
+
+/* =====================================================
+   表單元素
+   ===================================================== */
+
+/* ⚠️ 此規則影響所有輸入元素，套用 AI Theme 外框與背景色。
+   若特定單元的 input 需要客製樣式，請在該單元 CSS 中加上
+   input[class*="your-class"] { ... } 覆寫（specificity 更高，不需要 !important）。 */
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+    background: var(--background-card);
+    color: var(--text-primary);
+    border: var(--border-thick) solid var(--border-color);
+    border-radius: var(--radius-medium);
+    transition: all var(--transition-normal);
+    box-shadow: inset 0 2px 4px rgba(135, 206, 235, 0.1);
+    padding: 10px;
+    font-family: var(--font-family-main);
+}
+
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus, select:focus {
+    border-color: var(--ai-vibrant-orange);
+    outline: none;
+    box-shadow: 
+        inset 0 2px 4px rgba(135, 206, 235, 0.1),
+        0 0 8px rgba(255, 165, 0, 0.3);
+}
+
+/* =====================================================
+   表格
+   ===================================================== */
+
+table {
+    background: var(--background-card);
+    color: var(--text-primary);
+    border: var(--border-thick) solid var(--border-color);
+    border-radius: var(--radius-medium);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th {
+    background: var(--ai-light-blue);
+    color: var(--text-primary);
+    border-bottom: var(--border-thick) solid var(--border-color);
+    padding: 12px;
+}
+
+td {
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    padding: 10px;
+}
+
+/* =====================================================
+   連結（排除 selection-btn/choice-btn 避免覆蓋設定頁按鈕顏色）
+   ===================================================== */
+
+a:not(.selection-btn):not(.choice-btn) {
+    color: var(--ai-vibrant-orange);
+    transition: color var(--transition-fast);
+    text-decoration: none;
+}
+
+a:not(.selection-btn):not(.choice-btn):hover {
+    color: var(--ai-vibrant-orange-hover);
+    text-shadow: 0 1px 3px rgba(255, 165, 0, 0.3);
+}
+
+/* =====================================================
+   計分畫面
+   ===================================================== */
+
+#final-score-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+#final-score-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.final-score-box {
+    background: var(--background-card);
+    padding: 40px 60px;
+    border-radius: var(--radius-large);
+    text-align: center;
+    box-shadow: var(--shadow-heavy);
+    transform: scale(0.7);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: var(--border-thick) solid var(--border-color);
+}
+
+#final-score-overlay.visible .final-score-box {
+    transform: scale(1);
+}
+
+.final-score-box h2 {
+    font-size: 2.5em;
+    color: var(--success-color);
+    margin-bottom: 15px;
+}
+
+.final-score-box p {
+    font-size: 1.8em;
+    margin-bottom: 30px;
+    color: var(--text-primary);
+}
+
+#final-score-span {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+#final-score-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+/* =====================================================
+   主題切換器樣式
+   ===================================================== */
+
+.theme-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--background-card);
+    border-radius: var(--radius-large);
+    padding: 8px;
+    box-shadow: var(--shadow-medium);
+    border: 2px solid var(--border-color);
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 140px;
+}
+
+.theme-switcher:hover {
+    box-shadow: var(--shadow-heavy);
+    transform: translateY(-2px);
+}
+
+/* theme-toggle 樣式已移至 theme-system.js 統一管理 */
+
+.theme-option {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--text-inverse);
+    transition: all var(--transition-normal);
+    padding: 8px 4px;
+    border-radius: var(--radius-medium);
+}
+
+.theme-option.active {
+    color: var(--primary-color);
+}
+
+.theme-option-icon {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+/* 顏色吸管工具樣式 */
+.color-picker-tool {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: var(--secondary-color);
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--radius-medium);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-light);
+}
+
+.color-picker-tool:hover {
+    background: var(--ai-robot-green-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-green);
+}
+
+.color-picker-tool.active {
+    background: var(--accent-color);
+    animation: pulse 1s infinite;
+}
+
+.picker-icon {
+    font-size: 14px;
+}
+
+.picker-text {
+    font-size: 11px;
+}
+
+/* 顏色資訊顯示 */
+.color-info-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--background-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-small);
+    padding: 6px 8px;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.color-code {
+    font-family: monospace;
+    font-weight: bold;
+    color: var(--text-primary);
+    min-width: 60px;
+}
+
+.color-sample {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-small);
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.copy-color-btn {
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--radius-small);
+    padding: 4px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.copy-color-btn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
+}
+
+/* 預覽高亮效果 */
+.color-picker-highlight {
+    outline: 3px solid var(--accent-color) !important;
+    outline-offset: 2px !important;
+    position: relative !important;
+}
+
+.color-picker-highlight::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    background: rgba(255, 105, 180, 0.1);
+    pointer-events: none;
+    border-radius: 4px;
+}
+
+/* 吸管工具動畫 */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* =====================================================
+   工具樣式
+   ===================================================== */
+
+.correct { color: var(--success-color); }
+.incorrect { color: var(--error-color); }
+
+.correct-animation {
+    animation-name: correct-answer-animation;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =====================================================
+   動畫效果
+   ===================================================== */
+
+@keyframes correct-answer-animation {
+    0% { transform: scale(1); }
+    30% { transform: scale(0.9); }
+    50% { transform: scale(1.1) rotate(5deg); }
+    70% { transform: scale(1.1) rotate(-5deg); }
+    100% { transform: scale(1); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* 主題切換動畫 */
+.theme-transition {
+    transition: 
+        background-color var(--transition-normal),
+        background-image var(--transition-normal),
+        color var(--transition-normal),
+        border-color var(--transition-normal),
+        box-shadow var(--transition-normal);
+}
+
+.theme-transitioning * {
+    transition: all var(--transition-normal) !important;
+}
+
+/* =====================================================
+   響應式設計
+   ===================================================== */
+
+/* 小螢幕上的主題切換器 */
+@media (max-width: 768px) {
+    .theme-switcher {
+        top: 10px;
+        right: 10px;
+        padding: 6px;
+    }
+    
+    /* theme-toggle 響應式樣式已移至 theme-system.js 統一管理 */
+    
+    .theme-option {
+        font-size: 10px;
+        padding: 6px 2px;
+    }
+    
+    .theme-option-icon {
+        font-size: 14px;
+    }
+}
+
+/* 超小螢幕適配 */
+@media (max-width: 480px) {
+    .theme-switcher {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin: 10px auto;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* 設定頁底部兩個按鈕：字體與 padding 隨螢幕縮放 */
+    .start-btn, .btn, .button, .primary-btn,
+    .back-btn {
+        font-size: clamp(0.8rem, 3.8vw, 1rem);
+        padding: 11px 16px;
+    }
+}
+
+/* =====================================================
+   無障礙設計增強
+   ===================================================== */
+
+/* 高對比模式支援 */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --text-primary: #000000;
+        --text-secondary: #333333;
+    }
+}
+
+/* 減少動畫模式 */
+@media (prefers-reduced-motion: reduce) {
+    .theme-switcher,
+    .theme-option,
+    .theme-transition {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* 焦點指示器增強 - theme-toggle樣式已移至theme-system.js */
+
+.theme-switcher:focus-within {
+    box-shadow: 
+        var(--shadow-heavy),
+        0 0 0 3px var(--primary-color);
+}
+
+/* =====================================================
+   AI機器人佈局系統 - 統一的遊戲界面框架
+   ===================================================== */
+
+/* AI遊戲面板 - 主要佈局容器 */
+.ai-game-board {
+    display: grid;
+    grid-template-areas: 
+        "header header header"
+        "main-content user-assets controls"
+        "feedback feedback robot"
+        "progress progress progress";
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 15px;
+    padding: 15px;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    background: var(--background-primary);
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 500px;
+    transition: all var(--transition-normal);
+}
+
+/* AI標題區域 - 進度、分數、返回按鈕 */
+.ai-header-area {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: var(--text-inverse);
+    padding: 15px 20px;
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-light);
+}
+
+/* AI主要內容區域 - 核心互動區 */
+.ai-main-content-area {
+    grid-area: main-content;
+    background: var(--background-card);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+}
+
+/* AI用戶資產區域 - 錢包、金錢等 */
+.ai-user-assets-area {
+    grid-area: user-assets;
+    background: var(--background-card);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+}
+
+/* AI控制區域 - 操作按鈕 */
+.ai-controls-area {
+    grid-area: controls;
+    background: var(--background-card);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* AI機器人區域 - AI助教圖示 */
+.ai-robot-area {
+    grid-area: robot;
+    background: var(--background-card);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* AI反饋區域 - 提示語 */
+.ai-feedback-area {
+    grid-area: feedback;
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 15px 20px;
+    box-shadow: var(--shadow-light);
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+/* AI進度區域 - 進度條、統計 */
+.ai-progress-area {
+    grid-area: progress;
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 15px 20px;
+    box-shadow: var(--shadow-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+/* 區域標題樣式 */
+.area-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Unit 1 特定樣式 */
+.ai-question-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.ai-question-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px;
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+}
+
+.ai-question-display img {
+    max-height: 200px;
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
+}
+
+.question-text-box {
+    background: var(--background-primary);
+    padding: 20px 30px;
+    border-radius: var(--radius-medium);
+    border: 2px solid var(--border-color);
+}
+
+.question-text-box p {
+    font-size: 2em;
+    font-weight: bold;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.listen-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    color: var(--text-primary);
+}
+
+.replay-icon {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    color: var(--info-color);
+}
+
+.replay-icon:hover {
+    transform: scale(1.2);
+    color: var(--success-color);
+}
+
+.ai-options-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.ai-options-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    padding: 10px;
+}
+
+.ai-robot-avatar {
+    font-size: 3em;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.ai-robot-speech {
+    background: var(--background-secondary);
+    padding: 15px;
+    border-radius: var(--radius-medium);
+    border: 2px solid var(--border-color);
+    position: relative;
+    text-align: center;
+}
+
+.ai-robot-speech::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid var(--border-color);
+}
+
+.ai-robot-name {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.ai-robot-message {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.ai-progress-left, .ai-progress-center, .ai-progress-right {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.ai-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--text-inverse);
+}
+
+.ai-progress-info, .ai-score-info {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--text-inverse);
+}
+
+/* Unit 3 特定樣式 - 兌換遊戲 */
+.ai-exchange-container {
+    padding: 20px;
+}
+
+.ai-exchange-title, .ai-wallet-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.ai-exchange-area {
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    min-height: 200px;
+}
+
+.ai-wallet-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    background: var(--background-secondary);
+    min-height: 140px;
+    padding: 15px;
+    border-radius: var(--radius-medium);
+    gap: 10px;
+}
+
+.ai-instruction {
+    font-size: 1.1em;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.ai-mode-info {
+    font-size: 1em;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 8px 16px;
+    background: var(--background-secondary);
+    border-radius: var(--radius-small);
+}
+
+/* 保留原有的兌換遊戲核心樣式 */
+.exchange-item {
+    cursor: grab;
+    transition: all var(--transition-normal);
+    border-radius: var(--radius-small);
+}
+
+.exchange-item:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-medium);
+}
+
+.exchange-item img {
+    max-height: 55px;
+    max-width: 85px;
+    object-fit: contain;
+}
+
+/* 修正後：增加 .exchange-area 限定作用範圍，徹底解決樣式衝突 */
+.exchange-area .easy-mode, 
+.exchange-area .normal-mode, 
+.exchange-area .hard-mode {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: var(--radius-medium);
+    background: var(--background-secondary);
+    transition: all var(--transition-normal);
+}
+
+.drop-zone-correct {
+    background-color: rgba(46, 204, 113, 0.2);
+}
+
+.easy-drop-zone, .easy-drop-zone-single, .normal-drop-zone, .hard-drop-zone {
+    position: relative;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: 10px;
+    transition: all var(--transition-normal);
+    background: var(--background-primary);
+    /* 🏆 移除 display: flex，使用標準塊級元素行為 */
+    /* 高度由內部內容決定，寬度由Grid系統控制 */
+}
+
+/* 🎯 彈性放置區域專用樣式（普通/困難模式）*/
+.flexible-zone {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 120px;
+    width: 100%;
+    overflow: visible;
+}
+
+/* 簡單模式保持原有Flexbox行為（一格一幣）*/
+.easy-drop-zone:not(.flexible-zone) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+.easy-equals-sign, .normal-equals-sign, .hard-equals-sign {
+    font-size: 2em;
+    color: var(--text-primary);
+    margin: 0 15px;
+}
+
+.target-faded {
+    opacity: 0.3;
+}
+
+.target-visible-static, .target-appear {
+    opacity: 1;
+}
+
+.coin-appear {
+    animation: coinAppear 0.3s ease-out;
+}
+
+@keyframes coinAppear {
+    from { 
+        transform: scale(0.5); 
+        opacity: 0; 
+    }
+    to { 
+        transform: scale(1); 
+        opacity: 1; 
+    }
+}
+
+.placeholder-item {
+    opacity: 0.3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+    border-radius: var(--radius-small);
+}
+
+.checkmark {
+    width: 36px;
+    height: 36px;
+}
+
+/* 響應式佈局 - 平板和手機 */
+@media (max-width: 768px) {
+    .ai-game-board {
+        grid-template-areas: 
+            "header"
+            "main-content"
+            "user-assets"
+            "controls"
+            "feedback"
+            "robot"
+            "progress";
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .ai-options-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .ai-progress-area {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .ai-wallet-container {
+        justify-content: center;
+    }
+    
+    .ai-exchange-area {
+        min-height: 150px;
+    }
+}
+
+/* Unit 4 特定樣式 - 拿出正確的金額 */
+.ai-drop-container {
+    padding: 20px;
+}
+
+.ai-drop-title, .ai-money-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.ai-drop-zone-area {
+    background: var(--background-secondary);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    min-height: 150px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+}
+
+.ai-drop-zone-area:hover {
+    border-color: var(--primary-color);
+    background: var(--background-primary);
+}
+
+.ai-money-source-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    background: var(--background-secondary);
+    min-height: 120px;
+    padding: 15px;
+    border-radius: var(--radius-medium);
+    gap: 15px;
+}
+
+.ai-target-amount {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--warning-color);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.ai-current-total {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: var(--background-secondary);
+    border-radius: var(--radius-small);
+}
+
+.ai-current-total.over-amount {
+    color: var(--error-color);
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid var(--error-color);
+}
+
+.ai-hint-text {
+    font-size: 1em;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+/* 錢幣項目樣式 */
+.money-item {
+    cursor: grab;
+    transition: all var(--transition-normal);
+    border-radius: var(--radius-small);
+    padding: 5px;
+    background: var(--background-primary);
+    border: 1px solid var(--border-light);
+}
+
+.money-item:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-medium);
+    border-color: var(--primary-color);
+}
+
+.money-item:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.money-item img {
+    max-height: 60px;
+    max-width: 90px;
+    object-fit: contain;
+    display: block;
+}
+
+/* 視覺提示樣式 */
+.visual-hint {
+    opacity: 0.4;
+    border: 2px dashed var(--border-color);
+    background: var(--background-primary);
+    border-radius: var(--radius-small);
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    min-height: 50px;
+}
+
+.visual-hint img {
+    max-height: 45px;
+    max-width: 70px;
+    object-fit: contain;
+}
+
+/* 響應式設計 - Unit 4 特定 */
+@media (max-width: 768px) {
+    .ai-money-source-container {
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .money-item img {
+        max-height: 50px;
+        max-width: 75px;
+    }
+    
+    .ai-drop-zone-area {
+        min-height: 120px;
+        padding: 15px;
+    }
+    
+    .ai-target-amount {
+        font-size: 1.2em;
+    }
+}
+
+/* =====================================================
+   設定頁面 — 吉祥物標題列（圖片在左，標題真正置中）
+   ===================================================== */
+.settings-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.settings-title-row h1 {
+    margin: 0;
+    text-align: center;
+}
+.settings-title-row::after {
+    display: none;
+}
+.settings-mascot-img {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+    flex-shrink: 0;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+@keyframes settingsBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-10px); }
+}
+@media (max-width: 600px) {
+    .settings-mascot-img { width: 48px; height: 48px; }
+}
+
+
+/* 完成畫面 — 吉祥物標題列（圖片在左，標題真正置中） */
+.results-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.results-title-row .results-title {
+    margin: 0;
+}
+.results-mascot-img {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    flex-shrink: 0;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+/* 右側無形佔位元素，讓 h1 視覺上真正置中 */
+.results-mascot-spacer {
+    width: 84px;
+    flex-shrink: 0;
+    visibility: hidden;
+}
+@media (max-width: 600px) {
+    .results-mascot-img  { width: 60px; height: 60px; }
+    .results-mascot-spacer { width: 60px; }
+}

@@ -1,0 +1,152 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* 改善手機端觸控響應 */
+        .countable-item {
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            cursor: pointer !important;
+            transition: transform 0.1s ease !important;
+        }
+        
+        .countable-item:active {
+            transform: scale(0.95) !important;
+        }
+        
+        .countable-item:hover {
+            transform: scale(1.05) !important;
+        }
+        
+        /* 防止圖片干擾觸控事件 */
+        .countable-item img {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        
+        /* 數字鍵盤觸控優化 */
+        .number-input-buttons button,
+        .option-btn {
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            cursor: pointer !important;
+            transition: transform 0.1s ease !important;
+        }
+        
+        .number-input-buttons button:active,
+        .option-btn:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* 綠色打勾圖示樣式 - 出現在選項按鈕上方 */
+        .correct-check-mark {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #4CAF50;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+            animation: checkMarkAppear 0.3s ease-out;
+            z-index: 10;
+        }
+
+        @keyframes checkMarkAppear {
+            from {
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 紅色叉叉圖示樣式 - 出現在選項按鈕上方 */
+        .wrong-cross-mark {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #f44336;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+            animation: wrongMarkAppear 0.3s ease-out;
+            z-index: 10;
+        }
+
+        @keyframes wrongMarkAppear {
+            from {
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 確保選項按鈕可以容納打勾/叉叉圖示 */
+        .option-btn {
+            position: relative;
+        }
+
+        /* 🔧 禁用錯誤選項的所有高亮效果（藍色、背景色等） */
+        .option-btn.no-highlight,
+        .option-btn.no-highlight:hover,
+        .option-btn.no-highlight:active,
+        .option-btn.no-highlight:focus {
+            background-color: transparent !important;
+            border-color: inherit !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+
+        /* 🔧 禁用選項按鈕的淺色效果 - 確保 disabled 狀態下選項保持原樣 */
+        .option-btn:disabled {
+            opacity: 1 !important;
+            cursor: default !important;
+            filter: none !important;
+            background: white !important;
+            color: #2c3e50 !important;
+            border-color: #ddd !important;
+        }
+
+        /* 🔧 確保 disabled 狀態下不應用任何 hover 或 active 效果 */
+        .option-btn:disabled:hover,
+        .option-btn:disabled:active {
+            background: white !important;
+            border-color: #ddd !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }

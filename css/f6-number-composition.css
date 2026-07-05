@@ -1,0 +1,1243 @@
+/* =================================================================
+   FILE: css/f6-number-composition.css - F6 數的合成與分解樣式
+   VERSION: 1.0.0
+   ================================================================= */
+
+/* =====================================================
+   基礎容器樣式
+   ===================================================== */
+
+.game-container {
+    width: 100%;  /* 🆕 改為100%寬度，使標題列滿版面 */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;  /* 🆕 改為stretch，讓子元素可以佔滿寬度 */
+    justify-content: flex-start;  /* 🆕 改為flex-start */
+}
+
+/* =====================================================
+   標題區域
+   ===================================================== */
+
+.title-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.title-section h1 {
+    font-size: 2.5em;
+    color: var(--primary-color, #1976d2);
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    font-size: 1.2em;
+    color: var(--text-secondary, #666);
+}
+
+/* =====================================================
+   模式選擇
+   ===================================================== */
+
+.mode-selection, .difficulty-selection {
+    width: 100%;
+    margin-bottom: 30px;
+}
+
+.mode-selection h2, .difficulty-selection h2 {
+    text-align: center;
+    color: var(--text-primary, #333);
+    margin-bottom: 20px;
+}
+
+.mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.mode-btn {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    border: 3px solid transparent;
+    border-radius: 20px;
+    padding: 30px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.mode-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.mode-btn.selected {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-color: #2e7d32;
+    color: white;
+}
+
+.mode-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.mode-label {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.mode-desc {
+    font-size: 0.9em;
+    color: var(--text-secondary, #666);
+}
+
+.mode-btn.selected .mode-desc {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* =====================================================
+   難度選擇
+   ===================================================== */
+
+.difficulty-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.difficulty-btn {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    border: 3px solid transparent;
+    border-radius: 15px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.difficulty-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.difficulty-btn.selected {
+    background: linear-gradient(135deg, #2196F3 0%, #1976d2 100%);
+    border-color: #0d47a1;
+    color: white;
+}
+
+/* =====================================================
+   開始按鈕
+   ===================================================== */
+
+.start-section {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.start-btn {
+    background: linear-gradient(135deg, #FF9800 0%, #f57c00 100%);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 20px 60px;
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+}
+
+.start-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+}
+
+/* =====================================================
+   進度條
+   ===================================================== */
+
+.progress-bar {
+    width: 100%;
+    height: 40px;
+    background: var(--background-secondary, #f5f5f5);
+    border-radius: 20px;
+    margin-bottom: 30px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: var(--text-primary, #333);
+}
+
+/* =====================================================
+   題目區域
+   ===================================================== */
+
+.question-section {
+    background: var(--background-primary, #fff);
+    border-radius: 25px;
+    padding: 40px;
+    margin: 20px auto;  /* 🆕 添加auto實現居中 */
+    margin-bottom: 30px;
+    max-width: 900px;  /* 🆕 限制內容區域寬度 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.question-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.number-display {
+    font-size: 4em;
+    font-weight: bold;
+    color: var(--primary-color, #1976d2);
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    padding: 20px 35px;
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.operator {
+    font-size: 3em;
+    color: var(--text-secondary, #666);
+    font-weight: bold;
+}
+
+.question-mark {
+    font-size: 4em;
+    color: #FF9800;
+    font-weight: bold;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.question-text {
+    font-size: 1.5em;
+    color: var(--text-primary, #333);
+    text-align: center;
+    width: 100%;
+}
+
+/* =====================================================
+   視覺元素
+   ===================================================== */
+
+.visual-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 15px;
+    max-width: 300px;
+}
+
+.visual-item {
+    font-size: 2em;
+    animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* =====================================================
+   選項按鈕
+   ===================================================== */
+
+.options-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 20px;
+    max-width: 900px;  /* 🆕 限制內容區域寬度 */
+    width: calc(100% - 40px);
+    margin: 0 auto 20px auto;  /* 🆕 居中並添加底部margin */
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.option-btn {
+    background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+    border: 3px solid var(--border-color, #ddd);
+    border-radius: 15px;
+    padding: 30px 20px;
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--text-primary, #333);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.option-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color, #1976d2);
+}
+
+.option-btn.correct {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-color: #2e7d32;
+    color: white;
+    animation: correctBounce 0.5s ease;
+}
+
+.option-btn.incorrect {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    border-color: #b71c1c;
+    color: white;
+    animation: shake 0.5s ease;
+}
+
+@keyframes correctBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =====================================================
+   結果頁面（匹配 F4 樣式）
+   ===================================================== */
+
+/* 結果畫面容器 - 垂直置中對齊 */
+.game-complete {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+    height: 100vh !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background-attachment: fixed !important;
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+    padding: 20px !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+/* 確保body和html在顯示結果時也有相同的背景 */
+body:has(.game-complete),
+html:has(.game-complete) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 確保 #app 容器在顯示結果時不干擾垂直置中 */
+#app:has(.game-complete) {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.result-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 500px;
+    animation: slideUp 0.6s ease;
+}
+
+.result-card h1 {
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.results-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.trophy-icon {
+    font-size: 4em;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+.achievement-message {
+    background: linear-gradient(135deg, #FFE082 0%, #FFCC02 100%);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+}
+
+.achievement-message p {
+    margin: 8px 0;
+    color: #E65100;
+}
+
+.final-stats {
+    margin-bottom: 30px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #333;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.start-btn,
+.back-to-main-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.start-btn:hover,
+.back-to-main-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(102, 126, 234, 0.4);
+}
+
+.start-btn:active,
+.back-to-main-btn:active {
+    transform: translateY(0px);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* 動畫效果 */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* =====================================================
+   深色模式支援
+   ===================================================== */
+
+[data-theme="dark"] .game-container {
+    background: var(--background-primary, #263238);
+}
+
+/* =====================================================
+   🆕 標題列樣式 (參考A6設計)
+   ===================================================== */
+
+.title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;  /* 🆕 確保padding不會導致超出寬度 */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;  /* 🆕 防止標題列被壓縮 */
+}
+
+.title-bar-left {
+    flex: 0 0 auto;
+}
+
+.title-bar-center {
+    flex: 1 1 auto;
+    text-align: center;
+}
+
+.title-bar-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.unit-icon {
+    font-size: 2em;
+}
+
+.title-bar h1 {
+    font-size: 1.5em;
+    margin: 0;
+    color: white;
+}
+
+.quiz-progress-info {
+    font-size: 0.95em;
+    opacity: 0.95;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 15px;
+}
+
+.back-to-menu-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-to-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+/* =====================================================
+   🆕 簡單模式合成區域樣式
+   ===================================================== */
+
+.easy-composition-container {
+    max-width: 900px;  /* 🆕 與其他區域一致 */
+    margin: 20px auto;
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    /* 🔧 置中對齊所有子元素 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.top-boxes {
+    display: flex;
+    justify-content: space-around;
+    gap: 40px;
+    margin-bottom: 20px;
+    width: 100%;  /* 🔧 維持原本寬度 */
+}
+
+.source-box {
+    flex: 1;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 3px solid #2196F3;
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 200px;
+}
+
+.left-box {
+    border-color: #4CAF50;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.right-box {
+    border-color: #FF9800;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.box-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.box-number {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 2em;
+    font-weight: bold;
+    padding: 10px 25px;
+    border-radius: 50%;
+    min-width: 60px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 🔧 目標區域數字樣式：米黃色背景表示「等待答案/進行中」 */
+.box-number.question-mark {
+    background: #FFF3C4;
+    color: #B8860B;
+    box-shadow: 0 4px 15px rgba(242, 201, 76, 0.3);
+}
+
+.box-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    min-height: 100px;
+    padding: 15px;
+}
+
+.draggable-emoji {
+    font-size: 3em;
+    cursor: grab;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.draggable-emoji:not(.hidden):hover {
+    transform: scale(1.2);
+}
+
+.draggable-emoji.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.draggable-emoji.hidden {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/* =====================================================
+   🆕 箭頭樣式
+   ===================================================== */
+
+.arrows-container {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+    width: 100%;  /* 🔧 維持原本寬度 */
+}
+
+.arrow {
+    font-size: 3em;
+    color: #667eea;
+    animation: arrowBounce 1.5s ease-in-out infinite;
+}
+
+@keyframes arrowBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(10px);
+    }
+}
+
+/* =====================================================
+   🆕 運算符號樣式
+   ===================================================== */
+
+.operator-symbol {
+    font-size: 4em;
+    font-weight: bold;
+    color: #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.plus-symbol {
+    margin: 0 20px;
+}
+
+.equals-symbol {
+    margin-right: 20px;
+}
+
+/* =====================================================
+   🆕 下方區域樣式（等號 + 答案框）
+   ===================================================== */
+
+.bottom-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;  /* 🔧 維持原本寬度 */
+}
+
+.bottom-area .target-box {
+    margin-bottom: 0;
+    flex: 1;
+    max-width: 600px;
+}
+
+/* =====================================================
+   🆕 目標框樣式
+   ===================================================== */
+
+.target-box {
+    background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+    border: 4px dashed #FFC107;
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 200px;
+    margin-bottom: 30px;
+}
+
+.drop-zone-emoji {
+    font-size: 3em;
+    opacity: 0.3;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.drop-zone-emoji.filled {
+    opacity: 1;
+    animation: emojiPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes emojiPop {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* =====================================================
+   🆕 簡單模式分解區域樣式
+   ===================================================== */
+
+.easy-decomposition-container {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.easy-decomposition-container .top-box {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 4px dashed #2196F3;
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 200px;
+    margin-bottom: 20px;
+}
+
+.decomposition-arrows-container {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0 20px 0;
+}
+
+.decomposition-arrows-container .arrow {
+    font-size: 3em;
+    color: #667eea;
+    animation: arrowBounce 1.5s ease-in-out infinite;
+}
+
+.bottom-targets {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.left-target,
+.right-target {
+    flex: 1;
+    max-width: 400px;
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 200px;
+}
+
+.left-target {
+    border: 4px dashed #4CAF50;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.right-target {
+    border: 4px dashed #FF9800;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+/* =====================================================
+   🆕 困難模式合成區域樣式
+   ===================================================== */
+
+.hard-composition-container {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.number-box {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 4px solid #2196F3;
+    border-radius: 20px;
+    padding: 30px;
+    min-width: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.box-number-large {
+    font-size: 4em;
+    font-weight: bold;
+    color: #1976D2;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.answer-input-box {
+    background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+    border: 4px solid #FFC107;
+    border-radius: 20px;
+    padding: 30px;
+    min-width: 150px;
+    flex: 1;
+    max-width: 400px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.answer-input-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+}
+
+.answer-display {
+    font-size: 4em;
+    font-weight: bold;
+    color: #F57C00;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* =====================================================
+   🆕 檢查答案按鈕
+   ===================================================== */
+
+.action-buttons {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.check-btn {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 15px 40px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.check-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.check-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #ccc;
+}
+
+/* =====================================================
+   響應式設計 - 簡單模式
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .top-boxes {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .title-bar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .title-bar h1 {
+        font-size: 1.2em;
+    }
+
+    .draggable-emoji,
+    .drop-zone-emoji,
+    .arrow {
+        font-size: 2em;
+    }
+
+    .box-number {
+        font-size: 1.5em;
+        padding: 8px 20px;
+    }
+}
+
+[data-theme="dark"] .question-section {
+    background: var(--background-secondary, #37474f);
+}
+
+[data-theme="dark"] .number-display {
+    background: linear-gradient(135deg, #455a64, #546e7a);
+    color: #81d4fa;
+}
+
+[data-theme="dark"] .mode-btn,
+[data-theme="dark"] .difficulty-btn,
+[data-theme="dark"] .option-btn {
+    background: linear-gradient(135deg, #37474f, #455a64);
+    color: var(--text-primary, #eceff1);
+    border-color: var(--border-color, #546e7a);
+}
+
+[data-theme="dark"] .results-section {
+    background: var(--background-secondary, #37474f);
+}
+
+/* =====================================================
+   響應式設計
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .title-section h1 {
+        font-size: 2em;
+    }
+
+    .mode-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .number-display {
+        font-size: 3em;
+        padding: 15px 25px;
+    }
+
+    .operator {
+        font-size: 2em;
+    }
+
+    .question-mark {
+        font-size: 3em;
+    }
+
+    .option-btn {
+        font-size: 1.5em;
+        padding: 20px 15px;
+    }
+
+    .options-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .game-container {
+        padding: 0;  /* 🆕 移動端也保持無padding */
+    }
+
+    .question-section {
+        padding: 20px;
+        margin: 15px;  /* 🆕 減少margin */
+    }
+
+    .number-display {
+        font-size: 2.5em;
+        padding: 10px 20px;
+    }
+
+    .visual-group {
+        max-width: 200px;
+    }
+
+    .visual-item {
+        font-size: 1.5em;
+    }
+}
+
+/* =====================================================
+   🆕 分解選項按鈕樣式（左右框視覺化）
+   ===================================================== */
+
+.decomposition-option {
+    padding: 15px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 1em !important;
+    min-height: 120px;
+}
+
+.option-boxes {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+    flex: 1;
+}
+
+.option-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.left-option {
+    border-color: #4CAF50;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.right-option {
+    border-color: #FF9800;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.option-label {
+    font-size: 0.9em;
+    font-weight: bold;
+    opacity: 0.7;
+    margin-bottom: 5px;
+}
+
+.option-number {
+    font-size: 2em;
+    font-weight: bold;
+    color: #333;
+}
+
+.option-sum {
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: bold;
+    padding: 8px 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+    color: #667eea;
+    border: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+/* 🎨 選項按鈕懸停效果增強 */
+.decomposition-option:hover .option-box {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.decomposition-option:hover .left-option {
+    border-color: #2e7d32;
+}
+
+.decomposition-option:hover .right-option {
+    border-color: #f57c00;
+}
+
+.decomposition-option:hover .option-sum {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
+}
+
+/* 🎯 正確答案樣式 */
+.decomposition-option.correct .option-box {
+    border-color: #2e7d32;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+}
+
+.decomposition-option.correct .option-number,
+.decomposition-option.correct .option-label {
+    color: white;
+}
+
+.decomposition-option.correct .option-sum {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    border-color: white;
+}
+
+/* ❌ 錯誤答案樣式 */
+.decomposition-option.incorrect .option-box {
+    border-color: #b71c1c;
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+}
+
+.decomposition-option.incorrect .option-number,
+.decomposition-option.incorrect .option-label {
+    color: white;
+}
+
+.decomposition-option.incorrect .option-sum {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    border-color: white;
+}
+
+/* 深色模式適配 */
+[data-theme="dark"] .option-box {
+    background: rgba(55, 71, 79, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .option-number,
+[data-theme="dark"] .option-label {
+    color: #eceff1;
+}
+
+[data-theme="dark"] .left-option {
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+}
+
+[data-theme="dark"] .right-option {
+    background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .decomposition-option {
+        min-height: 100px;
+        padding: 12px !important;
+    }
+
+    .option-number {
+        font-size: 1.5em;
+    }
+
+    .option-label {
+        font-size: 0.8em;
+    }
+
+    .option-sum {
+        font-size: 0.8em;
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .options-section {
+        grid-template-columns: 1fr;
+    }
+
+    .decomposition-option {
+        min-height: 90px;
+    }
+
+    .option-boxes {
+        gap: 8px;
+    }
+
+    .option-box {
+        padding: 10px 6px;
+    }
+
+    .option-number {
+        font-size: 1.3em;
+    }
+}

@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A1 - 自動販賣機</title>
+    <link rel="stylesheet" href="../css/a1_vending_machine.css">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+</head>
+<body class="a1-unit">
+    <!-- 主要應用程式容器 -->
+    <main id="app" role="main">
+        <!-- 內容將由 JavaScript 動態生成 -->
+    </main>
+
+    <!-- 成功音效 -->
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+
+    <!-- 載入 canvas-confetti 煙火庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <!-- 行動裝置音訊解鎖 -->
+    <script src="../js/audio-unlocker.js"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+    <script src="../js/learning-tracker.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <!-- 載入核心邏輯 -->
+    <script src="../js/a1_vending_machine.js?v=1.6.3"></script>
+
+    <!-- 聊天機器人（Feature Flag 預設關閉，網址加 ?chatbot=1 可開啟測試）-->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A3美式速食自助點餐</title>
+
+    <!-- 樣式表 -->
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/a3_mcdonalds_order.css">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+
+</head>
+<body class="a3-unit">
+    <div id="loading-screen" class="loading-screen" aria-label="美式速食點餐系統載入中">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">美式速食點餐系統載入中...</div>
+    </div>
+
+    <main id="app" role="main" aria-label="美式速食自助點餐主要內容">
+        <noscript>
+            <div class="noscript-message">
+                <h1>需要啟用 JavaScript</h1>
+                <p>此美式速食點餐系統需要 JavaScript 才能正常運作，請在瀏覽器設定中啟用 JavaScript。</p>
+                <p>如需協助，請聯絡您的老師或家長。</p>
+            </div>
+        </noscript>
+    </main>
+
+    <div id="error-boundary" class="error-boundary" style="display: none;" role="alert">
+        <div class="error-content">
+            <h2>系統發生錯誤</h2>
+            <p>美式速食點餐系統執行時發生問題，請重新整理頁面再試一次。</p>
+            <p>如果問題持續發生，請聯絡系統管理員。</p>
+            <button onclick="location.reload()" class="reload-btn">重新載入系統</button>
+        </div>
+    </div>
+
+    <script>
+        // 錯誤處理（僅攔截 JS 執行錯誤；資源載入失敗 event.error===null 略過）
+        window.addEventListener('error', function(event) {
+            if (!event.error) return;
+            console.error('美式速食點餐系統錯誤:', event.error);
+            const eb = document.getElementById('error-boundary');
+            const ls = document.getElementById('loading-screen');
+            if (eb) eb.style.display = 'flex';
+            if (ls) ls.style.display = 'none';
+        });
+
+        // 載入完成後隱藏載入畫面
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1500);
+        });
+
+        // 全域鍵盤快捷鍵
+        document.addEventListener('keydown', function(event) {
+            // Escape 取消操作
+            if (event.key === 'Escape') {
+                if (window.McDonald && window.McDonald.handleCancelKey) {
+                    window.McDonald.handleCancelKey();
+                }
+            }
+
+            // 數字鍵快速加入購物車
+            if (event.key >= '1' && event.key <= '9' && window.McDonald && window.McDonald.handleQuickAdd) {
+                window.McDonald.handleQuickAdd(parseInt(event.key));
+            }
+
+            // Enter 結帳
+            if (event.key === 'Enter' && window.McDonald && window.McDonald.handleCheckout) {
+                event.preventDefault();
+                window.McDonald.handleCheckout();
+            }
+        });
+
+        // 設定基本的 ARIA live regions
+        document.addEventListener('DOMContentLoaded', function() {
+            const app = document.getElementById('app');
+            if (app) {
+                app.setAttribute('aria-live', 'polite');
+            }
+        });
+    </script>
+
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-system.js"></script>
+    <script src="../js/touch-drag-utility.js?v=2.3"></script>
+
+    <!-- 成功音效 -->
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+
+    <!-- 載入 canvas-confetti 煙火庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <script src="../js/a3_mcdonalds_order.js?v=1.3"></script>
+
+    <script>
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    const perfData = performance.timing;
+                    const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+                    console.log('美式速食點餐系統載入時間:', loadTime + 'ms');
+
+                    if (loadTime > 5000) {
+                        console.warn('系統載入時間較長，建議檢查網路連線');
+                    }
+                }, 0);
+            });
+        }
+    </script>
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+</body>
+</html>

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tutor 作業單</title>
+    <link rel="stylesheet" href="worksheet-styles.css">
+</head>
+<body>
+
+<!-- 工具列（列印時隱藏）-->
+<div class="toolbar no-print">
+    <div class="toolbar-left">
+        <span class="toolbar-title" id="toolbar-title">Money Tutor 作業單</span>
+        <span id="dynamic-buttons-container"></span>
+    </div>
+    <div class="toolbar-right">
+        <button id="size-adjust-btn" onclick="WorksheetApp.showSizeAdjust()">🔠 調整大小</button>
+        <button onclick="WorksheetApp.regenerate()">🔄 重新產生</button>
+        <span style="position:relative; display:inline-block;">
+            <button id="print-btn" onclick="WorksheetApp.togglePrintMenu()">📄 下載與列印</button>
+            <div id="print-menu" class="print-dropdown-menu" style="display:none;">
+                <div class="toolbar-dropdown-item" onclick="WorksheetApp.doPrint(false)">📄 下載 PDF（作業單）</div>
+                <div id="print-answer-btn" class="toolbar-dropdown-item" onclick="WorksheetApp.doPrint(true)">📄 下載 PDF（答案卷）</div>
+                <div class="toolbar-dropdown-item" style="border-top:1px solid #eee;" onclick="WorksheetApp.doPrintDirect()">🖨️ 直接列印</div>
+            </div>
+        </span>
+        <button onclick="window.close()">⬅️ 關閉</button>
+    </div>
+</div>
+
+<!-- 作業單內容 -->
+<div class="worksheet-container" id="worksheet-container">
+    <p style="text-align:center; padding-top: 100px; color: #999;">載入中...</p>
+</div>
+
+<!-- PDF 產生器（本地端，離線可用）-->
+<script src="../js/html2canvas.min.js"></script>
+<script src="../js/jspdf.umd.min.js"></script>
+<!-- coin-images-base64.js 於點擊「下載 PDF」時動態載入，避免每次開頁面都多載 11MB -->
+
+<!-- 核心引擎 -->
+<script src="worksheet-generator.js"></script>
+
+<!-- 各單元題目產生器 -->
+<script src="units/f1-worksheet.js"></script>
+<script src="units/f2-worksheet.js"></script>
+<script src="units/f3-worksheet.js"></script>
+<script src="units/f4-worksheet.js"></script>
+<script src="units/f5-worksheet.js"></script>
+<script src="units/f6-worksheet.js"></script>
+<script src="units/c1-worksheet.js"></script>
+<script src="units/c2-worksheet.js"></script>
+<script src="units/c3-worksheet.js"></script>
+<script src="units/c4-worksheet.js"></script>
+<script src="units/c5-worksheet.js"></script>
+<script src="units/c6-worksheet.js"></script>
+<script src="units/a1-worksheet.js"></script>
+<script src="units/a2-worksheet.js"></script>
+<script src="units/a3-worksheet.js"></script>
+<script src="../js/a4-shared-products.js"></script>
+<script src="units/a4-worksheet.js"></script>
+<script src="units/a5-worksheet.js"></script>
+<script src="units/a6-worksheet.js"></script>
+<script src="units/b1-worksheet.js?v=2"></script>
+<script src="units/b2-worksheet.js?v=2"></script>
+<script src="units/b3-worksheet.js"></script>
+<script src="units/b4-worksheet.js"></script>
+<script src="units/b5-worksheet.js"></script>
+<script src="units/b6-worksheet.js"></script>
+
+<script>
+// 應用程式主控
+const WorksheetApp = {
+    params: {},
+    currentQuestions: [],
+    showAnswers: false,
+    _fontScale: 1,
+    _iconScale: 1,
+
+    init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        this.params = {};
+        for (const [key, value] of urlParams) {
+            this.params[key] = value;
+        }
+        // A4 預設商店類型為便利商店（含未知 storeType 的 fallback）
+        if (this.params.unit === 'a4') {
+            const validStores = WorksheetRegistry.has('a4') ? Object.keys(WorksheetRegistry.get('a4').stores || {}) : [];
+            const storeType = this.params.storeType;
+            if (!storeType || (storeType !== 'mixed' && !validStores.includes(storeType))) {
+                this.params.storeType = 'convenience';
+            }
+            if (!this.params.walletAmount) {
+                this.params.walletAmount = '500';
+            }
+        }
+        this.generate();
+
+        // Close print menu on outside click
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('print-menu');
+            const btn = document.getElementById('print-btn');
+            if (menu && menu.style.display !== 'none' && !menu.contains(e.target) && e.target !== btn) {
+                menu.style.display = 'none';
+            }
+        });
+    },
+
+    generate() {
+        const unit = this.params.unit;
+        if (!unit || !WorksheetRegistry.has(unit)) {
+            document.getElementById('worksheet-container').innerHTML =
+                '<p style="text-align:center; padding-top:100px; color:red;">未知的單元：' + (unit || '(空)') + '</p>';
+            return;
+        }
+
+        // 只有圖示類型（coinStyle）改變時：重用舊 seed，保留原本題目，不重新隨機選題
+        const snap = JSON.stringify({ ...this.params, coinStyle: null });
+        if (this._seed && !this._forceRegenerate && this._paramSnap === snap) {
+            this._generateWithSeed(this._seed, this.showAnswers);
+            return;
+        }
+
+        // 其他參數改變或首次產生：使用新 seed
+        this._forceRegenerate = false;
+        this._paramSnap = snap;
+        this._seed = Date.now() ^ (Math.random() * 0xffffffff);
+        this._generateWithSeed(this._seed, false);
+    },
+
+    _generateWithSeed(seed, showAnswers) {
+        const unit = this.params.unit;
+        const origRandom = Math.random;
+        Math.random = createSeededRandom(seed);
+        try {
+            const generator = new WorksheetGenerator(unit, this.params);
+            generator.showAnswers = showAnswers;
+            const html = generator.generate();
+            document.getElementById('worksheet-container').innerHTML = html;
+            const unitConfig = WorksheetRegistry.get(unit);
+            const displayName = unitConfig.dynamicName ? unitConfig.dynamicName(this.params) : unitConfig.name;
+            document.getElementById('toolbar-title').textContent =
+                displayName + (showAnswers ? ' — 答案卷' : ' — 作業單');
+            document.title = displayName + (showAnswers ? ' — 答案卷' : ' — 作業單');
+            this.currentQuestions = generator.lastQuestions;
+            this.showAnswers = showAnswers;
+        } finally {
+            Math.random = origRandom;
+        }
+
+        // Apply CSS variables for size
+        this._applyScale();
+
+        // 更新工具列按鈕文字
+        this.updateToolbarLabels();
+
+        // 等待圖片載入完成後再裁剪（圖片未載入時高度為 0，會導致裁剪不正確）
+        const container = document.getElementById('worksheet-container');
+        const imgs = container ? [...container.querySelectorAll('img')] : [];
+        const pendingImgs = imgs.filter(img => !img.complete);
+        const doTrimAndRender = () => {
+            this._trimOverflowQuestions();
+            this._callAfterRender();
+        };
+        if (pendingImgs.length === 0) {
+            requestAnimationFrame(doTrimAndRender);
+        } else {
+            Promise.all(pendingImgs.map(img =>
+                new Promise(r => { img.onload = r; img.onerror = r; })
+            )).then(() => requestAnimationFrame(doTrimAndRender));
+        }
+    },
+
+    _applyScale() {
+        const container = document.getElementById('worksheet-container');
+        container.style.setProperty('--ws-font-scale', this._fontScale);
+        container.style.setProperty('--ws-icon-scale', this._iconScale);
+    },
+
+    _trimOverflowQuestions() {
+        const pages = document.querySelectorAll('.worksheet-page');
+        pages.forEach(page => {
+            const footer = page.querySelector('.worksheet-footer');
+            if (!footer) return;
+            // 保留 20px 緩衝：補償列印時 footer margin-top 與螢幕版 padding 的落差
+            const footerTop = footer.getBoundingClientRect().top - 20;
+            const blocks = page.querySelectorAll('.question-block');
+            blocks.forEach(block => {
+                const blockBottom = block.getBoundingClientRect().bottom;
+                if (blockBottom > footerTop) {
+                    block.remove();
+                }
+            });
+        });
+    },
+
+    regenerate() {
+        this._forceRegenerate = true;
+        this.generate();
+    },
+
+    adjustCount() {
+        // Legacy — now handled by dynamic buttons
+    },
+
+    // === Size Adjust Modal ===
+    showSizeAdjust() {
+        this._closeOverlays();
+        const overlay = document.createElement('div');
+        overlay.className = 'toolbar-modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'toolbar-modal-content';
+
+        const title = document.createElement('h3');
+        title.textContent = '調整大小';
+        modal.appendChild(title);
+
+        const fontScales = [
+            { label: '小', value: 0.85 },
+            { label: '中', value: 1 },
+            { label: '大', value: 1.2 },
+        ];
+        const iconScales = [
+            { label: '小', value: 0.8 },
+            { label: '中', value: 1 },
+            { label: '大', value: 1.3 },
+        ];
+
+        // Font size row
+        const fontRow = document.createElement('div');
+        fontRow.style.cssText = 'margin-bottom:16px;';
+        fontRow.innerHTML = '<div style="font-weight:bold; margin-bottom:8px;">文字大小：</div>';
+        const fontBtns = document.createElement('div');
+        fontBtns.style.cssText = 'display:flex; gap:8px;';
+        fontScales.forEach(s => {
+            const b = document.createElement('button');
+            b.textContent = s.label;
+            b.className = 'toolbar-modal-confirm';
+            b.style.cssText = this._fontScale === s.value ? 'opacity:1;' : 'opacity:0.5;';
+            b.addEventListener('click', () => {
+                this._fontScale = s.value;
+                fontBtns.querySelectorAll('button').forEach((btn, idx) => {
+                    btn.style.opacity = fontScales[idx].value === s.value ? '1' : '0.5';
+                });
+            });
+            fontBtns.appendChild(b);
+        });
+        fontRow.appendChild(fontBtns);
+        modal.appendChild(fontRow);
+
+        // Icon size row
+        const iconRow = document.createElement('div');
+        iconRow.style.cssText = 'margin-bottom:16px;';
+        iconRow.innerHTML = '<div style="font-weight:bold; margin-bottom:8px;">圖示大小：</div>';
+        const iconBtns = document.createElement('div');
+        iconBtns.style.cssText = 'display:flex; gap:8px;';
+        iconScales.forEach(s => {
+            const b = document.createElement('button');
+            b.textContent = s.label;
+            b.className = 'toolbar-modal-confirm';
+            b.style.cssText = this._iconScale === s.value ? 'opacity:1;' : 'opacity:0.5;';
+            b.addEventListener('click', () => {
+                this._iconScale = s.value;
+                iconBtns.querySelectorAll('button').forEach((btn, idx) => {
+                    btn.style.opacity = iconScales[idx].value === s.value ? '1' : '0.5';
+                });
+            });
+            iconBtns.appendChild(b);
+        });
+        iconRow.appendChild(iconBtns);
+        modal.appendChild(iconRow);
+
+        // Buttons
+        const btnRow = document.createElement('div');
+        btnRow.className = 'toolbar-modal-buttons';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '取消';
+        cancelBtn.className = 'toolbar-modal-cancel';
+        cancelBtn.addEventListener('click', () => this._closeOverlays());
+        btnRow.appendChild(cancelBtn);
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = '確定';
+        confirmBtn.className = 'toolbar-modal-confirm';
+        confirmBtn.addEventListener('click', () => {
+            this._closeOverlays();
+            this._applyScale();
+            this._trimOverflowQuestions();
+        });
+        btnRow.appendChild(confirmBtn);
+        modal.appendChild(btnRow);
+
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) this._closeOverlays(); });
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+    },
+
+    // === Print Menu ===
+    togglePrintMenu() {
+        const menu = document.getElementById('print-menu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    },
+
+    doPrint(withAnswers) {
+        document.getElementById('print-menu').style.display = 'none';
+        this._downloadPdf(withAnswers);
+    },
+
+    doPrintDirect() {
+        document.getElementById('print-menu').style.display = 'none';
+        this.print(this.showAnswers);
+    },
+
+    // 各單元對應的 base64 JS 設定
+    // globalVar: 載入後對應的全域變數名稱；units: 哪些單元需要此檔
+    _imageBase64Files: [
+        { file: 'coin-images-base64.js', globalVar: 'CoinImagesBase64', units: '*'            },
+        { file: 'a1-images-base64.js',   globalVar: 'A1ImagesBase64',   units: ['a1']         },
+        { file: 'a2-images-base64.js',   globalVar: 'A2ImagesBase64',   units: ['a2']         },
+        { file: 'a3-images-base64.js',   globalVar: 'A3ImagesBase64',   units: ['a3']         },
+        { file: 'a4-images-base64.js',   globalVar: 'A4ImagesBase64',   units: ['a4']         },
+    ],
+
+    // 點 PDF 時才動態載入需要的 base64 JS（避免頁面載入時多載不必要的大檔）
+    async _loadImagesBase64() {
+        const unit = this.params.unit || '';
+        const needed = this._imageBase64Files.filter(
+            cfg => cfg.units === '*' || cfg.units.includes(unit)
+        );
+        await Promise.all(needed.map(cfg => {
+            if (typeof window[cfg.globalVar] !== 'undefined') return Promise.resolve();
+            return new Promise(resolve => {
+                const s = document.createElement('script');
+                s.src = '../js/' + cfg.file;
+                s.onload = resolve;
+                s.onerror = () => { console.warn('[PDF] 載入失敗，略過：', cfg.file); resolve(); };
+                document.head.appendChild(s);
+            });
+        }));
+    },
+
+    // 取得所有已載入的 base64 查詢表（合併成一個 map）
+    _getAllBase64Maps() {
+        const merged = {};
+        this._imageBase64Files.forEach(cfg => {
+            const map = window[cfg.globalVar];
+            if (map) Object.assign(merged, map);
+        });
+        return merged;
+    },
+
+    // 將 <img> src 轉成 data: URL，避免 html2canvas 用 XHR 重抓圖片
+    // 策略1：查 base64 查詢表（file:// 離線使用，無 CORS 問題）
+    // 策略2：fetch（http:// 環境備用）
+    async _inlineImages(element) {
+        const base64Map = this._getAllBase64Maps();
+        const imgs = Array.from(element.querySelectorAll('img[src]'))
+            .filter(img => img.src && !img.src.startsWith('data:'));
+
+        await Promise.allSettled(imgs.map(async (img) => {
+            const src = img.src;
+            const filename = src.split(/[\\/]/).pop();
+
+            // 策略1：base64 查詢表
+            if (base64Map[filename]) {
+                img.dataset.pdfOrigSrc = src;
+                img.src = base64Map[filename];
+                return;
+            }
+
+            // 策略2：fetch（http:// 環境）
+            try {
+                const res = await fetch(src);
+                const blob = await res.blob();
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                img.dataset.pdfOrigSrc = src;
+                img.src = dataUrl;
+                if (!img.complete) await new Promise(r => { img.onload = r; img.onerror = r; });
+            } catch (e) {
+                console.warn('[PDF] 圖片轉換失敗，替換為透明圖：', filename, e);
+                // 以透明 1×1 GIF 取代，避免 canvas 因 file:// 圖片而被汙染（tainted）
+                img.dataset.pdfOrigSrc = src;
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            }
+        }));
+    },
+
+    _restoreImages(element) {
+        element.querySelectorAll('img[data-pdf-orig-src]').forEach(img => {
+            img.src = img.dataset.pdfOrigSrc;
+            delete img.dataset.pdfOrigSrc;
+        });
+    },
+
+    async _downloadPdf(withAnswers) {
+        // 切換至對應的作業單 / 答案卷
+        if (withAnswers !== this.showAnswers) {
+            this._generateWithSeed(this._seed, withAnswers);
+            await new Promise(r => setTimeout(r, 400));
+        }
+
+        const btn = document.getElementById('print-btn');
+        const origText = btn.textContent;
+        btn.textContent = '⏳ 產生中...';
+        btn.disabled = true;
+
+        const pages = Array.from(document.querySelectorAll('.worksheet-page'));
+        const filename = document.title + '.pdf';
+
+        try {
+            // 動態載入此單元所需的圖片 base64 查詢表
+            await this._loadImagesBase64();
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+            const PDF_W = 210, PDF_H = 297;
+
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+
+                // 將圖片全部轉為 data: URL → html2canvas 不需發任何網路請求
+                await this._inlineImages(pages[i]);
+
+                // 暫時隱藏 box-shadow，避免陰影出現在 PDF
+                const origShadow = pages[i].style.boxShadow;
+                pages[i].style.boxShadow = 'none';
+
+                const canvas = await html2canvas(pages[i], {
+                    scale: 2,
+                    useCORS: false,    // 圖片已是 data: URL，不需要 CORS
+                    allowTaint: false,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+
+                pages[i].style.boxShadow = origShadow;
+                this._restoreImages(pages[i]);
+
+                // 強制填滿整張 A4，完全不做分頁計算 → 不產生空白頁
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PDF_W, PDF_H);
+            }
+
+            // 使用 Blob URL + <a> 觸發下載，避免在行動裝置或部分瀏覽器開新分頁
+            const pdfBlob = pdf.output('blob');
+            const blobUrl = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        } catch (e) {
+            console.error('PDF 產生失敗:', e);
+            alert('PDF 產生失敗，請改用「直接列印（備用）」。');
+        } finally {
+            btn.textContent = origText;
+            btn.disabled = false;
+        }
+    },
+
+    // === Per-unit toolbar delegation ===
+
+    getToolbarConfig() {
+        const unit = this.params.unit;
+        if (!unit || !WorksheetRegistry.has(unit)) return null;
+        return WorksheetRegistry.get(unit).toolbarConfig || null;
+    },
+
+    handleFontClick() { /* Legacy — now handled by dynamic buttons */ },
+    handleOrientationClick() { /* Legacy — now handled by dynamic buttons */ },
+
+    _handleButtonClick(btnId, btnConfig) {
+        if (btnConfig.type === 'cycle') {
+            this._cycleOption(btnConfig);
+        } else if (btnConfig.type === 'dropdown') {
+            this._showDropdown(btnId, btnConfig);
+        } else if (btnConfig.type === 'modal') {
+            this._showModal(btnConfig);
+        }
+    },
+
+    _cycleOption(config) {
+        const current = config.getCurrentValue(this.params);
+        const selectable = config.options.filter(o => !o.type);
+        const idx = selectable.findIndex(o => o.value === current);
+        const next = (idx + 1) % selectable.length;
+        config.onChange(selectable[next].value, this);
+    },
+
+    _showDropdown(btnId, config) {
+        // Close any existing dropdown
+        this._closeOverlays();
+
+        const btn = document.getElementById(btnId);
+        const rect = btn.getBoundingClientRect();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'toolbar-dropdown-overlay';
+        overlay.addEventListener('click', () => this._closeOverlays());
+
+        const menu = document.createElement('div');
+        menu.className = 'toolbar-dropdown-menu';
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.style.left = rect.left + 'px';
+
+        const currentVal = config.getCurrentValue(this.params);
+        config.options.forEach(opt => {
+            if (opt.type === 'group') {
+                const grp = document.createElement('div');
+                grp.className = 'toolbar-dropdown-group';
+                grp.textContent = opt.label;
+                menu.appendChild(grp);
+                return;
+            }
+            if (opt.type === 'separator') {
+                const sep = document.createElement('div');
+                sep.className = 'toolbar-dropdown-separator';
+                menu.appendChild(sep);
+                return;
+            }
+            const item = document.createElement('div');
+            item.className = 'toolbar-dropdown-item' + (opt.value === currentVal ? ' active' : '');
+            item.textContent = opt.label;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._closeOverlays();
+                config.onChange(opt.value, this);
+            });
+            menu.appendChild(item);
+        });
+
+        overlay.appendChild(menu);
+        document.body.appendChild(overlay);
+    },
+
+    _showModal(config) {
+        this._closeOverlays();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'toolbar-modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'toolbar-modal-content';
+
+        const title = document.createElement('h3');
+        title.textContent = config.label.replace(/^[^\s]+\s/, '');
+        modal.appendChild(title);
+
+        if (config.description) {
+            const desc = document.createElement('p');
+            desc.textContent = config.description;
+            desc.style.cssText = 'font-size:12px; color:#666; margin:0 0 12px;';
+            modal.appendChild(desc);
+        }
+
+        const currentVal = config.getCurrentValue(this.params);
+        // For multiSelect, currentVal is a comma-separated string or array
+        let selectedSet;
+        if (config.multiSelect) {
+            const arr = Array.isArray(currentVal) ? currentVal :
+                (typeof currentVal === 'string' && currentVal ? currentVal.split(',') : config.options.map(o => o.value));
+            selectedSet = new Set(arr);
+        }
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'toolbar-modal-options';
+
+        config.options.forEach(opt => {
+            const item = document.createElement('label');
+            item.className = 'toolbar-modal-option';
+
+            if (config.multiSelect) {
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = opt.value;
+                cb.checked = selectedSet.has(opt.value);
+                item.appendChild(cb);
+            } else {
+                const rb = document.createElement('input');
+                rb.type = 'radio';
+                rb.name = 'toolbar-modal-radio';
+                rb.value = opt.value;
+                rb.checked = opt.value === currentVal;
+                item.appendChild(rb);
+            }
+            const span = document.createElement('span');
+            span.textContent = opt.label;
+            item.appendChild(span);
+            optionsDiv.appendChild(item);
+        });
+        modal.appendChild(optionsDiv);
+
+        const btnRow = document.createElement('div');
+        btnRow.className = 'toolbar-modal-buttons';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '取消';
+        cancelBtn.className = 'toolbar-modal-cancel';
+        cancelBtn.addEventListener('click', () => this._closeOverlays());
+        btnRow.appendChild(cancelBtn);
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = '確定';
+        confirmBtn.className = 'toolbar-modal-confirm';
+        confirmBtn.addEventListener('click', () => {
+            if (config.multiSelect) {
+                const checked = optionsDiv.querySelectorAll('input[type="checkbox"]:checked');
+                const values = Array.from(checked).map(cb => cb.value);
+                if (values.length === 0) {
+                    alert('請至少選擇一個選項');
+                    return;
+                }
+                config.onChange(values.join(','), this);
+            } else {
+                const checked = optionsDiv.querySelector('input[type="radio"]:checked');
+                if (checked) config.onChange(checked.value, this);
+            }
+            this._closeOverlays();
+        });
+        btnRow.appendChild(confirmBtn);
+        modal.appendChild(btnRow);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this._closeOverlays();
+        });
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+    },
+
+    _closeOverlays() {
+        document.querySelectorAll('.toolbar-dropdown-overlay, .toolbar-modal-overlay').forEach(el => el.remove());
+    },
+
+    // Predefined button label priority order
+    _buttonLabelOrder: [
+        '測驗題型', '題型', '難度', '數字範圍與數量', '排序方式', '排序數列', '排列方式', '提示', '題數', '數量範圍',
+        '錢包金額', '目標金額', '兌換類別', '兌換方向', '面額選擇',
+        '圖示數量', '圖示類型', '主題選擇', '數字範圍', '數數範圍',
+        '顯示模式', '字體大小', '版面'
+    ],
+
+    _getButtonPriority(label) {
+        const cleanLabel = label.replace(/^[^\s]+\s/, ''); // remove emoji prefix
+        const idx = this._buttonLabelOrder.indexOf(cleanLabel);
+        return idx >= 0 ? idx : 999;
+    },
+
+    updateToolbarLabels() {
+        const config = this.getToolbarConfig();
+        const container = document.getElementById('dynamic-buttons-container');
+        container.innerHTML = '';
+
+        // Collect all button configs
+        const buttons = [];
+
+        // Built-in buttons (font, orientation, adjustCount)
+        const builtins = [
+            { key: 'fontButton', defaultLabel: '🔤 字體大小', defaultHandler: () => this._defaultCycleFontSize() },
+            { key: 'orientationButton', defaultLabel: '📐 版面', defaultHandler: () => this._defaultToggleOrientation() },
+            { key: 'adjustCountButton', defaultLabel: '📊 調整題數', defaultHandler: () => {
+                const current = this.params.count || '10';
+                const choice = prompt(`請輸入題數（目前：${current}）：\n可輸入 1~30 的數字`, current);
+                const num = parseInt(choice);
+                if (num && num >= 1 && num <= 30) { this.params.count = String(num); this.generate(); }
+            }}
+        ];
+
+        for (const bi of builtins) {
+            if (config && config[bi.key] === null) continue;
+            if (config && (bi.key === 'orientationButton' && config.hideOrientation)) continue;
+            if (config && config[bi.key]) {
+                const bc = config[bi.key];
+                buttons.push({ config: bc, type: 'config' });
+            } else {
+                buttons.push({ label: bi.defaultLabel, handler: bi.defaultHandler, type: 'default' });
+            }
+        }
+
+        // Extra buttons
+        if (config && config.extraButtons) {
+            config.extraButtons.forEach((eb, idx) => {
+                if (eb.visible && !eb.visible(this.params)) return;
+                buttons.push({ config: eb, type: 'extra', extraIndex: idx });
+            });
+        }
+
+        // Sort config buttons by label priority
+        buttons.sort((a, b) => {
+            const labelA = a.type === 'default' ? a.label : a.config.label;
+            const labelB = b.type === 'default' ? b.label : b.config.label;
+            return this._getButtonPriority(labelA) - this._getButtonPriority(labelB);
+        });
+
+        // Hide/show print answer button
+        const printAnswerBtn = document.getElementById('print-answer-btn');
+        if (printAnswerBtn) {
+            printAnswerBtn.style.display = (config && config.hidePrintAnswer) ? 'none' : '';
+        }
+
+        // Render buttons
+        buttons.forEach((item) => {
+            const btn = document.createElement('button');
+            if (item.type === 'default') {
+                btn.textContent = item.label;
+                btn.addEventListener('click', item.handler);
+            } else {
+                const bc = item.config;
+                const current = bc.getCurrentValue ? bc.getCurrentValue(this.params) : null;
+                const opt = current !== null && bc.options ? bc.options.find(o => o.value === current) : null;
+                btn.textContent = bc.label + (opt ? ': ' + opt.label : '');
+                btn.id = bc.id || ('dyn-btn-' + container.children.length);
+                const btnId = btn.id;
+                btn.addEventListener('click', () => this._handleButtonClick(btnId, bc));
+            }
+            container.appendChild(btn);
+        });
+    },
+
+    _callAfterRender() {
+        const unit = this.params.unit;
+        if (!unit || !WorksheetRegistry.has(unit)) return;
+        const config = WorksheetRegistry.get(unit);
+        if (config && typeof config.afterRender === 'function') {
+            config.afterRender();
+        }
+    },
+
+    handleExtraClick(index) { /* Legacy — now handled by dynamic buttons */ },
+
+    // === Default behaviors (when unit has no toolbarConfig) ===
+
+    _fontLevel: 1,
+    _defaultCycleFontSize() {
+        const sizes = ['10pt', '12pt', '14pt'];
+        this._fontLevel = (this._fontLevel + 1) % 3;
+        document.querySelector('.worksheet-container').style.fontSize = sizes[this._fontLevel];
+    },
+
+    _landscape: false,
+    _defaultToggleOrientation() {
+        const style = document.getElementById('orientation-style') || (() => {
+            const s = document.createElement('style');
+            s.id = 'orientation-style';
+            document.head.appendChild(s);
+            return s;
+        })();
+        this._landscape = !this._landscape;
+        style.textContent = this._landscape ? '@page { size: A4 landscape; }' : '@page { size: A4; margin: 15mm 20mm; }';
+    },
+
+    print(withAnswers) {
+        if (withAnswers && !this.showAnswers) {
+            this._generateWithSeed(this._seed, true);
+            setTimeout(() => window.print(), 200);
+        } else if (!withAnswers && this.showAnswers) {
+            this._generateWithSeed(this._seed, false);
+            setTimeout(() => window.print(), 200);
+        } else {
+            window.print();
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => WorksheetApp.init());
+</script>
+
+</body>
+</html>

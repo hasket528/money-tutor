@@ -1,0 +1,83 @@
+/* =================================================================
+   FILE: css/dark-mode-simple.css
+   深色模式輕量樣式 — 僅修改背景色與文字色，其他樣式不動
+   所有 18 個單元共用，由 theme-system.js 設定 data-theme="dark" 觸發
+   建立日期：2026-02-24
+   ================================================================= */
+
+/* ── 深色模式色彩變數 ─────────────────────────────────────────── */
+[data-theme="dark"] {
+    --dm-bg-page:      #1a1a2e;   /* 頁面底層背景（深藍黑） */
+    --dm-bg-container: #22223a;   /* 主容器背景 */
+    --dm-bg-card:      #2d2d44;   /* 卡片/區塊背景 */
+    --dm-text:         #e2e8f0;   /* 主要文字（近白） */
+    --dm-text-muted:   #a0aec0;   /* 次要文字（淺灰） */
+}
+
+/* ── 頁面根層 ─────────────────────────────────────────────────── */
+[data-theme="dark"] html,
+[data-theme="dark"] body {
+    background-color: var(--dm-bg-page) !important;
+    color: var(--dm-text);
+}
+
+/* ── 主容器（JS 動態生成的 #app）────────────────────────────── */
+[data-theme="dark"] #app {
+    background-color: var(--dm-bg-page) !important;
+    color: var(--dm-text);
+}
+
+/* ── 設定畫面 ─────────────────────────────────────────────────── */
+[data-theme="dark"] .game-settings,
+[data-theme="dark"] .settings-screen,
+[data-theme="dark"] .settings-container,
+[data-theme="dark"] .setting-group {
+    background-color: var(--dm-bg-card) !important;
+    color: var(--dm-text);
+}
+
+/* ── 遊戲主畫面 ───────────────────────────────────────────────── */
+[data-theme="dark"] .game-area,
+[data-theme="dark"] .game-screen,
+[data-theme="dark"] .game-container,
+[data-theme="dark"] .game-board {
+    background-color: var(--dm-bg-container) !important;
+    color: var(--dm-text);
+}
+
+/* ── 完成畫面 ─────────────────────────────────────────────────── */
+[data-theme="dark"] .completion-screen,
+[data-theme="dark"] .completion-container,
+[data-theme="dark"] .results-screen,
+[data-theme="dark"] .end-screen {
+    background-color: var(--dm-bg-container) !important;
+    color: var(--dm-text);
+}
+
+/* ── 標題列 ───────────────────────────────────────────────────── */
+[data-theme="dark"] .header-bar,
+[data-theme="dark"] .title-bar,
+[data-theme="dark"] .game-header,
+[data-theme="dark"] .top-bar {
+    background-color: var(--dm-bg-card) !important;
+    color: var(--dm-text);
+}
+
+/* ── 標題文字 ─────────────────────────────────────────────────── */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+    color: var(--dm-text);
+}
+
+/* ── 一般文字 ─────────────────────────────────────────────────── */
+[data-theme="dark"] p,
+[data-theme="dark"] label,
+[data-theme="dark"] span {
+    color: var(--dm-text);
+}
+/* 注意：p/label/span 的 color 不加 !important，
+   讓單元內的答對（綠）、答錯（紅）等特定顏色繼續生效 */

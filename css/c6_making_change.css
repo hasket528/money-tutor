@@ -1,0 +1,33 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+
+        /* 🔧 [新增] 點擊放置功能樣式 */
+        .money-item.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.1) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .money-item {
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+
+        .money-item:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }

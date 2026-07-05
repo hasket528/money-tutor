@@ -1,0 +1,675 @@
+/* ===================================================
+   Money Tutor – Mini Games Base Styles
+   依賴：../../css/ai-theme.css（CSS 變數）
+=================================================== */
+
+/* ─── Reset & Body ─── */
+.game-body {
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ─── HUD ─── */
+#gue-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  z-index: 100;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.gue-hud-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.gue-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gue-hud-right {
+  display: flex;
+  align-items: flex-end;
+  min-width: 80px;
+}
+
+/* ─── Back Button ─── */
+.gue-back-btn {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  font-size: 1.5rem;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+
+.gue-back-btn:active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.gue-score-label {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+#gue-score {
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  font-weight: 900;
+  color: #FFD700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+/* ─── Lives ─── */
+#gue-lives {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.gue-heart {
+  font-size: 1.3rem;
+  line-height: 1;
+  transition: transform 0.2s, opacity 0.3s;
+}
+
+.gue-heart-empty {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.gue-heart-lost {
+  animation: gue-heart-break 0.4s ease forwards;
+}
+
+@keyframes gue-heart-break {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.4); }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* ─── HUD Center (score) ─── */
+.gue-hud-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.gue-timer-track {
+  width: 100%;
+  max-width: 120px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#gue-timer-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #2ed573, #7bed9f);
+  border-radius: 3px;
+  transition: background-color 0.3s, width 0.1s linear;
+  transform-origin: left;
+}
+
+#gue-timer-bar.gue-timer-danger {
+  background: linear-gradient(90deg, #FF4757, #ff6b81);
+  animation: gue-timer-pulse 0.5s infinite alternate;
+}
+
+@keyframes gue-timer-pulse {
+  to { opacity: 0.35; }
+}
+
+/* ─── Game Area ─── */
+#game-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Countdown Overlay ─── */
+.gue-countdown-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.gue-countdown-num {
+  font-size: clamp(5rem, 20vw, 8rem);
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 0 50px rgba(255, 215, 0, 0.7);
+  animation: gue-count-pop 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.gue-countdown-num.go {
+  color: #2ed573;
+  text-shadow: 0 0 50px rgba(46, 213, 115, 0.7);
+}
+
+@keyframes gue-count-pop {
+  0%   { transform: scale(3.5); opacity: 0; }
+  35%  { transform: scale(0.92); opacity: 1; }
+  65%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Combo Popup ─── */
+.gue-combo-popup {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  font-size: clamp(2.2rem, 7vw, 3.8rem);
+  font-weight: 900;
+  color: #FF6B35;
+  text-shadow:
+    0 0 30px rgba(255, 107, 53, 0.9),
+    2px 2px 0 rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 8000;
+  white-space: nowrap;
+  animation: gue-combo-anim 0.95s ease forwards;
+}
+
+@keyframes gue-combo-anim {
+  0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  18%  { transform: translate(-50%, -58%) scale(1.15); opacity: 1; }
+  55%  { transform: translate(-50%, -60%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -80%) scale(0.85); opacity: 0; }
+}
+
+/* ─── Score Popup ─── */
+.gue-score-popup {
+  position: fixed;
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 7000;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: gue-score-fly 0.85s ease forwards;
+}
+
+@keyframes gue-score-fly {
+  0%   { transform: translateX(-50%) translateY(0) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-65px) scale(0.8); opacity: 0; }
+}
+
+/* ─── Particles ─── */
+.gue-particle {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 7000;
+  transform: translate(-50%, -50%);
+  animation: gue-particle-burst 0.6s ease forwards;
+}
+
+@keyframes gue-particle-burst {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0);
+    opacity: 0;
+  }
+}
+
+/* ─── Miss Effect ─── */
+@keyframes gue-shake-anim {
+  0%, 100% { transform: translateX(0); }
+  15%  { transform: translateX(-9px); }
+  30%  { transform: translateX(9px); }
+  45%  { transform: translateX(-6px); }
+  60%  { transform: translateX(6px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(3px); }
+}
+
+.gue-shake {
+  animation: gue-shake-anim 0.42s ease;
+}
+
+.gue-flash-red::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 71, 87, 0.28);
+  pointer-events: none;
+  z-index: 9999;
+  animation: gue-flash-anim 0.42s ease forwards;
+}
+
+@keyframes gue-flash-anim {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ─── Result Screen ─── */
+.gue-result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9500;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: gue-result-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes gue-result-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.gue-result-card {
+  background: linear-gradient(145deg, #1e1e3a, #16213e);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 22px;
+  padding: 28px 24px 24px;
+  text-align: center;
+  max-width: 340px;
+  width: 100%;
+  box-shadow:
+    0 0 60px rgba(255, 215, 0, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.gue-new-record {
+  font-size: 1.05rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, #FFD700, #FF6B35);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+  animation: gue-glow-pulse 0.9s infinite alternate;
+}
+
+@keyframes gue-glow-pulse {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.35); }
+}
+
+.gue-result-title {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.gue-result-grade {
+  font-size: clamp(3.5rem, 12vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 4px;
+  animation: gue-grade-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+
+@keyframes gue-grade-bounce {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.gue-result-grade.grade-s {
+  color: #FFD700;
+  text-shadow: 0 0 25px rgba(255, 215, 0, 0.7), 0 0 50px rgba(255, 215, 0, 0.3);
+}
+.gue-result-grade.grade-a {
+  color: #A55EEA;
+  text-shadow: 0 0 25px rgba(165, 94, 234, 0.7);
+}
+.gue-result-grade.grade-b {
+  color: #45B7D1;
+  text-shadow: 0 0 25px rgba(69, 183, 209, 0.7);
+}
+.gue-result-grade.grade-c {
+  color: #778CA3;
+}
+
+.gue-result-badge {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gue-result-score {
+  font-size: clamp(2.4rem, 8vw, 3.5rem);
+  font-weight: 900;
+  color: #FFD700;
+  line-height: 1;
+  margin-bottom: 4px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.gue-result-highscore {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 20px;
+}
+
+.gue-result-stats {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.gue-stat {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 16px;
+  min-width: 80px;
+}
+
+.gue-stat-val {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+
+.gue-stat-label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.38);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+.gue-result-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.gue-btn-replay,
+.gue-btn-home {
+  flex: 1;
+  padding: 13px 12px;
+  border: none;
+  border-radius: 13px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s, filter 0.15s;
+  font-family: inherit;
+}
+
+.gue-btn-replay {
+  background: linear-gradient(135deg, #2ed573, #17c550);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(46, 213, 115, 0.4);
+}
+
+.gue-btn-home {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.gue-btn-replay:active,
+.gue-btn-home:active {
+  transform: scale(0.96);
+  filter: brightness(0.88);
+}
+
+/* ─── Difficulty Select ─── */
+.gue-difficulty-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.gue-difficulty-card {
+  background: linear-gradient(145deg, #1e1e3a, #16213e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 28px 24px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+  animation: gue-card-slide-up 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes gue-card-slide-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gue-difficulty-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+  color: #FFD700;
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+}
+
+.gue-difficulty-sub {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 22px;
+  line-height: 1.4;
+}
+
+.gue-diff-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 13px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  touch-action: manipulation;
+  transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  text-align: left;
+}
+
+.gue-diff-btn:last-of-type {
+  margin-bottom: 0;
+}
+
+.gue-diff-easy   { background: linear-gradient(135deg, #2ed573, #17c550); color: #fff; box-shadow: 0 4px 14px rgba(46,213,115,0.35); }
+.gue-diff-normal { background: linear-gradient(135deg, #FFD700, #FF8C00); color: #fff; box-shadow: 0 4px 14px rgba(255,215,0,0.35); }
+.gue-diff-hard   { background: linear-gradient(135deg, #FF4757, #A55EEA); color: #fff; box-shadow: 0 4px 14px rgba(165,94,234,0.35); }
+
+.gue-diff-btn:active {
+  transform: scale(0.97);
+  filter: brightness(0.88);
+}
+
+.gue-diff-badge {
+  font-size: 0.75rem;
+  opacity: 0.78;
+  font-weight: 500;
+  float: right;
+  line-height: 1.5;
+}
+
+.gue-back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.2s;
+  cursor: pointer;
+  font-family: inherit;
+}
+.gue-back-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ─── 清除最高分按鈕 ─── */
+.gue-btn-clear-hs {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.3);
+  padding: 5px 14px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s, color 0.2s;
+}
+.gue-btn-clear-hs:hover { border-color: rgba(255,71,87,0.5); color: rgba(255,100,100,0.7); }
+.gue-btn-clear-hs:disabled { opacity: 0.35; cursor: default; }
+
+/* ─── Responsive ─── */
+@media (min-width: 480px) {
+  .gue-result-card,
+  .gue-difficulty-card {
+    max-width: 380px;
+  }
+}
+
+/* ── 桌面端通用強化（不再限制 #game-area 寬度，由各遊戲自行管理）── */
+@media (min-width: 768px) {
+  #gue-hud {
+    padding: 12px 28px;
+    min-height: 64px;
+  }
+  #gue-score {
+    font-size: clamp(1.8rem, 3vw, 2.2rem);
+  }
+  .gue-back-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.65rem;
+  }
+  .gue-timer-track {
+    max-width: 180px;
+  }
+  .gue-result-card,
+  .gue-difficulty-card {
+    max-width: 460px;
+    padding: 32px 28px;
+  }
+  .gue-result-grade {
+    font-size: clamp(4.5rem, 10vw, 6.5rem);
+  }
+  .gue-result-score {
+    font-size: clamp(3rem, 6vw, 4.2rem);
+  }
+  .gue-result-btns {
+    gap: 14px;
+  }
+  .gue-btn-replay,
+  .gue-btn-home {
+    padding: 16px 14px;
+    font-size: 1.05rem;
+  }
+  .gue-diff-btn {
+    padding: 16px 20px;
+    font-size: 1.05rem;
+  }
+  .gue-difficulty-title {
+    font-size: 1.8rem;
+  }
+  .gue-difficulty-sub {
+    font-size: 0.95rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .gue-result-card,
+  .gue-difficulty-card {
+    max-width: 540px;
+    padding: 36px 32px;
+  }
+  .gue-diff-btn {
+    padding: 18px 22px;
+    font-size: 1.1rem;
+  }
+}
+
+/* ─── 難度爬坡橫幅（各遊戲共用）──────────────────────────── */
+.level-up-flash {
+  position: fixed; inset: 0;
+  background: rgba(255,215,0,0.18);
+  pointer-events: none; z-index: 8500;
+  animation: gue-lvl-flash 0.6s ease forwards;
+}
+@keyframes gue-lvl-flash { to { opacity: 0; } }
+
+.level-up-text {
+  position: fixed; top: 30%; left: 50%;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900; color: #FFD700;
+  text-shadow: 0 0 20px rgba(255,215,0,0.8);
+  pointer-events: none; z-index: 8500; white-space: nowrap;
+  animation: gue-lvl-text 1.2s ease forwards;
+}
+@keyframes gue-lvl-text {
+  0%   { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  20%  { transform: translateX(-50%) translateY(-10px) scale(1.05); opacity: 1; }
+  70%  { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-30px) scale(0.9); opacity: 0; }
+}

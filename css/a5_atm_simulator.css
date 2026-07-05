@@ -1,0 +1,4763 @@
+/* =================================================================
+ * A2 ATM提款機模擬學習 - 完整CSS樣式
+ * 基於ADDIE模型設計的高度真實ATM界面
+ * ================================================================= */
+
+/* 全域重置和基本樣式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft JhengHei', 'PingFang TC', 'Apple LiGothic Medium', sans-serif;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%);
+    min-height: 100vh;
+    line-height: 1.6;
+    color: #333;
+}
+
+/* ====================================================
+ * 滿版面標題列樣式 (參考A1設計)
+ * ==================================================== */
+
+.atm-title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    color: white;
+    padding: 15px 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    transition: all 0.3s ease;
+    width: 100vw;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.atm-title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 0 0 auto;
+}
+
+.atm-title-bar-center {
+    flex: 1;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+}
+
+.atm-title-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 0 0 auto;
+}
+
+.atm-icon-large {
+    font-size: 24px;
+}
+
+.back-to-menu-btn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.5);
+    padding: 8px 16px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.back-to-menu-btn:hover {
+    background: white;
+    color: #1a73e8;
+}
+
+/* 標題列響應式設計 */
+@media (max-width: 768px) {
+    .atm-title-bar {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+        padding: 15px 20px;
+    }
+    
+    .atm-title-bar-left,
+    .atm-title-bar-center,
+    .atm-title-bar-right {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .atm-title-bar {
+        padding: 12px 15px;
+    }
+    
+    .atm-title-bar-center {
+        font-size: 16px;
+    }
+    
+    .back-to-menu-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+/* =================================================================
+ * ATM設定畫面樣式
+ * ================================================================= */
+
+/* ===== 設定頁面外框樣式 (參考A3設計) ===== */
+.atm-settings-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 20px;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    transition: all 0.3s ease;
+    /* 🔧 [滾動修復] 確保在手機端可以滾動 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.settings-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.settings-header h1 {
+    color: #333;
+    margin-bottom: 0;
+    font-size: 28px;
+}
+
+.settings-header .subtitle {
+    display: none; /* 隱藏副標題以符合A3簡潔風格 */
+}
+
+.settings-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 600px;
+    animation: slideUp 0.6s ease;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.setting-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
+}
+
+.setting-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.selection-btn {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    font-family: inherit;
+    position: relative;
+}
+
+a.selection-btn {
+    color: #000;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.selection-btn:hover {
+    border-color: #667eea;
+    background: #f0f3ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.selection-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.selection-btn small {
+    display: block;
+    font-size: 0.85em;
+    margin-top: 8px;
+    opacity: 0.8;
+}
+
+.game-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+/* 返回主畫面按鈕 - 淡紅色 */
+.back-to-main-btn {
+    background: #e57373;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(229, 115, 115, 0.3);
+}
+
+.back-to-main-btn:hover {
+    background: #ef5350;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(229, 115, 115, 0.4);
+}
+
+.back-to-main-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(229, 115, 115, 0.3);
+}
+
+/* 開始按鈕 - 綠色 */
+.start-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.start-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(40, 167, 69, 0.4);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+}
+
+.start-btn:disabled, .start-btn.disabled {
+    background: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.start-btn:disabled:hover, .start-btn.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* =================================================================
+ * ATM主體界面樣式 - 高度真實設計
+ * ================================================================= */
+
+.atm-container {
+    width: 100vw;
+    min-height: 100vh; /* 🔧 改為 min-height，允許內容超出時延伸 */
+    margin: 0;
+    padding: 20px 0; /* 🔧 添加垂直padding，避免內容貼邊 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px; /* 為3D動畫添加透視效果 */
+    overflow-x: hidden; /* 🔧 只隱藏水平滾動，允許垂直滾動 */
+    overflow-y: auto; /* 🔧 允許垂直滾動 */
+}
+
+.atm-body {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+    border-radius: 25px;
+    padding: 40px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+    width: 100vw;
+    min-height: calc(100vh - 40px);
+    max-width: 1400px;
+    border: 3px solid #1a252f;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+/* 移除舊的面板樣式，改用統一底框設計 */
+
+/* 🔧 [新增] ATM統一功能面板 - 包含所有主要功能的大底框 */
+.atm-main-frame {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.atm-functions-container {
+    background: linear-gradient(135deg, #546e7a 0%, #455a64 50%, #37474f 100%);
+    border: 4px solid #909194;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 
+        inset 0 4px 12px rgba(0, 0, 0, 0.4),
+        0 8px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+/* 創造深度立體邊框效果 */
+.atm-functions-container::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: linear-gradient(135deg, #607d8b 0%, #546e7a 50%, #455a64 100%);
+    border-radius: 24px;
+    z-index: -1;
+}
+
+/* 上排佈局：卡片插入區 + 螢幕 + 收據出口 */
+.atm-upper-section {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px; /* 🔧 左右面板寬度一致 */
+    gap: 30px;
+    align-items: stretch;
+    margin-bottom: 25px;
+}
+
+/* 下排佈局：現金出口（居中）+ 提示按鈕（右側） */
+.atm-lower-section {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    position: relative;
+    padding: 0 20px;
+}
+
+/* 各個功能區域樣式 */
+.card-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 600px; /* 🔧 [修正] 統一高度與螢幕和收據區域保持一致，避免grid高度變化 */
+    display: flex; /* 新增 */
+    flex-direction: column; /* 新增，讓子元素垂直排列 */
+}
+
+.screen-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 600px; /* 增加高度讓螢幕有更多空間 */
+    display: flex; /* 讓內部元素可以充分擴展 */
+    flex-direction: column; /* 垂直佈局 */
+}
+
+/* 收據區域 - 擴大以包容收據出口和交易收據 */
+.receipt-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 600px; /* 與螢幕區域保持相同高度 */
+    position: relative; /* ✅ Create a positioning context */
+    overflow: visible;  /* ✅ 允許收據動畫和按鈕完整顯示 */
+}
+
+/* ATM螢幕區域 */
+.atm-screen-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    position: relative;
+    flex: 1; /* 讓此元素占滿父容器剩餘空間 */
+}
+
+.atm-screen {
+    width: 600px; /* 🔧 縮小寬度 700px → 600px，避免推擠右側面板 */
+    height: 520px; /* 🔧 測試用固定高度 - 如果這個生效，表示calc有問題 */
+    background: #000;
+    border: 8px solid #1a252f;
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden; /* 🔧 保持外框隱藏，滾動由 .screen-content 處理 */
+    box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.8),
+        0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.screen-content {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 15px 25px; /* 🔧 寬屏：增加水平padding，減少垂直padding */
+    font-size: 16px;
+    text-align: center;
+    position: relative;
+    overflow-y: auto; /* 🔧 允許垂直滾動 */
+    overflow-x: hidden; /* 🔧 隱藏水平滾動 */
+}
+
+/* 🔧 [新增] 交易成功畫面：允許滾動時不居中 */
+.screen-content:has(.screen-transaction-success) {
+    justify-content: flex-start;
+    padding-top: 10px;
+}
+
+/* 螢幕內容樣式 */
+.screen-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.atm-logo {
+    font-size: 3em;
+    margin-bottom: 20px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.welcome-message {
+    font-size: 1.2em;
+    margin: 15px 0;
+}
+
+.blinking-arrow {
+    font-size: 2em;
+    animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+.service-hours {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+/* 側邊功能按鈕 */
+.side-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.left-buttons {
+    margin-right: -5px;
+}
+
+.right-buttons {
+    margin-left: -5px;
+}
+
+.side-btn {
+    width: 80px;
+    height: 45px;
+    background: linear-gradient(135deg, #607d8b 0%, #455a64 100%);
+    border: 2px solid #37474f;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.side-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #78909c 0%, #607d8b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.side-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.side-btn:disabled {
+    background: #37474f;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* 卡片插入區 - 應用統一底框 */
+.card-slot-area {
+    display: flex;
+    justify-content: center;
+}
+
+/* 金融卡展示區 */
+.atm-card-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    flex-grow: 1; /* 新增，讓此元素填滿剩餘空間 */
+    /* 以下屬性已移除，因為 Flexbox 會自動處理 */
+    /* margin-bottom: 25px; */
+    /* height: 120px; */
+}
+
+.atm-card {
+    width: 156px; /* 🔧 放大1.3倍 (120px × 1.3 = 156px) */
+    height: auto; /* 高度自動調整以保持637*1011比例 */
+    cursor: pointer;
+    transition: all 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-radius: 10px; /* 🔧 調整圓角以配合放大後的尺寸 */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    position: relative;
+    will-change: transform, opacity;
+    /* margin-top: 30px; */ /* 已移除，使用 Flexbox 自動置中 */
+}
+
+.atm-card:hover:not(.card-inserting):not(.card-inserted) {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* 卡片插入動畫效果 - 使用keyframes動畫 */
+.atm-card.card-inserting {
+    animation: cardInsertToSlot 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    z-index: 1500; /* 🔧 插入動畫時層級更高 */
+}
+
+@keyframes cardInsertToSlot {
+    0% {
+        transform: translateY(0) scale(1) rotateX(0deg);
+        opacity: 1;
+    }
+    25% {
+        transform: translateY(-40px) scale(1.02) rotateX(2deg);
+        opacity: 0.95;
+    }
+    50% {
+        transform: translateY(-80px) scale(0.98) rotateX(4deg);
+        opacity: 0.8;
+    }
+    75% {
+        transform: translateY(-115px) scale(0.95) rotateX(6deg);
+        opacity: 0.6;
+    }
+    85% {
+        transform: translateY(-135px) scale(0.92) rotateX(8deg);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translateY(-145px) scale(0.9) rotateX(10deg);
+        opacity: 0.1;
+    }
+}
+
+/* 🔧 [新增] 卡片退出動畫 - 完全倒轉插入動畫 */
+@keyframes cardEjectReverse {
+    0% {
+        transform: translateY(-145px) scale(0.9) rotateX(10deg);
+        opacity: 0.1;
+        display: block;
+    }
+    15% {
+        transform: translateY(-135px) scale(0.92) rotateX(8deg);
+        opacity: 0.4;
+    }
+    25% {
+        transform: translateY(-115px) scale(0.95) rotateX(6deg);
+        opacity: 0.6;
+    }
+    50% {
+        transform: translateY(-80px) scale(0.98) rotateX(4deg);
+        opacity: 0.8;
+    }
+    75% {
+        transform: translateY(-40px) scale(1.02) rotateX(2deg);
+        opacity: 0.95;
+    }
+    100% {
+        transform: translateY(0) scale(1) rotateX(0deg);
+        opacity: 1;
+    }
+}
+
+.atm-card.card-inserted {
+    display: none; /* 隱藏卡片，因為它已經「插入」 */
+}
+
+/* 🔧 [新增] 卡片退出動畫樣式 */
+.atm-card.card-returning {
+    animation: cardEjectReverse 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    z-index: 10000; /* 🚨 確保在所有元素之上 */
+    position: relative;
+    display: block; /* 確保卡片可見 */
+}
+
+.card-slot {
+    width: 200px;
+    height: 60px;
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+    border: 3px solid #0d1419;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 100; /* 🔧 設定較低層級，確保金融卡在上方 */
+}
+
+.card-slot:hover {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.card-slot-light {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background: #ff5252;
+    border-radius: 50%;
+    transition: all 0.5s ease;
+}
+
+.card-slot-light.active {
+    background: #4caf50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8), 0 0 25px rgba(76, 175, 80, 0.4);
+    animation: lightPulse 2s ease-in-out infinite;
+}
+
+@keyframes lightPulse {
+    0%, 100% { 
+        opacity: 1; 
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.8), 0 0 25px rgba(76, 175, 80, 0.4);
+    }
+    50% { 
+        opacity: 0.7; 
+        box-shadow: 0 0 20px rgba(76, 175, 80, 1), 0 0 35px rgba(76, 175, 80, 0.6);
+    }
+}
+
+.card-slot-opening {
+    color: #90a4ae;
+    font-size: 0.9em;
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* 卡片插入細縫 */
+.card-insertion-slit {
+    width: 220px;
+    height: 8px;
+    background: linear-gradient(135deg, #0d1419 0%, #1a252f 50%, #0d1419 100%);
+    border: 1px solid #000;
+    border-radius: 2px;
+    margin-top: 8px;
+    position: relative;
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.8),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    z-index: 50; /* 🔧 設定較低層級，低於金融卡 */
+}
+
+.slit-interior {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(0, 0, 0, 0.5) 20%, 
+        rgba(0, 0, 0, 0.8) 50%, 
+        rgba(0, 0, 0, 0.5) 80%, 
+        transparent 100%);
+    position: relative;
+}
+
+/* 插入時細縫發光效果 */
+.card-insertion-slit.active {
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.8),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1),
+        0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.card-insertion-slit.active .slit-interior {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(76, 175, 80, 0.3) 20%, 
+        rgba(76, 175, 80, 0.5) 50%, 
+        rgba(76, 175, 80, 0.3) 80%, 
+        transparent 100%);
+}
+
+
+/* 現金出口 - 居中佈局（位於 grid 中央列） */
+.cash-dispenser-area {
+    grid-column: 2;
+    display: flex;
+    justify-content: center;
+}
+
+.cash-dispenser {
+    width: 650px;
+    height: 200px;
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+    border: 3px solid #0d1419;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.cash-slot {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden; /* 重要：隱藏超出部分，配合遮擋效果 */
+}
+
+/* 底部遮擋線 - 用於創造現金框被遮住的效果 */
+.cash-slot::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #37474f 0%, #455a64 100%);
+    border-top: 2px solid #0d1419;
+    z-index: 100; /* 確保在現金框之上，形成遮擋 */
+    pointer-events: none;
+}
+
+.cash-slot-cover {
+    height: 40px;
+    background: linear-gradient(135deg, #37474f 0%, #455a64 100%);
+    border-bottom: 2px solid #0d1419;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cash-slot-label {
+    color: #90a4ae;
+    font-size: 1em;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* =================================================================
+ * 現金出口 "海平面" 動畫樣式
+ * ================================================================= */
+
+/* 這是包含背景和封面的新容器 */
+.cash-display-area-container {
+    flex: 1;
+    position: relative; /* 建立定位上下文，是動畫的基礎 */
+    margin: 8px;
+    border-radius: 8px;
+    min-height: 140px;
+}
+
+/* 現金背景 (固定不動，在下層) */
+.cash-display-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none; /* 初始隱藏 */
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    z-index: 10; /* 層級較低，在封面後面 */
+}
+
+/* 現金出口封面 (我們的 "山峰"，會移動，在上層) */
+.cash-display-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #263238 0%, #37474f 100%);
+    border: 2px solid #1a252f;
+    border-radius: 6px;
+    z-index: 20; /* 層級較高，蓋在背景上面 */
+
+    /* 關鍵：設定過渡動畫，而不是用 keyframes */
+    /* 使用 ease-in-out 讓動畫更流暢 */
+    transition: transform 0.8s ease-in-out;
+    will-change: transform;
+
+    /* 初始/關閉狀態：完全可見 */
+    transform: translateY(0);
+
+    /* 用於顯示 placeholder 文字 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* "打開" 狀態: 當 JS 為封面添加 .opening class 時觸發 */
+.cash-display-cover.opening {
+    /* 向下移動 105% 的自身高度，使其完全 "沉沒" 消失 */
+    transform: translateY(105%);
+}
+
+/* "關閉" 狀態: 當 JS 為封面添加 .closing class 時觸發 */
+.cash-display-cover.closing {
+    /* 返回到關閉位置 */
+    transform: translateY(0);
+}
+
+/* 存入金錢顯示樣式 */
+.deposited-money-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.deposited-bill {
+    transition: all 0.3s ease;
+    animation: billAppear 0.5s ease;
+}
+
+.deposited-bill img {
+    width: 120px;
+    height: auto;
+    max-height: 60px;
+    object-fit: cover;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.bill-count-indicator {
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+@keyframes billAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* 現金滾動拉桿系統 */
+.amount-slider-container {
+    position: absolute;
+    right: 5px;
+    top: 10px;
+    bottom: 10px;
+    width: 15px;
+    z-index: 50;
+    background: rgba(0,0,0,0.2);
+    border-radius: 7px;
+    display: none; /* 默認隱藏，只有當內容超出時才顯示 */
+}
+
+.amount-slider-container.visible {
+    display: block;
+}
+
+.slider-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #333, #555);
+    border-radius: 7px;
+    border: 1px solid #666;
+}
+
+.slider-handle {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    height: 40px;
+    background: linear-gradient(180deg, #888, #666);
+    border-radius: 5px;
+    cursor: grab;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    transition: background 0.2s ease;
+    border: 1px solid #999;
+}
+
+.slider-handle:hover {
+    background: linear-gradient(180deg, #999, #777);
+}
+
+.slider-handle:active {
+    cursor: grabbing;
+    background: linear-gradient(180deg, #777, #555);
+}
+
+.handle-grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #ddd;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* 現金容器添加滾動功能 */
+.cash-display-background {
+    overflow: hidden; /* 隱藏超出部分 */
+    position: relative;
+    max-height: 150px; /* 限制現金顯示區域高度 */
+}
+
+.cash-bills-container {
+    transition: transform 0.3s ease;
+    transform: translateY(0); /* 滾動偏移 */
+    width: 100%;
+    min-height: 100%;
+}
+
+/* 現金出口閃爍提示動畫 */
+/* 確保舊的 keyframes 動畫不會干擾 */
+@keyframes cashOutletSlideDown {}
+@keyframes cashOutletSlideUp {}
+
+/* cash-placeholder removed - no longer needed */
+
+.cash-dispenser.dispensing {
+    animation: dispensing 3s ease-in-out;
+}
+
+@keyframes dispensing {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* 現金出口關閉動畫 */
+.cash-dispenser.closing {
+    animation: cash-dispenser-closing 2s ease-in-out;
+}
+
+@keyframes cash-dispenser-closing {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-10px);
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 鈔票容器 */
+.cash-bills-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+    height: calc(100% - 60px); /* 🔧 為按鈕預留空間 */
+    position: relative; /* 🔧 改為 relative，避免覆蓋按鈕 */
+    z-index: 50; /* 🚨 設定較低的 z-index */
+    transition: opacity 0.3s ease-out;
+}
+
+.cash-bills-container.disappearing {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+/* 🔧 取走現金按鈕樣式 - 確保不被金錢遮擋 */
+.take-cash-btn {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Microsoft JhengHei', sans-serif;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+    margin: 15px auto 0;
+    display: block;
+    min-width: 140px;
+    position: relative;
+    z-index: 1000; /* 🚨 關鍵：確保按鈕在金錢圖片上方 */
+}
+
+.take-cash-btn:hover {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+    z-index: 1001; /* hover 時進一步提高層級 */
+}
+
+.take-cash-btn:active {
+    transform: translateY(-1px);
+}
+
+/* 收據顯示區域 - 簡化框架，更大空間 */
+.receipt-display-area {
+    background: rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.receipt-display-area h4 {
+    color: #4FC3F7;
+    font-size: 1.1em;
+    margin: 0 0 10px 0;
+    text-align: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 8px;
+    font-family: 'Microsoft JhengHei', sans-serif;
+}
+
+.receipt-display-content {
+    flex: 1;
+    padding: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #E8F5E8;
+    min-height: 100px;
+    overflow-y: auto;
+}
+
+.no-receipt-message {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    margin: 0;
+    padding: 20px;
+}
+
+.take-receipt-btn {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Microsoft JhengHei', sans-serif;
+    box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3);
+    margin-top: auto;
+    align-self: center;
+    white-space: nowrap; /* 🔧 [修正] 確保按鈕文字不換行，保持一列顯示 */
+}
+
+.take-receipt-btn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.take-receipt-btn:active {
+    transform: translateY(-1px);
+}
+
+/* 卡片退出動畫 */
+@keyframes cardEject {
+    0% {
+        transform: translate(-50%, -50%) translateY(0px);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-10px);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) translateY(-20px);
+        opacity: 1;
+    }
+}
+
+/* 從插槽向下滑出後淡化到原位置的動畫 */
+@keyframes cardEjectFromSlot {
+    0% {
+        transform: translate(-50%, -150%);
+        opacity: 0;
+        z-index: 10000;
+    }
+    15% {
+        transform: translate(-50%, -50%);
+        opacity: 0.8;
+        z-index: 10000;
+    }
+    30% {
+        transform: translate(-50%, 50%);
+        opacity: 1;
+        z-index: 10000;
+    }
+    50% {
+        transform: translate(-50%, 100%);
+        opacity: 1;
+        z-index: 10000;
+    }
+    70% {
+        transform: translate(-50%, 100%);
+        opacity: 0.2;
+        z-index: 10000;
+    }
+    100% {
+        transform: translate(-50%, 300%);
+        opacity: 1;
+        z-index: 10000;
+    }
+}
+
+/* 鈔票圖片樣式 */
+.cash-bill-img {
+    width: 120px;
+    height: auto;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    animation: billDispense 2s ease-out forwards;
+    opacity: 0;
+    max-height: 60px;
+    position: relative;
+    z-index: 100; /* 🚨 設定較低的 z-index，讓按鈕可以在上方 */
+}
+
+@keyframes billDispense {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(0) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 舊的cash-bill樣式保留以防其他地方使用 */
+.cash-bill {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2em;
+    animation: cashDispense 3s ease-out forwards;
+}
+
+@keyframes cashDispense {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -100%);
+    }
+    30% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    70% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, 20%);
+    }
+}
+
+/* 收據出口 - 應用統一底框 */
+.receipt-printer {
+    display: flex;
+    justify-content: center;
+}
+
+.receipt-slot {
+    width: 200px;
+    height: 60px;
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+    border: 3px solid #0d1419;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.receipt-slot:hover {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.receipt-slot-light {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background: #ff5252;
+    border-radius: 50%;
+    transition: all 0.5s ease;
+}
+
+.receipt-slot-light.active {
+    background: #4caf50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8), 0 0 25px rgba(76, 175, 80, 0.4);
+    animation: lightPulse 2s ease-in-out infinite;
+}
+
+.receipt-opening {
+    color: #90a4ae;
+    font-size: 0.9em;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+/* 收據插入細縫 - 仿照卡片插槽設計 */
+.receipt-insertion-slit {
+    width: 220px;
+    height: 8px;
+    background: linear-gradient(135deg, #0d1419 0%, #1a252f 50%, #0d1419 100%);
+    border: 1px solid #000;
+    border-radius: 2px;
+    position: relative;
+    box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.8),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.receipt {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px 3px 0 0;
+    opacity: 0;
+    transition: all 1s ease;
+}
+
+.receipt.printed {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-20px);
+}
+
+.receipt-content {
+    padding: 10px;
+    font-size: 0.85em; /* 🔧 稍微縮小以容納長銀行名稱 */
+    color: #333;
+    line-height: 1.3;
+    background: white;
+    border-radius: 8px;
+    max-width: 100%;
+    width: 100%; /* 🔧 使用完整寬度而非 fit-content */
+    margin: 0 auto;
+}
+
+.receipt-title {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #1976d2;
+    border-bottom: 2px solid #1976d2;
+    padding-bottom: 8px;
+}
+
+.receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.receipt-row {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.receipt-label {
+    padding: 6px 4px; /* 🔧 減少內邊距以節省空間 */
+    font-weight: 600;
+    color: #424242;
+    text-align: left;
+    width: 35%; /* 🔧 稍微增加標籤寬度 */
+    font-size: 0.95em; /* 🔧 稍微縮小標籤文字 */
+}
+
+.receipt-value {
+    padding: 6px 4px; /* 🔧 減少內邊距以節省空間 */
+    color: #1976d2;
+    font-weight: 600;
+    text-align: right;
+    width: 65%; /* 🔧 為長銀行名稱提供更多空間 */
+    font-size: 0.9em; /* 🔧 稍微縮小值文字 */
+    word-wrap: break-word; /* 🔧 允許長文字換行 */
+}
+
+.receipt-footer {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #4CAF50;
+    padding: 8px;
+    background: #f0f8f0;
+    border-radius: 5px;
+}
+
+/* 螢幕顯示的收據樣式 - 簡化框架，更大空間 */
+.screen-receipt-content {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    margin: 10px auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 95%;
+    width: fit-content;
+}
+
+.screen-receipt-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #1976d2;
+    border-bottom: 2px solid #1976d2;
+    padding-bottom: 12px;
+}
+
+.screen-receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.screen-receipt-row {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.screen-receipt-row:last-child {
+    border-bottom: none;
+}
+
+.screen-receipt-label {
+    padding: 12px 8px;
+    font-weight: 600;
+    color: #424242;
+    text-align: left;
+    width: 35%;
+    font-size: 1.2em;
+}
+
+.screen-receipt-value {
+    padding: 12px 8px;
+    color: #1976d2;
+    font-weight: bold;
+    text-align: right;
+    width: 65%;
+    font-size: 1.3em;
+}
+
+.screen-receipt-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #2E7D32;
+    padding: 12px;
+    background: rgba(76, 175, 80, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+
+/* 老式樣式保留以防兼容性問題 */
+.receipt-content h4 {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 1.2em;
+    color: #1976d2;
+}
+
+.receipt-line {
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* 進度顯示 */
+.atm-progress {
+    margin-top: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.progress-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    color: white;
+}
+
+.step-counter {
+    font-weight: bold;
+    min-width: 120px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+.experience-points {
+    font-weight: bold;
+    color: #ffeb3b;
+    min-width: 120px;
+    text-align: right;
+}
+
+/* =================================================================
+ * 螢幕內容專用樣式
+ * ================================================================= */
+
+/* 選項按鈕統一樣式 */
+.option-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1em;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    font-family: inherit;
+    min-width: 180px; /* 🔧 確保按鈕最小寬度一致 */
+    box-sizing: border-box; /* 🔧 確保padding計算一致 */
+}
+
+.option-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+}
+
+.option-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: stretch; /* 🔧 確保按鈕高度一致 */
+    flex-wrap: wrap;
+}
+
+/* 特定按鈕顏色樣式 */
+.continue-btn, .print-btn {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.4);
+}
+
+.continue-btn:hover, .print-btn:hover {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.6);
+}
+
+.end-btn, .finish-btn, .no-print-btn {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: rgba(244, 67, 54, 0.4);
+}
+
+.end-btn:hover, .finish-btn:hover, .no-print-btn:hover {
+    background: rgba(244, 67, 54, 0.3);
+    border-color: rgba(244, 67, 54, 0.6);
+}
+
+/* PIN輸入畫面 - 針對寬屏優化 */
+.screen-pin-entry {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-align: center;
+    justify-content: space-between; /* 🔧 空間平均分配 */
+}
+
+.pin-header {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 5px 10px; /* 🔧 減少垂直padding適應寬屏高度 */
+}
+
+.pin-header h2 {
+    margin: 0 0 15px 0; /* 🔧 優化標題間距 */
+    font-size: 1.5em; /* 🔧 適當縮小字體 */
+}
+
+/* 🔧 security-icon樣式已移除，圖標整合到h2中 */
+
+.pin-input-area {
+    margin: 10px 0; /* 🔧 減少上下邊距 */
+}
+
+.pin-display {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.pin-dot {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.pin-dot.filled {
+    background: white;
+    color: #1976d2;
+    border-color: white;
+}
+
+.error-message {
+    color: #ff5252;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.attempts-remaining {
+    margin-top: 8px;
+    margin-bottom: 15px; /* 新增下邊距，避免與數字鍵盤重疊 */
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+/* 主選單畫面 */
+.screen-menu {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.account-info {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-top: 8px;
+}
+
+.menu-layout {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 20px;
+}
+
+.menu-layout-simple {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 新增網格佈局樣式 */
+.menu-layout-grid {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.menu-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2列 */
+    grid-template-rows: auto auto; /* 🔧 [修正] 改為 auto，讓每行根據內容高度決定，不會強制拉伸 */
+    gap: 15px; /* 🔧 減少間距 20px → 15px */
+    width: 380px; /* 🔧 縮小寬度 500px → 380px，避免推擠右側面板 */
+    /* 🔧 [修正] 移除固定高度，改用彈性佈局以配合 screen-section 的 min-height */
+    /* height: 250px; */
+    /* 🔧 [移除] min-height 讓選項高度由內容決定 */
+    align-content: center; /* 🔧 [新增] 垂直居中對齊所有網格項目 */
+}
+
+.menu-options {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+}
+
+.side-button-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 15px;
+    min-width: 200px;
+}
+
+.side-label {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px; /* 🔧 略微縮小圓角 12px → 10px */
+    padding: 10px 15px; /* 🔧 縮小內距 12px 15px → 10px 15px，減小高度 */
+    text-align: center;
+    font-size: 1em; /* 🔧 縮小字體 1.1em → 1em */
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px; /* 🔧 [新增] 確保所有服務選項高度一致 */
+    box-sizing: border-box; /* 🔧 [新增] 包含邊框和內距在內的盒模型 */
+}
+
+.side-label:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+}
+
+/* 網格佈局中的側邊標籤hover效果 */
+.menu-options-grid .side-label:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.menu-item.highlighted {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.menu-icon {
+    font-size: 1.5em;
+    width: 30px;
+    text-align: center;
+}
+
+.instruction-text {
+    text-align: center;
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin-top: 15px;
+}
+
+/* 金額輸入畫面 */
+.screen-amount-entry {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-align: center;
+}
+
+.screen-amount-selection {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-align: center;
+    padding: 20px;
+}
+
+.amount-header {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 10px;
+}
+
+.amount-icon {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+}
+
+.amount-input-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px 20px;
+    min-width: 200px;
+    justify-content: center;
+}
+
+.currency-symbol {
+    font-size: 1.5em;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.amount-display {
+    font-size: 2em;
+    font-weight: bold;
+    min-width: 100px;
+    text-align: right;
+}
+
+.quick-amounts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 15px 0;
+    max-width: 250px;
+}
+
+.quick-amount-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.85em;
+}
+
+.quick-amount-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+/* 金額選項網格 */
+.amount-options-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 🔧 改為4列，更好利用寬屏空間 */
+    gap: 8px; /* 🔧 減少間距避免擠壓右側面板 */
+    max-width: 460px; /* 🔧 縮小最大寬度避免擠壓右側明細表出口面板 */
+    margin: 0 auto 20px;
+}
+
+.amount-option-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 12px 6px; /* 🔧 縮小內距避免按鈕過大 */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95em; /* 🔧 縮小字體避免按鈕過大 */
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+}
+
+.amount-option-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+}
+
+.amount-option-btn:active {
+    background: rgba(255, 193, 7, 0.3);
+    border-color: rgba(255, 193, 7, 0.6);
+    color: #fff9c4;
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* 螢幕內數字鍵盤樣式 */
+.screen-keypad {
+    padding: 10px 15px; /* 🔧 減少垂直padding */
+    background: rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.screen-keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 250px;
+    margin: 0 auto;
+}
+
+.screen-key-btn {
+    width: 60px; /* 🔧 縮小按鈕寬度 */
+    height: 40px; /* 🔧 縮小按鈕高度 */
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+}
+
+.screen-key-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.screen-key-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
+}
+
+.screen-key-btn.number-key {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: rgba(33, 150, 243, 0.4);
+}
+
+.screen-key-btn.number-key:hover {
+    background: rgba(33, 150, 243, 0.3);
+}
+
+.screen-key-btn.action-key {
+    font-size: 0.9em;
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.4);
+}
+
+.screen-key-btn.action-key:hover {
+    background: rgba(255, 193, 7, 0.3);
+}
+
+.screen-key-btn.cancel-key {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: rgba(244, 67, 54, 0.4);
+}
+
+.screen-key-btn.cancel-key:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+.screen-key-btn.enter-key {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.4);
+    grid-column: 1 / 4;
+    width: 100%;
+}
+
+.screen-key-btn.enter-key:hover {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+/* 處理畫面 */
+.screen-processing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.processing-animation {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 發鈔中畫面 */
+.screen-cash-dispensing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.dispensing-animation {
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.cash-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+/* 列印畫面 */
+.screen-printing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.printing-animation {
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.printer-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.processing-text {
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+.processing-dots {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.dot:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.dot:nth-child(3) {
+    animation-delay: 1s;
+}
+
+@keyframes dotPulse {
+    0%, 60%, 100% { opacity: 0.4; }
+    30% { opacity: 1; }
+}
+
+/* 完成畫面 */
+.screen-complete {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 3em;
+    margin-bottom: 20px;
+    animation: successPulse 2s ease-in-out;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.transaction-details {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    min-width: 300px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.completion-message {
+    margin-top: 20px;
+    font-size: 1.1em;
+}
+
+.completion-message p {
+    margin-bottom: 5px;
+}
+
+/* 錯誤畫面 */
+.screen-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.error-icon {
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: #ff5252;
+}
+
+.error-suggestions {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    text-align: left;
+    max-width: 300px;
+}
+
+.suggestion {
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+/* =================================================================
+ * 結果畫面樣式
+ * ================================================================= */
+
+.atm-results-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.results-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.results-header h1 {
+    font-size: 2.5em;
+    color: #4caf50;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.final-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.stat-item {
+    background: white;
+    border-radius: 15px;
+    padding: 25px 20px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #1976d2;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.results-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.achievements-section, .performance-feedback {
+    margin-bottom: 30px;
+}
+
+.achievements-section:last-child, .performance-feedback:last-child {
+    margin-bottom: 0;
+}
+
+.achievements-section h3, .performance-feedback h3 {
+    color: #1976d2;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.achievement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.achievement-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #4caf50;
+}
+
+.achievement-icon {
+    font-size: 1.5em;
+}
+
+.achievement-text {
+    font-size: 1.1em;
+    color: #333;
+}
+
+.feedback-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+    color: #555;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border-left: 4px solid #ff9800;
+}
+
+.results-footer {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.restart-btn, .settings-btn {
+    padding: 18px 35px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    min-width: 180px;
+}
+
+.restart-btn {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    color: white;
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+}
+
+.restart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+}
+
+.settings-btn {
+    background: linear-gradient(135deg, #ff9800 0%, #f57400 100%);
+    color: white;
+    box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+}
+
+.settings-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+}
+
+/* 升級通知 */
+.level-up-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    color: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    text-align: center;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.level-up-notification.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.level-up-content h3 {
+    font-size: 1.8em;
+    margin-bottom: 15px;
+}
+
+.level-up-content p {
+    font-size: 1.2em;
+}
+
+/* =================================================================
+ * 響應式設計
+ * ================================================================= */
+
+@media (max-width: 768px) {
+    .atm-container {
+        padding: 10px 0;
+        justify-content: flex-start;
+    }
+    
+    .atm-body {
+        padding: 20px;
+        max-width: 100%;
+        min-height: auto;
+    }
+    
+    /* 🔧 [新增] 響應式統一底框調整 */
+    .atm-functions-container {
+        padding: 20px; /* 🔧 減少padding */
+        border-width: 3px; /* 🔧 減少邊框寬度 */
+    }
+    
+    .atm-upper-section {
+        grid-template-columns: 1fr; /* 🔧 單列佈局 */
+        gap: 20px;
+    }
+    
+    .card-section, .screen-section, .receipt-section {
+        padding: 15px; /* 🔧 減少內距 */
+    }
+    
+    .atm-screen-area {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .atm-screen {
+        width: 100%;
+        max-width: 500px; /* 🔧 增加最大寬度適應寬屏 */
+        height: 350px; /* 🔧 適度增加高度以配合桌面版調整 (500:350 ≈ 1.43:1) */
+    }
+    
+    .side-buttons {
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .side-btn {
+        width: 60px;
+        height: 35px;
+        font-size: 10px;
+    }
+    
+    
+    .card-slot, .cash-dispenser {
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    /* 🔧 [修正] 卡片、螢幕和收據區域響應式調整 - 統一高度 */
+    .card-section,
+    .screen-section,
+    .receipt-section {
+        min-height: 300px;
+    }
+    
+    .cash-dispenser {
+        height: 160px;
+        width: 500px;
+        max-width: 100%;
+    }
+    
+    .cash-display-area-container {
+        min-height: 110px;
+    }
+    
+    .cash-bill-img {
+        width: 90px;
+        max-height: 45px;
+    }
+    
+    /* 🔧 [新增] 收據顯示區響應式調整 - 簡化框架 */
+    .receipt-display-area {
+        min-height: 200px;
+        padding: 8px;
+    }
+    
+    .settings-content {
+        padding: 30px 20px;
+    }
+
+    .game-buttons {
+        gap: 8px;
+    }
+
+    .game-buttons .start-btn,
+    .game-buttons .back-to-main-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 12px 8px;
+        font-size: 14px;
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+    }
+
+    /* 🔧 [新增] 中等屏幕的金額網格調整 */
+    .amount-options-grid {
+        grid-template-columns: repeat(3, 1fr); /* 🔧 平板端使用3列 */
+        max-width: 450px;
+    }
+    
+    .final-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .results-footer {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .restart-btn, .settings-btn {
+        min-width: unset;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .atm-container {
+        padding: 5px 0;
+        min-height: 100vh;
+    }
+    
+    .atm-body {
+        min-height: auto;
+        padding: 15px;
+    }
+    
+    /* 🔧 [新增] 小屏幕統一底框進一步優化 */
+    .atm-functions-container {
+        padding: 15px; /* 🔧 進一步減少padding */
+        border-width: 2px; /* 🔧 減少邊框寬度 */
+        border-radius: 15px; /* 🔧 減少圓角 */
+    }
+    
+    .atm-upper-section {
+        gap: 15px; /* 🔧 進一步減少間距 */
+        margin-bottom: 20px;
+    }
+    
+    .card-section, .screen-section, .receipt-section {
+        padding: 10px; /* 🔧 進一步減少內距 */
+    }
+    
+    .settings-header h1 {
+        font-size: 2em;
+    }
+    
+    .results-header h1 {
+        font-size: 2em;
+    }
+    
+    .settings-content, .results-content {
+        padding: 20px;
+    }
+    
+    .atm-screen {
+        height: 300px; /* 🔧 適度增加高度保持比例平衡 */
+        max-width: 90vw; /* 🔧 限制最大寬度不超出屏幕 */
+    }
+    
+    .screen-content {
+        font-size: 14px;
+        padding: 15px;
+    }
+    
+    .screen-keypad-grid {
+        max-width: 220px;
+        gap: 8px;
+    }
+    
+    .screen-key-btn {
+        width: 55px; /* 🔧 小屏幕進一步縮小 */
+        height: 38px; /* 🔧 小屏幕進一步縮小 */
+        font-size: 0.9em;
+    }
+    
+    .amount-options-grid {
+        grid-template-columns: repeat(2, 1fr); /* 🔧 小屏幕回到2列 */
+        max-width: 300px;
+        gap: 8px;
+    }
+    
+    .amount-option-btn {
+        padding: 12px 8px;
+        font-size: 0.9em;
+    }
+    
+    
+    .progress-info {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .final-stats {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .stat-value {
+        font-size: 2em;
+    }
+    
+    /* 🔧 [修正] 小屏幕卡片、螢幕和收據區域進一步優化 - 統一高度 */
+    .card-section,
+    .screen-section,
+    .receipt-section {
+        min-height: 250px;
+        gap: 15px;
+    }
+    
+    .cash-dispenser {
+        height: 140px;
+        width: 400px;
+        max-width: 100%;
+    }
+    
+    .cash-display-area-container {
+        min-height: 90px;
+        gap: 4px;
+    }
+    
+    .cash-bill-img {
+        width: 70px;
+        max-height: 35px;
+    }
+    
+    /* 🔧 [新增] 小屏幕收據顯示區進一步優化 - 簡化框架 */
+    .receipt-display-area {
+        padding: 6px;
+        min-height: 150px;
+    }
+    
+    .receipt-display-content {
+        font-size: 0.8em;
+        padding: 8px;
+    }
+    
+    .cash-bills-container {
+        gap: 3px;
+    }
+}
+
+/* =================================================================
+ * 深色模式支援
+ * ================================================================= */
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    }
+    
+    .settings-content {
+        background: white !important;
+        color: #333 !important;
+    }
+
+    .results-content {
+        background: #2d2d2d;
+        color: white;
+    }
+    
+    .settings-content .setting-group label {
+        color: #333 !important;
+    }
+
+    .settings-content .selection-btn {
+        background: white !important;
+        border-color: #ddd !important;
+        color: #000 !important;
+        font-weight: bold !important;
+    }
+
+    .settings-content .selection-btn:hover {
+        background: #f0f3ff !important;
+        border-color: #667eea !important;
+    }
+
+    .settings-content .selection-btn.active {
+        background: #667eea !important;
+        border-color: #667eea !important;
+        color: white !important;
+    }
+
+    /* 結果頁面保持深色主題 */
+    .results-content .setting-group label {
+        color: #64b5f6;
+    }
+
+    .results-content .selection-btn {
+        background: #424242;
+        border-color: #616161;
+        color: white;
+        font-weight: bold !important;
+    }
+
+    .results-content .selection-btn:hover {
+        background: #3d5afe;
+        border-color: #3d5afe;
+    }
+    
+    .stat-item, .achievement-item, .feedback-text {
+        background: #424242;
+        color: white;
+    }
+    
+    .stat-value {
+        color: #64b5f6;
+    }
+    
+    .achievement-text {
+        color: white;
+    }
+}
+
+/* =================================================================
+ * 存款功能樣式
+ * ================================================================= */
+
+/* 鈔票選擇彈跳窗 */
+.bill-selection-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bill-selection-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.bill-selection-modal .modal-content {
+    position: relative;
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    z-index: 10001;
+}
+
+.bill-selection-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 15px;
+}
+
+.bill-selection-modal .modal-header h3 {
+    margin: 0;
+    color: #1976d2;
+    font-size: 1.5em;
+}
+
+.bill-selection-modal .close-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.bill-selection-modal .close-btn:hover {
+    background: #d32f2f;
+}
+
+.bill-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.bill-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fafafa;
+}
+
+.bill-option:hover {
+    border-color: #1976d2;
+    background: #f3f9ff;
+    transform: translateY(-2px);
+}
+
+.bill-option img {
+    width: 80px;
+    height: auto;
+    margin-bottom: 8px;
+    border-radius: 5px;
+}
+
+.bill-option span {
+    font-weight: bold;
+    color: #1976d2;
+    margin-bottom: 5px;
+}
+
+.bill-option .count {
+    background: #4caf50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    min-width: 40px;
+    text-align: center;
+}
+
+.deposit-summary {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.deposit-summary p {
+    margin: 5px 0;
+    font-size: 1.1em;
+}
+
+.deposit-summary span {
+    font-weight: bold;
+    color: #1976d2;
+}
+
+.bill-selection-modal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.bill-selection-modal .cancel-btn {
+    background: #9e9e9e;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.3s;
+    flex: 1;
+}
+
+.bill-selection-modal .cancel-btn:hover {
+    background: #757575;
+}
+
+.bill-selection-modal .confirm-btn {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.3s;
+    flex: 1;
+}
+
+.bill-selection-modal .confirm-btn:hover {
+    background: #45a049;
+}
+
+/* 存款畫面樣式 */
+.screen-deposit-cash {
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.screen-deposit-cash .deposit-header h2 {
+    margin-bottom: 15px;
+    color: #4fc3f7;
+}
+
+.screen-deposit-cash .deposit-instructions p {
+    font-size: 1.2em;
+    color: #90a4ae;
+    margin-bottom: 20px;
+}
+
+.deposit-limits {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.limit-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.limit-label {
+    font-size: 0.9em;
+    color: #90a4ae;
+    margin-bottom: 5px;
+}
+
+.limit-value {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.deposit-guidelines {
+    text-align: left;
+    margin: 20px 0;
+    background: rgba(255, 152, 0, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.deposit-guidelines h3 {
+    color: #ffab40;
+    margin-bottom: 10px;
+}
+
+.deposit-guidelines ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.deposit-guidelines li {
+    margin-bottom: 8px;
+    color: #cfd8dc;
+}
+
+.deposit-actions {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+}
+
+.side-label-left, .side-label-right {
+    padding: 12px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.side-label-left {
+    background: #f44336;
+    color: white;
+}
+
+.side-label-left:hover {
+    background: #d32f2f;
+    transform: translateY(-2px);
+}
+
+.side-label-right {
+    background: #4caf50;
+    color: white;
+}
+
+.side-label-right:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.cancel-instruction {
+    font-size: 0.9em;
+    color: #90a4ae;
+    margin-top: 15px;
+}
+
+/* 數鈔辨識畫面樣式 */
+.screen-deposit-counting {
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.counting-animation {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.money-icon {
+    font-size: 3em;
+    animation: bounce 1s infinite alternate;
+    text-align: center;
+    width: 100%;
+    line-height: 1;
+}
+
+@keyframes bounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-10px); }
+}
+
+.rejection-notice {
+    background: rgba(255, 152, 0, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.rejection-notice h3 {
+    color: #ffab40;
+    margin-bottom: 10px;
+}
+
+.rejection-notice ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.rejection-notice li {
+    margin-bottom: 8px;
+    color: #cfd8dc;
+}
+
+/* 確認存入現鈔畫面樣式 */
+.screen-deposit-confirm {
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.screen-deposit-confirm .confirm-header h2 {
+    margin-bottom: 20px;
+    color: #4fc3f7;
+}
+
+.deposit-summary-table {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-row.amount-row {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #4fc3f7;
+    border-bottom: 2px solid #4fc3f7;
+    margin-bottom: 10px;
+}
+
+.summary-row.total-row {
+    font-weight: bold;
+    color: #4fc3f7;
+    border-top: 2px solid #4fc3f7;
+    margin-top: 10px;
+    padding-top: 15px;
+}
+
+.summary-row .label {
+    color: #cfd8dc;
+}
+
+.summary-row .value {
+    color: white;
+    font-weight: bold;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+}
+
+.confirm-instruction {
+    font-size: 0.9em;
+    color: #90a4ae;
+    margin-top: 15px;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .bill-options {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .bill-option img {
+        width: 60px;
+    }
+
+    .deposit-limits {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .bill-selection-modal .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+}
+
+/* =================================================================
+ * 數字輸入模態視窗樣式
+ * ================================================================= */
+
+.numeric-input-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10002;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.numeric-input-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+}
+
+.numeric-input-modal .modal-content {
+    position: relative;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 20px;
+    padding: 0;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    z-index: 10003;
+    overflow: hidden;
+    animation: modalSlideUp 0.4s ease-out;
+}
+
+.numeric-input-modal .modal-header {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+}
+
+.numeric-input-modal .modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.numeric-input-modal .close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.numeric-input-modal .close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.numeric-input-modal .modal-body {
+    padding: 25px;
+}
+
+.numeric-input-modal .instruction {
+    text-align: center;
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.numeric-input-modal .display-area {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 2px solid #e9ecef;
+}
+
+.numeric-input-modal .numeric-display {
+    width: 100%;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    color: #2c3e50;
+    letter-spacing: 2px;
+    outline: none;
+    font-family: 'Courier New', monospace;
+}
+
+.numeric-input-modal .numeric-keypad {
+    display: grid;
+    gap: 10px;
+}
+
+.numeric-input-modal .keypad-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.numeric-input-modal .keypad-btn {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 55px;
+}
+
+.numeric-input-modal .keypad-btn:hover {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-color: #2196f3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.numeric-input-modal .keypad-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+}
+
+.numeric-input-modal .keypad-btn[data-key="Clear"],
+.numeric-input-modal .keypad-btn[data-key="Del"] {
+    background: linear-gradient(135deg, #ff5722, #e64a19);
+    color: white;
+    border-color: #d84315;
+}
+
+.numeric-input-modal .keypad-btn[data-key="Clear"]:hover,
+.numeric-input-modal .keypad-btn[data-key="Del"]:hover {
+    background: linear-gradient(135deg, #e64a19, #d84315);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+.numeric-input-modal .modal-footer {
+    background: #f8f9fa;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.numeric-input-modal .cancel-btn,
+.numeric-input-modal .confirm-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.numeric-input-modal .cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.numeric-input-modal .cancel-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.numeric-input-modal .confirm-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.numeric-input-modal .confirm-btn:hover {
+    background: linear-gradient(135deg, #20c997, #17a2b8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 手機響應式設計 */
+@media (max-width: 480px) {
+    .numeric-input-modal .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+
+    .numeric-input-modal .modal-header {
+        padding: 15px 20px;
+    }
+
+    .numeric-input-modal .modal-body {
+        padding: 20px;
+    }
+
+    .numeric-input-modal .keypad-btn {
+        padding: 12px;
+        font-size: 16px;
+        min-height: 45px;
+    }
+
+    .numeric-input-modal .numeric-display {
+        font-size: 20px;
+        padding: 12px;
+    }
+}
+
+/* =================================================================
+ * 動畫和過渡效果
+ * ================================================================= */
+
+.atm-body {
+    animation: atmBoot 1s ease-out;
+}
+
+@keyframes atmBoot {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.screen-content {
+    animation: screenFadeIn 0.5s ease-out;
+}
+
+@keyframes screenFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* 無障礙支援 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* 高對比模式支援 */
+@media (prefers-contrast: high) {
+    .screen-key-btn, .selection-btn {
+        border-width: 3px;
+    }
+    
+    .atm-screen {
+        border-width: 10px;
+    }
+    
+    .card-slot, .cash-dispenser, .receipt-slot {
+        border-width: 4px;
+    }
+}
+
+/* 打印樣式 */
+@media print {
+    .atm-container {
+        box-shadow: none;
+        background: white;
+    }
+
+    .atm-body {
+        background: white;
+        border: 2px solid #000;
+    }
+
+    .screen-content {
+        background: white;
+        color: black;
+    }
+}
+
+/* ===== 現金彈跳視窗樣式 (參考 A3) ===== */
+
+/* Modal 覆蓋層 - 通用樣式 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    position: relative;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 20px;
+    padding: 0;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    overflow: hidden;
+    animation: modalSlideUp 0.4s ease-out;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+    position: relative;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    flex: 1;
+}
+
+/* 關閉按鈕樣式 */
+.modal-close-btn {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+    padding: 0;
+}
+
+.modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.modal-close-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    background: #f8f9fa;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.cash-modal-content {
+    max-width: 600px;
+}
+
+.cash-detail-card {
+    background: white;
+    border: 3px solid #ddd;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.cash-detail-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.atm-icon-large {
+    font-size: 64px;
+    line-height: 1;
+}
+
+.bank-name-large {
+    font-size: 28px;
+    font-weight: 800;
+    color: #2196f3;
+    display: flex;
+    align-items: center;
+}
+
+.cash-detail-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #ddd 50%, transparent 100%);
+    margin: 20px 0;
+}
+
+.cash-detail-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cash-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px dashed #ddd;
+}
+
+.cash-info-row:last-child {
+    border-bottom: none;
+}
+
+.cash-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #666;
+}
+
+.cash-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #333;
+}
+
+.cash-amount-large {
+    font-size: 28px;
+    color: #4fc3f7;
+}
+
+/* 紙鈔顯示區域 */
+.modal-bills-display {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.modal-bill-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.modal-bill-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #2196f3;
+}
+
+.modal-bill-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.modal-bill-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2196f3;
+}
+
+/* 完成按鈕樣式 */
+.complete-btn {
+    width: 100%;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.complete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.complete-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+/* 響應式設計 - 現金彈窗 */
+@media (max-width: 768px) {
+    .cash-detail-card {
+        padding: 30px 20px;
+    }
+
+    .atm-icon-large {
+        font-size: 48px;
+    }
+
+    .bank-name-large {
+        font-size: 24px;
+    }
+
+    .cash-label {
+        font-size: 16px;
+    }
+
+    .cash-value {
+        font-size: 18px;
+    }
+
+    .cash-amount-large {
+        font-size: 24px;
+    }
+
+    .modal-bills-display {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+    }
+
+    .modal-bill-item {
+        padding: 8px;
+    }
+
+    .modal-bill-label {
+        font-size: 14px;
+    }
+}
+/* ================================================================
+ * ✅ [最終修正] 收據紙張樣式
+ * ================================================================ */
+
+/*
+ * 修正1：調整收據容器
+ * - 移除 width: fit-content
+ * - 使用 max-width 確保它不會超出右邊灰色面板
+ * - 這給了內部表格足夠的空間來伸展寬度
+ * 🔧 [2025-10-25] 進一步限制寬度，確保在面板內
+ */
+/* ================================================================
+ * ✅ [最終修正] 收據紙張樣式
+ * ================================================================ */
+
+.receipt-paper-animation {
+    /* 🔧 [修正] 外層容器透明，讓白色背景和黑邊由內層 .receipt-content 控制 */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: #333;
+    z-index: 10000;
+    max-width: 240px;
+    width: auto; /* 🔧 [修正] 改為 auto，讓寬度由內容決定 */
+    margin: 0 auto;
+    font-size: 0.65em;
+    box-sizing: border-box;
+    /* 🔧 [修正] 確保高度由內容決定，不會產生額外空間 */
+    height: auto !important;
+    min-height: 0 !important;
+    display: inline-block; /* 🔧 [修正] 改為 inline-block，讓高度完全貼合內容 */
+}
+
+/*
+ * 🎯 修正 #2：移除這一層多餘的 Flexbox 和寬度設定
+ * 讓它只作為一個簡單的內容包裝器。
+ */
+.receipt-paper-content {
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+    text-align: left;
+    width: auto; /* 🎯 寬度由子元素決定，不強制 100% */
+    background: transparent !important; /* 🔧 [修正] 確保透明 */
+    display: inline-block; /* 🔧 [修正] 高度貼合內容 */
+}
+
+/*
+ * 🎯 關鍵修正 #3：移除 width: 100% !important;
+ * 讓容器的寬度「由內容撐開」，而不是強制填滿。
+ * 這樣父層的 justify-content: center 才能正確作用。
+ */
+.receipt-content {
+    /* 🔧 [修正] 將白色背景和黑邊從 .receipt-paper-animation 移到這裡 */
+    background: white;
+    border: 2px solid #333;
+    border-radius: 5px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    padding: 10px 8px;
+    width: auto; /* 🎯 關鍵：讓容器寬度自適應內容，才能置中 */
+}
+
+/*
+ * 表格寬度設為 100%，這樣它會剛好填滿 .receipt-content 容器
+ */
+.receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/*
+ * 防止表格內的文字換行，這可以避免表格因為文字太長而被不自然地拉伸。
+ * 這是正確的設定，予以保留。
+ */
+.receipt-table td {
+    white-space: nowrap;
+}
+
+/* Style for the "Take Receipt" button inside the receipt */
+.receipt-paper-animation .take-receipt-btn {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Microsoft JhengHei', sans-serif;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    margin-top: 0; /* 移除額外間距，由父容器控制 */
+}
+
+.receipt-paper-animation .take-receipt-btn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateY(-2px);
+}
+
+/* ================================================================
+ * �B�J���Ҩt�� - ��ı���ܼ˦��]�Ѧ� A5 �[�c�^
+ * ================================================================ */
+
+.flow-hint-target {
+    border: 3px solid #4CAF50 !important;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+    animation: flowHintPulse 1s ease-in-out infinite;
+    position: relative;
+    z-index: 9999;
+}
+
+@keyframes flowHintPulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(76, 175, 80, 0.9);
+    }
+}
+
+/* �T�O���ܮĪG�b�Ҧ������W���i�� */
+.flow-hint-target::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border: 3px solid #4CAF50;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: flowHintPulse 1s ease-in-out infinite;
+}
+
+
+/* ================================================================
+ * 簡單模式提示動畫系統（參考 A5 架構）- 黃色引導提示
+ * ================================================================ */
+
+/* 基礎提示樣式 */
+.atm-easy-hint {
+    position: relative;
+    animation: atmPulseHint 1.5s ease-in-out infinite;
+    z-index: 10000 !important;  /* 確保提示元素在最上層，但偽元素不阻擋點擊 */
+    pointer-events: auto !important;  /* 確保元素本身可以接收點擊 */
+}
+
+/* 發光邊框 (::before) */
+.atm-easy-hint::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border: 5px solid #FFC107;
+    border-radius: inherit;
+    box-shadow:
+        0 0 20px rgba(255, 193, 7, 0.8),
+        0 0 40px rgba(255, 193, 7, 0.5),
+        inset 0 0 20px rgba(255, 193, 7, 0.3);
+    animation: atmBorderPulse 1.5s ease-in-out infinite;
+    pointer-events: none !important;  /* 強制不阻擋點擊 */
+    z-index: -1;  /* 放到元素背後，不干擾點擊 */
+}
+
+/* 提示文字泡泡 (::after) */
+.atm-easy-hint::after {
+    content: '↓ 點這裡';
+    position: absolute;
+    top: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #FFC107 0%, #FFA000 100%);
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow:
+        0 4px 12px rgba(255, 193, 7, 0.5),
+        0 0 15px rgba(255, 193, 7, 0.3);
+    animation: atmBounceHint 1s ease-in-out infinite;
+    pointer-events: none !important;  /* 強制不阻擋點擊 */
+    z-index: 10001;  /* 在元素上方但不阻擋點擊 */
+}
+
+/* 脈衝動畫 */
+@keyframes atmPulseHint {
+    0%, 100% {
+        box-shadow: 0 0 15px 3px rgba(255, 193, 7, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 25px 8px rgba(255, 193, 7, 1);
+    }
+}
+
+/* 邊框脈衝動畫 */
+@keyframes atmBorderPulse {
+    0%, 100% {
+        opacity: 0.8;
+        box-shadow:
+            0 0 20px rgba(255, 193, 7, 0.8),
+            0 0 40px rgba(255, 193, 7, 0.5),
+            inset 0 0 20px rgba(255, 193, 7, 0.3);
+    }
+    50% {
+        opacity: 1;
+        box-shadow:
+            0 0 35px rgba(255, 193, 7, 1),
+            0 0 60px rgba(255, 193, 7, 0.7),
+            inset 0 0 30px rgba(255, 193, 7, 0.5);
+    }
+}
+
+/* 彈跳動畫 */
+@keyframes atmBounceHint {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-8px);
+    }
+}
+
+/* 針對卡片插槽 */
+.atm-card-area.atm-easy-hint::after {
+    content: '↓ 點這裡插卡';
+}
+
+/* 針對數字鍵盤按鈕 */
+.numpad-btn.atm-easy-hint::after,
+.keypad-btn.atm-easy-hint::after {
+    content: '↓ 點擊輸入';
+    top: -40px;
+    font-size: 13px;
+    padding: 6px 12px;
+}
+
+/* 針對側邊按鈕 */
+.side-label.atm-easy-hint::after {
+    content: '↓ 點這裡';
+    top: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* 針對現金出口 */
+.cash-dispenser-area.atm-easy-hint::after {
+    content: '↓ 點這裡存入現金';
+    font-size: 15px;
+}
+
+.take-cash-btn.atm-easy-hint::after {
+    content: '↓ 點擊取現金';
+    font-size: 15px;
+}
+
+/* 針對收據區域 */
+.receipt-section.atm-easy-hint::after,
+.take-receipt-btn.atm-easy-hint::after {
+    content: '↓ 取走收據';
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+    .atm-easy-hint::after {
+        font-size: 12px;
+        padding: 6px 12px;
+        top: -40px;
+    }
+
+    .cash-dispenser-area.atm-easy-hint::after,
+    .take-cash-btn.atm-easy-hint::after {
+        font-size: 13px;
+        padding: 8px 14px;
+    }
+}
+
+
+/* 金額按鈕提示文字 */
+.amount-option-btn.atm-easy-hint::after {
+    content: '↓ 點這個金額';
+}
+
+
+/* 取走現金按鈕提示文字 */
+.take-cash-btn.atm-easy-hint::after {
+    content: '↓ 點這裡取現金';
+}
+
+
+/* 明細表選項按鈕提示文字 */
+.no-print-btn.atm-easy-hint::after {
+    content: '↓ 點這裡不印明細表';
+}
+
+.print-btn.atm-easy-hint::after {
+    content: '↓ 點這裡印明細表';
+}
+
+
+/* 確保取走現金按鈕位置固定，不受提示動畫影響 */
+.take-cash-btn.atm-easy-hint {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+
+/* ============================================================
+ * 提示按鈕樣式（普通/困難模式）
+ * ============================================================ */
+
+/* 提示按鈕樣式 - 位於 atm-lower-section 右側（grid 第三列） */
+.hint-request-btn {
+    grid-column: 3;
+    justify-self: end;
+    background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+    border: 3px solid #ff8f00;
+    border-radius: 50%;
+    width: 62px;
+    height: 62px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 179, 0, 0.4);
+    transition: all 0.3s ease;
+    font-family: 'Microsoft JhengHei', sans-serif;
+}
+
+.hint-request-btn:hover {
+    background: linear-gradient(135deg, #ffca28 0%, #ffa000 100%);
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(255, 179, 0, 0.6);
+}
+
+.hint-request-btn:active {
+    transform: scale(0.95);
+}
+
+.hint-request-btn .hint-icon {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.hint-request-btn .hint-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #5d4037;
+    line-height: 1;
+}
+
+/* 提示按鈕脈動動畫 */
+@keyframes hint-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(255, 179, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(255, 179, 0, 0.8), 0 0 30px rgba(255, 179, 0, 0.5);
+    }
+}
+
+.hint-request-btn.pulse {
+    animation: hint-pulse 2s ease-in-out infinite;
+}
+
+
+/* ============================================================
+ * 提示彈窗樣式
+ * ============================================================ */
+
+/* 彈窗遮罩 */
+.hint-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 彈窗主體 */
+.hint-modal {
+    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideDown 0.3s ease;
+    border: 4px solid #ffd54f;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 彈窗標題 */
+.hint-modal-header {
+    background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+    padding: 20px;
+    border-radius: 16px 16px 0 0;
+    text-align: center;
+    border-bottom: 3px solid #ff8f00;
+}
+
+.hint-modal-header h2 {
+    color: #5d4037;
+    font-size: 24px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.hint-modal-header .icon {
+    font-size: 32px;
+}
+
+/* 彈窗內容 */
+.hint-modal-content {
+    padding: 30px;
+    text-align: center;
+}
+
+.hint-modal-content p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* 提示資訊區塊 */
+.hint-info-block {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 3px solid #2196f3;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.2);
+}
+
+.hint-info-label {
+    font-size: 14px;
+    color: #1976d2;
+    font-weight: 600;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hint-info-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #0d47a1;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 多行顯示樣式（用於帳號） */
+.hint-info-value.multiline {
+    font-size: 28px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+/* 提示說明文字 */
+.hint-description {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.hint-description p {
+    margin: 0;
+    font-size: 14px;
+    color: #856404;
+    line-height: 1.6;
+}
+
+/* 彈窗按鈕 */
+.hint-modal-footer {
+    padding: 0 30px 30px;
+    text-align: center;
+}
+
+.hint-modal-close-btn {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    font-family: 'Microsoft JhengHei', sans-serif;
+}
+
+.hint-modal-close-btn:hover {
+    background: linear-gradient(135deg, #45a049 0%, #2e7d32 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.hint-modal-close-btn:active {
+    transform: translateY(0);
+}
+
+
+/* ============================================================
+ * 響應式設計
+ * ============================================================ */
+
+@media (max-width: 768px) {
+    .atm-lower-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 0 15px;
+    }
+
+    .cash-dispenser-area {
+        grid-column: auto;
+    }
+
+    .hint-request-btn {
+        grid-column: auto;
+        justify-self: auto;
+        width: 54px;
+        height: 54px;
+    }
+
+    .hint-request-btn .hint-icon {
+        font-size: 20px;
+    }
+
+    .hint-request-btn .hint-text {
+        font-size: 12px;
+    }
+
+    .hint-modal {
+        width: 95%;
+        max-width: none;
+    }
+
+    .hint-modal-header h2 {
+        font-size: 20px;
+    }
+
+    .hint-info-value {
+        font-size: 28px;
+    }
+
+    .hint-info-value.multiline {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .atm-lower-section {
+        gap: 10px;
+        padding: 0 10px;
+    }
+
+    .hint-request-btn {
+        width: 48px;
+        height: 48px;
+    }
+
+    .hint-request-btn .hint-icon {
+        font-size: 18px;
+    }
+
+    .hint-request-btn .hint-text {
+        font-size: 10px;
+    }
+
+    .hint-modal-content {
+        padding: 20px;
+    }
+
+    .hint-info-value {
+        font-size: 24px;
+    }
+
+    .hint-info-value.multiline {
+        font-size: 18px;
+    }
+}
+
+/* ===== JS 移出的動畫（去重） ===== */
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes depositAnimation {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+    50% { opacity: 0.5; transform: scale(0.8) translateY(-20px); }
+    100% { opacity: 0; transform: scale(0.3) translateY(-40px); }
+}
+
+@keyframes bounceWelcome {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes bounceCompletion {
+    0%, 20%, 60%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-20px); }
+    80% { transform: translateY(-10px); }
+}
+
+/* =============================================================
+   a5_atm_simulator — 從 HTML <style> 塊遷移（2026-03-07）
+   ============================================================= */
+        /* 禁用行動裝置上的下拉重新整理功能 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+        
+        /* ATM 滿版面響應式設計 */
+        .atm-container {
+            width: 100vw;
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 🔧 [修改] 滿版面三欄佈局樣式 - 卡片插槽左側、螢幕中央、收據右側 */
+        .atm-body {
+            display: flex;
+            gap: 20px;
+            align-items: stretch; /* 確保左右側面板高度相等 */
+            justify-content: center;
+            width: 100vw;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 0;
+            box-shadow: none;
+            box-sizing: border-box;
+        }
+
+        /* 左側面板 - 卡片插槽區域 */
+        .atm-left-panel {
+            flex: 0 0 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* 高度由 align-items: stretch 自動調整 */
+        }
+
+        /* 中央面板 - ATM螢幕和按鈕區域 */
+        .atm-center-panel {
+            flex: 1;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 右側面板 - 收據出口和顯示區域 */
+        .atm-right-panel {
+            flex: 0 0 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* 高度由 align-items: stretch 自動調整 */
+        }
+
+        /* 卡片插槽區域樣式 */
+        .card-slot-area {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 收據印表機樣式 */
+        .receipt-printer {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .receipt-slot {
+            background: #1b5e20;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .receipt-opening {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* 收據顯示區域 */
+        .receipt-display-area {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            min-height: 200px;
+        }
+
+        .receipt-display-header h4 {
+            color: #4caf50;
+            margin: 0 0 15px 0;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .receipt-display-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 120px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .no-receipt-message {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            margin: 50px 0;
+        }
+
+        .receipt-display-actions {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .take-receipt-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .take-receipt-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        /* 🔧 [新增] 取走現金按鈕樣式 */
+        .take-cash-btn {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+            margin: 15px auto 0;
+            display: block;
+            min-width: 140px;
+        }
+
+        .take-cash-btn:hover {
+            background: linear-gradient(135deg, #f57c00, #ef6c00);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+        }
+
+        .take-cash-btn:active {
+            transform: translateY(-1px);
+        }
+
+        /* 🔧 [修正] 現金出口區域 */
+        .cash-dispenser-area {
+            background: linear-gradient(135deg, #607d8b, #455a64);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .cash-dispenser {
+            background: #37474f;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cash-slot-label {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .cash-display-frame {
+            background: #263238;
+            border-radius: 6px;
+            padding: 10px;
+            min-height: 80px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .cash-placeholder {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* ATM螢幕樣式 */
+        .atm-screen {
+            background: #000;
+            border: 8px solid #1a252f;
+            border-radius: 15px;
+            width: 100%;
+            height: 520px; /* 🔧 增加高度讓螢幕更大，減少上下空隙 */
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .screen-content {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            color: white;
+            padding: 20px;
+            height: 100%;
+            box-sizing: border-box;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .atm-body {
+                flex-direction: column;
+                align-items: stretch; /* 垂直佈局下也保持寬度一致 */
+            }
+            
+            .atm-left-panel,
+            .atm-right-panel {
+                flex: 0 0 auto;
+                width: 100%;
+                max-width: 500px;
+                margin: 0 auto; /* 居中對齊 */
+            }
+            
+            .atm-center-panel {
+                width: 100%;
+                max-width: 500px;
+                margin: 0 auto; /* 居中對齊 */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .atm-body {
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .atm-screen {
+                height: 420px; /* 🔧 平板版本也增加高度 */
+            }
+            
+            .cash-dispenser-area,
+            .card-slot-area,
+            .receipt-printer {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .atm-container {
+                height: auto;
+                min-height: 100vh;
+            }
+            
+            .atm-body {
+                padding: 5px;
+                min-height: auto;
+            }
+            
+            .atm-screen {
+                height: 350px; /* 🔧 手機版本也適度增加高度 */
+            }
+        }
+        
+        /* 🔧 [新增] 確保標題列滿版面樣式 */
+        #app {
+            width: 100vw;
+            max-width: 100vw;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0;
+            padding: 0;
+            position: relative;
+        }
+        
+        .atm-title-bar {
+            margin: 0;
+            padding: 15px 25px;
+            width: 100vw;
+            max-width: 100vw;
+            box-sizing: border-box;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+        }
+
+
+/* =====================================================
+   設定頁面 — 吉祥物標題列（圖片在左，標題真正置中）
+   ===================================================== */
+.settings-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.settings-title-row h1 {
+    margin: 0;
+    text-align: center;
+}
+.settings-title-row::after {
+    display: none;
+}
+.settings-mascot-img {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+    flex-shrink: 0;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+@keyframes settingsBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-10px); }
+}
+@media (max-width: 600px) {
+    .settings-mascot-img { width: 48px; height: 48px; }
+}
+
+/* 完成畫面 — 吉祥物標題列 */
+.results-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.results-title-row .results-title {
+    margin: 0;
+}
+.results-mascot-img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    flex-shrink: 0;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+.results-mascot-spacer {
+    width: 64px;
+    flex-shrink: 0;
+    visibility: hidden;
+}
+@media (max-width: 600px) {
+    .results-mascot-img  { width: 44px; height: 44px; }
+    .results-mascot-spacer { width: 44px; }
+}

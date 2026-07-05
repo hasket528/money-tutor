@@ -1,0 +1,297 @@
+/* G10 硬幣躲貓貓 */
+
+/* ── Stage ── */
+#cup-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px 28px;
+  gap: 18px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Phase text ── */
+#cup-phase-text {
+  font-size: clamp(1rem, 4.5vw, 1.35rem);
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  min-height: 1.7em;
+}
+
+/* ── Felt surface ── */
+#cup-surface {
+  background: radial-gradient(ellipse at center, #1e5c2c 0%, #0d3318 100%);
+  border-radius: 20px;
+  padding: 24px 20px 28px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -2px 0 rgba(0,0,0,0.3);
+  border: 2px solid rgba(255,255,255,0.07);
+  width: min(100%, 520px);
+}
+
+/* ── Arena ── */
+#cup-arena {
+  position: relative;
+  height: 190px;
+  width: 100%;
+}
+
+/* ── Cup wrap ── */
+.cup-wrap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 85px;
+  transform: translateX(-50%);
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  will-change: left;
+}
+
+#cup-arena[data-cups="2"] .cup-wrap { width: 100px; }
+#cup-arena[data-cups="3"] .cup-wrap { width:  85px; }
+#cup-arena[data-cups="4"] .cup-wrap { width:  74px; }
+
+/* ── Item (emoji under cup) ── */
+.cup-item {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.9rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+#cup-arena[data-cups="4"] .cup-item { font-size: 1.5rem; }
+
+/* Only show item when the cup that has it is lifted */
+.cup-has-item.cup-lifted .cup-item { opacity: 1; }
+
+/* ── Cup shell (the physical cup) ── */
+.cup-shell {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(0);
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cup-lifted .cup-shell {
+  transform: translateY(-95px);
+}
+
+/* ── Cup rim ── */
+.cup-rim {
+  width: 62%;
+  height: 11px;
+  background: linear-gradient(to bottom, #EDD070, #B8861C);
+  border-radius: 4px 4px 0 0;
+  box-shadow: 0 -1px 2px rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+
+/* ── Cup body (trapezoid shape) ── */
+.cup-body {
+  width: 100%;
+  height: 82px;
+  background: linear-gradient(160deg, #F2C254 0%, #C87C20 48%, #8A4E08 100%);
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  border-radius: 0 0 6px 6px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset -6px 0 12px rgba(0,0,0,0.28),
+    inset 6px 0 12px rgba(255,255,255,0.10),
+    0 4px 10px rgba(0,0,0,0.35);
+}
+
+#cup-arena[data-cups="2"] .cup-body { height: 92px; }
+#cup-arena[data-cups="4"] .cup-body { height: 70px; }
+
+/* Highlight stripe */
+.cup-body::before {
+  content: '';
+  position: absolute;
+  left: 22%;
+  top: 8%;
+  width: 13%;
+  height: 78%;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0.35) 0%,
+    rgba(255,255,255,0.05) 100%);
+  border-radius: 6px;
+}
+
+/* ── Guessable state ── */
+.cup-guessable { cursor: pointer; }
+
+.cup-guessable .cup-body {
+  animation: cupGlow 1.1s ease-in-out infinite;
+}
+
+@keyframes cupGlow {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.25)
+               drop-shadow(0 0 8px rgba(255,215,0,0.65)); }
+}
+
+.cup-guessable:active .cup-body {
+  filter: brightness(1.5) drop-shadow(0 0 14px rgba(255,215,0,0.9));
+  animation: none;
+}
+
+/* ── Timer bar (time attack) ── */
+#cup-timer-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 520px);
+}
+
+#cup-timer-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+#cup-timer-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 5px;
+  transition: width 0.1s linear, background 0.35s;
+}
+
+#cup-timer-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  width: 32px;
+  text-align: right;
+  transition: color 0.3s;
+}
+
+#cup-timer-label.cup-timer-danger { color: #f87171; }
+
+/* ── Info text ── */
+#cup-info {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  letter-spacing: 0.04em;
+  min-height: 1.2em;
+}
+
+/* ── Setup overlay extras ── */
+.cup-setup-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 14px 0 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.cup-diff-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.cup-diff-opt {
+  flex: 1;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.cup-opt-icon  { font-size: 1.1rem; }
+.cup-opt-label { font-size: 0.88rem; font-weight: 700; }
+.cup-opt-desc  { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
+
+.cup-diff-opt-active {
+  background: rgba(255,215,0,0.14);
+  border-color: rgba(255,215,0,0.5);
+}
+
+.cup-diff-opt:active { transform: scale(0.96); }
+
+.cup-mode-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.cup-mode-opt {
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+  width: 100%;
+}
+
+.cup-mode-icon { font-size: 1.5rem; flex-shrink: 0; }
+.cup-mode-name { font-size: 0.92rem; font-weight: 700; }
+.cup-mode-desc { font-size: 0.73rem; color: rgba(255,255,255,0.42); margin-top: 2px; }
+
+.cup-mode-opt-active {
+  background: rgba(100,200,255,0.12);
+  border-color: rgba(100,200,255,0.42);
+}
+
+.cup-mode-opt:active { transform: scale(0.98); }
+
+.cup-start-btn {
+  margin-top: 16px;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #FFD700, #FF8C00);
+  border: none;
+  border-radius: 14px;
+  color: #1a0a00;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.cup-start-btn:active { transform: scale(0.97); filter: brightness(0.9); }

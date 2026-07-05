@@ -1,0 +1,106 @@
+/* 全專案彈窗響應式滾動修復 */
+/* 僅在螢幕高度較窄時啟用 */
+
+@media (max-height: 700px) {
+    /* A1 投幣選擇彈窗 */
+    .coin-modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A1 購買成功彈窗 */
+    .pickup-card {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A2 付款彈窗 */
+    .money-selection-modal .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A5 ATM 彈窗 */
+    .numeric-input-modal .modal-content,
+    .cash-modal-content,
+    .hint-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A6 火車票彈窗 */
+    .step-modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 通用 modal-content 類別 */
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== F 系列彈窗 ===== */
+
+    /* 數字輸入彈窗（F4, F6, C1-C6 共用） */
+    #number-input-popup {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 範圍輸入彈窗（F5, F6） */
+    #range-input-popup,
+    #custom-range-popup {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 排序/數字選擇彈窗（F4） */
+    #sorting-count-input-popup,
+    #number-selector-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 語音播放/圖片預覽彈窗（F4, F5, F6） */
+    .voice-playback-modal,
+    .image-preview-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== C 系列彈窗 ===== */
+
+    /* 指導/錯誤/計算彈窗（C4, C6） */
+    #instruction-modal-overlay,
+    .error-modal-overlay,
+    #calculation-modal-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 數字鍵盤遮罩（C6） */
+    #number-pad-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 通用模態遮罩（F4, F5, F6, C1-C6） */
+    .modal-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}

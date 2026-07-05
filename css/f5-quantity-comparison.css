@@ -1,0 +1,1790 @@
+/* =================================================================
+   FILE: css/f5-quantity-comparison.css - F5 數量大小比較樣式
+   ================================================================= */
+
+/* =====================================================
+   🎨 基礎變數定義
+   ===================================================== */
+.quantity-comparison-container {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --border-radius: 12px;
+    --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    --transition: all 0.3s ease-in-out;
+    --animation-duration: 0.5s;
+}
+
+/* 難度配色 */
+.quantity-comparison-container.difficulty-easy {
+    --primary-color: #28a745;
+    --primary-light: rgba(40, 167, 69, 0.1);
+}
+
+.quantity-comparison-container.difficulty-normal {
+    --primary-color: #007bff;
+    --primary-light: rgba(0, 123, 255, 0.1);
+}
+
+.quantity-comparison-container.difficulty-hard {
+    --primary-color: #dc3545;
+    --primary-light: rgba(220, 53, 69, 0.1);
+}
+
+/* =====================================================
+   📱 響應式佈局基礎
+   ===================================================== */
+.quantity-comparison-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+}
+
+/* =====================================================
+   🏗️ 標題欄區域
+   ===================================================== */
+.header-section {
+    background: white;
+    box-shadow: var(--box-shadow);
+    padding: 20px;
+    border-bottom: 3px solid var(--primary-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.title-bar-left {
+    flex: 0 0 auto;
+    text-align: left;
+}
+
+.title-bar-center {
+    flex: 1;
+    text-align: center;
+}
+
+.title-bar-right {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.title-bar-left .back-to-menu-btn {
+    background: var(--light-color);
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.title-bar-left .back-to-menu-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.title-bar-center .game-title {
+    margin: 0;
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.game-info {
+    display: flex;
+    gap: 20px;
+}
+
+.info-item {
+    text-align: center;
+    min-width: 80px;
+}
+
+.info-label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* =====================================================
+   🎮 遊戲主區域
+   ===================================================== */
+.game-section {
+    flex: 1;
+    padding: 15px 30px;  /* 🔧 上下padding從30px改為15px，讓內容上移 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;  /* 🔧 間距從30px改為15px，讓元素更緊湊 */
+}
+
+.section-title {
+    font-size: 1.5em;
+    color: var(--dark-color);
+    text-align: center;
+    margin: 0;
+    padding: 15px 30px;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border-left: 5px solid var(--primary-color);
+}
+
+/* =====================================================
+   ⚖️ 比較區域設計
+   ===================================================== */
+.comparison-area {
+    display: flex;
+    align-items: center;
+    gap: 30px;  /* 🔧 從40px減少到30px */
+    background: white;
+    padding: 25px;  /* 🔧 從40px減少到25px，讓區域更緊湊 */
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border: 2px solid var(--primary-light);
+    width: 100%;
+    justify-content: center;
+}
+
+.quantity-group {
+    flex: 1;
+    text-align: center;
+    max-width: 350px;
+}
+
+.group-label {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #D4EDDA;
+    border-radius: var(--border-radius);
+    border: 2px solid #D4EDDA;
+}
+
+/* 移除衝突的 objects-container 樣式 - 已移至 f5-dynamic-styles.css */
+
+.object-item {
+    position: relative;
+    font-size: 3em;  /* 放大1.5倍: 2em -> 3em */
+    width: 60px;     /* 放大1.5倍: 40px -> 60px */
+    height: 60px;    /* 放大1.5倍: 40px -> 60px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    user-select: none;
+    animation: fadeInScale var(--animation-duration) ease-out forwards;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.object-item:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+/* 普通模式測驗點擊後的樣式 */
+.object-item.clicked {
+    opacity: 0.4;
+    position: relative;
+    pointer-events: none;
+}
+
+.object-item.clicked::after {
+    content: '✓';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 10;
+    animation: checkmark-appear 0.3s ease-out;
+}
+
+@keyframes checkmark-appear {
+    0% {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2) rotate(-90deg);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+/* 分組答案按鈕樣式 */
+.group-answer-btn {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.group-comparison-btn {
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    color: #007bff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    position: relative;
+    overflow: visible;
+}
+
+.group-comparison-btn:hover {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.group-comparison-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 普通模式 選項按鈕：綠色圓形徽章 + 打勾圖示（顯示在按鈕上方） */
+.group-comparison-btn.correct::after {
+    content: '✓';
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #28a745;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 30px;
+    font-weight: bold;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    pointer-events: none;
+    animation: icon-appear 0.3s ease-out forwards;
+}
+
+/* 普通模式 選項按鈕：紅色圓形徽章 + 叉叉圖示（顯示在按鈕上方） */
+.group-comparison-btn.incorrect::after {
+    content: '✕';
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #dc3545;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 30px;
+    font-weight: bold;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    pointer-events: none;
+    animation: icon-appear 0.3s ease-out forwards;
+}
+
+@keyframes icon-appear {
+    from { opacity: 0; transform: scale(0.4); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* 數字輸入器樣式 */
+.number-input-trigger {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: 2px solid #007bff;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    animation: pulse 2s infinite;
+}
+
+.number-input-trigger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+}
+
+/* 🔧 [新增] 防止數字鍵盤打開時整個頁面縮放 */
+body:has(.number-pad-overlay) {
+    transform: none !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 🔧 [強制] 完全禁止 overlay 的任何縮放 - 必須覆蓋 ai-theme.css 的全局規則 */
+.number-pad-overlay,
+.number-pad-overlay *,
+.number-pad-overlay button,
+.number-pad-overlay button:active,
+.number-pad-overlay [onclick],
+.number-pad-overlay [onclick]:active {
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+    /* 使用更高的優先級來覆蓋 ai-theme.css */
+}
+
+.number-pad-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.number-pad-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    max-width: 350px;
+    width: 90%;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    /* 🔧 [新增] 防止子元素影響容器 */
+    transform: none !important;
+    will-change: auto !important;
+    backface-visibility: hidden !important;
+}
+
+.number-pad-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 15px;
+}
+
+.number-pad-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 1.3rem;
+}
+
+.number-pad-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    margin-left: auto;
+}
+
+.number-pad-display {
+    margin-bottom: 20px;
+}
+
+.number-pad-display input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.5rem;
+    text-align: center;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.number-pad-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.number-pad-buttons button {
+    padding: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    /* 防止點擊時的縮放 */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 🔧 [移除] hover 效果可能在手機上干擾點擊 */
+.number-pad-buttons button:hover {
+    /* 完全移除 hover 效果 */
+}
+
+/* 🔧 [完全移除] 點擊時完全不改變任何樣式 */
+.number-pad-buttons button:active {
+    /* 完全不改變任何視覺效果，包括顏色 */
+}
+
+.number-pad-buttons button.span-2 {
+    grid-column: span 2;
+}
+
+.number-pad-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.number-pad-actions .submit-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    /* 防止點擊時的縮放 */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 🔧 [移除] hover 效果可能在手機上干擾點擊 */
+.number-pad-actions .submit-btn:hover {
+    /* 完全移除 hover 效果 */
+}
+
+/* 🔧 [完全移除] 提交按鈕點擊時完全不改變任何樣式 */
+.number-pad-actions .submit-btn:active {
+    /* 完全不改變任何視覺效果 */
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* 自訂範圍輸入欄位樣式 */
+.custom-range-group {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.custom-range-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #333;
+}
+
+.custom-range-group input[type="number"] {
+    width: 80px;
+    padding: 8px;
+    margin-left: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    text-align: center;
+}
+
+/* 物件類型特定樣式 */
+.object-item.dots {
+    color: #ff6b6b;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.object-item.shapes {
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.object-item.icons {
+    filter: brightness(1.1) drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.object-item.animals {
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.object-item.toys {
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.object-item.fruits {
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.quantity-display {
+    margin-top: 15px;
+    min-height: 100px;  /* 🔧 增加高度以容納更大的數字：從 40px 改為 100px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quantity-number {
+    font-size: 5em;  /* 🔧 放大數字顯示：從 2em 改為 5em */
+    font-weight: 700;
+    color: var(--primary-color);
+    /* 移除背景圓框樣式 */
+    background: none;
+    border: none;
+    border-radius: 0;
+    width: auto;
+    height: auto;
+    display: inline;
+    /* 移除pulse動畫 */
+    animation: none;
+}
+
+.comparison-symbol {
+    font-size: 3em;
+    font-weight: 900;
+    color: #007BFF;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    background: white;
+    border: 3px solid #007BFF;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: bounce 2s infinite;
+    flex-shrink: 0;
+    align-self: center;
+    margin-top: 30px;
+}
+
+/* =====================================================
+   🎯 答案選擇區域
+   ===================================================== */
+.answer-section {
+    background: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    text-align: center;
+    width: 100%;
+    max-width: 600px;
+}
+
+.answer-title {
+    font-size: 1.2em;
+    color: var(--dark-color);
+    margin: 0 0 25px 0;
+    font-weight: 600;
+}
+
+.answer-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.comparison-btn {
+    background: white;
+    border: 3px solid var(--light-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+    min-width: 120px;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.comparison-btn:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.comparison-btn.selected {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.comparison-btn.correct {
+    border-color: var(--success-color);
+    background: rgba(40, 167, 69, 0.1);
+    animation: correctPulse 1s ease-in-out;
+}
+
+.comparison-btn.incorrect {
+    border-color: var(--error-color);
+    background: rgba(220, 53, 69, 0.1);
+    animation: shake 0.5s ease-in-out;
+}
+
+.comparison-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.btn-icon {
+    font-size: 2em;
+    margin-bottom: 10px;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.btn-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 8px;
+}
+
+.btn-symbol {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* 按鈕特定顏色 */
+.more-btn:hover {
+    border-color: var(--success-color);
+}
+
+.more-btn.selected {
+    border-color: var(--success-color);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.same-btn:hover {
+    border-color: var(--info-color);
+}
+
+.same-btn.selected {
+    border-color: var(--info-color);
+    background: rgba(23, 162, 184, 0.1);
+}
+
+.less-btn:hover {
+    border-color: var(--warning-color);
+}
+
+.less-btn.selected {
+    border-color: var(--warning-color);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+/* =====================================================
+   💬 訊息與控制區域
+   ===================================================== */
+.control-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.message-area {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.message {
+    padding: 15px 25px;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--box-shadow);
+    animation: messageSlideIn 0.5s ease-out;
+}
+
+.message.success {
+    background: rgba(40, 167, 69, 0.1);
+    color: var(--success-color);
+    border: 2px solid var(--success-color);
+}
+
+.message.error {
+    background: rgba(220, 53, 69, 0.1);
+    color: var(--error-color);
+    border: 2px solid var(--error-color);
+}
+
+.message-icon {
+    font-size: 1.2em;
+}
+
+.next-container {
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.next-btn,
+.complete-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--box-shadow);
+}
+
+.next-btn:hover,
+.complete-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.complete-btn {
+    background: var(--success-color);
+    font-size: 18px;
+    padding: 18px 35px;
+}
+
+/* =====================================================
+   🎆 動畫效果定義
+   ===================================================== */
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* @keyframes pulse, bounce 已移至 JS injectGlobalAnimationStyles() */
+
+@keyframes correctPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* @keyframes shake 已移至 JS injectGlobalAnimationStyles() */
+
+@keyframes messageSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =====================================================
+   🎇 煙火效果
+   ===================================================== */
+.fireworks-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.firework {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    animation: firework 2s ease-out forwards;
+}
+
+@keyframes firework {
+    0% {
+        opacity: 1;
+        transform: scale(0);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.5);
+    }
+}
+
+/* =====================================================
+   ⏸️ 暫停覆蓋層
+   ===================================================== */
+.pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.pause-menu {
+    background: white;
+    padding: 40px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+}
+
+.pause-menu h2 {
+    margin: 0 0 30px 0;
+    color: var(--dark-color);
+    font-size: 2em;
+}
+
+.pause-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.pause-buttons button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    flex: 1;
+    min-width: 120px;
+}
+
+.pause-buttons button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* =====================================================
+   📱 響應式設計
+   ===================================================== */
+@media (max-width: 768px) {
+    .header-section {
+        padding: 15px;
+        flex-direction: column;
+        gap: 15px;
+        position: relative;
+    }
+
+    .game-info {
+        gap: 15px;
+        justify-content: center;
+    }
+
+    .title-bar-center .game-title {
+        font-size: 1.5em;
+    }
+
+    .game-section {
+        padding: 10px 20px;  /* 🔧 上padding從20px減少到10px */
+        gap: 12px;  /* 🔧 從20px減少到12px */
+    }
+
+    .comparison-area {
+        flex-direction: column;
+        gap: 15px;  /* 🔧 從20px減少到15px */
+        padding: 20px;  /* 🔧 從25px減少到20px */
+    }
+    
+    .comparison-symbol {
+        transform: rotate(90deg);
+        font-size: 2em;
+        width: 60px;
+        height: 60px;
+    }
+    
+    .objects-container {
+        width: 280px;
+        min-height: 140px;
+        max-height: 180px;
+    }
+    
+    .answer-buttons {
+        gap: 15px;
+    }
+    
+    .comparison-btn {
+        min-width: 100px;
+        padding: 15px;
+    }
+    
+    .btn-icon {
+        font-size: 1.5em;
+    }
+    
+    .btn-text {
+        font-size: 12px;
+    }
+    
+    .btn-symbol {
+        font-size: 1.2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-section {
+        padding: 15px;
+    }
+    
+    .comparison-area {
+        padding: 20px;
+    }
+    
+    .objects-container {
+        width: 240px;
+        min-height: 120px;
+        max-height: 160px;
+        gap: 8px;
+        padding: 10px;
+    }
+    
+    .object-item {
+        font-size: 1.5em;
+        width: 35px;
+        height: 35px;
+    }
+    
+    .answer-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .comparison-btn {
+        width: 100%;
+        max-width: 200px;
+    }
+    
+    .section-title {
+        font-size: 1.2em;
+        padding: 12px 20px;
+    }
+}
+
+/* =====================================================
+   🔄 載入畫面
+   ===================================================== */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-content h3 {
+    color: var(--primary-color);
+    margin: 0 0 10px 0;
+}
+
+.loading-content p {
+    color: #666;
+    margin: 0;
+}
+
+/* =====================================================
+   🔧 移除舊有的強制修正區塊 - 改用響應式媒體查詢統一管理
+   ===================================================== */
+
+/* =====================================================
+   🎨 自訂主題相關樣式 (仿f3_number_recognition)
+   ===================================================== */
+
+/* 自訂主題設定區域 */
+.custom-theme-setup {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.custom-theme-setup h4 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 1.1rem;
+}
+
+.custom-theme-setup p {
+    margin: 0 0 15px 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* 自訂圖示清單 */
+.custom-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    min-height: 20px;
+}
+
+.custom-item {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.custom-item .item-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.custom-item .item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.custom-item .item-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.custom-item .remove-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.custom-item .remove-btn:hover {
+    background: #c82333;
+}
+
+/* 上傳按鈕 */
+.upload-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upload-btn:hover {
+    background: #218838;
+}
+
+/* 圖片預覽模態視窗 */
+.image-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.image-preview-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.image-preview-modal .modal-content {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    max-height: 500px;
+    overflow: hidden;
+    z-index: 10000;
+}
+
+.image-preview-modal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.image-preview-modal .modal-header h3 {
+    margin: 0;
+    color: #495057;
+    font-size: 1.2rem;
+}
+
+.image-preview-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.image-preview-modal .close-btn:hover {
+    background: #f8f9fa;
+}
+
+.image-preview-modal .modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.image-preview-modal .modal-body img {
+    border: 2px solid #dee2e6;
+}
+
+.image-preview-modal .modal-body input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.image-preview-modal .modal-body input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.image-preview-modal .modal-footer {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    gap: 20px !important;
+    padding: 20px 30px !important;
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.image-preview-modal .cancel-btn,
+.image-preview-modal .confirm-btn {
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    min-width: 120px !important;
+    height: 48px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.image-preview-modal .cancel-btn {
+    background: white !important;
+    color: #dc3545 !important;
+    border: 2px solid #dc3545 !important;
+}
+
+.image-preview-modal .cancel-btn:hover {
+    background: #fff5f5 !important;
+}
+
+.image-preview-modal .confirm-btn {
+    background: #28a745 !important;
+    color: white !important;
+    border: 2px solid #28a745 !important;
+}
+
+.image-preview-modal .confirm-btn:hover {
+    background: #218838 !important;
+}
+
+/* @keyframes fadeIn 已移至 JS injectGlobalAnimationStyles() */
+
+/* =================================================================
+   合併自 f5-dynamic-styles.css - F5 核心動態樣式
+   ================================================================= */
+
+/* =====================================================
+   🎮 遊戲容器基礎佈局 - 覆蓋原有設定
+   ===================================================== */
+.game-container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+.game-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 20px;
+    gap: 15px;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: auto;
+}
+
+/* =====================================================
+   📝 提示文字區域
+   ===================================================== */
+.question-prompt-area {
+    width: 100%;
+    min-height: 60px;  /* 🔧 從80px減少到60px */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 5px;  /* 🔧 從10px減少到5px */
+}
+
+.prompt-text {
+    font-size: 3em;  /* 🔧 放大提示文字：3em (約48px) */
+    font-weight: 700;
+    color: #1565c0;
+    text-align: center;
+    padding: 10px 25px;  /* 🔧 從15px 30px減少到10px 25px，讓文字框更緊湊 */
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-radius: 15px;
+    border: 3px solid #42a5f5;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.5s ease-in-out;
+}
+
+.prompt-text.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.prompt-text.highlight {
+    animation: pulse-highlight 1s ease-in-out;
+}
+
+@keyframes pulse-highlight {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* =====================================================
+   📊 比較區域和答案區域 - 覆蓋原有設定
+   ===================================================== */
+.comparison-area, .answer-area, .feedback-area {
+    width: 95%;
+    border-radius: 15px;
+    padding: 15px;  /* 🔧 從20px減少到15px */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;  /* 🔧 從15px減少到12px */
+    box-sizing: border-box;
+}
+
+.comparison-area {
+    background: #e3f2fd;
+    border: 3px solid #90caf9;
+    gap: 10px;
+    box-sizing: border-box;
+    align-items: stretch;
+    justify-content: space-between;
+    display: flex;
+}
+
+.answer-area {
+    background: #e8f5e9; 
+    border: 3px dashed #a5d6a7; 
+    flex-shrink: 0;
+    min-height: 120px;
+}
+
+.feedback-area {
+    display: none;
+}
+
+/* =====================================================
+   🔢 數量組別樣式 - 覆蓋原有設定
+   ===================================================== */
+.quantity-group {
+    flex: 1;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #b0bec5;
+    border-radius: 15px;
+}
+
+.group-label,
+.quantity-display {
+    width: 100%;
+    text-align: center;
+}
+
+.group-label {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.quantity-counter {
+    display: none;
+}
+
+/* =====================================================
+   🖱️ 可點擊組別樣式 - 簡單模式專用
+   ===================================================== */
+.clickable-group {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px solid transparent !important;
+    border-radius: 15px;
+}
+
+.clickable-group:hover {
+    background-color: rgba(255, 255, 0, 0.1);
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+    transform: scale(1.02);
+}
+
+.clickable-group:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+}
+
+/* =====================================================
+   📦 圖示容器樣式 - 核心修正，覆蓋所有外部CSS限制
+   ===================================================== */
+.objects-container {
+    /* 強制覆蓋外部CSS的300px限制 */
+    width: 100% !important;
+    max-width: none !important;
+    /* flex-grow: 1; <-- 已移除，解決Flexbox佈局計算衝突 */
+    box-sizing: border-box;
+
+    /* Grid佈局設定 */
+    display: grid !important;
+    grid-template-columns: repeat(10, 1fr) !important;
+
+    /* 間距和內邊距 */
+    gap: 5px !important;
+    padding: 5px !important;
+    align-content: start !important;
+
+    /* 外觀樣式 */
+    border: 2px dashed #cccccc;
+    border-radius: 10px;
+    min-height: 150px;
+}
+
+/* 特別針對 left-group 和 right-group 確保寬度填滿 */
+.left-group .objects-container,
+.right-group .objects-container {
+    width: 100% !important;
+    flex-grow: 1 !important;
+}
+
+.quantity-display {
+    /* 🔧 統一樣式：已在前面定義 (line 471-477) */
+    font-weight: bold;
+    color: #1e88e5;
+}
+
+/* =====================================================
+   🎯 圖示項目樣式 - 覆蓋原有設定
+   ===================================================== */
+.object-item {
+    font-size: 3rem;        /* 修正與F3一致：2.5rem -> 3rem */
+    line-height: 1;
+    animation: bounce-in 0.5s ease-out forwards;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =====================================================
+   ⚡ 比較符號樣式
+   ===================================================== */
+.comparison-symbol {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #f57c00;
+}
+
+/* =====================================================
+   🎯 答案按鈕樣式 - 覆蓋原有設定
+   ===================================================== */
+.answer-buttons {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+}
+
+.comparison-btn {
+    flex: 1;
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 15px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border: 3px solid #ddd;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #333;
+}
+
+.comparison-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.comparison-btn.selected {
+    border-color: #1976d2;
+    background: rgba(25, 118, 210, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(25, 118, 210, 0.3);
+}
+
+.comparison-btn.correct {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    animation: lively-correct 0.8s ease-in-out;
+}
+
+.comparison-btn.incorrect {
+    border-color: #f44336;
+    background: rgba(244, 67, 54, 0.1);
+    color: #c62828;
+    animation: frantic-incorrect 0.7s ease-in-out;
+}
+
+/* =====================================================
+   🎆 核心動畫效果
+   ===================================================== */
+@keyframes bounce-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* @keyframes lively-correct, frantic-incorrect 已移至 JS injectGlobalAnimationStyles() */
+
+/* =====================================================
+   🎯 組別點擊動畫效果 - 立即反應
+   ===================================================== */
+@keyframes correct-bounce {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 rgba(40, 167, 69, 0.4);
+    }
+    30% { 
+        transform: scale(1.15) translateY(-5px); 
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+    }
+    50% { 
+        transform: scale(1.2) translateY(-8px); 
+        box-shadow: 0 12px 35px rgba(40, 167, 69, 0.8);
+    }
+    70% { 
+        transform: scale(1.1) translateY(-3px); 
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+    }
+    100% { 
+        transform: scale(1.1) translateY(0); 
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+}
+
+@keyframes shake-error {
+    0% { 
+        transform: translateX(0) rotate(0) scale(1);
+        box-shadow: 0 0 0 rgba(220, 53, 69, 0.4);
+    }
+    10% { 
+        transform: translateX(-10px) rotate(-2deg) scale(1.05);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.6);
+    }
+    20% { 
+        transform: translateX(10px) rotate(2deg) scale(1.1);
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.7);
+    }
+    30% { 
+        transform: translateX(-8px) rotate(-1deg) scale(1.05);
+        box-shadow: 0 5px 18px rgba(220, 53, 69, 0.6);
+    }
+    40% { 
+        transform: translateX(8px) rotate(1deg) scale(1.08);
+        box-shadow: 0 7px 22px rgba(220, 53, 69, 0.7);
+    }
+    50% { 
+        transform: translateX(-6px) rotate(-0.5deg) scale(1.03);
+        box-shadow: 0 4px 16px rgba(220, 53, 69, 0.5);
+    }
+    60% { 
+        transform: translateX(6px) rotate(0.5deg) scale(1.06);
+        box-shadow: 0 6px 19px rgba(220, 53, 69, 0.6);
+    }
+    70% { 
+        transform: translateX(-3px) rotate(0) scale(1.02);
+        box-shadow: 0 3px 12px rgba(220, 53, 69, 0.4);
+    }
+    80% { 
+        transform: translateX(3px) rotate(0) scale(1.04);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.5);
+    }
+    90% { 
+        transform: translateX(-1px) rotate(0) scale(1.01);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+    100% { 
+        transform: translateX(0) rotate(0) scale(1);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+    }
+}
+
+/* =====================================================
+   📱 F5專用響應式設計
+   ===================================================== */
+
+/* 桌面版 - 每行10個圖示 */
+@media (min-width: 1025px) {
+    .objects-container {
+        grid-template-columns: repeat(10, 1fr) !important;  /* 桌面10列 */
+        gap: 5px !important;
+        padding: 5px !important;
+    }
+}
+
+/* 平板版 */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .objects-container {
+        grid-template-columns: repeat(8, 1fr) !important;  /* 平板8列 */
+        gap: 4px !important;
+        padding: 4px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .comparison-area {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .quantity-group {
+        max-width: 100%;
+    }
+
+    .objects-container {
+        grid-template-columns: repeat(6, 1fr) !important;  /* 小平板6列 */
+        gap: 4px !important;
+        padding: 4px !important;
+    }
+
+    .comparison-symbol {
+        font-size: 2rem;
+        transform: rotate(90deg);
+    }
+
+    /* 🔧 手機版提示文字調整 */
+    .prompt-text {
+        font-size: 2em;  /* 手機上稍微縮小 */
+        padding: 12px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .objects-container {
+        grid-template-columns: repeat(5, 1fr) !important;  /* 手機5列 */
+        gap: 3px !important;
+        padding: 3px !important;
+    }
+
+    .object-item {
+        font-size: 2rem;
+    }
+
+    .answer-buttons {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    /* 🔧 小螢幕提示文字調整 */
+    .prompt-text {
+        font-size: 1.5em;  /* 小螢幕進一步縮小 */
+        padding: 10px 15px;
+    }
+}

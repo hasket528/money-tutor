@@ -1,0 +1,4207 @@
+/* =================================================================
+   FILE: css/unit6.css - 單元六：上街買東西 樣式
+   ================================================================= */
+
+/* =====================================================
+   基礎佈局與容器 - 使用主題變數
+   ===================================================== */
+.store-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--background-primary);
+    font-family: 'Arial', sans-serif;
+    color: var(--text-primary);
+    transition: var(--transition-normal);
+}
+
+/* =====================================================
+   標題欄（統一風格） - 使用主題變數
+   ===================================================== */
+.title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--text-inverse);
+    padding: 10px 25px;
+    box-shadow: var(--shadow-light);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    transition: var(--transition-normal);
+}
+
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 0 0 auto;
+}
+
+.title-bar-center {
+    flex: 1;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-inverse);
+}
+
+.title-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 0 0 auto;
+}
+
+.progress-info, .target-amount, .score-info {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* 店鋪信息樣式 */
+.store-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-weight: bold;
+}
+
+.store-info h2 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-inverse);
+}
+
+.store-icon-large,
+.large-emoji {
+    font-size: 64px;
+    line-height: 1;
+}
+
+.quiz-progress-info {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text-inverse);
+}
+
+/* 區域標題樣式 - 無框線，文字在上 */
+.section-title {
+    text-align: center;
+    margin: 0 0 15px 0;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* 步驟標題置中樣式 */
+.step-title-center {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-inverse);
+    margin: 0;
+    padding: 0;
+}
+
+/* 購買物品內容布局 */
+.item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-info {
+    text-align: center;
+    font-size: 16px;
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+/* 錢包總計區域（付款頁面專用） */
+.wallet-total-section {
+    text-align: center;
+    padding: 15px 20px;
+    margin: 10px 20px;
+}
+
+.wallet-total-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+/* 錢包區域樣式 - 無框線 */
+.wallet-area-top {
+    background: none;
+    border: none;
+    padding: 5px 20px; /* 減少垂直 padding */
+    text-align: center;
+}
+
+.wallet-content {
+    background: none;
+    border: none;
+    padding: 0;
+    /* 🔧 [修正] 確保所有錢包內容都置中 */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* 🔧 [新增] 錢包滿版面樣式 - 包含標題和金錢圖示 */
+.wallet-fullwidth {
+    width: 100%;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    border: 2px dashed #90caf9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 🔧 [新增] 錢包總計標題 - 在wallet-fullwidth內部上方，強制置中 */
+.wallet-total-header {
+    text-align: center !important;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin: 0 auto 15px auto !important;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #fff9c4, #fff59d);
+    border-radius: 10px;
+    width: auto;
+    display: block;
+}
+
+/* 🔧 [新增] 錢包金錢圖示容器 - 滿版面，水平排列 */
+.wallet-money-icons {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 🔧 [關鍵修正] 付款資訊顯示區 - 強制置中與防壓縮 */
+.payment-info-display-top {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 0 auto 15px auto !important;
+    padding: 10px;
+    width: 100%;
+    text-align: center !important;
+    box-sizing: border-box;
+}
+
+.payment-info-display-top .payment-title {
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+    font-weight: bold;
+    color: #FF9800;
+    flex-shrink: 0; /* 🔧 防止被壓縮 */
+}
+
+.payment-info-display-top .payment-info-badge {
+    margin: 0;
+    flex-shrink: 0; /* 🔧 防止被壓縮 */
+}
+
+.payment-info-display-top .payment-hint-btn {
+    position: relative;
+    right: auto;
+    flex-shrink: 0; /* 🔧 防止被壓縮 */
+}
+
+/* 紙鈔容器調整 */
+.money-item.banknote {
+    min-height: 140px;
+    min-width: 120px;
+}
+
+/* 硬幣容器調整 */
+.money-item.coin {
+    min-height: 120px;
+    min-width: 80px;
+}
+
+/* 紙鈔圖示放大 - 錢包中的紙鈔 */
+.money-item.banknote img {
+    width: var(--banknote-size-sm);
+    height: auto;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* 硬幣圖示保持標準大小 */
+.money-item.coin img {
+    width: var(--coin-size-sm);
+    height: var(--coin-size-sm);
+    border-radius: 50%;
+}
+
+/* 提示區域容器調整 */
+.hint-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+}
+
+/* 紙鈔圖示放大 - 付款提示中的紙鈔 */
+.hint-item img[src*="100_yuan"], 
+.hint-item img[src*="200_yuan"], 
+.hint-item img[src*="500_yuan"], 
+.hint-item img[src*="1000_yuan"], 
+.hint-item img[src*="2000_yuan"] {
+    width: var(--banknote-size);
+    height: auto;
+    max-height: var(--banknote-max-h);
+    object-fit: contain;
+}
+
+/* 硬幣圖示 - 付款提示中的硬幣 */
+.hint-item img:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+/* 紙鈔圖示放大 - 付款金錢中的紙鈔 */
+.payment-money-item img[src*="100_yuan"], 
+.payment-money-item img[src*="200_yuan"], 
+.payment-money-item img[src*="500_yuan"], 
+.payment-money-item img[src*="1000_yuan"], 
+.payment-money-item img[src*="2000_yuan"] {
+    width: var(--banknote-size-sm);
+    height: auto;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* 紙鈔圖示放大 - 找零中的紙鈔 */
+.change-money img[src*="100_yuan"], 
+.change-money img[src*="200_yuan"], 
+.change-money img[src*="500_yuan"], 
+.change-money img[src*="1000_yuan"], 
+.change-money img[src*="2000_yuan"] {
+    width: var(--banknote-size-sm);
+    height: auto;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+.target-amount {
+    font-size: 20px;
+    color: var(--text-inverse);
+}
+
+.back-to-menu-btn {
+    background: rgba(255,255,255,0.2);
+    color: var(--text-inverse);
+    border: 2px solid var(--text-inverse);
+    padding: 8px 16px;
+    border-radius: var(--radius-large);
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.back-to-menu-btn:hover {
+    background: var(--text-inverse);
+    color: var(--primary-color);
+}
+
+/* =====================================================
+   歡迎畫面 - 使用主題變數
+   ===================================================== */
+.unit-welcome {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    padding: 20px;
+    transition: var(--transition-normal);
+    /* 🔧 [滾動修復] 確保在手機端可以滾動 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.welcome-content {
+    background: var(--background-card);
+    border-radius: var(--radius-large);
+    padding: 40px;
+    box-shadow: var(--shadow-heavy);
+    text-align: center;
+    max-width: 600px;
+    animation: slideUp 0.6s ease;
+    border: 1px solid var(--border-color);
+    transition: var(--transition-normal);
+}
+
+.welcome-content h1 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.welcome-description {
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.welcome-description p {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #555;
+}
+
+.game-settings {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.setting-group {
+    margin-bottom: 20px;
+}
+
+.setting-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.selection-btn {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: #000;
+    font-weight: bold;
+}
+
+a.selection-btn {
+    color: #000;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.selection-btn:hover:not(.disabled) {
+    border-color: #667eea;
+    background: #f0f3ff;
+}
+
+.setting-description {
+    margin-top: 8px;
+    text-align: left;
+}
+
+.setting-description small {
+    color: #666;
+    font-style: italic;
+}
+
+.selection-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.selection-btn.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #ffebee;
+    border-color: #f44336;
+    color: #c62828;
+}
+
+/* 遊戲按鈕容器 */
+.game-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+/* 開始按鈕 - 綠色 */
+.start-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.start-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(40, 167, 69, 0.4);
+}
+
+.start-btn:active {
+    transform: translateY(0px);
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+}
+
+.start-btn:disabled,
+.start-btn.disabled {
+    background: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.start-btn:disabled:hover,
+.start-btn.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 返回主畫面按鈕 - 淡紅色 */
+.back-to-main-btn {
+    background: #e57373;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(229, 115, 115, 0.3);
+}
+
+.back-to-main-btn:hover {
+    background: #ef5350;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(229, 115, 115, 0.4);
+}
+
+.back-to-main-btn:active {
+    transform: translateY(0px);
+    box-shadow: 0 3px 10px rgba(229, 115, 115, 0.3);
+}
+
+.back-btn {
+    background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 12px rgba(142, 68, 173, 0.3);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.back-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(142, 68, 173, 0.4);
+}
+
+.back-btn:active {
+    transform: translateY(0px);
+    box-shadow: 0 2px 8px rgba(142, 68, 173, 0.3);
+}
+
+/* =====================================================
+   統一任務框架（新布局）
+   ===================================================== */
+.unified-task-frame {
+    background: white;
+    margin: 20px;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* 移除間距 */
+}
+
+/* 任務朗讀按鈕（行內，緊接在「共XX元」後面） */
+.a4-task-speak-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #7c3aed;
+    background: white;
+    color: #7c3aed;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.2);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+    align-self: center;
+}
+.a4-task-speak-btn:hover {
+    background: #7c3aed;
+    color: white;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+}
+.a4-task-speak-btn:active {
+    transform: scale(0.92);
+}
+
+.task-header h2 {
+    color: #333;
+    margin-bottom: 0; /* 移除底部間距 */
+}
+
+.target-item-display,
+.selected-item-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    background: none;
+    border: none;
+    border-radius: 0;
+}
+
+/* 商品名稱與圖片同列時垂直置中 */
+.item-task-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* 題目區域的圖示大小（與選項區域一致） */
+.target-item-display img,
+.selected-item-display img,
+.target-money-img {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* 錢幣圖示大小（保持原本80px大小，但外框是120px） */
+.target-item-display img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.selected-item-display img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.target-money-img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.product-item img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    width: var(--coin-size);
+    height: var(--coin-size);
+}
+
+/* 紙鈔圖示大小（保持120px） */
+.target-item-display img[src*="100_yuan"],
+.target-item-display img[src*="200_yuan"],
+.target-item-display img[src*="500_yuan"], 
+.target-item-display img[src*="1000_yuan"],
+.target-item-display img[src*="2000_yuan"],
+.selected-item-display img[src*="100_yuan"],
+.selected-item-display img[src*="200_yuan"],
+.selected-item-display img[src*="500_yuan"],
+.selected-item-display img[src*="1000_yuan"],
+.selected-item-display img[src*="2000_yuan"],
+.target-money-img[src*="100_yuan"],
+.target-money-img[src*="200_yuan"],
+.target-money-img[src*="500_yuan"],
+.target-money-img[src*="1000_yuan"],
+.target-money-img[src*="2000_yuan"],
+.product-item img[src*="100_yuan"],
+.product-item img[src*="200_yuan"],
+.product-item img[src*="500_yuan"],
+.product-item img[src*="1000_yuan"],
+.product-item img[src*="2000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+}
+
+/* Unit2 金錢圖示大小統一 */
+#coin-display-area img {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit2 紙鈔圖示大小（硬幣的150%） */
+#coin-display-area img[src*="100_yuan"],
+#coin-display-area img[src*="200_yuan"],
+#coin-display-area img[src*="500_yuan"],
+#coin-display-area img[src*="1000_yuan"],
+#coin-display-area img[src*="2000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+}
+
+/* Unit3 金錢圖示大小統一 */
+.exchange-item img, 
+.exchange-placeholder img, 
+.exchanged-target-item img,
+#my-money-area .exchange-item img {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    max-height: var(--coin-size);
+    max-width: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit3 紙鈔圖示大小（硬幣的150%） */
+.exchange-item img[src*="100_yuan"],
+.exchange-item img[src*="500_yuan"], 
+.exchange-item img[src*="1000_yuan"],
+.exchange-placeholder img[src*="100_yuan"],
+.exchange-placeholder img[src*="500_yuan"],
+.exchange-placeholder img[src*="1000_yuan"],
+.exchanged-target-item img[src*="100_yuan"],
+.exchanged-target-item img[src*="500_yuan"],
+.exchanged-target-item img[src*="1000_yuan"],
+#my-money-area .exchange-item img[src*="100_yuan"],
+#my-money-area .exchange-item img[src*="500_yuan"],
+#my-money-area .exchange-item img[src*="1000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    max-height: var(--banknote-size);
+    max-width: var(--banknote-size);
+}
+
+/* Unit3 我的金錢區底框要白色 */
+#my-money-area {
+    background: #ffffff;
+    border: 2px solid #ddd;
+}
+
+/* Unit3 淡化圖示大小統一與正常圖示一樣 */
+.placeholder-item img,
+.target-group-item {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    max-height: var(--coin-size);
+    max-width: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit3 淡化紙鈔圖示大小 */
+.placeholder-item img[src*="100_yuan"],
+.placeholder-item img[src*="500_yuan"],
+.placeholder-item img[src*="1000_yuan"],
+.target-group-item[src*="100_yuan"],
+.target-group-item[src*="500_yuan"],
+.target-group-item[src*="1000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    max-height: var(--banknote-size);
+    max-width: var(--banknote-size);
+}
+
+/* Unit3 簡單模式目標淡化圖示大小統一與正常圖示一樣 */
+.easy-target-group.target-faded .target-group-item,
+.easy-target-group.target-faded img,
+.target-item.target-faded img {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    max-height: var(--coin-size);
+    max-width: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit3 簡單模式目標淡化紙鈔圖示大小 */
+.easy-target-group.target-faded .target-group-item[src*="100_yuan"],
+.easy-target-group.target-faded .target-group-item[src*="500_yuan"], 
+.easy-target-group.target-faded .target-group-item[src*="1000_yuan"],
+.easy-target-group.target-faded img[src*="100_yuan"],
+.easy-target-group.target-faded img[src*="500_yuan"],
+.easy-target-group.target-faded img[src*="1000_yuan"],
+.target-item.target-faded img[src*="100_yuan"],
+.target-item.target-faded img[src*="500_yuan"],
+.target-item.target-faded img[src*="1000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    max-height: var(--banknote-size);
+    max-width: var(--banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit3 簡單模式目標點亮圖示大小統一與正常圖示一樣 */
+.easy-target-group.target-appear .target-group-item,
+.easy-target-group.target-appear img,
+.target-item.target-appear img,
+.target-item.target-visible-static img {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    max-height: var(--coin-size);
+    max-width: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit3 簡單模式目標點亮紙鈔圖示大小 */
+.easy-target-group.target-appear .target-group-item[src*="100_yuan"],
+.easy-target-group.target-appear .target-group-item[src*="500_yuan"], 
+.easy-target-group.target-appear .target-group-item[src*="1000_yuan"],
+.easy-target-group.target-appear img[src*="100_yuan"],
+.easy-target-group.target-appear img[src*="500_yuan"],
+.easy-target-group.target-appear img[src*="1000_yuan"],
+.target-item.target-appear img[src*="100_yuan"],
+.target-item.target-appear img[src*="500_yuan"],
+.target-item.target-appear img[src*="1000_yuan"],
+.target-item.target-visible-static img[src*="100_yuan"],
+.target-item.target-visible-static img[src*="500_yuan"],
+.target-item.target-visible-static img[src*="1000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    max-height: var(--banknote-size);
+    max-width: var(--banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit4 金錢圖示大小統一 */
+.unit4-money-source .money-item img,
+.unit4-drop-zone .money-item img,
+#money-source-area .money-item img,
+#drop-zone-area .money-item img {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    max-height: var(--coin-size);
+    max-width: var(--coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit4 紙鈔圖示大小 */
+.unit4-money-source .money-item img[src*="100_yuan"],
+.unit4-money-source .money-item img[src*="500_yuan"],
+.unit4-money-source .money-item img[src*="1000_yuan"],
+.unit4-drop-zone .money-item img[src*="100_yuan"],
+.unit4-drop-zone .money-item img[src*="500_yuan"],
+.unit4-drop-zone .money-item img[src*="1000_yuan"],
+#money-source-area .money-item img[src*="100_yuan"],
+#money-source-area .money-item img[src*="500_yuan"],
+#money-source-area .money-item img[src*="1000_yuan"],
+#drop-zone-area .money-item img[src*="100_yuan"],
+#drop-zone-area .money-item img[src*="500_yuan"],
+#drop-zone-area .money-item img[src*="1000_yuan"] {
+    width: var(--banknote-size);
+    height: var(--banknote-size);
+    max-height: var(--banknote-size);
+    max-width: var(--banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+/* Unit4 金錢項目容器樣式 */
+.unit4-money-source .money-item,
+.unit4-drop-zone .money-item,
+#money-source-area .money-item,
+#drop-zone-area .money-item,
+.hint-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: grab;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    min-height: 140px;
+}
+
+.item-details {
+    text-align: left;
+}
+
+.item-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.item-price {
+    font-size: 20px;
+    color: #FF5722;
+    font-weight: bold;
+}
+
+/* 保持舊版兼容性 */
+.task-description {
+    background: white;
+    margin: 20px;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.task-description h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.store-keeper-speech {
+    background: linear-gradient(135deg, #FFE082 0%, #FFCC02 100%);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 15px 0;
+    border-left: 5px solid #FF9800;
+    font-size: 16px;
+    position: relative;
+}
+
+.store-keeper-speech::before {
+    content: "👨‍💼";
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* =====================================================
+   商品選購區域（新布局）
+   ===================================================== */
+.product-selection-area {
+    background: white;
+    margin: 20px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.product-selection-area h3 {
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 24px;
+}
+
+.payment-selection-area {
+    background: none;
+    margin: 5px 20px 5px 20px;  /* 縮小上下方間距 */
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* 付款區標題區域 */
+.payment-header-section {
+    text-align: center;
+    margin: 0 0 10px 0;
+    padding: 15px;
+    background: none;
+    border: none;
+}
+
+.payment-header-section .payment-header-row {
+    margin-bottom: 8px;
+}
+
+.payment-header-section .payment-title {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+/* 付款資訊列（同一列顯示，白色底框） */
+.payment-info-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.payment-info-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 困難模式的提示按鈕 */
+.payment-hint-btn {
+    position: absolute;
+    right: 20px;
+}
+
+.payment-info-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 15px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    text-align: center;
+}
+
+.product-price-badge {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.paid-amount-badge {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+}
+
+.price-amount,
+.paid-amount-value {
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* 深色模式適配 */
+[data-theme="dark"] .payment-info-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-inverse);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .product-price-badge {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
+}
+
+[data-theme="dark"] .paid-amount-badge {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(173, 216, 230, 0.2) 100%);
+}
+
+/* 舊版兼容性：保留 section-title 樣式 */
+.payment-selection-area .section-title {
+    text-align: center;
+    margin: 0 0 15px 0;
+    padding: 20px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.payment-selection-area .section-title .payment-header-row {
+    margin-bottom: 10px;
+}
+
+.payment-selection-area .section-title .payment-info-display {
+    font-size: 16px;
+}
+
+/* 保持舊版兼容性 */
+.shopping-area {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    margin: 20px;
+}
+
+.product-showcase {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.product-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border: 3px solid #e0e0e0;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    width: 180px;
+    height: 180px;
+    max-width: 200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.product-item:hover,
+.product-item:focus {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    transform: translateY(-5px);
+}
+
+.product-item.selected {
+    border-color: #4CAF50;
+    background: #f8fff9;
+}
+
+.product-item.incorrect-selection {
+    border-color: #f44336 !important;
+    background: #ffebee !important;
+}
+
+.product-item img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}
+
+.product-info {
+    text-align: center;
+}
+
+.product-name {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.product-price {
+    font-size: 18px;
+    color: #FF5722;
+    font-weight: bold;
+}
+
+.purchase-indicator {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.product-item:hover .purchase-indicator {
+    opacity: 1;
+}
+
+/* =====================================================
+   購物車區域
+   ===================================================== */
+.shopping-cart-area {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    height: fit-content;
+}
+
+.shopping-cart-area h3 {
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+.cart-content {
+    min-height: 100px;
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.empty-cart {
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.cart-item-image {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.cart-item-price {
+    color: #FF5722;
+    font-weight: bold;
+}
+
+.cart-total {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    text-align: right;
+    padding-top: 15px;
+    border-top: 2px solid #f0f0f0;
+}
+
+/* =====================================================
+   錢包區域（底部完整寬度）
+   ===================================================== */
+.wallet-area-bottom {
+    background: white;
+    margin: 5px 20px 20px 20px;  /* 縮小上方間距 */
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: calc(100% - 40px);
+}
+
+.wallet-area-bottom h3 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+    text-align: center;
+    font-size: 24px;
+}
+
+/* 保持舊版兼容性 */
+.wallet-area {
+    background: white;
+    margin: 10px 20px 20px 20px;  /* 縮小上方間距 */
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.wallet-area h3 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+.wallet-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    min-height: 100px;
+    border: 2px solid #e8f5e8;
+    border-radius: 15px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+    /* 🔧 [修正] 錢包金錢圖示置中對齊 */
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.money-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    background: white;
+    cursor: grab;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    min-height: 120px;
+    position: relative;
+}
+
+.money-item:hover,
+.money-item:focus {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    border-color: #2E7D32;
+}
+
+.money-item:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.money-item img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.money-value {
+    font-weight: bold;
+    color: #2E7D32;
+    font-size: 12px;
+    text-align: center;
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 20px);
+}
+
+.wallet-total {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    text-align: right;
+    padding-top: 15px;
+    border-top: 2px solid #f0f0f0;
+}
+
+/* =====================================================
+   付款區域
+   ===================================================== */
+/* 🔧 [關鍵修正] 付款區域主容器 - Flexbox 置中佈局 */
+.payment-area {
+    background: white;
+    margin: 0;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border: 3px solid #FF9800;
+    display: flex !important;            /* 🔧 強制 Flexbox */
+    flex-direction: column !important;   /* 🔧 垂直排列 */
+    align-items: center !important;      /* 🔧 水平置中所有子元素 */
+    width: 100%;                         /* 🔧 確保佔滿寬度 */
+    box-sizing: border-box;              /* 🔧 防止 padding 撐破 */
+}
+
+/* 🔧 [關鍵修正] 付款資訊區在 payment-area 內強制置中 */
+.payment-area .payment-info-display-top {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;  /* 🔧 內容水平置中 */
+    align-items: center !important;      /* 🔧 內容垂直置中 */
+    gap: 15px;
+    margin: 0 auto 15px auto !important; /* 🔧 容器本身置中 */
+    text-align: center !important;
+    flex-wrap: wrap;                     /* 🔧 允許換行防止溢出 */
+}
+
+/* 移除舊的 h3 樣式（標題已移至外部） */
+.payment-area h3 {
+    margin-bottom: 0;
+    color: inherit;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* 🔧 [修正] 付款放置區域 - 佔滿寬度 */
+.payment-zone {
+    min-height: 120px;
+    width: 100% !important;              /* 🔧 強制佔滿寬度 */
+    border: 3px dashed #FF9800;
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 100%);
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    box-sizing: border-box !important;   /* 🔧 防止 padding 撐破 */
+}
+
+.payment-zone.drag-over {
+    border-color: #F57C00;
+    background: linear-gradient(135deg, #FFE0B2 0%, #FFCC02 100%);
+}
+
+/* 錢包拖拽區域樣式 */
+.wallet-content.drag-over {
+    border: 3px dashed #4CAF50;
+    background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%);
+    border-radius: 15px;
+}
+
+.wallet-area-bottom.drag-over {
+    border: 3px dashed #4CAF50;
+    background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%);
+}
+
+.payment-placeholder {
+    color: #FF8F00;
+    font-weight: bold;
+    line-height: 80px;
+    font-size: 16px;
+}
+
+.payment-summary-compact {
+    color: #E65100;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 80px;
+}
+
+.payment-summary {
+    background: #FFF3E0;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.payment-summary div {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #FFE0B2;
+}
+
+.payment-summary div:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    color: #E65100;
+}
+
+/* 統一的緊湊按鈕樣式 */
+.compact-btn {
+    border: none;
+    padding: 15px 20px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 150px;
+    margin: 10px;
+}
+
+/* 價格輸入區域樣式 */
+.price-input-area {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.price-input-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.price-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.price-input-field {
+    width: 200px;
+    padding: 12px 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
+    background: #f9f9f9;
+    transition: all 0.3s ease;
+}
+
+.price-input-field:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+}
+
+.price-input-field:read-only {
+    cursor: pointer;
+    background: #f0f0f0;
+}
+
+.currency {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.confirm-btn {
+    width: auto;
+    background: #FF9800;
+    color: white;
+    border: none;
+    padding: 15px 20px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0.5;
+    min-width: 150px;
+    margin: 10px auto;
+    display: block;
+}
+
+.confirm-btn:not(:disabled) {
+    opacity: 1;
+}
+
+.confirm-btn.ready {
+    background: #4CAF50;
+    animation: pulse 1.5s infinite;
+}
+
+.confirm-btn:hover:not(:disabled) {
+    background: #F57C00;
+    transform: translateY(-2px);
+}
+
+/* 付款步驟確認付款按鈕：寬度自適應文字（平板一欄佈局時不撐滿全寬）*/
+#confirm-payment {
+    width: fit-content;
+    min-width: 150px;
+}
+
+/* =====================================================
+   找錢驗證區域
+   ===================================================== */
+.change-verification {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* 簡單模式專用樣式 - 確保全寬度橫框佈局 */
+.change-verification.easy-mode .change-check-area {
+    background: white !important;
+    margin: 20px !important;
+    padding: 30px !important;
+    border-radius: 15px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    text-align: center !important;
+    width: calc(100% - 40px) !important;
+    box-sizing: border-box !important;
+}
+
+.change-verification.easy-mode .change-check-area h3 {
+    color: #333 !important;
+    margin-bottom: 20px !important;
+}
+
+.change-verification.easy-mode .wallet-area {
+    background: white !important;
+    margin: 20px !important;
+    padding: 25px !important;
+    border-radius: 15px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    width: calc(100% - 40px) !important;
+    box-sizing: border-box !important;
+}
+
+.change-verification.easy-mode .wallet-area h3 {
+    margin-bottom: 20px !important;
+    color: #333 !important;
+    border-bottom: 2px solid #f0f0f0 !important;
+    padding-bottom: 10px !important;
+}
+
+.change-verification.easy-mode .store-change {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    flex-wrap: wrap !important;
+    margin: 20px 0 !important;
+    padding: 20px !important;
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%) !important;
+    border-radius: 15px !important;
+    border: 2px solid #FF9800 !important;
+}
+
+.change-verification.easy-mode .wallet-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+    min-height: var(--banknote-size) !important;
+    padding: 15px !important;
+    border: 2px solid #ddd !important;
+    border-radius: 8px !important;
+    background: #fafafa !important;
+    transition: all 0.3s ease !important;
+}
+
+.transaction-summary {
+    background: white;
+    margin: 20px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: calc(100% - 40px);
+    box-sizing: border-box;
+}
+
+.transaction-summary h2 {
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.summary-details {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.summary-item,
+.summary-total,
+.summary-change {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.summary-total {
+    font-weight: bold;
+    color: #333;
+    border-bottom: 2px solid #ddd;
+}
+
+.summary-change {
+    font-weight: bold;
+    color: #4CAF50;
+    border-bottom: none;
+    font-size: 18px;
+}
+
+.change-amount {
+    color: #4CAF50;
+}
+
+.change-amount-value {
+    color: #2196F3; /* 藍色，與已付金額的深灰色不同 */
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.change-amount-display {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.hard-mode-amount {
+    color: #4CAF50;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.change-check-area {
+    background: white;
+    margin: 20px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    width: calc(100% - 40px);
+    box-sizing: border-box;
+}
+
+.change-check-area h3 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.store-change {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    border-radius: 15px;
+    border: 2px solid #FF9800;
+}
+
+.change-money {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.change-money:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+}
+
+.change-money img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+/* 找零中的硬幣保持圓形 */
+.change-money img:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    border-radius: 50%;
+}
+
+.change-money span {
+    font-weight: bold;
+    color: #2E7D32;
+}
+
+.verification-question {
+    margin-top: 30px;
+}
+
+.verification-question p {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 25px;
+}
+
+.verification-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.verify-btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.verify-btn.correct {
+    background: #4CAF50;
+    color: white;
+}
+
+.verify-btn.correct:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.verify-btn.incorrect {
+    background: #f44336;
+    color: white;
+}
+
+.verify-btn.incorrect:hover {
+    background: #da190b;
+    transform: translateY(-2px);
+}
+
+/* =====================================================
+   提示區域
+   ===================================================== */
+.hint-area {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 600px;
+    z-index: 1000;
+}
+
+.hint-message {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    text-align: center;
+    animation: slideUp 0.5s ease;
+    display: none;
+}
+
+.hint-message.show {
+    display: block;
+}
+
+.hint-message .correct {
+    color: #2ecc71;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.hint-message .incorrect {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* 播放按鈕樣式 */
+.replay-icon {
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #3498db;
+    margin-bottom: 15px;
+}
+
+.replay-icon:hover {
+    transform: scale(1.1);
+    color: #2ecc71;
+}
+
+.target-hint {
+    font-size: 18px;
+    color: var(--text-primary);
+    margin: 0;
+    font-weight: bold;
+}
+
+/* =====================================================
+   遊戲結果畫面
+   ===================================================== */
+.question-result {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    text-align: center;
+    animation: bounceInCenter 0.6s ease;
+}
+
+.question-result.correct {
+    border: 4px solid #4CAF50;
+}
+
+.question-result.incorrect {
+    border: 4px solid #FF9800;
+}
+
+.result-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.result-icon {
+    font-size: 48px;
+}
+
+.result-message {
+    font-size: 18px;
+    color: #333;
+    font-weight: bold;
+}
+
+.game-complete {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.result-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 500px;
+    animation: slideUp 0.6s ease;
+}
+
+.result-card h1 {
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.final-stats {
+    margin-bottom: 30px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #333;
+}
+
+.achievement-message {
+    background: linear-gradient(135deg, #FFE082 0%, #FFCC02 100%);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+}
+
+.achievement-message p {
+    margin: 8px 0;
+    color: #E65100;
+}
+
+/* 結果畫面標題區域 */
+.results-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.trophy-icon {
+    font-size: 4em;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.change-action-area {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto;
+    width: 100%;
+    text-align: center;
+}
+
+.complete-change-btn, .no-change-btn {
+    border: none;
+    padding: 15px 20px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+    min-width: 150px;
+    flex-shrink: 0;
+}
+
+.complete-change-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.complete-change-btn:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.no-change-btn {
+    background: linear-gradient(135deg, #FF9800 0%, #FF5722 100%);
+    color: white;
+}
+
+.no-change-btn:hover {
+    background: linear-gradient(135deg, #F57C00 0%, #E64A19 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.3);
+}
+
+/* 困難模式總計輸入框樣式 */
+.total-input {
+    border: 2px solid #ddd;
+    padding: 8px 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    background: white;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.total-input:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.total-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.primary-btn,
+.secondary-btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.secondary-btn {
+    background: #f0f0f0;
+    color: #333;
+    border: 2px solid #ddd;
+}
+
+.secondary-btn:hover {
+    background: #e0e0e0;
+    border-color: #ccc;
+}
+
+/* =====================================================
+   動畫效果
+   ===================================================== */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounceInCenter {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+}
+
+/* =====================================================
+   自訂商品樣式
+   ===================================================== */
+.custom-product-image {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.custom-item-preview {
+    display: inline-block;
+    text-align: center;
+    margin: 0 10px;
+}
+
+/* =====================================================
+   多選模式樣式
+   ===================================================== */
+.product-item.multi-select-mode {
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.product-item.multi-select-mode:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-medium);
+}
+
+.product-item.multi-select-mode.selected {
+    border: 3px solid var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.selection-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--success-color);
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.product-item.multi-select-mode.selected .selection-indicator {
+    opacity: 1;
+}
+
+/* 錢包圖示顯示樣式 */
+.wallet-icon-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.wallet-amount {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* 購買控制區域樣式 */
+.purchase-control-area {
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    margin-top: 20px;
+    border: 2px solid var(--border-light);
+}
+
+.selected-summary {
+    margin-bottom: 20px;
+}
+
+.selected-items-list {
+    background: white;
+    border-radius: var(--radius-small);
+    padding: 15px;
+    margin-bottom: 15px;
+    max-height: 150px;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.selected-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    gap: 20px;
+}
+
+.selected-item:last-child {
+    border-bottom: none;
+}
+
+.total-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+
+.confirm-purchase-btn {
+    width: auto;
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 15px 20px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    min-width: 150px;
+    margin: 10px auto;
+    display: block;
+}
+
+.confirm-purchase-btn:hover:not(:disabled) {
+    background: #28a745; /* 深綠色，避免使用未定義的 --success-dark 變數 */
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.confirm-purchase-btn:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* =====================================================
+   響應式設計
+   ===================================================== */
+@media (max-width: 768px) {
+    .game-buttons {
+        gap: 8px;
+    }
+
+    .game-buttons .start-btn,
+    .game-buttons .back-to-main-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 12px 8px;
+        font-size: 14px;
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+    }
+
+    .title-bar {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .shopping-area {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .verification-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .wallet-content {
+        justify-content: center;
+    }
+    
+    .store-change {
+        justify-content: center;
+    }
+    
+    /* 新布局響應式 */
+    .target-item-display,
+    .selected-item-display {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .item-details {
+        text-align: center;
+    }
+    
+    .item-name {
+        font-size: 20px;
+    }
+    
+    .item-price {
+        font-size: 18px;
+    }
+    
+    .wallet-area-bottom {
+        width: calc(100% - 20px);
+        margin: 10px;
+        padding: 20px;
+    }
+    
+    .product-selection-area,
+    .payment-selection-area {
+        margin: 10px;
+        padding: 20px;
+    }
+}
+
+/* =====================================================
+   無障礙設計增強
+   ===================================================== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* 高對比模式支援 */
+@media (prefers-contrast: high) {
+    .product-item,
+    .money-item,
+    .change-money {
+        border-width: 3px;
+    }
+    
+    .hint-message {
+        border: 2px solid white;
+    }
+}
+
+/* 焦點增強 */
+*:focus {
+    outline: 3px solid #667eea !important;
+    outline-offset: 2px !important;
+}
+
+/* =====================================================
+   魔法商店專用樣式
+   ===================================================== */
+.magic-store-settings {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius-large);
+    color: white;
+}
+
+.custom-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 15px 0;
+    min-height: 80px;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-medium);
+    border: 2px dashed rgba(255,255,255,0.3);
+}
+
+.custom-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: white;
+    color: #333;
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-light);
+    min-width: 120px;
+}
+
+.custom-item img {
+    border-radius: var(--radius-small);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.custom-item button {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.custom-item button:hover {
+    background: #ff3838;
+}
+
+.add-custom-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.add-custom-item input {
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-small);
+    font-size: 14px;
+}
+
+.add-custom-item button {
+    background: #2ed573;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-small);
+    font-weight: bold;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.add-custom-item button:hover {
+    background: #26d466;
+    transform: translateY(-1px);
+}
+
+/* =====================================================
+   商品網格佈局優化
+   ===================================================== */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+/* 水平排列樣式（用於unit1金錢圖示） */
+.products-grid.horizontal-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.products-grid.horizontal-layout .product-item {
+    flex: 0 0 auto;
+    width: 180px;
+    height: 180px;
+    max-width: 200px;
+}
+
+/* 答對動畫效果 */
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* unit2專用樣式 */
+#coin-display-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    background: white !important;
+    border-radius: 15px;
+    margin: 20px auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 1000px;
+}
+
+.countable-item {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    padding: 10px;
+    background: white;
+    border: 2px solid #ddd;
+    margin: 5px;
+}
+
+.countable-item:hover {
+    transform: scale(1.05);
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.countable-item.counted {
+    background: #f0f9ff !important;
+    border-color: #667eea !important;
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+.countable-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    display: block;
+}
+
+/* 紙鈔圖示大小為錢幣的150% */
+.countable-item[data-value="100"] img,
+.countable-item[data-value="200"] img,
+.countable-item[data-value="500"] img,
+.countable-item[data-value="1000"] img,
+.countable-item[data-value="2000"] img {
+    width: 90px;
+    height: 90px;
+}
+
+/* 金錢數數字顯示 */
+.countable-item .count-number {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+#running-total-display {
+    font-size: 2em;
+    font-weight: bold;
+    color: #2c3e50;
+    text-align: center;
+    background: white;
+    padding: 15px 30px;
+    margin: 20px auto;
+    border-radius: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 300px;
+    border: 3px solid #667eea;
+}
+
+#running-total-display.hidden {
+    display: none;
+}
+
+/* unit2 提示數字框樣式 - 調整尺寸 */
+#total-hint-box {
+    margin: 25px auto;
+    max-width: 500px;
+    width: 90%;
+    transform: scale(1.2);
+    transform-origin: center;
+}
+
+.total-hint-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    background: white;
+    padding: 18px;
+    border-radius: 18px;
+    box-shadow: 0 5px 18px rgba(0,0,0,0.12);
+    border: 2px solid #667eea;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+#total-hint-box .total-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+    background: #f8f9fa;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 2px solid #ddd;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+    max-width: 300px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+#total-hint-box .total-display:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.hint-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 75px;
+}
+
+.hint-button:hover {
+    background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.hint-text {
+    font-size: 14px;
+}
+
+/* 簡單模式樣式 */
+.total-hint-container.simple-mode {
+    justify-content: center;
+    padding: 20px;
+}
+
+.total-display.simple-display {
+    cursor: default !important;
+}
+
+.total-display.simple-display:hover {
+    background: #f8f9fa !important;
+    border-color: #ddd !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* 響應式設計 - 配合調整後的尺寸 */
+@media (max-width: 480px) {
+    #total-hint-box {
+        max-width: 420px;
+        transform: scale(1.0);
+        margin: 20px auto;
+    }
+    
+    .total-hint-container {
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    #total-hint-box .total-display {
+        font-size: 20px;
+        padding: 10px 16px;
+        min-width: 150px;
+        max-width: 250px;
+    }
+    
+    .hint-button {
+        padding: 10px 12px;
+        font-size: 14px;
+        min-width: 60px;
+    }
+    
+    .hint-text {
+        font-size: 12px;
+    }
+}
+
+/* unit2 選項按鈕樣式 */
+.options-container {
+    margin: 20px auto;
+    max-width: 600px;
+    text-align: center;
+}
+
+.options-container h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+.options-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.option-btn {
+    padding: 15px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.option-btn:hover {
+    background: #f0f0f0;
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.option-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.option-btn.correct-option {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.option-btn.incorrect-option {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+
+/* 視窗正中央回饋圖示樣式 */
+#center-feedback {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.center-feedback-content {
+    background: white;
+    width: 200px;
+    height: 200px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: bounceIn 0.5s ease;
+}
+
+.feedback-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+    line-height: 1;
+}
+
+.feedback-text {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    padding: 0 20px;
+    line-height: 1.3;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.product-icon {
+    margin-bottom: 15px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.target-item-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-large);
+    margin: 15px 0;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.item-icon {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    margin-bottom: 10px;
+}
+
+.item-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.item-price {
+    font-size: 16px;
+    color: #ffc107;
+    font-weight: bold;
+}
+
+/* =====================================================
+   付款區域樣式優化
+   ===================================================== */
+.payment-money {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    min-height: 80px;
+    padding: 15px;
+}
+
+.payment-money-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 8px;
+    background: rgba(255,255,255,0.9);
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-light);
+}
+
+/* 可拖回錢包的付款金錢項目樣式 */
+.payment-money-item.draggable-back {
+    cursor: grab;
+    transition: all 0.3s ease;
+    border: 2px solid #4CAF50;
+}
+
+.payment-money-item.draggable-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    border-color: #2E7D32;
+}
+
+.payment-money-item.draggable-back:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.positive-change {
+    color: #4CAF50 !important;
+    font-weight: bold;
+}
+
+.negative-change {
+    color: #f44336 !important;
+    font-weight: bold;
+}
+
+/* =====================================================
+   任務描述說明
+   ===================================================== */
+.task-description {
+    text-align: center;
+}
+
+.target-hint {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: var(--radius-medium);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* =====================================================
+   響應式設計優化
+   ===================================================== */
+@media (max-width: 768px) {
+    .products-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .custom-items-list {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .add-custom-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .add-custom-item input,
+    .add-custom-item button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .target-item-preview {
+        padding: 15px;
+    }
+    
+    .product-icon {
+        font-size: 48px !important;
+    }
+}
+
+/* 魔法商店樣式 */
+.magic-store-settings {
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    margin-top: 15px;
+    border: 2px solid var(--primary-color);
+}
+
+.magic-store-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.magic-store-header h4 {
+    margin: 0;
+    flex: 1;
+}
+
+.close-magic-store-btn {
+    background: rgba(0, 0, 0, 0.1);
+    border: 2px solid #666;
+    font-size: 20px;
+    color: #333;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.close-magic-store-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff4444;
+    border-color: #ff4444;
+    transform: scale(1.1);
+}
+
+.upload-btn.disabled {
+    background: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.upload-btn.disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* 已選商品列表樣式 */
+.selected-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    background: rgba(76, 175, 80, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    transition: all 0.3s ease;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.selected-item:hover {
+    background: rgba(76, 175, 80, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.selected-item .item-name {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.selected-item .item-price {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 15px;
+    background: rgba(231, 76, 60, 0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+/* 設計感提示按鈕樣式 */
+.stylish-hint-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.stylish-hint-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.stylish-hint-btn:hover::before {
+    left: 100%;
+}
+
+.stylish-hint-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.stylish-hint-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.stylish-hint-btn .hint-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
+}
+
+.stylish-hint-btn .hint-text {
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 已選商品清單容器置中 */
+.selected-items-list {
+    text-align: center;
+    margin: 15px 0;
+}
+
+/* 總計顯示區域布局 */
+.total-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 8px 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+/* 總計文字和輸入框居中 */
+.total-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 8px;
+}
+
+/* 深色模式支援 */
+[data-theme="dark"] .selected-item {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .selected-item .item-name {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .stylish-hint-btn {
+    background: linear-gradient(135deg, #42a5f5 0%, #478ed1 100%);
+    box-shadow: 0 4px 12px rgba(66, 165, 245, 0.3);
+}
+
+[data-theme="dark"] .stylish-hint-btn:hover {
+    box-shadow: 0 6px 20px rgba(66, 165, 245, 0.4);
+}
+
+[data-theme="dark"] .total-display {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.custom-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.custom-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    background: var(--background-primary);
+    border-radius: var(--radius-small);
+    border: 1px solid var(--border-light);
+}
+
+.custom-item .item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.custom-item .item-name {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.custom-item .item-price {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+.custom-item .remove-btn {
+    background: var(--error-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all var(--transition-normal);
+}
+
+.custom-item .remove-btn:hover {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+.add-custom-item {
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-medium);
+    background: var(--background-primary);
+}
+
+.upload-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: all var(--transition-normal);
+    margin-bottom: 10px;
+}
+
+.upload-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.upload-hint {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+/* 圖片預覽模態視窗 */
+.image-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: none; /* 預設隱藏 */
+    justify-content: center;
+    align-items: center;
+}
+
+/* 當視窗顯示時使用 flex 布局 */
+.image-preview-modal.show {
+    display: flex;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--background-primary);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-heavy);
+    max-width: 600px;
+    width: 95%;
+    max-height: 90vh;
+    overflow: hidden;
+    z-index: 10001;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: var(--radius-small);
+    transition: all var(--transition-normal);
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.image-preview-container {
+    text-align: center;
+    padding: 20px;
+    background: var(--background-secondary);
+    border-radius: var(--radius-medium);
+    border: 2px solid var(--border-light);
+    min-width: 390px;
+    min-height: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: bold;
+    color: var(--text-primary);
+    font-size: 1.1em;
+}
+
+.form-group input {
+    padding: 12px;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-medium);
+    font-size: 1em;
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    transition: all var(--transition-normal);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.price-unit {
+    color: var(--text-secondary);
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    background: var(--background-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    border-top: 1px solid var(--border-light);
+}
+
+.cancel-btn, .confirm-btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: all var(--transition-normal);
+}
+
+.cancel-btn {
+    background: var(--text-secondary);
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #7f8c8d;
+    transform: translateY(-2px);
+}
+
+.confirm-btn {
+    background: var(--success-color);
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+/* 觸控設備優化 */
+@media (hover: none) and (pointer: coarse) {
+    .money-item,
+    .product-item,
+    .verify-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .money-item:hover,
+    .product-item:hover {
+        transform: none;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        flex-direction: column;
+    }
+    
+    .cancel-btn, .confirm-btn {
+        width: 100%;
+    }
+}
+/* ================================================================
+   輔助點�?模�??�示�??
+   ================================================================ */
+.click-mode-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 30px 50px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.click-mode-prompt.visible {
+    opacity: 1;
+}
+
+.click-mode-prompt .prompt-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.click-mode-prompt .prompt-icon {
+    font-size: 48px;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.click-mode-prompt .prompt-text {
+    color: white;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+
+/* �������U�I���Ҧ��U���J�I��خĪG */
+.click-mode-active *:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.click-mode-active button:focus,
+.click-mode-active .modal-btn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 強制移除?�?�焦點�???- 輔助點�?模�? */
+body.click-mode-active *,
+body.click-mode-active *:focus,
+body.click-mode-active *:active,
+body.click-mode-active button:focus,
+body.click-mode-active button:active,
+body.click-mode-active .modal-btn:focus,
+body.click-mode-active .modal-btn:active {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 移除?��??��??��?視覺?��? */
+body.click-mode-active button:active {
+    transform: none !important;
+}
+
+/* 移除?�?��?框�???*/
+body.click-mode-active *:focus-visible {
+    outline: none !important;
+}
+
+/* =====================================================
+   普通模式步驟提示動畫 (錯誤3次後顯示)
+   ===================================================== */
+
+/* 脈動高亮動畫 */
+@keyframes pulseHighlight {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 193, 7, 0.6);
+        outline-offset: 4px;
+        outline-color: #FFC107;
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 193, 7, 1);
+        outline-offset: 8px;
+        outline-color: #FFE082;
+    }
+}
+
+/* 方框脈動動畫 */
+@keyframes boxFramePulse {
+    0%, 100% {
+        border-color: #FFC107;
+        box-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+    }
+    50% {
+        border-color: #FFE082;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 1);
+    }
+}
+
+/* 提示彈跳動畫 */
+@keyframes bounceHint {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-5px);
+    }
+}
+
+/* 通用步驟提示樣式 */
+.step-hint {
+    position: relative !important;
+    z-index: 100 !important;
+    overflow: visible !important;
+    animation: pulseHighlight 1.5s ease-in-out infinite !important;
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.8) !important;
+    outline: 4px solid #FFC107 !important;
+    outline-offset: 4px;
+}
+
+/* 方框邊框 */
+.step-hint::before {
+    content: '' !important;
+    position: absolute !important;
+    top: -10px !important;
+    left: -10px !important;
+    right: -10px !important;
+    bottom: -10px !important;
+    border: 3px solid #FFC107 !important;
+    border-radius: 10px !important;
+    animation: boxFramePulse 1.5s ease-in-out infinite !important;
+    pointer-events: none !important;
+    z-index: 99 !important;
+}
+
+.step-hint::after {
+    content: '👇 點這裡' !important;
+    position: absolute !important;
+    top: -48px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: linear-gradient(135deg, #FFC107 0%, #FFD54F 100%);
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    color: white;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    white-space: nowrap;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+    animation: bounceHint 1s ease-in-out infinite !important;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* 商品項目提示特殊處理 */
+.product-item.step-hint::after {
+    top: -48px;
+    bottom: auto;
+}
+
+/* =============================================================
+   a4_simulated_shopping — 從 HTML 第1個<style> 塊遷移（2026-03-07）
+   ============================================================= */
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* 🔧 [新增] 點擊放置功能樣式 */
+        .money-item.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.1) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .money-item {
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+        
+        .money-item:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* 確保圖片內容不會干擾點擊事件 */
+        .money-item img {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        
+        /* 深色模式下的點擊選擇樣式 */
+        [data-theme="dark"] .money-item.selected-item {
+            border: 3px solid var(--success-color) !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.15) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* 【新版】錯誤提示：紅色×動畫 */
+        .payment-money-item.show-error-x {
+            /* 增加這個是為了讓 ::after 偽元素可以相對於它定位 */
+            position: relative !important;
+            z-index: 9998 !important; /* 確保它在最上層 */
+        }
+
+        /* 使用 ::after 偽元素來創建紅色×圖示，不需新增HTML元素 */
+        .payment-money-item.show-error-x::after {
+            content: '×'; /* 一個紅色× */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* 確保圖示絕對置中 */
+
+            width: 50px;
+            height: 50px;
+            background-color: rgba(220, 53, 69, 0.85); /* 半透明的紅色背景 */
+            color: white;
+            border-radius: 50%; /* 圓形 */
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 36px;
+            font-weight: bold;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+
+            z-index: 9999; /* 確保在錢幣圖片之上 */
+
+            /* 應用出現的動畫 */
+            animation: errorX-appear 0.4s ease-out forwards;
+            pointer-events: none; /* 讓滑鼠可以點擊到下方的錢幣 */
+        }
+
+        /* @keyframes errorX-appear 已移至 JS injectGlobalAnimationStyles() */
+
+        /* 【新增】正確提示：綠色打勾動畫 */
+        .money-item.show-correct-tick {
+            position: relative !important;
+            z-index: 9998 !important;
+        }
+
+        .money-item.show-correct-tick::after {
+            content: '✓'; /* 打勾符號 */
+            position: absolute;
+            top: 5px;
+            right: 5px;
+
+            width: 24px;
+            height: 24px;
+            background-color: #28a745; /* 綠色背景 */
+            color: white;
+            border-radius: 50%;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+
+            z-index: 9999;
+
+            /* 應用出現的動畫 */
+            animation: correct-tick-appear 0.4s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* @keyframes correct-tick-appear 已移至 JS injectGlobalAnimationStyles() */
+
+        /* 困難模式提示按鈕樣式 */
+        .hint-btn {
+            background: linear-gradient(135deg, #FFA726, #FF9800);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px 0;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        .hint-btn:hover {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+        }
+
+        .hint-btn:active {
+            box-shadow: 0 2px 10px rgba(255, 152, 0, 0.3);
+        }
+
+        /* 深色模式下的提示按鈕樣式 */
+        [data-theme="dark"] .hint-btn {
+            background: linear-gradient(135deg, #FF8A65, #FF7043);
+            box-shadow: 0 4px 15px rgba(255, 112, 67, 0.3);
+        }
+
+        [data-theme="dark"] .hint-btn:hover {
+            background: linear-gradient(135deg, #FF7043, #FF5722);
+            box-shadow: 0 6px 20px rgba(255, 112, 67, 0.4);
+        }
+
+
+/* =============================================================
+   a4_simulated_shopping — 從 HTML 第2個<style> 塊遷移（2026-03-07）
+   ============================================================= */
+/* 載入畫面樣式 */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    color: white;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+.loading-text {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* @keyframes spin 已移至 JS injectGlobalAnimationStyles() */
+
+/* 跳過連結樣式 */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 10000;
+    border-radius: 4px;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
+/* 無 JavaScript 訊息樣式 */
+.noscript-message {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.noscript-message h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.noscript-message p {
+    color: #666;
+    max-width: 500px;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+/* 錯誤邊界樣式 */
+.error-boundary {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.error-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 500px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+.error-content h2 {
+    color: #d32f2f;
+    margin-bottom: 20px;
+}
+
+.error-content p {
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.reload-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease;
+}
+
+.reload-btn:hover {
+    background: #5a67d8;
+}
+
+/* ================================================================
+ * A4 困難模式找零拖曳介面（a4c- 前綴）
+ * ================================================================ */
+
+.a4c-task-frame {
+    background: white;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.a4c-task-left { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.a4c-task-item-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.a4c-change-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.a4c-change-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+}
+
+.a4c-change-num {
+    font-size: 26px;
+    font-weight: 900;
+    color: #059669;
+}
+
+.a4c-wallet-info {
+    font-size: 13px;
+    color: #5b21b6;
+}
+.a4c-wallet-info.a4c-hidden { display: none; }
+
+.a4c-task-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 76px;
+}
+
+.a4c-mascot { width: 48px; height: auto; }
+.a4c-mascot-bounce { animation: settingsBounce 2.5s ease-in-out infinite; }
+
+.a4c-hint-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.4);
+}
+.a4c-wallet-toggle-btn {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.a4c-card {
+    background: white;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+
+.a4c-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #059669;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.a4c-tray-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.a4c-denom-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px solid #10b981;
+    border-radius: 12px;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+    min-width: 68px;
+}
+.a4c-denom-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.4);
+}
+.a4c-denom-card.a4c-dragging { opacity: 0.5; }
+
+.a4c-coin-img  { width: 52px; height: 52px; object-fit: contain; }
+.a4c-banknote-img { width: 88px; height: auto; }
+
+.a4c-denom-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #059669;
+}
+
+.a4c-wallet-split {
+    display: flex;
+    gap: 10px;
+    min-height: 110px;
+}
+
+.a4c-wallet-left {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.a4c-wallet-right {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-content: flex-start;
+    padding: 10px;
+    border: 3px dashed #10b981;
+    border-radius: 10px;
+    background: #f0fdf4;
+    min-height: 100px;
+    transition: background 0.2s, border-color 0.2s;
+}
+.a4c-wallet-right.a4c-drop-active {
+    background: #d1fae5;
+    border-color: #059669;
+    border-style: solid;
+}
+
+.a4c-wc-static {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.a4c-wc-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: grab;
+    padding: 4px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+}
+
+.a4c-wc-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 700;
+}
+
+.a4c-ghost-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 8px;
+    background: white;
+    border: 2px dashed #9ca3af;
+    opacity: 0.6;
+}
+
+.a4c-empty-hint {
+    color: #9ca3af;
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    width: 100%;
+    padding: 16px 0;
+}
+
+.a4c-confirm-btn {
+    background: #FF9800;
+    color: white;
+    border: none;
+    padding: 14px 36px;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.3s, box-shadow 0.3s, opacity 0.3s;
+    box-shadow: 0 4px 15px rgba(255,152,0,0.3);
+    opacity: 0.5;
+}
+.a4c-confirm-btn:not(:disabled) { opacity: 1; }
+.a4c-confirm-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.a4c-confirm-btn:hover:not(:disabled) {
+    background: #F57C00;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245,124,0,0.45);
+    animation: none;
+}
+.a4c-confirm-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    animation: none;
+}
+
+@keyframes a4cConfirmPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70%  { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+@keyframes a4cShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+/* b6-product-here-hint（ghost slot 托盤高亮，A4 單獨定義）*/
+.a4c-denom-card.b6-product-here-hint {
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+    animation: b6HereHintPulseA4 1.2s ease-in-out infinite;
+    position: relative;
+}
+.a4c-denom-card.b6-product-here-hint::after {
+    content: '👇 點這裡';
+    position: absolute;
+    top: -38px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+    animation: b6HereBounceA4 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes b6HereHintPulseA4 {
+    0%, 100% { outline-color: #f59e0b; }
+    50% { outline-color: #ef4444; }
+}
+@keyframes b6HereBounceA4 {
+    from { transform: translateX(-50%) translateY(0); }
+    to   { transform: translateX(-50%) translateY(-4px); }
+}

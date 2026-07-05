@@ -1,0 +1,64 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* 點擊選擇視覺反饋樣式 - 參考 c3_money_exchange */
+        .unit4-easy-source-item.selected-item,
+        .unit4-normal-source-item.selected-item,
+        .unit4-hard-source-item.selected-item,
+        .unit4-easy-dropped-item.selected-item,
+        .unit4-normal-dropped-item.selected-item,
+        .unit4-hard-dropped-item.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        /* 確保點擊事件正常工作 */
+        .unit4-easy-source-item,
+        .unit4-normal-source-item,
+        .unit4-hard-source-item,
+        .unit4-easy-dropped-item,
+        .unit4-normal-dropped-item,
+        .unit4-hard-dropped-item {
+            cursor: pointer;
+        }
+        
+        /* 防止圖片內容干擾點擊事件，但保留容器的觸控功能 */
+        .unit4-easy-source-item img,
+        .unit4-normal-source-item img,
+        .unit4-hard-source-item img,
+        .unit4-easy-dropped-item img,
+        .unit4-normal-dropped-item img,
+        .unit4-hard-dropped-item img {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        
+        /* 確保錢幣容器能接收觸控事件 */
+        .unit4-easy-source-item,
+        .unit4-normal-source-item,
+        .unit4-hard-source-item,
+        .unit4-easy-dropped-item,
+        .unit4-normal-dropped-item,
+        .unit4-hard-dropped-item,
+        .money-item {
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }

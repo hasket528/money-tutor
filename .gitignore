@@ -1,0 +1,18 @@
+# 開發用資料，不上傳
+*.wav
+_wav_backup/
+_archive/
+doc/
+docs/
+report/
+voicegen/
+tests/
+tools/
+CLAUDE.md
+*.bat
+*.ps1
+*.py
+.claude/
+.vscode/
+Thumbs.db
+desktop.ini

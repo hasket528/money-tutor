@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教師後台 — 購物練習</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #2563EB; --blue-lt: #EFF6FF;
+      --green: #16A34A; --green-lt: #F0FDF4;
+      --orange: #EA580C; --orange-lt: #FFF7ED;
+      --red: #DC2626;
+      --gray-900: #1E293B; --gray-600: #475569; --gray-200: #E2E8F0;
+      --bg: #F0F4FF; --white: #FFFFFF;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--gray-900); font-size: 16px; min-height: 100vh; }
+
+    /* ── Header ── */
+    .t-header {
+      background: var(--white); border-bottom: 2px solid var(--gray-200);
+      padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .t-header h1 { font-size: 1.2rem; font-weight: 700; flex: 1; }
+    .t-btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; font-weight: 600; }
+    .t-btn-primary { background: var(--blue); color: #fff; }
+    .t-btn-secondary { background: var(--gray-200); color: var(--gray-900); }
+    .t-btn-danger { background: #FEE2E2; color: var(--red); }
+
+    /* ── Layout ── */
+    .t-body { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+
+    /* ── Summary Cards ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border: 2px solid var(--gray-200); border-radius: 14px; padding: 16px; text-align: center; box-shadow: var(--shadow); }
+    .stat-num   { font-size: 2rem; font-weight: 700; color: var(--blue); }
+    .stat-label { font-size: 0.75rem; color: var(--gray-600); margin-top: 4px; }
+
+    /* ── Scenario Table ── */
+    .section-title { font-size: 1rem; font-weight: 700; margin: 20px 0 10px; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+    .scenario-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .scenario-table th { background: var(--blue-lt); color: var(--blue); font-size: 0.8rem; padding: 10px 12px; text-align: left; }
+    .scenario-table td { padding: 10px 12px; border-top: 1px solid var(--gray-200); font-size: 0.88rem; vertical-align: middle; }
+    .scenario-table tr:hover td { background: var(--bg); }
+    .star-bar { display: flex; gap: 2px; }
+    .star { font-size: 0.9rem; opacity: 0.25; }
+    .star.lit { opacity: 1; }
+
+    /* ── Weakness Section ── */
+    .weakness-list { display: flex; flex-direction: column; gap: 8px; }
+    .weakness-card { background: var(--white); border-left: 4px solid var(--orange); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+    .weakness-card .w-step  { font-weight: 700; margin-bottom: 4px; }
+    .weakness-card .w-meta  { font-size: 0.78rem; color: var(--gray-600); }
+    .weakness-pct { font-size: 1rem; font-weight: 700; color: var(--orange); float: right; }
+    .w-practice-link { font-size: 0.75rem; background: var(--blue); color: #fff; border-radius: 4px; padding: 2px 8px; text-decoration: none; margin-left: 8px; vertical-align: middle; }
+    .w-practice-link:hover { background: #1D4ED8; }
+
+    /* ── Recent List ── */
+    .recent-card { background: var(--white); border: 2px solid var(--gray-200); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .recent-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .recent-scenario { font-weight: 700; }
+    .recent-meta { font-size: 0.78rem; color: var(--gray-600); }
+
+    /* ── Print ── */
+    @media print {
+      .t-header .t-btn, .no-print { display: none; }
+      .t-header { position: static; }
+      body { background: white; }
+      .stat-card, .scenario-table, .weakness-card, .recent-card { box-shadow: none; border: 1px solid #ccc; }
+    }
+
+    .empty-msg { text-align: center; padding: 40px; color: var(--gray-600); }
+  </style>
+</head>
+<body>
+
+<header class="t-header">
+  <h1>📊 教師後台 — 購物練習</h1>
+  <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
+  <button class="t-btn t-btn-secondary no-print" onclick="loadData()">重新整理</button>
+  <button class="t-btn t-btn-primary no-print" onclick="exportCSV()">📥 匯出 CSV</button>
+  <button class="t-btn t-btn-primary no-print" onclick="window.print()">🖨 列印</button>
+  <button class="t-btn t-btn-danger no-print" onclick="clearData()">清除紀錄</button>
+</header>
+
+<div class="t-body">
+
+  <!-- 統計卡片 -->
+  <div class="summary-grid" id="summary-grid">
+    <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">總練習次數</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-7d">—</div><div class="stat-label">近 7 天</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-avg-star">—</div><div class="stat-label">平均星數</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-scenarios">—</div><div class="stat-label">練習過的情境</div></div>
+  </div>
+
+  <!-- 各情境表現 -->
+  <div class="section-title">📋 各情境練習狀況</div>
+  <div id="scenario-section"><p class="empty-msg">尚無紀錄</p></div>
+
+  <!-- 弱點步驟 -->
+  <div class="section-title">⚠️ 需加強的對話步驟（答錯率 ≥ 40%）</div>
+  <div class="weakness-list" id="weakness-list"><p class="empty-msg">—</p></div>
+
+  <!-- 最近 20 筆 -->
+  <div class="section-title">🕐 最近練習紀錄</div>
+  <div id="recent-list"><p class="empty-msg">尚無紀錄</p></div>
+
+</div>
+
+<script src="db.js"></script>
+<script>
+const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
+
+async function loadData() {
+  const records = await dbAll();
+  document.getElementById('last-update').textContent =
+    '更新：' + new Date().toLocaleTimeString('zh-TW');
+
+  if (records.length === 0) return;
+
+  // ─── 統計 ───────────────────────────────────────
+  const now = Date.now();
+  const r7d  = records.filter(r => now - r.ts < 7 * 86400_000).length;
+  const avgS = (records.reduce((a, r) => a + (r.stars || 0), 0) / records.length).toFixed(1);
+  const scens = new Set(records.map(r => r.scenarioId)).size;
+
+  document.getElementById('s-total').textContent    = records.length;
+  document.getElementById('s-7d').textContent       = r7d;
+  document.getElementById('s-avg-star').textContent = avgS + '⭐';
+  document.getElementById('s-scenarios').textContent = scens;
+
+  // ─── 各情境表現 ─────────────────────────────────
+  const byScenario = {};
+  records.forEach(r => {
+    const key = r.scenarioId + '|' + r.situationId;
+    if (!byScenario[key]) byScenario[key] = {
+      scenarioName: r.scenarioName || r.scenarioId,
+      situationName: r.situationName || r.situationId,
+      count: 0, totalStars: 0, bestStars: 0,
+    };
+    byScenario[key].count++;
+    byScenario[key].totalStars += (r.stars || 0);
+    byScenario[key].bestStars = Math.max(byScenario[key].bestStars, r.stars || 0);
+  });
+
+  const tbl = document.createElement('table');
+  tbl.className = 'scenario-table';
+  tbl.innerHTML = `<tr><th>情境</th><th>狀況</th><th>練習次數</th><th>平均星數</th><th>最高星數</th></tr>`;
+  Object.values(byScenario).forEach(s => {
+    const avg  = (s.totalStars / s.count).toFixed(1);
+    const best = s.bestStars;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span></td>
+      <td>${statusTag(s.bestStars)}</td>
+      <td>${s.count}</td>
+      <td>${avg} ⭐</td>
+      <td>${starBar(best)}</td>`;
+    tbl.appendChild(tr);
+  });
+  const sec = document.getElementById('scenario-section');
+  sec.innerHTML = '';
+  sec.appendChild(tbl);
+
+  // ─── 弱點步驟 ────────────────────────────────────
+  const stepStats = {};
+  records.forEach(r => {
+    (r.steps || []).forEach(s => {
+      if (!s?.stepId) return;
+      const k = `${r.scenarioId}|${r.situationId}|${s.stepId}`;
+      if (!stepStats[k]) stepStats[k] = { label: s.task || s.stepId, scene: r.scenarioName, total: 0, failed: 0 };
+      stepStats[k].total++;
+      if (s.score !== 'perfect') stepStats[k].failed++;
+    });
+  });
+
+  const weaknesses = Object.values(stepStats)
+    .filter(s => s.total >= 3 && s.failed / s.total >= 0.4)
+    .sort((a, b) => b.failed / b.total - a.failed / a.total);
+
+  const wList = document.getElementById('weakness-list');
+  if (weaknesses.length === 0) {
+    wList.innerHTML = '<p class="empty-msg">沒有需要加強的步驟 👍</p>';
+  } else {
+    wList.innerHTML = '';
+    weaknesses.forEach(w => {
+      const pct = Math.round(w.failed / w.total * 100);
+      const d = document.createElement('div');
+      d.className = 'weakness-card';
+      // 建立前往練習的連結（取 scenarioId / situationId）
+      const pracURL = `index.html`;
+      d.innerHTML = `
+        <div class="w-step">${w.label}
+          <a href="${pracURL}" class="w-practice-link no-print" title="前往練習此情境">▶ 去練習</a>
+          <span class="weakness-pct">${pct}% 需改進</span>
+        </div>
+        <div class="w-meta">${w.scene} ・ 練習 ${w.total} 次，答錯 ${w.failed} 次</div>`;
+      wList.appendChild(d);
+    });
+  }
+
+  // ─── 最近 20 筆 ──────────────────────────────────
+  const recent = document.getElementById('recent-list');
+  recent.innerHTML = '';
+  [...records].reverse().slice(0, 20).forEach(r => {
+    const date = new Date(r.ts).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const d = document.createElement('div');
+    d.className = 'recent-card';
+    d.innerHTML = `
+      <div class="recent-header">
+        <span class="recent-scenario">${r.scenarioName || r.scenarioId} ・ ${r.situationName || r.situationId}</span>
+        <span>${'⭐'.repeat(r.stars || 0)}</span>
+      </div>
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty} ・ 答對 ${r.score}/${r.total} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+    recent.appendChild(d);
+  });
+}
+
+function statusTag(stars) {
+  if (stars === 3) return '<span style="color:var(--green);font-weight:700">✅ 精通</span>';
+  if (stars === 2) return '<span style="color:var(--blue);font-weight:700">🔵 進步中</span>';
+  return '<span style="color:var(--orange);font-weight:700">🟡 需練習</span>';
+}
+
+function starBar(n) {
+  return [1,2,3].map(i => `<span class="star${i <= n ? ' lit' : ''}">⭐</span>`).join('');
+}
+
+async function clearData() {
+  if (!confirm('確定要清除所有學習紀錄嗎？此操作無法復原。')) return;
+  await dbClear();
+  location.reload();
+}
+
+async function exportCSV() {
+  const records = await dbAll();
+  if (records.length === 0) { alert('尚無學習紀錄'); return; }
+  const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
+  const rows = [['日期','情境','狀況','難度','答對','總計','星數','時長(秒)']];
+  records.forEach(r => {
+    const d = new Date(r.ts).toLocaleString('zh-TW');
+    rows.push([d, r.scenarioName||r.scenarioId, r.situationName||r.situationId,
+      DIFF[r.difficulty]||r.difficulty, r.score, r.total, r.stars||0, r.durationSec||0]);
+  });
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `shopping-practice-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+loadData();
+</script>
+</body>
+</html>

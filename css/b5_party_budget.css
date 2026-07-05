@@ -1,0 +1,2780 @@
+/* =================================================================
+   FILE: css/b5_party_budget.css — B5 生日派對預算 專屬樣式
+   ================================================================= */
+
+/* ── 頁面容器：卡片不滿版，置中，統一最大寬度 ──────────────────── */
+.b5-unit .game-container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 12px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* ── 預算橫幅 ────────────────────────────────────────────────── */
+.b5-budget-banner {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-radius: 16px;
+    padding: 16px 20px;
+    text-align: center;
+    color: #fff;
+    animation: bFadeIn 0.35s ease;
+    box-shadow: 0 4px 12px rgba(245,158,11,0.3);
+}
+
+.b5-budget-label {
+    font-size: 15px;
+    opacity: 0.9;
+}
+
+.b5-budget-amount {
+    font-size: 2.4rem;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+/* ── 即時金額顯示條 ─────────────────────────────────────────── */
+.b5-total-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background 0.3s, color 0.3s;
+    border: 2px solid transparent;
+}
+
+.b5-total-bar.ok {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #10b981;
+}
+
+.b5-total-bar.near {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #f59e0b;
+}
+
+.b5-total-bar.over {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #ef4444;
+    animation: b5Pulse 0.5s ease;
+}
+
+.b5-total-amount { font-size: 1.3rem; }
+.b5-remaining    { font-size: 14px; opacity: 0.8; }
+
+/* ── 商品條列（B1 schedule-items pattern）────────────────────── */
+.b5-schedule-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+    animation: bFadeIn 0.4s ease 0.1s both;
+}
+
+.b5-item-card {
+    background: #fff;
+    border: 1.5px solid #fde68a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.b5-item-card:hover:not(.locked):not(.disabled) {
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+
+.b5-item-card.selected {
+    border-color: #10b981;
+    background: #d1fae5;
+}
+
+.b5-item-card.locked {
+    border-color: #a5b4fc;
+    background: #ede9fe;
+    cursor: default;
+}
+
+.b5-item-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* B1-style 條列內容 */
+.b5-item-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.b5-item-bottom {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.b5-item-money-icons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 28px;
+}
+
+/* 桌面：逐枚；手機：分組×N */
+.b5-mic-desktop { display: none; }
+.b5-mic-mobile  { display: contents; }
+.b5-mic-item {
+    display: inline-flex; align-items: center; gap: 2px;
+    vertical-align: middle;
+}
+.b5-mic-count {
+    font-size: 12px; font-weight: bold; color: #374151;
+}
+
+@media (min-width: 480px) {
+    .b5-mic-desktop { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .b5-mic-mobile  { display: none; }
+}
+
+.b5-item-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #374151;
+    flex: 1;
+}
+
+.b5-item-price {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #d97706;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* 必買標記 */
+.b5-must-badge {
+    background: #6366f1;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 勾選標記（行內顯示，未選時隱藏） */
+.b5-check-mark {
+    font-size: 18px;
+    display: none;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.b5-item-card.selected .b5-check-mark {
+    display: inline;
+}
+
+/* ✕ 取消選擇按鈕（已選時顯示） */
+.b5-deselect-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0;
+    line-height: 1;
+    padding: 0;
+    transition: background 0.15s;
+}
+
+.b5-deselect-btn:hover { background: #dc2626; }
+
+.b5-item-card.selected .b5-deselect-btn {
+    display: inline-flex;
+}
+
+/* ── 確認按鈕 ─────────────────────────────────────────────── */
+.b5-confirm-btn {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.b5-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16,185,129,0.35);
+}
+
+.b5-confirm-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── 結果回饋 ────────────────────────────────────────────────── */
+.b5-result-banner {
+    text-align: center;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 18px;
+    font-weight: bold;
+    animation: bPop 0.4s ease;
+}
+
+.b5-result-banner.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 2px solid #10b981;
+}
+
+.b5-result-banner.fail {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 2px solid #ef4444;
+}
+
+.b5-result-sub {
+    font-size: 14px;
+    font-weight: normal;
+    margin-top: 6px;
+    opacity: 0.8;
+}
+
+.b5-removal-hint {
+    font-size: 14px;
+    font-weight: bold;
+    color: #92400e;
+    background: #fef9c3;
+    border: 1.5px solid #fde047;
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* ── 下一題按鈕 ──────────────────────────────────────────────── */
+.b5-next-btn {
+    width: 100%;
+    padding: 14px;
+    background: #6366f1;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.b5-next-btn:hover { background: #4f46e5; }
+
+/* ── 進度標題 ────────────────────────────────────────────────── */
+.b5-round-info {
+    text-align: center;
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* ── 預算提示按鈕（B1 hint pattern）──────────────────────────── */
+.b5-hint-btn {
+    padding: 8px 14px;
+    background: #fff;
+    color: #92400e;
+    border: 2px solid #fbbf24;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.b5-hint-btn:hover { background: #fef9c3; border-color: #f59e0b; }
+
+@keyframes b5HintGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(251,191,36,0); }
+    50%       { box-shadow: 0 0 18px rgba(251,191,36,0.75); }
+}
+.b5-hint-glow {
+    animation: b5HintGlow 0.85s ease 2 !important;
+    border-color: #f59e0b !important;
+}
+
+/* ── 關卡轉場卡（C6 transitionText pattern）────────────────── */
+@keyframes b5RtIn {
+    0%   { opacity: 0; transform: scale(0.75); }
+    60%  { opacity: 1; transform: scale(1.06); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.b5-round-transition {
+    position: fixed;
+    inset: 0;
+    background: rgba(99, 102, 241, 0.88);
+    z-index: 9800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s;
+}
+.b5-round-transition.b5-rt-fade { opacity: 0; }
+.b5-rt-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: b5RtIn 0.4s ease forwards;
+}
+.b5-rt-label {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.8);
+    font-weight: 500;
+}
+.b5-rt-round {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.b5-rt-icon { font-size: 2.5rem; }
+
+/* ── 動畫 ──────────────────────────────────────────────────── */
+@keyframes b5Pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.02); }
+}
+
+/* ── RWD ───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .b5-budget-amount { font-size: 2rem; }
+    .b5-items-grid    { gap: 8px; }
+    .b5-item-card     { padding: 10px 8px; }
+    .b5-item-icon .b5-icon-emoji { font-size: 26px; }
+    .b5-item-name     { font-size: 12px; }
+    .b5-item-price    { font-size: 1rem; }
+}
+
+/* ── 派對物品回顧（完成畫面）────────────────────────── */
+.b5-res-party-review {
+    margin: 16px 0;
+    padding: 14px 16px;
+    background: #fdf2f8;
+    border: 2px solid #f9a8d4;
+    border-radius: 14px;
+    text-align: center;
+}
+.b5-res-party-review h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #9d174d;
+}
+.b5-party-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+.b5-party-tag {
+    background: white;
+    border: 2px solid #ec4899;
+    border-radius: 20px;
+    padding: 5px 13px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #9d174d;
+}
+
+/* ── 各關預算使用（完成畫面）────────────────────────────────── */
+.b5-res-budget-stats {
+    margin: 16px 0;
+    padding: 14px 16px;
+    background: #f0fdf4;
+    border: 2px solid #86efac;
+    border-radius: 14px;
+}
+.b5-res-budget-stats h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: #166534;
+}
+.b5-budget-bars { display: flex; flex-direction: column; gap: 8px; }
+.b5-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+.b5-bar-label  { min-width: 44px; font-weight: bold; color: #374151; }
+.b5-bar-track  {
+    flex: 1;
+    height: 14px;
+    background: #e5e7eb;
+    border-radius: 7px;
+    overflow: hidden;
+}
+.b5-bar-fill   { height: 100%; border-radius: 7px; transition: width 0.4s ease; }
+.b5-bar-fill.ok   { background: linear-gradient(90deg, #10b981, #34d399); }
+.b5-bar-fill.near { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.b5-bar-fill.over { background: linear-gradient(90deg, #ef4444, #f87171); }
+.b5-bar-val    { min-width: 88px; text-align: right; color: #374151; font-weight: bold; }
+
+/* ── B5 Round Intro Card (Round 24) ── */
+.b5-round-intro {
+    position: fixed; inset: 0; z-index: 10050;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    animation: b5RiIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.b5-round-intro.b5-ri-fade { opacity: 0; transition: opacity 0.3s ease; }
+@keyframes b5RiIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+.b5-ri-inner {
+    text-align: center; padding: 36px 48px;
+    background: white; border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.b5-ri-cancel-btn {
+    display: block; margin: 16px auto 0;
+    background: #f3f4f6; border: 1.5px solid #d1d5db;
+    color: #6b7280; font-size: 13px; font-weight: 600;
+    padding: 5px 14px; border-radius: 8px; cursor: pointer;
+    transition: background 0.15s;
+}
+.b5-ri-cancel-btn:hover { background: #e5e7eb; color: #374151; }
+.b5-ri-start-btn {
+    display: block; margin: 20px auto 0;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    border: none; color: #fff;
+    font-size: 18px; font-weight: 700;
+    padding: 12px 36px; border-radius: 14px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.b5-ri-start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(124,58,237,0.5); }
+.b5-ri-round  { font-size: 18px; font-weight: 700; color: #7c3aed; margin-bottom: 8px; }
+.b5-ri-icon   { font-size: 52px; margin: 8px 0; }
+.b5-ri-label  { font-size: 14px; color: #6b7280; margin-top: 4px; }
+.b5-ri-budget { font-size: 44px; font-weight: 900; color: #d97706; letter-spacing: 1px; }
+.b5-ri-hint   { font-size: 12px; color: #9ca3af; margin-top: 12px; }
+
+/* ── B5 Budget Meter Bar (Round 20) ── */
+.b5-budget-meter {
+    height: 10px; background: #e5e7eb; border-radius: 8px;
+    margin: 4px 0 10px; position: relative; overflow: hidden;
+}
+.b5-budget-meter-fill {
+    height: 100%; border-radius: 8px;
+    transition: width 0.4s ease, background 0.3s ease;
+    background: #10b981;
+}
+.b5-budget-meter-fill.near { background: #f59e0b; }
+.b5-budget-meter-fill.over { background: #ef4444; }
+.b5-meter-label {
+    position: absolute; right: 4px; top: -1px;
+    font-size: 9px; font-weight: 700; color: #374151;
+    line-height: 12px;
+}
+
+/* ── B5 Streak Badge (Round 20) ── */
+.b5-streak-badge {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 9850; pointer-events: none;
+    animation: b5SbPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.b5-streak-badge.b5-sb-fade { opacity: 0; transition: opacity 0.4s ease; }
+@keyframes b5SbPop { from { opacity:0; transform:translate(-50%,-50%) scale(0.5); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+.b5-sb-inner {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 20px; padding: 18px 36px; text-align: center;
+    box-shadow: 0 8px 32px rgba(217,119,6,0.45);
+}
+.b5-sb-label { font-size: 32px; font-weight: 900; color: white; }
+.b5-sb-msg   { font-size: 15px; color: rgba(255,255,255,0.85); margin-top: 4px; }
+
+/* ── B5 費用明細（超支時展開）────────────────────────────────── */
+.b5-breakdown {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    animation: bFadeIn 0.3s ease;
+}
+.b5-bd-title {
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+.b5-bd-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    color: #374151;
+}
+.b5-bd-over {
+    color: #dc2626;
+    font-weight: 600;
+}
+.b5-bd-sep {
+    border-top: 1px dashed #d1d5db;
+    margin: 4px 0;
+}
+.b5-bd-total {
+    font-weight: 700;
+    color: #dc2626;
+}
+.b5-bd-budget {
+    color: #059669;
+    font-weight: 600;
+}
+.b5-bd-over-row {
+    font-weight: 700;
+    color: #dc2626;
+    background: #fee2e2;
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+/* ── B5 Confirm Button Pulse (Round 21) ── */
+#b5-confirm-btn.ready {
+    animation: b5ConfirmPulse 1.4s ease-in-out infinite;
+}
+@keyframes b5ConfirmPulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(16,185,129,0.4); transform: scale(1); }
+    50%       { box-shadow: 0 6px 24px rgba(16,185,129,0.7); transform: scale(1.03); }
+}
+
+/* ── B5 Savings Badge (Round 24) ── */
+.b5-savings-badge {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border: 2px solid #10b981;
+    border-radius: 12px;
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #065f46;
+    margin-top: 8px;
+    animation: bFadeIn 0.4s ease;
+}
+
+/* ── B5 Efficiency Badge (Round 25) ── */
+.b5-eff-badge {
+    border-radius: 12px;
+    padding: 8px 14px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 8px;
+    animation: bFadeIn 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.b5-eff-badge.perfect { background: linear-gradient(135deg,#fef3c7,#fde68a); border: 2px solid #f59e0b; color: #92400e; }
+.b5-eff-badge.good    { background: linear-gradient(135deg,#dbeafe,#bfdbfe); border: 2px solid #3b82f6; color: #1e3a8a; }
+.b5-eff-badge.ok      { background: linear-gradient(135deg,#d1fae5,#a7f3d0); border: 2px solid #10b981; color: #065f46; }
+.b5-eff-badge.save    { background: linear-gradient(135deg,#f3f4f6,#e5e7eb); border: 2px solid #9ca3af; color: #374151; }
+.b5-eff-pct { font-size: 18px; font-weight: 900; }
+
+/* ── B5 Perfect Budget (Round 26) ── */
+.b5-result-banner.perfect-budget {
+    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+    border-color: #d97706 !important;
+    color: #78350f !important;
+}
+.b5-eff-badge.perfect-exact {
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    border: 2px solid #ec4899;
+    color: #831843;
+    animation: b5PerfectPulse 1s ease 0s 2, bFadeIn 0.4s ease;
+}
+@keyframes b5PerfectPulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.04); }
+}
+
+/* ── B5 Total Summary Row (Round 29) ── */
+.b5-res-total-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: center;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    border-radius: 0 0 10px 10px;
+    font-size: 13px;
+    color: #374151;
+}
+.b5-res-total-row .saved { color: #059669; font-weight: 700; }
+.b5-res-total-row .over  { color: #dc2626; font-weight: 700; }
+
+/* ── Round 30：B5 超限震動 ── */
+@keyframes b5Shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+.b5-shake { animation: b5Shake 0.5s ease; }
+
+/* ── Round 31：B5 預算效率星評 ── */
+.b5-star-rating {
+    text-align: center;
+    padding: 14px 12px;
+    background: #fffbeb;
+    border: 2px solid #fcd34d;
+    border-radius: 12px;
+    margin-top: 12px;
+    animation: bFadeIn 0.5s ease;
+}
+.b5-star-row { font-size: 32px; margin-bottom: 6px; }
+.b5-star { opacity: 0.2; filter: grayscale(1); transition: opacity 0.3s, filter 0.3s; }
+.b5-star.lit { opacity: 1; filter: none; }
+.b5-star-label { font-size: 14px; font-weight: 700; color: #92400e; }
+
+/* ── Round 34：B5 預算分配說明 ── */
+.b5-ri-alloc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 4px;
+    font-size: 13px;
+    background: rgba(255,255,255,0.25);
+    padding: 6px 14px;
+    border-radius: 12px;
+}
+.b5-ri-must { color: #fef9c3; font-weight: 700; }
+.b5-ri-sep  { color: rgba(255,255,255,0.7); }
+.b5-ri-opt  { color: #d1fae5; font-weight: 700; }
+
+/* ── Round 35：B5 困難模式隱藏價格 ── */
+.b5-price-hidden .b5-item-price { color: #9ca3af; font-style: italic; }
+.b5-price-hidden { opacity: 0.88; }
+
+/* ── Round 36：B5 必買分隔線 ── */
+.b5-must-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #f59e0b;
+    border-radius: 2px;
+    z-index: 2;
+    transition: left 0.5s ease;
+}
+.b5-must-marker::after {
+    content: '必';
+    position: absolute;
+    top: -16px;
+    left: -6px;
+    font-size: 9px;
+    color: #92400e;
+    font-weight: 700;
+    background: #fef3c7;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* ── Round 38：B5 可負擔商品高亮 ── */
+.b5-item-card.b5-affordable {
+    outline: 2px dashed #10b981;
+    outline-offset: 2px;
+    transition: outline 0.3s ease;
+}
+
+/* ── Round 39：B5 即時選擇計數 ── */
+.b5-sel-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-radius: 10px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+/* ── Round 40：B5 必買vs選購比例條 ── */
+.b5-res-ratio {
+    background: #fff;
+    border: 1px solid #e9d5ff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 12px 0;
+}
+.b5-res-ratio h3 { font-size: 14px; color: #6d28d9; margin: 0 0 8px; }
+.b5-ratio-bar {
+    display: flex;
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 700;
+}
+.b5-ratio-must {
+    background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    transition: width 0.5s ease;
+}
+.b5-ratio-opt {
+    background: linear-gradient(90deg, #a78bfa, #c4b5fd);
+    color: #4c1d95;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    transition: width 0.5s ease;
+}
+.b5-ratio-vals {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* ── Round 42：必買/選購分組佈局（A4 商品分類 pattern）── */
+/* ── 選購商品區：卡片呈現 ─────────────────────────────────────── */
+.b5-section-group {
+    background: #fff;
+    border: 1.5px solid #d1fae5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.08);
+}
+
+.b5-section-group .b5-schedule-items {
+    padding: 10px 12px 12px;
+    margin-bottom: 0;
+}
+
+.b5-section-hd {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 0;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+}
+.b5-section-hd-must {
+    background: linear-gradient(90deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border-left: 5px solid #f59e0b;
+}
+.b5-section-hd-opt {
+    background: linear-gradient(90deg, #ecfdf5, #d1fae5);
+    color: #065f46;
+    border-left: 5px solid #10b981;
+}
+.b5-section-sub { font-size: 13px; font-weight: 600; }
+
+/* ── 分頁按鈕 ────────────────────────────────────────────────── */
+.b5-page-btn {
+    background: #fff;
+    border: 1.5px solid #10b981;
+    color: #065f46;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+}
+.b5-page-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+.b5-page-btn:not(:disabled):active {
+    background: #d1fae5;
+}
+.b5-section-title-center {
+    flex: 1;
+    text-align: center;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+/* ── Round 43：困難模式翻牌動畫 ── */
+@keyframes b5FlipReveal {
+    0%   { transform: scaleX(1);  opacity: 1; }
+    40%  { transform: scaleX(0);  opacity: 0.4; }
+    60%  { transform: scaleX(0);  opacity: 0.4; }
+    100% { transform: scaleX(1);  opacity: 1; }
+}
+.b5-flip-reveal {
+    animation: b5FlipReveal 0.33s ease;
+    transform-origin: center;
+}
+/* ── Round 45：朗讀已選按鈕 ── */
+.b5-read-selected-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 8px 16px; border-radius: 20px;
+    background: #eff6ff; border: 1.5px solid #93c5fd;
+    color: #1d4ed8; font-size: 13px; font-weight: 600;
+    cursor: pointer; margin: 0 6px; transition: background 0.2s;
+}
+.b5-read-selected-btn:hover { background: #dbeafe; }
+
+/* ── 自訂商品面板 ──────────────────────────────────────────── */
+.b5-custom-items-panel {
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 6px 0;
+}
+.b5-cip-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: #166534;
+    margin-bottom: 8px;
+}
+.b5-cip-add-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.b5-cip-input {
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    padding: 5px 7px;
+    font-size: 13px;
+}
+.b5-cip-price-inp { width: 72px; }
+.b5-mp-price-btn {
+    background: #fff; cursor: pointer;
+    color: #9ca3af; text-align: center;
+}
+.b5-mp-price-btn--set { color: #374151; font-weight: 700; }
+.b5-mp-price-btn:hover { background: #f3f4f6; }
+.b5-cip-add-btn {
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.b5-cip-custom-card { cursor: default; }
+.b5-cip-del-btn {
+    background: #fee2e2;
+    border: none;
+    border-radius: 6px;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 2px 7px;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+/* ── 困難模式提示彈窗（B3 _showHardModeHintModal pattern）── */
+.b5-hint-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10200;
+}
+.b5-hint-modal {
+    background: #fff; border-radius: 16px; padding: 20px 24px;
+    max-width: 340px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    max-height: 80vh; overflow-y: auto;
+}
+/* 困難模式採購清單彈窗：強制畫面正中央 */
+#b5-hard-hint-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.55);
+    z-index: 10200;
+}
+#b5-hard-hint-modal .b5-hint-modal {
+    position: relative;
+    margin: auto;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.b5-hm-header { font-size: 16px; font-weight: 700; color: #6e28b4; margin-bottom: 12px; }
+.b5-hm-budget-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f3e8ff; border-radius: 8px; padding: 6px 12px; margin-bottom: 10px;
+}
+.b5-hm-label { font-size: 13px; color: #374151; }
+.b5-hm-budget-val { font-size: 18px; font-weight: 700; color: #6e28b4; }
+.b5-hm-section { margin-bottom: 10px; }
+.b5-hm-sec-title { font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+.b5-hm-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px;
+}
+.b5-hm-icon { font-size: 18px; }
+.b5-hm-name { flex: 1; color: #1f2937; }
+.b5-hm-price { color: #374151; font-weight: 600; }
+.b5-hm-opt .b5-hm-price { color: #059669; }
+.b5-hm-total { border-top: 2px solid #d1d5db; border-bottom: none; font-weight: 700; color: #6e28b4; padding-top: 4px; }
+.b5-hm-total > span:first-child { flex: 1; }
+.b5-hm-empty { font-size: 13px; color: #6b7280; text-align: center; padding: 8px 0; }
+.b5-hm-close-btn {
+    display: block; width: 100%; margin-top: 14px;
+    background: #6e28b4; color: #fff; border: none; border-radius: 8px;
+    padding: 8px; font-size: 14px; cursor: pointer;
+}
+
+/* ── 商品選取彈窗（白底設計：圖片 + 名稱 + 金額）──────────── */
+.b5-item-flyout {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 2px solid #10b981;
+    border-radius: 20px;
+    padding: 18px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 9500;
+    pointer-events: none;
+    animation: b5CollectFlashIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    box-shadow: 0 8px 32px rgba(16,185,129,0.25), 0 2px 8px rgba(0,0,0,0.10);
+    min-width: 200px;
+}
+.b5-if-img  { font-size: 0; line-height: 0; }
+.b5-if-img .b5-icon-emoji { font-size: 160px; line-height: 1; }
+.b5-if-name  { font-size: 22px; font-weight: 800; text-align: center; color: #065f46; }
+.b5-if-price {
+    font-size: 18px; font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #059669, #10b981);
+    border-radius: 20px;
+    padding: 5px 22px;
+}
+.b5-if-fade  { transition: opacity 0.4s; opacity: 0; }
+@keyframes b5CollectFlashIn {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ── 新版行程卡式標題區 ──────────────────────────────────────── */
+.b5-schedule-card {
+    background: linear-gradient(135deg, #fef3c7, #fde68a 120%);
+    border-radius: 16px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 4px 12px rgba(245,158,11,0.25);
+    animation: bFadeIn 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ① 標題列：水平置中 */
+.b5-sch-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.b5-sch-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+/* ② 操作列：朗讀已選（左）/ 提示卡（右） */
+.b5-sch-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* 提示按鈕以卡片呈現，靠右 */
+.b5-hint-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.5px solid #fbbf24;
+    border-radius: 20px;
+    padding: 4px 12px 4px 8px;
+    box-shadow: 0 2px 6px rgba(245,158,11,0.15);
+}
+
+.b5-hint-card .b5-hint-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #92400e;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* ③ 預算資訊卡：金錢圖示（左）+ 已選/預算（右） */
+.b5-budget-info-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fff;
+    border: 2px solid #10b981;
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: border-color 0.3s, background 0.3s;
+}
+
+.b5-budget-info-card.ok  { border-color: #10b981; background: #f0fdf4; }
+.b5-budget-info-card.near { border-color: #f59e0b; background: #fffbeb; }
+.b5-budget-info-card.over { border-color: #ef4444; background: #fef2f2; }
+
+.b5-bic-icons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.b5-bic-amount {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.b5-bic-selected {
+    font-size: 17px;
+    font-weight: 700;
+    color: #059669;
+}
+
+.b5-budget-info-card.near .b5-bic-selected { color: #d97706; }
+.b5-budget-info-card.over .b5-bic-selected { color: #dc2626; }
+
+.b5-bic-sep {
+    color: #9ca3af;
+    margin: 0 2px;
+}
+
+.b5-bic-total {
+    color: #6b7280;
+}
+
+/* ⑤ 確認購買：auto-fit 寬度 */
+.b5-confirm-area {
+    display: flex;
+    justify-content: center;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B5 Phase 2：付款頁面（b5p2- 前綴）
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 參考卡（派對主題 + 已選商品 + 合計）── */
+.b5p2-ref-card {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 4px 12px rgba(245,158,11,0.20);
+    animation: bFadeIn 0.35s ease;
+}
+.b5-p2-hint-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.b5p2-ref-icon  { font-size: 28px; line-height: 1; }
+.b5p2-ref-title { font-size: 17px; font-weight: 700; color: #92400e; }
+.b5p2-ref-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+.b5p2-ref-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #374151;
+    padding: 2px 0;
+    border-bottom: 1px dashed #fcd34d;
+}
+.b5p2-ref-item:last-child { border-bottom: none; }
+.b5p2-ref-price { font-weight: 600; color: #92400e; }
+.b5p2-ref-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 2px solid #f59e0b;
+    padding-top: 8px;
+    margin-top: 4px;
+}
+.b5p2-ref-total-label { font-size: 14px; font-weight: 700; color: #78350f; }
+.b5p2-ref-total-val   { font-size: 22px; font-weight: 900; color: #d97706; }
+
+/* ── 錢包區（drop zone）── */
+.b5p2-wallet-area {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 2.5px dashed #93c5fd;
+    border-radius: 16px;
+    padding: 14px 16px;
+    min-height: 120px;
+    box-shadow: inset 0 2px 8px rgba(59,130,246,0.08);
+    transition: border-color 0.25s, background 0.25s;
+}
+.b5p2-wallet-area.enough {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: #34d399;
+}
+.b5p2-wallet-area.over-budget {
+    background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%);
+    border-color: #fca5a5;
+}
+
+/* 錢包標題列 */
+.b5p2-wallet-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+/* "需要 X 元" 大標題（取代 "👛 我的錢包"）*/
+.b5p2-wallet-need {
+    font-size: 22px;
+    font-weight: 900;
+    color: #1d4ed8;
+    letter-spacing: 0.5px;
+}
+.b5p2-wallet-placed-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #374151;
+}
+.b5p2-wallet-placed-lbl { font-weight: 600; }
+.b5p2-wallet-total-val  {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1d4ed8;
+    transition: color 0.25s;
+}
+.b5p2-wallet-total-val.enough    { color: #059669; }
+.b5p2-wallet-total-val.not-enough { color: #dc2626; }
+.b5p2-wallet-sep  { color: #9ca3af; margin: 0 2px; }
+.b5p2-wallet-goal { font-size: 13px; color: #6b7280; font-weight: 600; }
+
+/* 進度條 */
+.b5p2-progress-wrap {
+    padding: 4px 0 0;
+    margin-bottom: 8px;
+}
+.b5p2-progress {
+    height: 8px;
+    background: transparent;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.b5p2-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    transition: width 0.35s ease, background 0.3s;
+}
+.b5p2-progress-fill.near { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.b5p2-progress-fill.full { background: linear-gradient(90deg, #10b981, #34d399); }
+
+/* "預算金額" 標籤（卡片最上方，字號同 b5p2-wallet-need）*/
+.b5p2-wallet-coins-label {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: #1d4ed8;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+/* 錢包放置區（幣格）*/
+.b5p2-wallet-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-height: 64px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    margin-top: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: border-color 0.2s, background 0.2s;
+}
+.b5p2-drop-zone.b5p2-drop-active {
+    border-color: #3b82f6 !important;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    box-shadow: inset 0 0 12px rgba(59,130,246,0.2);
+}
+.b5p2-wallet-empty {
+    width: 100%;
+    text-align: center;
+    color: #93c5fd;
+    font-size: 14px;
+    padding: 12px 0;
+    user-select: none;
+}
+
+/* 錢包幣（放入後）*/
+.b5p2-wallet-coin {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.25s ease;
+}
+/* 新放入的幣才播入場動畫（避免全區重繪時閃爍）*/
+.b5p2-coin-new {
+    animation: bCoinIn 0.25s ease;
+}
+/* Ghost slot（easy 提示）*/
+.b5p2-ghost-slot {
+    animation: b5p2GhostIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    opacity: 0.35;
+}
+@keyframes b5p2GhostIn {
+    from { opacity: 0;    transform: translateY(-12px) scale(0.7); }
+    to   { opacity: 0.35; transform: translateY(0) scale(1); }
+}
+/* 可拖回的幣 */
+.b5p2-wc-removable { cursor: grab; }
+.b5p2-wc-removable:active { cursor: grabbing; }
+.b5p2-wc-remove {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 20px; height: 20px;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 2;
+}
+.b5p2-wc-removable:hover .b5p2-wc-remove { opacity: 1; }
+
+/* 正在拖曳中的幣（from wallet back to tray）*/
+.b5p2-dragging { opacity: 0.4; transform: scale(0.92); }
+
+/* 錢包幣圖示尺寸（與拖曳盤一致）*/
+.b5p2-wallet-coin .coin-img     { width: 60px;  height: 60px; }
+.b5p2-wallet-coin .banknote-img { width: 100px; height: auto; }
+
+/* ── 錢幣托盤 ── */
+.b5p2-tray {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.b5p2-tray-title {
+    font-size: 22px;
+    font-weight: 900;
+    color: #374151;
+    margin-bottom: 12px;
+    text-align: center;
+}
+.b5p2-tray-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+/* 拖曳幣按鈕 */
+.b5p2-coin-drag {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 8px 6px 4px;
+    cursor: grab;
+    transition: all 0.18s;
+    user-select: none;
+    touch-action: none;
+}
+.b5p2-coin-drag:hover {
+    border-color: rgba(245,158,11,0.5);
+    background: rgba(245,158,11,0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(245,158,11,0.2);
+}
+.b5p2-coin-drag:active { cursor: grabbing; }
+.b5p2-coin-drag.b5p2-dragging { opacity: 0.4; transform: scale(0.92); }
+.b5p2-coin-drag .coin-img     { width: 60px;  height: 60px; }
+.b5p2-coin-drag .banknote-img { width: 100px; height: auto; }
+.b5p2-denom-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #6b7280;
+}
+
+/* ── 震動動畫（答錯時）── */
+@keyframes b5p2Shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+.b5p2-shake { animation: b5p2Shake 0.5s ease; }
+
+/* ── RWD ── */
+@media (max-width: 480px) {
+    .b5p2-ref-title         { font-size: 15px; }
+    .b5p2-ref-total-val     { font-size: 18px; }
+    .b5p2-wallet-need       { font-size: 18px; }
+    .b5p2-coin-drag .coin-img     { width: 48px; height: 48px; }
+    .b5p2-coin-drag .banknote-img { width: 80px; }
+    .b5p2-wallet-coin .coin-img     { width: 48px; height: 48px; }
+    .b5p2-wallet-coin .banknote-img { width: 80px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B5 3欄購物佈局（同 B6 市場版面）
+   ══════════════════════════════════════════════════════════════ */
+
+/* game-container 在購物頁加寬 */
+.b5-unit .game-container.b5-game-container {
+    max-width: 1100px;
+    padding: 8px 12px 20px;
+}
+/* Phase 2 付款/找零頁加寬 */
+.b5-unit .game-container:not(.b5-game-container) {
+    max-width: 960px;
+}
+
+/* 三欄主佈局 */
+.b5-shopping-layout {
+    display: grid;
+    grid-template-columns: 110px 1fr 190px;
+    gap: 8px;
+    align-items: start;
+    min-height: 0;
+}
+
+/* ── 左欄：類別標籤 ── */
+.b5-cat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: sticky;
+    top: 60px;
+}
+
+.b5-cat-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 6px;
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+    text-align: center;
+}
+.b5-cat-tab:hover {
+    border-color: #a78bfa;
+    background: #f5f3ff;
+}
+.b5-cat-tab.active {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border-color: #7c3aed;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.35);
+}
+.b5-cat-tab-icon { font-size: 22px; line-height: 1; }
+.b5-cat-tab-name {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.b5-cat-tab-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+    padding: 1px 5px;
+    margin-top: 1px;
+}
+.b5-cat-tab:not(.active) .b5-cat-tab-badge {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+/* ── 中欄：類別面板 ── */
+.b5-cat-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.b5-cp-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    background: linear-gradient(90deg, #f5f3ff, #ede9fe);
+    border-bottom: 1px solid #ddd6fe;
+    gap: 8px;
+}
+.b5-cp-cat-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #6d28d9;
+}
+.b5-cp-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* 中欄商品格 */
+.b5-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    padding: 10px 12px 12px;
+    overflow-y: auto;
+    max-height: calc(100vh - 260px);
+}
+@media (min-width: 640px) {
+    .b5-items-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        overflow-y: visible;
+        max-height: none;
+    }
+}
+.b5-cp-hint {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+    padding: 24px 0;
+    grid-column: 1/-1;
+}
+
+/* ── 右欄：預算 & 購物清單 ── */
+.b5-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #fff;
+    border: 1.5px solid #d1fae5;
+    border-radius: 14px;
+    padding: 12px 12px 14px;
+    position: sticky;
+    top: 60px;
+}
+
+.b5-rp-budget-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, #ecfdf5, #d1fae5);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+.b5-rp-label    { font-size: 12px; font-weight: 600; color: #374151; }
+.b5-rp-budget-val { font-size: 18px; font-weight: 900; color: #059669; }
+
+.b5-rp-spent-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    padding: 0 2px;
+}
+.b5-rp-over { color: #dc2626 !important; }
+
+.b5-cart-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    border-top: 1px dashed #d1d5db;
+    padding-top: 6px;
+}
+
+.b5-cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    max-height: 200px;
+    min-height: 36px;
+}
+
+.b5-cart-empty {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+    padding: 8px 0;
+}
+
+.b5-cart-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12px;
+    animation: bFadeIn 0.2s ease;
+}
+.b5-ci-name  { flex: 1; font-weight: 600; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.b5-ci-price { font-weight: 700; color: #d97706; flex-shrink: 0; }
+.b5-ci-remove {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    background: #fee2e2; border: none; border-radius: 50%;
+    color: #dc2626; font-size: 10px; font-weight: 700;
+    cursor: pointer; line-height: 18px; text-align: center; padding: 0;
+}
+.b5-ci-remove:hover { background: #fecaca; }
+
+/* 右欄確認按鈕 */
+.b5-right-panel .b5-confirm-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border-radius: 10px;
+    margin-top: 4px;
+}
+
+/* 商品卡片在新佈局中改為 B6 直式排列 */
+.b5-shopping-layout .b5-item-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px 8px;
+    gap: 4px;
+    position: relative;
+}
+.b5-item-icon {
+    font-size: 0; line-height: 0; /* 封住 alt 文字與任何雜散文字 */
+    display: flex; align-items: center; justify-content: center;
+}
+.b5-item-icon .b5-icon-emoji { font-size: 28px; line-height: 1; } /* emoji fallback */
+.b5-shopping-layout .b5-item-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #374151;
+    flex: unset;
+}
+.b5-shopping-layout .b5-item-price {
+    font-size: 15px;
+    font-weight: bold;
+    color: #d97706;
+    text-align: center;
+}
+.b5-shopping-layout .b5-check-mark {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 14px;
+    margin-left: 0;
+}
+
+/* ── 找零測驗彈窗 ── */
+.b5-cq-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: bPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+.b5-cq-header {
+    font-size: 20px;
+    font-weight: 900;
+    color: #7c3aed;
+    text-align: center;
+    margin-bottom: 12px;
+}
+.b5-cq-desc {
+    font-size: 14px;
+    color: #374151;
+    text-align: center;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+.b5-cq-question {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-top: 6px;
+}
+.b5-cq-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.b5-cq-btn {
+    padding: 14px;
+    font-size: 18px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #374151;
+}
+.b5-cq-btn:hover { background: #ede9fe; border-color: #a78bfa; color: #6d28d9; }
+
+/* ── RWD：手機版改為垂直堆疊 ── */
+@media (max-width: 640px) {
+    .b5-shopping-layout {
+        grid-template-columns: 1fr;
+    }
+    .b5-cat-list {
+        flex-direction: row;
+        overflow-x: auto;
+        position: static;
+        gap: 6px;
+        padding-bottom: 4px;
+    }
+    .b5-cat-tab {
+        flex-direction: row;
+        gap: 6px;
+        padding: 8px 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .b5-right-panel {
+        position: static;
+    }
+    .b5-items-grid {
+        max-height: none;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    .b5-cart-items { max-height: 120px; }
+}
+
+/* ── B5 Phase 2 新增樣式（B6 pattern）───────────────────────── */
+
+/* 付款區標籤 */
+.b5p2-my-money-label {
+    font-size: 22px;
+    font-weight: 900;
+    color: #1d4ed8;
+    margin-bottom: 6px;
+    text-align: center;
+}
+/* 需要金額 inline span */
+.b5p2-wallet-need {
+    font-weight: 900;
+    color: #dc2626;
+}
+
+/* 托盤 wallet 圖示 */
+.b5p2-tray-wallet-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+/* 托盤幣有限制：顯示 relative 供 ::after 打勾 */
+.b5p2-coin-drag {
+    position: relative;
+}
+
+/* 打勾提示（普通/困難模式，confirm hint 後出現） */
+.b5p2-coin-drag.b5p2-tray-tick {
+    border: 2px solid #22c55e !important;
+    border-radius: 10px;
+}
+.b5p2-coin-drag.b5p2-tray-tick::after {
+    content: '✓';
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    background: #22c55e;
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 20px;
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* 找零拖回後，在托盤中顯示的已收回金幣 */
+.b5p2-coin-returned {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(209,250,229,0.5);
+    border: 2px solid #6ee7b7;
+    border-radius: 8px;
+    opacity: 0.85;
+}
+
+/* 付款區 change 金幣 */
+.b5p2-change-coin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 2px solid #fbbf24;
+    border-radius: 10px;
+    cursor: grab;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.b5p2-change-coin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251,191,36,0.3);
+}
+.b5p2-change-coin.b5p2-dragging { opacity: 0.4; }
+.b5p2-change-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+/* 找零目標放置區高亮 */
+.b5p2-change-target.b5p2-drop-active {
+    border-color: #22c55e !important;
+    background: rgba(209,250,229,0.2) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B5 找零階段重設計（b5c- 前綴，仿 B6 b6c- 設計）
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 面額托盤（可重複拖曳，黃色主題）── */
+.b5c-tray-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: flex-end;
+}
+.b5c-denom-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px 4px;
+    background: rgba(254, 243, 199, 0.8);
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.b5c-denom-card:hover {
+    border-color: #d97706;
+    background: rgba(253, 230, 138, 0.9);
+    transform: translateY(-4px);
+    box-shadow: 0 6px 14px rgba(217, 119, 6, 0.25);
+}
+.b5c-denom-card:active { cursor: grabbing; }
+.b5c-denom-card.b5p2-dragging { opacity: 0.4; transform: scale(0.9); }
+.b5c-denom-card .coin-img     { width: 52px;  height: 52px; }
+.b5c-denom-card .banknote-img { width: 80px; height: auto; }
+
+/* ── 找零區覆蓋色（綠色系）── */
+.b5c-change-area {
+    border-color: #86efac;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+}
+.b5c-change-title {
+    color: #065f46;
+}
+.b5c-change-title-bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    font-size: 15px;
+    font-weight: 700;
+}
+.b5c-wallet-toggle-btn {
+    font-size: 12px;
+    padding: 3px 10px;
+    border: 1.5px solid #6ee7b7;
+    border-radius: 20px;
+    background: #f0fdf4;
+    color: #065f46;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.b5c-wallet-toggle-btn:hover { background: #d1fae5; }
+.b5c-wallet-bal-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #065f46;
+    background: #d1fae5;
+    border: 1.5px solid #6ee7b7;
+    border-radius: 10px;
+    padding: 2px 10px;
+    margin-left: 8px;
+}
+
+/* ── 進度條 ── */
+.b5c-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+.b5c-progress-fill.full {
+    background: linear-gradient(90deg, #059669, #10b981);
+}
+
+/* ── 找零找回資訊列 ── */
+.b5c-change-info-bar {
+    text-align: center;
+    font-size: 14px;
+    color: #065f46;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    border-radius: 8px;
+    padding: 5px 12px;
+    margin-top: 8px;
+}
+.b5c-need-num {
+    color: #b45309;
+    font-size: 16px;
+}
+
+/* ── 找零放置區（綠色虛線框）── */
+.b5c-drop-zone {
+    border: 2px dashed #6ee7b7 !important;
+    background: #f0fdf4 !important;
+}
+.b5c-drop-zone.b6p2-drop-active {
+    border-color: #059669 !important;
+    background: rgba(16,185,129,0.08) !important;
+}
+
+/* ── 錢包剩餘靜態圖示 ── */
+.b5c-wc-static {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+/* ── 找零區左右分欄 ── */
+.b5c-wallet-split {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 6px;
+}
+.b5c-wallet-split-left {
+    flex: 0 0 auto;
+    min-width: 90px;
+    max-width: 45%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 8px 6px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 10px;
+    border: 1px dashed #a7f3d0;
+}
+.b5c-wallet-split-right {
+    flex: 1 1 0;
+    min-height: 80px;
+    padding: 8px;
+    border-radius: 10px;
+}
+
+/* ── 放置在找零區的金幣項目 ── */
+.b5c-wc-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 6px 4px;
+    background: rgba(209, 250, 229, 0.6);
+    border: 2px solid #6ee7b7;
+    border-radius: 10px;
+    position: relative;
+}
+.b5c-coin-new {
+    animation: bCoinIn 0.22s ease;
+}
+.b5c-wc-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    font-size: 13px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 2;
+}
+.b5c-wc-item:hover .b5c-wc-remove { opacity: 1; }
+
+/* ── Ghost slot（淡化提示格）── */
+.b5c-ghost-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 6px 4px;
+    background: rgba(209, 250, 229, 0.25);
+    border: 2px dashed #86efac;
+    border-radius: 10px;
+    animation: b5cGhostIn 0.3s ease;
+    pointer-events: none; /* 讓 dragover/drop 事件穿透到父層 walletZone */
+}
+@keyframes b5cGhostIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── 確認找零按鈕 ── */
+.b5c-confirm-btn {
+    display: block;
+    align-self: center;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 12px 36px;
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.25);
+}
+.b5c-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(16,185,129,0.4);
+}
+.b5c-confirm-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+.b5c-confirm-btn.ready {
+    animation: b5cConfirmPulse 1.2s infinite;
+}
+@keyframes b5cConfirmPulse {
+    0%,100% { box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
+    50%      { box-shadow: 0 6px 24px rgba(16,185,129,0.6); transform: translateY(-2px); }
+}
+
+/* ── RWD ── */
+@media (max-width: 480px) {
+    .b5c-denom-card .coin-img     { width: 44px; height: 44px; }
+    .b5c-denom-card .banknote-img { width: 68px; }
+    .b5c-wc-item img { max-width: 64px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B5 Phase 1 提示系統（B6 pattern）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 任務卡（B6 b6-task-card pattern，紫色主題） */
+.b5-task-card {
+    background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
+    border: 2px solid #c4b5fd;
+    border-top: 4px solid #7c3aed;
+    border-radius: 16px;
+    padding: 14px 16px 10px;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.12);
+    animation: bFadeIn 0.4s ease;
+    position: relative;
+    margin-bottom: 10px;
+}
+.b5-task-hdr {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+}
+.b5-task-hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+}
+.b5-task-hdr-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.b5-task-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #5b21b6;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.b5-task-budget {
+    font-size: 14px;
+    color: #374151;
+}
+.b5-task-budget strong {
+    color: #7c3aed;
+    font-size: 17px;
+}
+.b5-task-hdr-right {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.b5-task-mascot {
+    height: 48px;
+    width: auto;
+    flex-shrink: 0;
+    object-fit: contain;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+
+/* Phase 1 提示按鈕 */
+.b5-p1-hint-btn {
+    background: #fef3c7;
+    border: 1.5px solid #f59e0b;
+    border-radius: 8px;
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.b5-p1-hint-btn:hover { background: #fde68a; }
+
+/* 「點這裡」提示高亮 */
+.b5-hint-here {
+    outline: 2.5px solid #f58025 !important;
+    outline-offset: 2px !important;
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 1;
+    animation: b5HereHintPulse 1s ease-in-out infinite !important;
+}
+@keyframes b5HereHintPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,128,37,0.5); }
+    50%       { box-shadow: 0 0 0 7px rgba(245,128,37,0); }
+}
+.b5-hint-here::after {
+    content: '👇 點這裡';
+    position: absolute;
+    top: -46px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #f58025 0%, #ffa040 100%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 5px 13px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgba(245,128,37,0.55);
+    pointer-events: none;
+    z-index: 9999;
+    animation: b5HereBounce 1s ease-in-out infinite;
+}
+@keyframes b5HereBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(-5px); }
+}
+#b5-confirm-btn.b5-hint-here::after { top: -46px; }
+
+/* 錯誤提示浮層 */
+.b5-wrong-tip {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: #1f2937; border-radius: 10px; padding: 7px 12px;
+    z-index: 9900; pointer-events: none; text-align: center;
+    animation: b5WtIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    width: max-content; max-width: min(260px, 88vw);
+}
+@keyframes b5WtIn {
+    from { opacity:0; transform:translate(-50%,-50%) scale(0.8); }
+    to   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+}
+.b5-wt-msg  { font-size: 14px; color: #fca5a5; font-weight: 700; }
+.b5-wt-hint { font-size: 12px; color: #6ee7b7; margin-top: 4px; }
+
+@media (max-width: 480px) {
+    .b5-task-card { padding: 10px 12px 8px; }
+    .b5-task-title { font-size: 15px; }
+    .b5-task-mascot { height: 48px; }
+    .b5-p1-hint-btn { font-size: 12px; padding: 4px 8px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B5 新增 CSS（Phase 1/2 重構）
+   ══════════════════════════════════════════════════════════════ */
+
+/* II.6 確認付款按鈕 fit-content */
+.b5-p2-confirm-wrap {
+    display: block;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+/* I.5 獨立預算卡 */
+.b5-budget-standalone-card {
+    background: #fff;
+    border: 1.5px solid #d1fae5;
+    border-radius: 14px;
+    padding: 10px 14px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.10);
+}
+
+/* II.2 Phase 2 ref-card header 三欄置中 */
+.b5p2-ref-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.b5p2-ref-spacer {
+    flex: 1;
+}
+.b5p2-ref-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+/* II.3 Phase 2 商品算式橫排 */
+.b5p2-formula-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 0 2px;
+}
+.b5p2-fp {
+    font-size: 18px;
+    font-weight: 700;
+    color: #92400e;
+    padding: 0 2px;
+}
+.b5p2-fi {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.6);
+    border-radius: 10px;
+    padding: 4px 8px;
+    min-width: 56px;
+}
+.b5p2-fi-icon  { font-size: 22px; line-height: 1.2; }
+.b5p2-fi-name  { font-size: 11px; color: #78350f; font-weight: 600; white-space: nowrap; }
+.b5p2-fi-price { font-size: 13px; color: #b45309; font-weight: 700; }
+.b5p2-fi-total {
+    font-size: 20px;
+    font-weight: 900;
+    color: #d97706;
+    padding: 0 4px;
+}
+
+/* II.15 派對回顧大卡片 */
+.b5-review-big-card {
+    background: #fff;
+    border: 2px solid #e9d5ff;
+    border-radius: 18px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 4px 16px rgba(124,58,237,0.10);
+    margin-bottom: 16px;
+}
+
+/* II.17 每關採購物品卡導覽 */
+.b5-round-items-card {
+    margin-bottom: 12px;
+}
+.b5-ric-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.b5-ric-nav-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #5b21b6;
+}
+.b5-ric-nav-btn {
+    background: #ede9fe;
+    border: 1.5px solid #c4b5fd;
+    color: #5b21b6;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    transition: background 0.15s;
+    line-height: 1;
+}
+.b5-ric-nav-btn:hover:not(:disabled) { background: #c4b5fd; }
+.b5-ric-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* 採購物品表格 */
+.b5-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 12px;
+    font-size: 15px;
+}
+.b5-items-table thead th {
+    background: #ede9fe;
+    color: #5b21b6;
+    font-weight: 700;
+    padding: 6px 10px;
+    text-align: center;
+    font-size: 13px;
+}
+.b5-items-table thead th:first-child { border-radius: 8px 0 0 0; }
+.b5-items-table thead th:last-child  { border-radius: 0 8px 0 0; }
+.b5-items-table tbody tr { border-bottom: 1px solid #e9d5ff; }
+.b5-items-table tbody tr:last-child { border-bottom: none; }
+.b5-it-icon  { text-align: center; font-size: 22px; padding: 7px 8px; }
+.b5-it-name  { padding: 7px 10px; color: #374151; font-weight: 600; }
+.b5-it-price { text-align: right; padding: 7px 12px; color: #7c3aed; font-weight: 700; white-space: nowrap; }
+.b5-it-total-row td {
+    background: #faf5ff;
+    font-weight: 900;
+    color: #5b21b6;
+    padding: 8px 12px;
+    font-size: 16px;
+}
+.b5-it-total-row td:first-child { text-align: center; }
+.b5-it-total-row td:last-child  { text-align: right; }
+
+/* 每題預算統計 */
+.b5-per-round-stats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: #f5f3ff;
+    border-radius: 10px;
+    border: 1px solid #ddd6fe;
+}
+.b5-prs-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 70px;
+}
+.b5-prs-label { font-size: 11px; color: #6b7280; font-weight: 600; }
+.b5-prs-val   { font-size: 16px; font-weight: 800; color: #374151; }
+.b5-prs-spent { color: #7c3aed; }
+.b5-prs-saved { color: #059669; }
+.b5-prs-over  { color: #dc2626; }
+
+/* ── Round Intro card: item list ── */
+.b5-ri-list-title { font-size: 14px; font-weight: 700; color: #5b21b6; margin: 10px 0 6px; }
+.b5-ri-list { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 12px; text-align: center; }
+.b5-ri-item-row {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 12px; background: #f5f3ff; border-radius: 12px; min-width: 80px;
+}
+.b5-ri-item-icon  { font-size: 64px; line-height: 1; }
+.b5-ri-item-name  { font-size: 13px; font-weight: 600; color: #374151; }
+.b5-ri-item-price { font-size: 13px; font-weight: 700; color: #7c3aed; white-space: nowrap; }
+.b5-ri-total { margin-top: 10px; font-size: 16px; font-weight: 800; color: #d97706; }
+
+/* ── Target checklist in task card（128×128 圖片卡片橫排）── */
+.b5-target-checklist {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-top: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    justify-content: center;
+}
+.b5-tc-card {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 4px;
+    padding: 8px 6px 6px;
+    border-radius: 12px;
+    background: #f9fafb; border: 2px solid #e5e7eb;
+    flex: 0 0 auto;
+    width: 148px;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.b5-tc-card.done {
+    background: #d1fae5; border-color: #6ee7b7;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.18);
+}
+.b5-tc-check-mark { position: absolute; top: 3px; right: 5px; font-size: 16px; }
+.b5-tc-img       { font-size: 0; line-height: 0; }
+.b5-tc-img .b5-icon-emoji { font-size: 64px; line-height: 1; }
+.b5-tc-name  { font-size: 12px; font-weight: 700; color: #374151; width: 100%; }
+.b5-tc-price { font-size: 13px; font-weight: 800; color: #7c3aed; }
+.b5-tc-hard-summary {
+    padding: 6px 10px; border-radius: 8px;
+    background: #f3f4f6; font-size: 14px; font-weight: 600; color: #374151;
+    margin-top: 4px; text-align: center; width: 100%;
+}
+
+/* ── Target badge on item cards ── */
+.b5-item-card.b5-item-target {
+    border: 2px solid #7c3aed !important;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+}
+.b5-target-badge {
+    position: absolute; top: 4px; right: 4px;
+    background: #7c3aed; color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 5px; border-radius: 6px;
+    letter-spacing: 0.3px;
+    pointer-events: none;
+    display: none;
+}
+.b5-item-target.b5-hint-here .b5-target-badge {
+    display: block;
+}
+/* ensure item-card has position:relative for badge */
+.b5-item-card { position: relative; }
+
+/* ── Hard mode hint modal additions ── */
+.b5-hm-progress {
+    text-align: center; font-size: 14px; font-weight: 700;
+    color: #5b21b6; margin-bottom: 8px;
+}
+.b5-hm-row.b5-hm-done {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+.b5-hm-tick {
+    font-size: 16px; color: #059669; font-weight: 900;
+    margin-left: 4px;
+}
+
+/* 找零頁：錢包餘額整合標籤（普通顯示，困難隱藏） */
+.b5c-wallet-info {
+    font-size: 14px;
+    font-weight: 700;
+    color: #5b21b6;
+    margin-left: 8px;
+}
+.b5c-wallet-info.b6c-hidden {
+    display: none;
+}
+
+/* 找零頁：「點這裡」提示高亮（簡單模式自動，普通/困難按提示後） */
+.b6-product-here-hint {
+    outline: 2.5px solid #f58025 !important;
+    outline-offset: 2px !important;
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 1;
+    animation: b6HereHintPulse 1s ease-in-out infinite !important;
+}
+@keyframes b6HereHintPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,128,37,0.5); }
+    50%       { box-shadow: 0 0 0 7px rgba(245,128,37,0); }
+}
+.b6-product-here-hint::after {
+    content: '👇 點這裡';
+    position: absolute;
+    top: -46px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #f58025 0%, #ffa040 100%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 5px 13px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgba(245,128,37,0.55);
+    pointer-events: none;
+    z-index: 9999;
+    animation: b6HereBounce 1s ease-in-out infinite;
+}
+@keyframes b6HereBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(-5px); }
+}
+#b5c-confirm-btn.b6-product-here-hint::after { top: -46px; }
+
+/* ── B5 商品圖示（PNG + emoji fallback）─────────────────────── */
+.b5-icon-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    vertical-align: middle;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+}
+.b5-icon-emoji { font-size: inherit; }
+
+/* 各情境圖示尺寸覆寫（參照 B6 .b6-icon-img 模式） */
+.b5-item-icon    .b5-icon-img { width: 128px; height: 128px; }
+.b5-tc-img       .b5-icon-img { width: 128px; height: 128px; }
+.b5-ri-item-icon .b5-icon-img { width: 64px; height: 64px; filter: none; }
+.b5-hm-icon      .b5-icon-img { width: 22px; height: 22px; filter: none; }
+.b5-if-img       .b5-icon-img { width: 256px; height: 256px; }
+.b5p2-ri-img     .b5-icon-img { width: 128px; height: 128px; }
+.b5-ric-img      .b5-icon-img { width: 128px; height: 128px; }
+
+/* ── Phase 2 ref card：商品圖片格 ─────────────────────────────── */
+.b5p2-ref-items-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 10px 12px 6px;
+}
+.b5p2-ref-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; background: rgba(255,255,255,0.7);
+    border-radius: 12px; padding: 8px 8px 6px;
+    min-width: 120px; max-width: 148px; flex: 0 1 140px;
+    border: 1.5px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.b5p2-ri-img     { font-size: 0; line-height: 0; }
+.b5p2-ri-img .b5-icon-emoji { font-size: 48px; line-height: 1; }
+.b5p2-ri-name    { font-size: 12px; font-weight: 700; color: #78350f; text-align: center; }
+.b5p2-ri-price   { font-size: 13px; font-weight: 800; color: #b45309; }
+.b5p2-ref-total-bar {
+    text-align: center; padding: 6px 0 4px;
+    font-size: 15px; font-weight: 700; color: #92400e;
+}
+.b5p2-ref-total-num { font-size: 20px; color: #d97706; }
+
+/* ── 派對回顧頁：商品圖片 3欄格 ─────────────────────────────── */
+.b5-review-items-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 10px 0;
+}
+.b5-review-item-card {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 5px; background: #f5f3ff;
+    border: 1.5px solid #ddd6fe; border-radius: 12px;
+    padding: 10px 6px 8px;
+    text-align: center;
+}
+.b5-ric-img      { font-size: 0; line-height: 0; }
+.b5-ric-emoji    { font-size: 48px !important; line-height: 1 !important; }
+.b5-ric-img .b5-icon-emoji { font-size: 48px; line-height: 1; }
+.b5-ric-name     { font-size: 12px; font-weight: 700; color: #374151; }
+.b5-ric-price    { font-size: 13px; font-weight: 800; color: #7c3aed; }
+.b5-review-total-bar {
+    text-align: center; padding: 8px 12px;
+    background: #faf5ff; border-radius: 10px;
+    font-size: 15px; font-weight: 700; color: #5b21b6;
+    margin-top: 4px;
+}
+.b5-review-total-bar strong { font-size: 18px; color: #d97706; }
+
+/* ── 彈窗期間透明阻擋層（防誤點商品）─────────────────────────── */
+.b5-flyout-blocker {
+    position: fixed;
+    inset: 0;
+    z-index: 9400;
+    pointer-events: all;
+    background: transparent;
+    cursor: default;
+}
+
+/* ── 困難模式採購清單彈窗（A3 pattern：類別分區 + 🔊 喇叭）─────── */
+.b5-hmcat-modal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px 28px;
+    max-width: 680px;
+    width: 92%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    animation: bPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.b5-hmcat-modal-hdr {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.b5-hmcat-modal-icon { font-size: 2.2em; display: block; margin-bottom: 6px; }
+.b5-hmcat-modal-title {
+    font-size: 1.5em; font-weight: 900; color: #6d28d9;
+    margin: 0 0 6px;
+}
+.b5-hmcat-modal-desc {
+    font-size: 1em; color: #6b7280; margin: 0 0 8px;
+}
+.b5-hmcat-modal-progress {
+    display: inline-block;
+    background: #ede9fe; color: #5b21b6;
+    font-size: 14px; font-weight: 700;
+    padding: 3px 14px; border-radius: 20px;
+}
+.b5-hmcat-modal-body {
+    display: flex; flex-direction: column; gap: 16px;
+}
+/* 類別分區 */
+.b5-hmcat-section {
+    background: linear-gradient(135deg, #fef9c3, #fde68a);
+    border: 2px solid #fbbf24;
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+.b5-hmcat-hdr {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 1.1em; font-weight: 800; color: #92400e;
+    margin-bottom: 12px;
+}
+.b5-hmcat-hdr-icon { font-size: 1.3em; }
+.b5-hmcat-items {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start;
+}
+/* 單個商品卡片 */
+.b5-hmcat-item {
+    background: #fff; border: 2px solid #fbbf24; border-radius: 12px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    position: relative;
+    min-width: 0;
+}
+.b5-hmcat-item-done {
+    opacity: 0.55;
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+.b5-hmcat-check {
+    position: absolute; top: 5px; right: 5px;
+    font-size: 1.1em; color: #059669; font-weight: 900;
+}
+.b5-hmcat-img { font-size: 0; line-height: 0; }
+.b5-hmcat-img .b5-icon-img { width: 44px; height: 44px; object-fit: contain; }
+.b5-hmcat-img .b5-icon-emoji { font-size: 2em; line-height: 1; }
+.b5-hmcat-info { display: flex; flex-direction: column; gap: 2px; }
+.b5-hmcat-name { font-size: 15px; font-weight: 700; color: #1f2937; }
+.b5-hmcat-price { font-size: 14px; font-weight: 800; color: #b45309; }
+.b5-hmcat-speak-btn {
+    background: #22c55e; border: none; border-radius: 50%;
+    width: 34px; height: 34px; flex-shrink: 0;
+    cursor: pointer; font-size: 1em;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+    margin-left: auto;
+}
+.b5-hmcat-speak-btn:hover { background: #16a34a; transform: scale(1.1); }
+.b5-hmcat-speak-btn:active { transform: scale(0.95); }
+/* 關閉按鈕 */
+.b5-hmcat-close-btn {
+    display: block; width: 100%; margin-top: 20px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff; border: none; border-radius: 25px;
+    padding: 14px; font-size: 1.1em; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s;
+}
+.b5-hmcat-close-btn:hover { opacity: 0.88; }
+
+/* ── 魔法商品設定面板（settings page）─────────────────────────── */
+.b5-mp-add-box {
+    background: #fafafa;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.b5-mp-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.b5-mp-label { font-size: 12px; font-weight: 600; color: #374151; white-space: nowrap; }
+.b5-mp-cat-btn {
+    background: #f3f4f6;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.b5-mp-cat-btn.active {
+    background: #ede9fe;
+    border-color: #7c3aed;
+    color: #5b21b6;
+    font-weight: 700;
+}
+.b5-mp-upload-btn {
+    background: #f3f4f6;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.b5-mp-img-preview {
+    width: 40px; height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.b5-mp-item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+.b5-mp-item-icon { font-size: 0; line-height: 0; flex-shrink: 0; }
+.b5-mp-item-icon .b5-icon-img  { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+.b5-mp-item-icon .b5-icon-emoji { font-size: 20px; line-height: 1; }
+.b5-mp-item-cat   { font-size: 16px; flex-shrink: 0; }
+.b5-mp-item-name  { flex: 1; font-weight: 600; color: #374151; }
+.b5-mp-item-price {
+    color: #7c3aed; font-weight: 700; white-space: nowrap;
+    border: none; background: none; padding: 2px 6px;
+    border-radius: 5px; cursor: pointer; font-size: inherit;
+    text-decoration: underline dotted;
+}
+.b5-mp-item-price:hover { background: #ede9fe; }
+.b5-mp-del-btn {
+    background: #fee2e2; border: none; border-radius: 5px;
+    color: #dc2626; font-size: 12px; padding: 2px 6px; cursor: pointer;
+    flex-shrink: 0;
+}
+.b5-mp-del-btn:hover { background: #fca5a5; }

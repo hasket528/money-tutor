@@ -1,0 +1,781 @@
+/* worksheet-styles.css - A4 列印樣式 */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft JhengHei', '微軟正黑體', 'Noto Sans TC', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f5f5f5;
+    color: #000;
+}
+
+/* === 工具列（列印時隱藏）=== */
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar button {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.toolbar button:hover {
+    background: rgba(255,255,255,0.35);
+}
+
+.toolbar .toolbar-title {
+    flex: 1;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* === 作業單容器 === */
+.worksheet-container {
+    max-width: 210mm;
+    margin: 70px auto 20px;
+    padding: 0;
+}
+
+/* === 作業單頁面 === */
+.worksheet-page {
+    background: white;
+    padding: 15mm 20mm;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 297mm;
+    max-height: 297mm;
+    overflow: hidden;
+    position: relative;
+}
+
+/* === 標題區 === */
+.worksheet-header {
+    text-align: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #333;
+}
+
+.worksheet-header .unit-icon {
+    font-size: 28pt;
+    display: inline;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.worksheet-header .unit-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin: 0;
+}
+
+.worksheet-header .worksheet-subtitle {
+    font-size: 11pt;
+    color: #666;
+    margin-top: 3px;
+}
+
+/* === 姓名日期列 === */
+.worksheet-info {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0 0;
+    font-size: 12pt;
+}
+
+.worksheet-info .info-field {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.worksheet-info .info-line {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    min-width: 120px;
+    height: 1.2em;
+}
+
+.worksheet-info .date-line {
+    min-width: 40px;
+}
+
+/* === 題目區 === */
+.question-block {
+    margin-bottom: 18px;
+    page-break-inside: avoid;
+}
+
+.question-number {
+    font-size: 10pt;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.question-prompt {
+    font-size: 13pt;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.question-visual {
+    margin: 8px 0;
+    font-size: 14pt;
+    line-height: 1.8;
+}
+
+.question-answer {
+    font-size: 12pt;
+    margin-top: 8px;
+    line-height: 2;
+}
+
+/* === 物品格子 === */
+.item-grid {
+    line-height: 2;
+    letter-spacing: 2px;
+}
+
+.grid-item {
+    font-size: calc(18pt * var(--ws-icon-scale, 1));
+    display: inline-block;
+    margin: 2px;
+}
+
+/* === F3 虛線提示 === */
+.grid-item-hint {
+    outline: 2px dashed #ccc;
+    border-radius: 50%;
+}
+.grid-item-answer {
+    outline: 2px solid red;
+    border-radius: 50%;
+}
+
+/* === 選項（圈選題）=== */
+.options-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+}
+
+.option-item {
+    font-size: 13pt;
+    padding: 4px 12px;
+    border: 1.5px solid #333;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* === 排序題格子 === */
+.sort-boxes {
+    display: flex;
+    gap: 4px;
+    margin: 8px 0;
+    flex-wrap: nowrap;
+    overflow: visible;
+}
+
+.sort-box {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 1;
+    min-width: 28px;
+    border: 1.5px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14pt;
+    font-weight: bold;
+}
+
+.sort-box.empty {
+    background: #fafafa;
+}
+
+/* === 填空底線 === */
+.blank-line {
+    display: inline-block;
+    border-bottom: 1.5px solid #000;
+    min-width: 60px;
+    height: 1.2em;
+    margin: 0 4px;
+}
+
+.blank-line.wide {
+    min-width: 100px;
+}
+
+/* === 錢幣圖示（文字版）=== */
+.coin-tag {
+    display: inline-block;
+    border: 1.5px solid #333;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    line-height: 33px;
+    text-align: center;
+    font-size: 9pt;
+    font-weight: bold;
+    margin: 2px;
+    vertical-align: middle;
+}
+
+.coin-tag.note {
+    border-radius: 6px;
+    width: auto;
+    min-width: 48px;
+    padding: 0 6px;
+    height: 30px;
+    line-height: 27px;
+}
+
+/* === 表格（A系列步驟排序等）=== */
+.worksheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 11pt;
+}
+
+.worksheet-table th,
+.worksheet-table td {
+    border: 1px solid #333;
+    padding: 6px 10px;
+    text-align: left;
+}
+
+.worksheet-table th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+/* === 頁尾 === */
+.worksheet-footer {
+    position: absolute;
+    bottom: 15mm;
+    left: 20mm;
+    right: 20mm;
+    text-align: center;
+    font-size: 9pt;
+    color: #999;
+    border-top: 1px solid #ddd;
+    padding-top: 8px;
+}
+
+/* === 答案卷紅字 === */
+.answer-text {
+    color: red;
+    font-weight: bold;
+}
+
+/* === 分頁 === */
+.page-break {
+    page-break-before: always;
+}
+
+/* === 列印樣式（備用：直接列印路徑）=== */
+@page {
+    size: A4;
+    margin: 15mm 20mm;
+}
+
+@media print {
+    body {
+        background: white;
+        font-size: 12pt;
+    }
+
+    .toolbar,
+    .no-print {
+        display: none !important;
+    }
+
+    .worksheet-container {
+        margin: 0;
+        max-width: none;
+    }
+
+    .worksheet-page {
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        min-height: auto;
+        max-height: none;
+        overflow: hidden;
+        page-break-after: avoid;
+    }
+
+    .worksheet-page:last-child {
+        page-break-after: avoid;
+    }
+
+    .question-block {
+        page-break-inside: avoid;
+    }
+
+    .worksheet-footer {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        margin-top: 4px;
+    }
+}
+
+/* === 比較題符號 === */
+.compare-symbol {
+    font-size: 20pt;
+    font-weight: bold;
+    margin: 0 10px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.compare-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+.compare-group span {
+    font-size: calc(18pt * var(--ws-icon-scale, 1));
+}
+
+/* === 組成題 === */
+.composition-eq {
+    font-size: 14pt;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* === A系列商品列表 === */
+.product-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 5px 0;
+    font-size: 12pt;
+}
+
+.product-emoji {
+    font-size: 20pt;
+}
+
+.product-name {
+    font-weight: bold;
+}
+
+.product-price {
+    color: #333;
+}
+
+/* === 購物清單 === */
+.shopping-list {
+    border: 1.5px solid #333;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    background: #fafafa;
+}
+
+.shopping-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 11pt;
+}
+
+.shopping-total {
+    border-top: 1px solid #333;
+    margin-top: 5px;
+    padding-top: 5px;
+    font-weight: bold;
+}
+
+/* === 金錢圖片 === */
+.coin-img { height: 32px; vertical-align: middle; margin: 2px; }
+.note-img { height: 28px; }
+
+/* === 飲料/商品圖片（A1~A4、C5、C6 作業單共用，預設 64px） === */
+.drink-img  { height: 64px; vertical-align: middle; margin-right: 6px; }
+.c-item-img { height: 64px; vertical-align: middle; margin-right: 4px; }
+
+/* === 連連看 === */
+.matching-container { display: flex; justify-content: space-around; align-items: flex-start; margin: 8px 0; }
+.matching-column { display: flex; flex-direction: column; gap: 8px; min-width: 100px; }
+.matching-item { font-size: calc(22pt * var(--ws-icon-scale, 1)); text-align: center; padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; background: #fafafa; display: flex; align-items: center; gap: 6px; }
+.matching-left .matching-item { justify-content: flex-end; }
+.matching-right .matching-item { justify-content: flex-start; }
+.matching-dot-inline { font-size: 14pt; color: #000; }
+.matching-middle { display: flex; flex-direction: column; gap: 8px; justify-content: center; min-width: 80px; }
+.matching-line-space { text-align: center; font-size: 10pt; color: #999; height: calc(22pt + 12px + 2px); display: flex; align-items: center; justify-content: center; }
+/* Legacy dot styles */
+.matching-dots { display: flex; flex-direction: column; gap: 6px; justify-content: center; min-width: 60px; }
+.matching-dot { text-align: center; font-size: 10pt; color: #ccc; }
+
+/* === Dropdown overlay === */
+.toolbar-dropdown-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 200;
+}
+
+.toolbar-dropdown-menu {
+    position: fixed;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    min-width: 180px;
+    overflow: hidden;
+    z-index: 201;
+}
+
+.toolbar-dropdown-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: #333;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.toolbar-dropdown-item:hover {
+    background: #f0f0f0;
+}
+
+.toolbar-dropdown-item.active {
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+}
+
+.toolbar-dropdown-group {
+    padding: 6px 14px 3px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #6b7280;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: default;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+.toolbar-dropdown-group:first-child { border-top: none; }
+
+.toolbar-dropdown-separator {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 2px 0;
+}
+
+/* === Modal overlay === */
+.toolbar-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    color: #333;
+}
+
+.toolbar-modal-content h3 {
+    margin: 0 0 16px;
+    font-size: 16px;
+}
+
+.toolbar-modal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.toolbar-modal-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.toolbar-modal-option:hover {
+    background: #f5f5f5;
+}
+
+.toolbar-modal-option input {
+    margin: 0;
+}
+
+.toolbar-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.toolbar-modal-cancel,
+.toolbar-modal-confirm {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.toolbar-modal-cancel {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.toolbar-modal-confirm {
+    background: #667eea;
+    color: white;
+}
+
+/* === F1 黑點外置 === */
+.matching-item-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.matching-dot-outside {
+    font-size: 14pt;
+    color: #000;
+    flex-shrink: 0;
+}
+
+/* === F1 虛線提示 SVG === */
+.matching-middle svg line {
+    stroke: #ccc;
+    stroke-dasharray: 4,4;
+    stroke-width: 1.5;
+}
+.f1-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+/* === F4 提示灰色數字 === */
+.sort-box .hint-number {
+    color: #ccc;
+    font-weight: bold;
+}
+
+/* === F4 答案紅色數字 === */
+.sort-box .answer-number {
+    color: red;
+    font-weight: bold;
+}
+
+/* === C1 答案紅圈 === */
+.coin-answer-circle {
+    outline: 3px solid red;
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+.note-img.coin-answer-circle {
+    border-radius: 4px;
+}
+
+/* === C1 提示灰虛線圈 === */
+.coin-hint-circle {
+    outline: 2px dashed #ccc;
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+.note-img.coin-hint-circle {
+    border-radius: 4px;
+}
+
+/* === 金錢符號 === */
+.coin-symbol {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 2px solid #333;
+    border-radius: 50%; font-size: 9pt; font-weight: bold;
+    margin: 2px; vertical-align: middle;
+}
+.coin-symbol.note-symbol {
+    border-radius: 4px; width: auto; min-width: 42px; padding: 0 4px; height: 26px;
+}
+
+/* === C4 勾選組合 === */
+.combo-options { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
+.combo-option { display: flex; align-items: center; gap: 8px; }
+.combo-checkbox {
+    width: 18px; height: 18px; border: 1.5px solid #333;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10pt; flex-shrink: 0;
+}
+.combo-coins { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+
+/* === C6/A6 金錢圖示選項 === */
+.coin-choice-options { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.coin-choice-option { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1.5px solid #333; border-radius: 6px; flex-shrink: 0; }
+.coin-choice-option .coin-img { height: 24px; margin: 1px; }
+.coin-choice-option .combo-coins { gap: 1px; }
+
+/* === Size scaling via CSS variables === */
+.worksheet-container {
+    --ws-font-scale: 1;
+    --ws-icon-scale: 1;
+}
+
+.worksheet-container .question-number {
+    font-size: calc(var(--ws-font-scale) * 10pt);
+}
+
+.worksheet-container .question-prompt {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+.worksheet-container .question-visual {
+    font-size: calc(var(--ws-font-scale) * 14pt);
+}
+
+.worksheet-container .question-answer {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+/* A 系列：題目第一行（prompt）放大至與答案區同字級 */
+.worksheet-container .worksheet-page[data-unit="a1"] .question-number,
+.worksheet-container .worksheet-page[data-unit="a2"] .question-number,
+.worksheet-container .worksheet-page[data-unit="a3"] .question-number,
+.worksheet-container .worksheet-page[data-unit="a4"] .question-number,
+.worksheet-container .worksheet-page[data-unit="a5"] .question-number,
+.worksheet-container .worksheet-page[data-unit="a6"] .question-number {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+/* F 系列：題目第一行（prompt）放大至與答案區同字級 */
+.worksheet-container .worksheet-page[data-unit="f1"] .question-number,
+.worksheet-container .worksheet-page[data-unit="f2"] .question-number,
+.worksheet-container .worksheet-page[data-unit="f3"] .question-number,
+.worksheet-container .worksheet-page[data-unit="f4"] .question-number,
+.worksheet-container .worksheet-page[data-unit="f5"] .question-number,
+.worksheet-container .worksheet-page[data-unit="f6"] .question-number {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+/* B 系列：題目第一行（prompt）與答案區同字級；emoji 由 ws-emoji-icon 獨立縮放 */
+.worksheet-container .worksheet-page[data-unit="b1"] .question-number,
+.worksheet-container .worksheet-page[data-unit="b2"] .question-number,
+.worksheet-container .worksheet-page[data-unit="b3"] .question-number,
+.worksheet-container .worksheet-page[data-unit="b4"] .question-number,
+.worksheet-container .worksheet-page[data-unit="b5"] .question-number,
+.worksheet-container .worksheet-page[data-unit="b6"] .question-number {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+.worksheet-container .shopping-item,
+.worksheet-container .shopping-total,
+.worksheet-container .shopping-list {
+    font-size: calc(var(--ws-font-scale) * 11pt);
+}
+
+/* B 系列 Emoji 圖示：使用圖示比例縮放，不隨文字比例縮放
+   1em / ws-font-scale 可消除父層文字縮放影響，再乘以 ws-icon-scale 即為純圖示縮放 */
+.worksheet-container .ws-emoji-icon {
+    font-size: calc(1em * var(--ws-icon-scale, 1) / var(--ws-font-scale, 1));
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+    position: relative;
+    top: -0.15em;
+}
+
+.worksheet-container .coin-img {
+    transform: scale(var(--ws-icon-scale));
+    transform-origin: center;
+    margin: calc((var(--ws-icon-scale) - 1) * 16px + 2px);
+}
+
+.worksheet-container .coin-symbol {
+    transform: scale(var(--ws-icon-scale));
+    transform-origin: center;
+    margin: calc((var(--ws-icon-scale) - 1) * 16px + 2px);
+}
+
+.worksheet-container .drink-img,
+.worksheet-container .c-item-img {
+    transform: scale(var(--ws-icon-scale));
+    transform-origin: center;
+    margin: calc((var(--ws-icon-scale) - 1) * 32px + 2px);
+}
+
+/* === Print dropdown menu === */
+.print-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    min-width: 150px;
+    overflow: hidden;
+    z-index: 201;
+}
+
+/* === 2-page print support === */
+@media print {
+    .worksheet-page + .worksheet-page {
+        page-break-before: always;
+    }
+}

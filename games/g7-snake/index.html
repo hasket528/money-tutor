@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>貪食蛇數字闖關</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="snake.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+    <canvas id="snake-canvas"></canvas>
+
+    <!-- 手機方向鍵（桌面隱藏）-->
+    <div id="dpad">
+      <button class="dpad-btn" id="d-up">▲</button>
+      <button class="dpad-btn" id="d-left">◄</button>
+      <button class="dpad-btn" id="d-right">►</button>
+      <button class="dpad-btn" id="d-down">▼</button>
+    </div>
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="snake.js"></script>
+</body>
+</html>

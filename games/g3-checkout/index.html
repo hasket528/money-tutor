@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>超市閃電結帳</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="checkout.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+    <!-- 題目區 -->
+    <div id="question-panel">
+      <div id="items-display"></div>
+      <div id="total-label">這些商品總共多少元？</div>
+    </div>
+
+    <!-- 選項區 -->
+    <div id="options-panel"></div>
+
+    <!-- 計時進度條 -->
+    <div id="question-timer-bar"><div id="question-timer-fill"></div></div>
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="checkout.js"></script>
+</body>
+</html>

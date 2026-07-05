@@ -1,0 +1,685 @@
+/* ══════════════════════════════════════════════════════════
+   G13 吐司大作戰 — 門選擇 + 食物格捲動版
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:      #1a1a2e;
+  --panel:   rgba(255,255,255,0.07);
+  --border:  rgba(255,255,255,0.12);
+  --accent:  #FFB347;
+  --good:    #2ed573;
+  --bad:     #FF4757;
+  --dim:     rgba(255,255,255,0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  height: 100dvh; overflow: hidden;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+
+.hidden { display: none !important; }
+
+/* ══ 標題列 ════════════════════════════════════════════════ */
+
+.ts-bar {
+  width: 100%; display: flex; align-items: center;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  min-height: 56px; gap: 8px; position: relative; z-index: 100;
+}
+
+.ts-back {
+  color: var(--dim); text-decoration: none; font-size: 1.5rem;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border); flex-shrink: 0;
+}
+.ts-back:active { background: rgba(255,255,255,0.18); }
+
+.ts-bar-title {
+  flex: 1; text-align: center; font-size: 1.1rem; font-weight: 900;
+  background: linear-gradient(90deg, var(--accent), #FF8C42);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ts-bar-spacer { width: 30px; flex-shrink: 0; }
+
+.ts-hud-center {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; gap: 6px;
+}
+
+#ts-hud-char   { font-size: 1.5rem; line-height: 1; }
+#ts-hud-likes  { font-size: 0.85rem; letter-spacing: 1px; }
+
+.ts-hud-right { flex-shrink: 0; }
+
+.ts-hud-score {
+  font-size: 0.76rem; font-weight: 700; color: var(--dim);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px; white-space: nowrap;
+}
+#ts-collect-count { color: var(--accent); font-weight: 900; }
+
+/* ══ 開始按鈕 ══════════════════════════════════════════════ */
+
+#ts-start-btn {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 20;
+}
+
+.ts-start-button {
+  font-size: 1.5rem; font-weight: 900;
+  padding: 18px 48px; border-radius: 20px; border: none;
+  background: var(--accent); color: #000;
+  cursor: pointer; letter-spacing: 0.08em;
+  box-shadow: 0 8px 28px rgba(255,179,71,0.55);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.ts-start-button:active {
+  transform: scale(0.94);
+  box-shadow: 0 4px 12px rgba(255,179,71,0.3);
+}
+
+/* ══ 設定畫面 ══════════════════════════════════════════════ */
+
+#ts-setup {
+  height: 100dvh; display: flex; flex-direction: column; overflow-y: auto;
+}
+
+.ts-setup-body {
+  flex: 1; padding: 16px 14px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+
+.ts-setup-sub { font-size: 0.88rem; color: var(--dim); font-weight: 600; }
+
+.ts-char-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 10px; width: 100%; max-width: 480px;
+}
+
+.ts-char-card {
+  background: var(--panel); border: 2px solid var(--border);
+  border-radius: 16px; padding: 14px 10px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  transition: all 0.16s;
+}
+.ts-char-card:hover, .ts-char-card:active {
+  border-color: var(--accent); background: rgba(255,179,71,0.12);
+  transform: translateY(-2px);
+}
+
+.ts-char-emoji { font-size: 2.6rem; line-height: 1; }
+.ts-char-name  { font-size: 1rem;   font-weight: 800; }
+.ts-char-desc  { font-size: 0.7rem; color: var(--dim); text-align: center; }
+.ts-pref-row   { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.78rem; width: 100%; }
+.ts-pref-foods { letter-spacing: 1px; font-size: 0.85rem; }
+
+/* ══ 遊戲主畫面 ════════════════════════════════════════════ */
+
+#ts-game {
+  height: 100dvh; display: flex; flex-direction: column;
+}
+
+#ts-play-area {
+  flex: 1; position: relative; overflow: hidden;
+  touch-action: none;
+}
+
+/* ── 道路背景 ─────────────────────────────────────────────── */
+
+#ts-road {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom, rgba(255,255,255,0.022) 0px, rgba(255,255,255,0.022) 2px,
+    transparent 2px, transparent 28px
+  );
+  animation: roadScroll 0.45s linear infinite;
+}
+@keyframes roadScroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 30px; }
+}
+
+/* ── 中央分隔線 ───────────────────────────────────────────── */
+
+#ts-divider {
+  position: absolute; top: 0; bottom: 0;
+  left: 50%; width: 2px;
+  background: rgba(255,255,255,0.1);
+  transform: translateX(-50%);
+  pointer-events: none; z-index: 2;
+}
+
+/* ── 未選側遮蔽 ───────────────────────────────────────────── */
+
+#ts-inactive-mask {
+  position: absolute; top: 0; bottom: 0;
+  background: rgba(0,0,0,0.55);
+  pointer-events: none; z-index: 3;
+  transition: opacity 0.4s;
+}
+#ts-inactive-mask.left  { left: 0;   width: 50%; }
+#ts-inactive-mask.right { right: 0;  width: 50%; }
+
+/* ── 捲動世界 ─────────────────────────────────────────────── */
+
+#ts-world {
+  position: absolute; width: 100%; top: 0; left: 0;
+  pointer-events: none;
+}
+
+/* ── 遊戲內吃東西動畫（取代送餐頁面跳轉）─────────────────── */
+
+.ts-eat-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  z-index: 25; pointer-events: none;
+}
+
+.ts-eat-char {
+  font-size: 5rem; line-height: 1;
+  animation: eatCharPop 1.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.6));
+}
+@keyframes eatCharPop {
+  0%   { transform: scale(0.3) translateY(30px); opacity: 0; }
+  30%  { transform: scale(1.2) translateY(-10px); opacity: 1; }
+  55%  { transform: scale(1) translateY(0); }
+  80%  { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.8) translateY(-20px); opacity: 0; }
+}
+
+.ts-eat-text {
+  font-size: 1.3rem; font-weight: 900;
+  color: var(--accent); letter-spacing: 2px;
+  animation: eatTextFade 1.5s ease-out both;
+  text-shadow: 0 0 16px rgba(255,179,71,0.7);
+}
+@keyframes eatTextFade {
+  0%   { opacity: 0; transform: scale(0.7); }
+  35%  { opacity: 1; transform: scale(1.1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── 門（Gate）──────────────────────────────────────────────*/
+
+.ts-gate-row {
+  position: absolute; width: 100%;
+  display: flex; align-items: stretch;
+  pointer-events: none;
+}
+
+.ts-gate-door {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  margin: 6px;
+  background: rgba(255,255,255,0.05);
+  transition: all 0.2s;
+}
+
+.ts-gate-door.liked-door {
+  border-color: rgba(46,213,115,0.5);
+  background: rgba(46,213,115,0.08);
+}
+
+.ts-gate-door.dislike-door {
+  border-color: rgba(255,71,87,0.5);
+  background: rgba(255,71,87,0.08);
+}
+
+/* 神秘門（不顯示好惡）*/
+.ts-gate-door.ts-gate-mystery {
+  border-color: rgba(255,179,71,0.5);
+  background: rgba(255,179,71,0.07);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.ts-gate-door.ts-gate-mystery:hover,
+.ts-gate-door.ts-gate-mystery:active {
+  border-color: var(--accent);
+  background: rgba(255,179,71,0.18);
+  transform: scaleY(1.03);
+}
+
+/* 吐司碰觸該門時的電流效果 */
+.ts-gate-door.ts-gate-hover {
+  border-color: #00E5FF !important;
+  background: rgba(0,200,255,0.14) !important;
+  animation: gateElectric 0.14s steps(2, end) infinite;
+}
+@keyframes gateElectric {
+  0% {
+    box-shadow: 0 0 8px #00D4FF, 0 0 22px rgba(0,180,255,0.5),
+                inset 0 0 10px rgba(0,210,255,0.2);
+    border-color: #00E5FF;
+    transform: translateX(-1px) scaleX(1.04);
+    filter: brightness(1.15);
+  }
+  50% {
+    box-shadow: 0 0 28px #FFFFFF, 0 0 55px rgba(0,220,255,0.8),
+                inset 0 0 22px rgba(120,240,255,0.45);
+    border-color: #FFFFFF;
+    transform: translateX(1px) scaleX(1.05);
+    filter: brightness(1.7);
+  }
+}
+
+/* 門停下來閃爍提示 */
+.ts-gate-row.gate-stopped {
+  animation: gatePulse 0.7s ease-in-out infinite alternate;
+}
+@keyframes gatePulse {
+  from { filter: brightness(1);   }
+  to   { filter: brightness(1.35); }
+}
+
+.ts-gate-food  { font-size: 2.4rem; line-height: 1; }
+.ts-gate-label {
+  font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.05em; white-space: nowrap;
+  color: var(--accent);
+}
+.ts-gate-door.liked-door  .ts-gate-label { color: var(--good); }
+.ts-gate-door.dislike-door .ts-gate-label { color: var(--bad); }
+
+.ts-gate-sep {
+  width: 4px; flex-shrink: 0;
+  background: rgba(255,255,255,0.12);
+}
+
+/* ── 食物格 ──────────────────────────────────────────────── */
+
+.ts-food {
+  position: absolute;
+  font-size: 1.8rem; line-height: 1;
+  transform: translateX(-50%);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.ts-food.eaten {
+  transform: translateX(-50%) scale(0.15);
+  opacity: 0;
+}
+
+/* ── 人臉（世界內）────────────────────────────────────────── */
+
+.ts-face-row {
+  position: absolute; width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  pointer-events: none;
+}
+
+.ts-face-emoji { font-size: 5rem; line-height: 1; }
+.ts-face-mouth { font-size: 2.5rem; line-height: 1; }
+
+/* ── 盤子 ────────────────────────────────────────────────── */
+
+#ts-sandwich {
+  position: absolute; bottom: 30%;
+  display: flex; align-items: center; justify-content: center;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+  will-change: left; z-index: 5;
+  cursor: grab; touch-action: none;
+}
+#ts-sandwich:active { cursor: grabbing; }
+
+.ts-plate { font-size: 2.8rem; line-height: 1; }
+
+#ts-fillings {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem; line-height: 1.3;
+  letter-spacing: 1px; white-space: nowrap;
+  text-align: center;
+  padding-bottom: 2px;
+  pointer-events: none;
+}
+
+.ts-new-filling {
+  display: inline-block;
+  animation: newFill 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes newFill { from { opacity:0; transform: scale(0); } }
+
+/* ── 門選擇提示 ────────────────────────────────────────────── */
+
+#ts-gate-hint {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: flex-end;
+  padding-bottom: 90px;
+  pointer-events: none; z-index: 10;
+}
+
+.gate-hint-left, .gate-hint-right {
+  flex: 1; text-align: center;
+  font-size: 1rem; font-weight: 900; letter-spacing: 0.05em;
+  animation: hintPulse 0.8s ease-in-out infinite alternate;
+  padding: 8px;
+}
+.gate-hint-left  { color: var(--good); }
+.gate-hint-right { color: var(--bad); }
+@keyframes hintPulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* ── 拖曳提示 ─────────────────────────────────────────────── */
+
+#ts-drag-hint {
+  position: absolute; bottom: 2px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.62rem; color: rgba(255,255,255,0.28);
+  white-space: nowrap; pointer-events: none; z-index: 10;
+  animation: hintFade 6s ease-out 1s forwards;
+}
+@keyframes hintFade { 0%,50%{ opacity:1; } 100%{ opacity:0; } }
+
+/* ── 回饋浮文 ─────────────────────────────────────────────── */
+
+.ts-feedback {
+  position: fixed; top: 30%; left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem; font-weight: 900;
+  border-radius: 28px; padding: 8px 18px;
+  z-index: 300; pointer-events: none; white-space: nowrap;
+  animation: fbIn 0.25s cubic-bezier(0.34,1.56,0.64,1),
+             fbOut 0.3s 0.75s ease-in forwards;
+}
+.ts-feedback.good { background: rgba(46,213,115,0.92); color: #fff; }
+.ts-feedback.bad  { background: rgba(255,71,87,0.92);  color: #fff; }
+@keyframes fbIn  { from { opacity:0; transform: translateX(-50%) scale(0.5); } }
+@keyframes fbOut { to   { opacity:0; transform: translateX(-50%) translateY(-18px); } }
+
+/* ══ 送餐畫面 ══════════════════════════════════════════════ */
+
+#ts-delivery {
+  position: fixed; inset: 0;
+  background: linear-gradient(160deg, #1a1a2e, #0f3460);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+}
+
+#td-char-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  animation: faceAppear 0.6s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes faceAppear { from { opacity:0; transform: scale(0.3) translateY(-40px); } }
+
+#td-char  { font-size: 5rem; }
+#td-mouth { font-size: 3rem; animation: mouthOpen 0.7s ease-out 0.5s both; }
+@keyframes mouthOpen { from { transform: scaleY(0); } }
+
+#td-fly {
+  font-size: 1.7rem; text-align: center; max-width: 90%;
+  animation: swRise 1.3s ease-in 0.9s both;
+}
+@keyframes swRise {
+  from { opacity:1; transform: translateY(0); }
+  to   { opacity:0; transform: translateY(-200px) scale(0.3); }
+}
+
+/* ══ 結果畫面 ══════════════════════════════════════════════ */
+
+#ts-result {
+  position: fixed; inset: 0;
+  background: rgba(6,8,20,0.92); backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+
+.ts-result-card {
+  width: 92%; max-width: 380px;
+  background: linear-gradient(150deg, #1e2d50 0%, #131d38 60%, #0e1628 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 28px; padding: 28px 22px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  animation: cardSlideIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes cardSlideIn {
+  from { transform: scale(0.72) translateY(36px); opacity: 0; }
+}
+
+/* 角色 */
+.ts-rc-char {
+  font-size: 5rem; line-height: 1;
+  animation: charBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) both;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
+}
+@keyframes charBounce {
+  from { transform: scale(0) rotate(-18deg) translateY(-20px); opacity: 0; }
+}
+
+/* 反應文字 */
+.ts-rc-reaction {
+  font-size: 1.15rem; font-weight: 800;
+  color: var(--accent); text-align: center;
+  letter-spacing: 0.04em;
+  animation: fadeUp 0.4s 0.2s ease-out both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* 得分盒 */
+.ts-rc-score-box {
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 14px 20px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative; overflow: hidden;
+  animation: fadeUp 0.4s 0.35s ease-out both;
+}
+.ts-rc-score-box::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+}
+
+.ts-rc-score-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 3px;
+  color: rgba(255,255,255,0.4); text-transform: uppercase;
+}
+
+.ts-rc-score {
+  font-size: 3.6rem; font-weight: 900; letter-spacing: 3px; line-height: 1.1;
+  transition: color 0.3s;
+}
+.ts-rc-score.pos {
+  color: var(--good);
+  text-shadow: 0 0 24px rgba(46,213,115,0.55), 0 0 48px rgba(46,213,115,0.25);
+}
+.ts-rc-score.neg {
+  color: var(--bad);
+  text-shadow: 0 0 24px rgba(255,71,87,0.55), 0 0 48px rgba(255,71,87,0.25);
+}
+.ts-rc-score.zer { color: var(--dim); }
+
+/* 食物統計條 */
+.ts-rc-foods {
+  width: 100%; display: flex; flex-direction: column; gap: 10px;
+  animation: fadeUp 0.4s 0.5s ease-out both;
+}
+
+.ts-rc-food-row {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.ts-rc-food-label {
+  font-size: 1.15rem; width: 56px; flex-shrink: 0; white-space: nowrap;
+}
+
+.ts-rc-food-bar {
+  flex: 1; height: 9px; border-radius: 9px;
+  background: rgba(255,255,255,0.08); overflow: hidden;
+}
+
+.ts-rc-food-fill {
+  height: 100%; border-radius: 9px;
+  transform-origin: left center;
+  animation: barGrow 0.7s cubic-bezier(0.22,1,0.36,1) 0.65s both;
+}
+@keyframes barGrow { from { transform: scaleX(0); } }
+
+.ts-rc-food-fill.liked-fill    { background: linear-gradient(90deg, var(--good), #52e88a); }
+.ts-rc-food-fill.disliked-fill { background: linear-gradient(90deg, var(--bad),  #ff7080); }
+
+.ts-rc-food-count {
+  font-size: 0.88rem; font-weight: 800;
+  width: 28px; text-align: right; flex-shrink: 0;
+}
+
+/* 細節文字 */
+.ts-rc-detail {
+  font-size: 0.8rem; color: rgba(255,255,255,0.38);
+  text-align: center; line-height: 1.7;
+  animation: fadeUp 0.4s 0.65s ease-out both;
+}
+
+/* 按鈕 */
+.ts-rc-btns { display: flex; gap: 10px; width: 100%; animation: fadeUp 0.4s 0.75s ease-out both; }
+
+.ts-btn {
+  flex: 1; padding: 13px 8px; border-radius: 16px;
+  font-size: 0.92rem; font-weight: 800; cursor: pointer; border: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.ts-btn:active { transform: scale(0.95); }
+.ts-btn.primary {
+  background: linear-gradient(135deg, var(--accent), #FF8C42);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(255,179,71,0.4);
+}
+.ts-btn.primary:active { box-shadow: 0 2px 8px rgba(255,179,71,0.2); }
+.ts-btn.secondary {
+  background: rgba(255,255,255,0.07); color: #fff;
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+/* ══ 模式選擇器 ════════════════════════════════════════════ */
+
+#ts-mode-selector {
+  display: flex; gap: 8px; width: 100%; max-width: 480px;
+}
+
+.ts-mode-btn {
+  flex: 1; padding: 10px 8px; border-radius: 14px;
+  font-size: 0.82rem; font-weight: 800; cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05); color: var(--dim);
+  transition: all 0.18s;
+}
+.ts-mode-btn.active {
+  border-color: var(--accent);
+  background: rgba(255,179,71,0.15);
+  color: var(--accent);
+}
+.ts-mode-btn:active { transform: scale(0.97); }
+
+/* 模式二角色卡：神秘徽章 */
+.ts-mystery-badge {
+  font-size: 0.85rem; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--accent);
+  background: rgba(255,179,71,0.1);
+  border: 1px solid rgba(255,179,71,0.3);
+  border-radius: 20px; padding: 4px 12px;
+  margin-top: 2px;
+}
+
+/* ══ 預覽畫面（模式二）═══════════════════════════════════ */
+
+#ts-preview {
+  height: 100dvh; display: flex; flex-direction: column;
+}
+
+#ts-preview-back {
+  color: var(--dim); font-size: 1.5rem;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border); flex-shrink: 0; cursor: pointer;
+}
+#ts-preview-back:active { background: rgba(255,255,255,0.18); }
+
+#ts-preview-body {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  padding: 24px;
+}
+
+#ts-preview-char {
+  font-size: 5rem; line-height: 1;
+  animation: charBounce 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+}
+
+#ts-preview-name {
+  font-size: 1.05rem; font-weight: 800; color: var(--accent);
+  animation: fadeUp 0.35s 0.15s ease-out both;
+}
+
+#ts-preview-foods {
+  font-size: 2.2rem; letter-spacing: 2px;
+  background: rgba(46,213,115,0.07);
+  border: 2px solid rgba(46,213,115,0.35);
+  border-radius: 20px;
+  padding: 16px 28px;
+  text-align: center;
+  line-height: 1.8;
+  animation: fadeUp 0.35s 0.28s ease-out both;
+  max-width: 360px;
+  word-break: break-word;
+}
+
+#ts-preview-countdown {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-top: 8px;
+  animation: fadeUp 0.35s 0.4s ease-out both;
+}
+
+#ts-preview-timer {
+  font-size: 3.2rem; font-weight: 900; color: var(--accent);
+  line-height: 1;
+}
+#ts-preview-timer.tick {
+  animation: timerPulse 0.35s ease-out both;
+}
+@keyframes timerPulse {
+  0%   { transform: scale(1.5); opacity: 0.6; }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+
+.ts-preview-timer-label {
+  font-size: 0.78rem; color: var(--dim); letter-spacing: 0.04em;
+}
+
+@media (max-height: 640px) {
+  .ts-food   { font-size: 1.5rem; }
+  .ts-plate  { font-size: 2.2rem; }
+  #ts-fillings { font-size: 1rem; }
+  .ts-result-card { gap: 10px; padding: 18px 16px 16px; }
+  .ts-rc-char { font-size: 3.5rem; }
+  .ts-rc-score { font-size: 2.8rem; }
+}

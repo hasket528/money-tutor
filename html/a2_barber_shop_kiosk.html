@@ -1,0 +1,141 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2理髮店售票機</title>
+
+    <!-- 樣式表 -->
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/a2_barber_shop_kiosk.css?v=1.6.1">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+
+</head>
+<body class="a2-unit">
+    <div id="loading-screen" class="loading-screen" aria-label="理髮店售票機系統載入中">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">理髮店售票機載入中...</div>
+    </div>
+
+    <main id="app" role="main" aria-label="理髮店售票機主要內容">
+        <noscript>
+            <div class="noscript-message">
+                <h1>需要啟用 JavaScript</h1>
+                <p>此理髮店售票機需要 JavaScript 才能正常運作，請在瀏覽器設定中啟用 JavaScript。</p>
+                <p>如需協助，請聯絡您的老師或家長。</p>
+            </div>
+        </noscript>
+    </main>
+
+    <div id="error-boundary" class="error-boundary" style="display: none;" role="alert">
+        <div class="error-content">
+            <h2>系統發生錯誤</h2>
+            <p>售票機系統執行時發生問題，請重新整理頁面再試一次。</p>
+            <p>如果問題持續發生，請聯絡系統管理員。</p>
+            <button onclick="location.reload()" class="reload-btn">重新載入系統</button>
+        </div>
+    </div>
+
+    <script>
+        // 錯誤處理
+        window.addEventListener('error', function(event) {
+            console.error('理髮店售票機系統錯誤:', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error,
+                stack: event.error?.stack
+            });
+            // 只在嚴重錯誤時顯示錯誤邊界
+            if (event.error && event.error.message && !event.error.message.includes('ResizeObserver')) {
+                document.getElementById('error-boundary').style.display = 'flex';
+                document.getElementById('loading-screen').style.display = 'none';
+            }
+        });
+
+        // 載入完成後隱藏載入畫面
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1500);
+        });
+
+        // 全域鍵盤快捷鍵
+        document.addEventListener('keydown', function(event) {
+            // Escape 取消操作
+            if (event.key === 'Escape') {
+                if (window.BarberKiosk && window.BarberKiosk.handleCancelKey) {
+                    window.BarberKiosk.handleCancelKey();
+                }
+            }
+
+            // 數字鍵直接選擇服務
+            if (event.key >= '1' && event.key <= '8' && window.BarberKiosk && window.BarberKiosk.handleServiceSelect) {
+                window.BarberKiosk.handleServiceSelect(parseInt(event.key));
+            }
+
+            // Enter 確認操作
+            if (event.key === 'Enter' && window.BarberKiosk && window.BarberKiosk.handleEnterKey) {
+                event.preventDefault();
+                window.BarberKiosk.handleEnterKey();
+            }
+        });
+
+        // 設定基本的 ARIA live regions
+        document.addEventListener('DOMContentLoaded', function() {
+            const app = document.getElementById('app');
+            if (app) {
+                app.setAttribute('aria-live', 'polite');
+            }
+        });
+    </script>
+
+    <!-- 載入 canvas-confetti 煙火庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <!-- 音效檔案 -->
+    <audio id="correct-sound" src="../audio/units/correct.mp3" preload="auto" onerror="console.warn('音效載入失敗: correct.mp3')"></audio>
+    <audio id="correct02-sound" src="../audio/units/correct02.mp3" preload="auto" onerror="console.warn('音效載入失敗: correct02.mp3')"></audio>
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto" onerror="console.warn('音效載入失敗: success.mp3')"></audio>
+    <audio id="error-sound" src="../audio/units/error.mp3" preload="auto" onerror="console.warn('音效載入失敗: error.mp3')"></audio>
+
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-system.js"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <script src="../js/a2_barber_shop_kiosk.js?v=1.7.2"></script>
+
+    <script>
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    const perfData = performance.timing;
+                    const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+                    console.log('理髮店售票機載入時間:', loadTime + 'ms');
+
+                    if (loadTime > 5000) {
+                        console.warn('系統載入時間較長，建議檢查網路連線');
+                    }
+                }, 0);
+            });
+        }
+    </script>
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+</body>
+</html>

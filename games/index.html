@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>趣味小遊戲</title>
+  <link rel="stylesheet" href="../css/ai-theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100dvh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      display: flex;
+      flex-direction: column;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    /* ─── Header ─── */
+    .menu-header {
+      padding: 20px 20px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .back-btn {
+      position: absolute;
+      left: 16px;
+      top: 20px;
+      color: rgba(255,255,255,0.55);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.2s, color 0.2s;
+    }
+    .back-btn:active { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .menu-title {
+      font-size: clamp(1.6rem, 5vw, 2.2rem);
+      font-weight: 900;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #FFD700, #FF6B35);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .menu-sub {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 24px;
+    }
+
+    /* ─── Grid ─── */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      padding: 0 16px 32px;
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    @media (min-width: 900px) {
+      .games-grid { max-width: 960px; gap: 18px; padding: 0 24px 40px; }
+    }
+    @media (min-width: 1200px) {
+      .games-grid { max-width: 1100px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    }
+
+    /* ─── Game Card ─── */
+    .game-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.18s, background 0.18s, box-shadow 0.18s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      .game-card { padding: 24px; gap: 20px; border-radius: 22px; }
+      .game-emoji { font-size: 3.4rem; width: 68px; }
+      .game-name  { font-size: 1.25rem; }
+      .game-desc  { font-size: 0.9rem; }
+    }
+
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--card-glow, transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+      border-radius: inherit;
+    }
+
+    .game-card:not(.coming-soon):hover::before,
+    .game-card:not(.coming-soon):focus::before {
+      opacity: 1;
+    }
+
+    .game-card:not(.coming-soon):active {
+      transform: scale(0.97);
+    }
+
+    /* 各遊戲卡片配色 */
+    .card-g1 { --card-glow: linear-gradient(135deg, rgba(78,205,196,0.12), transparent); border-color: rgba(78,205,196,0.2); }
+    .card-g2 { --card-glow: linear-gradient(135deg, rgba(255,215,0,0.12), transparent);  border-color: rgba(255,215,0,0.2); }
+    .card-g3 { --card-glow: linear-gradient(135deg, rgba(165,94,234,0.12), transparent); border-color: rgba(165,94,234,0.2); }
+    .card-g4 { --card-glow: linear-gradient(135deg, rgba(46,213,115,0.12), transparent);  border-color: rgba(46,213,115,0.2);  }
+    .card-g5 { --card-glow: linear-gradient(135deg, rgba(255,139,53,0.12), transparent); border-color: rgba(255,139,53,0.2); }
+    .card-g6 { --card-glow: linear-gradient(135deg, rgba(200,168,40,0.12), transparent); border-color: rgba(200,168,40,0.2); }
+    .card-g7 { --card-glow: linear-gradient(135deg, rgba(61,220,87,0.12), transparent);  border-color: rgba(61,220,87,0.2);  }
+    .card-g9  { --card-glow: linear-gradient(135deg, rgba(147,51,234,0.12), transparent); border-color: rgba(147,51,234,0.2); }
+    .card-g10 { --card-glow: linear-gradient(135deg, rgba(194,130,70,0.14), transparent);  border-color: rgba(194,130,70,0.25); }
+    .card-g11 { --card-glow: linear-gradient(135deg, rgba(255,140,0,0.14), transparent);   border-color: rgba(255,140,0,0.28); }
+    .card-g12 { --card-glow: linear-gradient(135deg, rgba(78,205,196,0.14), transparent);  border-color: rgba(78,205,196,0.25); }
+    .card-g13 { --card-glow: linear-gradient(135deg, rgba(255,179,71,0.15), transparent);  border-color: rgba(255,179,71,0.28); }
+    .card-g14 { --card-glow: linear-gradient(135deg, rgba(236,72,153,0.15), transparent);  border-color: rgba(236,72,153,0.28); }
+
+    .game-emoji {
+      font-size: 2.8rem;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 56px;
+      text-align: center;
+    }
+
+    .game-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .game-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .game-desc {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .game-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 0.03em;
+    }
+
+    .game-arrow {
+      font-size: 1.4rem;
+      color: rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+
+    /* ─── High Score Badge ─── */
+    .game-highscore {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      font-size: 0.7rem;
+      color: #FFD700;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+
+    /* ─── Coming Soon ─── */
+    .coming-soon {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .coming-soon .game-arrow {
+      display: none;
+    }
+
+    .coming-soon-badge {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 2px 8px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── Section Label ─── */
+    .section-label {
+      padding: 0 16px;
+      margin-bottom: 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+    }
+
+    /* ─── Divider ─── */
+    .section-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 8px 16px 16px;
+      max-width: 648px;
+      margin-left: auto;
+      margin-right: auto;
+      width: calc(100% - 32px);
+    }
+  </style>
+  <script src="../js/learning-tracker.js"></script>
+</head>
+<body>
+  <div class="menu-header">
+    <a href="../index.html" class="back-btn">← 返回主頁</a>
+    <h1 class="menu-title">🎮 趣味小遊戲</h1>
+    <p class="menu-sub">選一個遊戲，開始挑戰！</p>
+  </div>
+
+  <div class="games-grid">
+
+    <!-- G1 數字泡泡 -->
+    <a href="g1-bubble/index.html" class="game-card card-g1">
+      <div class="game-highscore" id="hs-g1">載入中…</div>
+      <div class="game-emoji">🫧</div>
+      <div class="game-info">
+        <div class="game-name">數字泡泡</div>
+        <div class="game-desc">點破目標數字泡泡！或依序接龍挑戰速度與記憶！</div>
+        <div class="game-tags">
+          <span class="tag">數字</span>
+          <span class="tag">加法</span>
+          <span class="tag">反應</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G2 錢幣接接樂 -->
+    <a href="g2-coin/index.html" class="game-card card-g2">
+      <div class="game-highscore" id="hs-g2">載入中…</div>
+      <div class="game-emoji">🪙</div>
+      <div class="game-info">
+        <div class="game-name">錢幣接接樂</div>
+        <div class="game-desc">接住正確的硬幣，剛好湊到目標金額！</div>
+        <div class="game-tags">
+          <span class="tag">金錢</span>
+          <span class="tag">組合</span>
+          <span class="tag">反應</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G3 超市閃電結帳 -->
+    <a href="g3-checkout/index.html" class="game-card card-g3">
+      <div class="game-highscore" id="hs-g3">載入中…</div>
+      <div class="game-emoji">🛒</div>
+      <div class="game-info">
+        <div class="game-name">超市閃電結帳</div>
+        <div class="game-desc">看商品價格，心算總價，搶先選出正確答案！</div>
+        <div class="game-tags">
+          <span class="tag">加法</span>
+          <span class="tag">速算</span>
+          <span class="tag">計時</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G4 快速找零 -->
+    <a href="g4-change/index.html" class="game-card card-g4">
+      <div class="game-highscore" id="hs-g4">載入中…</div>
+      <div class="game-emoji">💸</div>
+      <div class="game-info">
+        <div class="game-name">快速找零</div>
+        <div class="game-desc">看商品和付款金額，選出正確的找零組合！</div>
+        <div class="game-tags">
+          <span class="tag">減法</span>
+          <span class="tag">硬幣</span>
+          <span class="tag">計時</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G5 數字消消樂 -->
+    <a href="g5-samenum/index.html" class="game-card card-g5">
+      <div class="game-highscore" id="hs-g5">載入中…</div>
+      <div class="game-emoji">🔢</div>
+      <div class="game-info">
+        <div class="game-name">數字消消樂</div>
+        <div class="game-desc">點擊相鄰同數字一起消除，群組越大分越高！</div>
+        <div class="game-tags">
+          <span class="tag">數字</span>
+          <span class="tag">消除</span>
+          <span class="tag">策略</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G6 硬幣翻翻樂 -->
+    <a href="g6-memory/index.html" class="game-card card-g6">
+      <div class="game-highscore" id="hs-g6">載入中…</div>
+      <div class="game-emoji">🪙</div>
+      <div class="game-info">
+        <div class="game-name">硬幣翻翻樂</div>
+        <div class="game-desc">翻開硬幣，找出面額相同的一對！</div>
+        <div class="game-tags">
+          <span class="tag">記憶</span>
+          <span class="tag">硬幣</span>
+          <span class="tag">配對</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G7 貪食蛇數字闖關 -->
+    <a href="g7-snake/index.html" class="game-card card-g7">
+      <div class="game-highscore" id="hs-g7">載入中…</div>
+      <div class="game-emoji">🐍</div>
+      <div class="game-info">
+        <div class="game-name">貪食蛇數字闖關</div>
+        <div class="game-desc">操控蛇吃數字！三種模式：自由、指定、順序闖關。</div>
+        <div class="game-tags">
+          <span class="tag">反應</span>
+          <span class="tag">數字</span>
+          <span class="tag">策略</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G8 圈圈叉叉 -->
+    <a href="g8-tictactoe/index.html" class="game-card" style="--card-glow:linear-gradient(135deg,rgba(78,205,196,0.12),rgba(255,107,107,0.08),transparent);border-color:rgba(78,205,196,0.25);">
+      <div class="game-emoji">⭕</div>
+      <div class="game-info">
+        <div class="game-name">圈圈叉叉</div>
+        <div class="game-desc">雙人對戰或挑戰電腦，搶先連三子！</div>
+        <div class="game-tags">
+          <span class="tag">策略</span>
+          <span class="tag">雙人</span>
+          <span class="tag">VS 電腦</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G9 比大小 -->
+    <a href="g9-cardwar/index.html" class="game-card card-g9">
+      <div class="game-emoji">🃏</div>
+      <div class="game-info">
+        <div class="game-name">比大小</div>
+        <div class="game-desc">從牌堆翻出一張牌，看誰的點數高就贏！挑戰電腦或雙人對決。</div>
+        <div class="game-tags">
+          <span class="tag">翻牌</span>
+          <span class="tag">雙人</span>
+          <span class="tag">VS 電腦</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G12 猜拳大戰 -->
+    <a href="g12-rps/index.html" class="game-card card-g12">
+      <div class="game-emoji">✊</div>
+      <div class="game-info">
+        <div class="game-name">猜拳大戰</div>
+        <div class="game-desc">石頭剪刀布！選 3/5/7 局制，挑戰電腦（三種難度）或雙人對決。</div>
+        <div class="game-tags">
+          <span class="tag">對戰</span>
+          <span class="tag">策略</span>
+          <span class="tag">雙人</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G10 硬幣躲貓貓 -->
+    <a href="g10-cup/index.html" class="game-card card-g10">
+      <div class="game-highscore" id="hs-g10">載入中…</div>
+      <div class="game-emoji">🏺</div>
+      <div class="game-info">
+        <div class="game-name">硬幣躲貓貓</div>
+        <div class="game-desc">看清楚東西藏在哪個杯子，洗牌後猜出它在哪！</div>
+        <div class="game-tags">
+          <span class="tag">記憶</span>
+          <span class="tag">追蹤</span>
+          <span class="tag">反應</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G14 金幣打地鼠 -->
+    <a href="g14-mole/index.html" class="game-card card-g14">
+      <div class="game-highscore" id="hs-g14">載入中…</div>
+      <div class="game-emoji">🐹</div>
+      <div class="game-info">
+        <div class="game-name">打地鼠賺金幣</div>
+        <div class="game-desc">地鼠冒出來了！亂打賺分或挑戰指定面額，連擊越多分越高！</div>
+        <div class="game-tags">
+          <span class="tag">反應</span>
+          <span class="tag">辨識</span>
+          <span class="tag">計時</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G13 美味餐點大作戰 -->
+    <a href="g13-toast/index.html" class="game-card card-g13">
+      <div class="game-emoji">🍽️</div>
+      <div class="game-info">
+        <div class="game-name">美味餐點大作戰</div>
+        <div class="game-desc">拖曳盤子穿過左右兩道門，接住食物！選對服務對象喜歡的食物，得分越高越好！</div>
+        <div class="game-tags">
+          <span class="tag">拖曳</span>
+          <span class="tag">策略</span>
+          <span class="tag">飲食</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+    <!-- G11 汽水倒倒樂 -->
+    <a href="g11-pour/index.html" class="game-card card-g11">
+      <div class="game-highscore" id="hs-g11">載入中…</div>
+      <div class="game-emoji">🥤</div>
+      <div class="game-info">
+        <div class="game-name">汽水倒倒樂</div>
+        <div class="game-desc">按住按鈕倒汽水，精準停在目標線，別讓它溢出來！</div>
+        <div class="game-tags">
+          <span class="tag">精準</span>
+          <span class="tag">反應</span>
+          <span class="tag">手感</span>
+        </div>
+      </div>
+      <div class="game-arrow">›</div>
+    </a>
+
+  </div>
+
+  <script>
+    // 載入各遊戲最高分
+    function loadHighScore(gameId, elId) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      const score = parseInt(localStorage.getItem(`miniGame_${gameId}_highScore`) || '0');
+      el.textContent = score > 0 ? `最高 ${score.toLocaleString()}` : '';
+    }
+
+    loadHighScore('g1', 'hs-g1');
+    loadHighScore('g2', 'hs-g2');
+    loadHighScore('g3', 'hs-g3');
+    loadHighScore('g4', 'hs-g4');
+    loadHighScore('g5', 'hs-g5');
+    loadHighScore('g6', 'hs-g6');
+    loadHighScore('g7', 'hs-g7');
+    loadHighScore('g10', 'hs-g10');
+    loadHighScore('g11', 'hs-g11');
+    loadHighScore('g14', 'hs-g14');
+  </script>
+</body>
+</html>

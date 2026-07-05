@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生優良行為計分</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+    <div class="container">
+        <div class="title-row">
+            <div style="flex-grow:1; display:flex; align-items:center; justify-content:center; gap:10px;">
+                <img id="rewardDetective" src="../images/common/hint_detective.png" alt="小金探" title="點我，聽小金探說話" style="height:70px; width:auto; object-fit:contain; cursor:pointer; animation:settingsBounce 2.5s ease-in-out infinite;">
+                <style>@keyframes settingsBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }</style>
+                <button id="rewardDetectiveSpeaker" title="播放小金探語音" aria-label="播放小金探語音" style="background:none; border:none; cursor:pointer; font-size:1.6rem; line-height:1; padding:4px; flex-shrink:0;">🔊</button>
+                <h1 style="margin:0; flex-grow:0;">學生優良行為計分</h1>
+            </div>
+            <div class="zoom-controls">
+                <button id="zoomOutBtn" class="zoom-btn" title="縮小視窗">−</button>
+                <button id="zoomInBtn" class="zoom-btn" title="放大視窗">+</button>
+            </div>
+        </div>
+
+        <!-- 區塊一：新增資料 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                <select id="studentSelectDropdown" style="height: 36px; border-radius: 6px; border: 1px solid #ccc; padding: 4px 10px; font-size: 14px; cursor: pointer; max-width: 160px;">
+                    <option value="">── 選擇學生 ──</option>
+                </select>
+                <button id="studentDeleteBtn" title="永久刪除選取的學生" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 16px; cursor: pointer;">🗑️</button>
+                <button id="addStudentBtn" class="upload-btn" style="background-color: #28a745;">➕ 新增學生</button>
+                <input type="file" id="iconUploadInput" accept="image/*" style="display: none;">
+                <label for="iconUploadInput" class="upload-btn" style="background-color: #17a2b8;">🖼️ 新增加分圖示</label>
+                <input type="file" id="soundUploadInput" accept="audio/*" style="display: none;">
+                <label for="soundUploadInput" class="upload-btn" style="background-color: #17a2b8;" title="建議 100KB 以內的短音效（3秒以內最佳），最大限制 300KB｜僅可上傳 1 個自訂音效">🔊 新增加分音效</label>
+            </div>
+        </div>
+
+        <!-- 區塊二：加分圖示與音效 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 40px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <!-- 左側：加分圖示 -->
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="select-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                        <label for="bonusIconSelect">加分圖示:</label>
+                        <select id="bonusIconSelect">
+                            <option value="⭐">⭐ 星星</option>
+                            <option value="🌟">🌟 閃亮星星</option>
+                            <option value="🏆">🏆 獎杯</option>
+                            <option value="🎖️">🎖️ 榮譽勳章</option>
+                            <option value="🏅">🏅 獎牌</option>
+                            <option value="💎">💎 鑽石</option>
+                            <option value="👍">👍 讚</option>
+                            <option value="🎯">🎯 達標</option>
+                            <option value="🌈">🌈 彩虹</option>
+                            <option value="🎁">🎁 禮物</option>
+                        </select>
+                        <button id="iconDeleteBtn" title="刪除選取的自訂圖示" style="height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 14px; cursor: pointer;">🗑️</button>
+                    </div>
+                    <div class="bonus-icon-preview-container">
+                        <img id="bonusIconPreview" src="" alt="加分圖示預覽" class="bonus-icon-preview">
+                    </div>
+                </div>
+
+                <!-- 右側：加分音效 -->
+                <div class="select-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="bonusSoundSelect">加分音效:</label>
+                    <select id="bonusSoundSelect">
+                        <option value="sound/bouns01.mp3">音效 1</option>
+                        <option value="sound/bouns02.mp3">音效 2</option>
+                        <option value="sound/bouns03.mp3">音效 3</option>
+                    </select>
+                    <button id="previewSoundBtn" class="preview-sound-btn" title="預聽音效">▶</button>
+                    <button id="soundDeleteBtn" title="刪除選取的自訂音效" style="height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #dc3545; background: #fff; color: #dc3545; font-size: 14px; cursor: pointer;">🗑️</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 區塊三：分數設定 -->
+        <div class="section-block">
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="rankButton" class="upload-btn">分數排名</button>
+                <button id="resetButton" class="upload-btn reset-btn">重設分數</button>
+                <button id="clearAllButton" class="upload-btn clear-all-btn">清除所有資料</button>
+            </div>
+        </div>
+
+        <p class="upload-hint">提示：學生資料會自動儲存，關閉網頁後再開啟仍可保留。所有照片僅讀取至瀏覽器暫存，不會上傳至任何外部伺服器。</p>
+
+        <div id="studentsContainer" class="students-container">
+            </div>
+
+    </div>
+    <script src="../js/emoji-library.js"></script>
+    <script src="script.js?v=2"></script>
+    <!-- 點擊小金探播放語音（預錄音檔 → 瀏覽器 TTS 後備）──────────── -->
+    <script>
+    (function () {
+        const AUDIO_BASE = '../audio/chatbot/';
+        const FILE = 'reward_detective_greeting';
+        const TTS  = '偵探小金探來報到！這裡是優良行為計分表，我們一起來看看每位同學最近的好表現。表現很棒的地方，繼續保持，大家一起加油！';
+        let _a = null, _tok = null;
+        function stop() {
+            _tok = null;
+            if (_a) { try { _a.pause(); } catch (e) {} _a = null; }
+            if (window.speechSynthesis) speechSynthesis.cancel();
+        }
+        function ttsFallback() {
+            if (!window.speechSynthesis) return;
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(TTS);
+            u.lang = 'zh-TW'; u.rate = 0.95;
+            const vs = speechSynthesis.getVoices();
+            u.voice = vs.find(v => /yating/i.test(v.name)) ||
+                      vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) ||
+                      vs.find(v => v.lang === 'zh-TW') || null;
+            speechSynthesis.speak(u);
+        }
+        function play() {
+            stop();
+            const exts = ['wav', 'mp3']; let i = 0; const t = {}; _tok = t;
+            const next = () => {
+                if (_tok !== t) return;
+                if (i >= exts.length) { ttsFallback(); return; }
+                const a = new Audio(AUDIO_BASE + FILE + '.' + exts[i++]);
+                _a = a;
+                let adv = false;
+                const fail = () => { if (adv) return; adv = true; next(); };
+                a.onerror = fail;
+                a.onended = () => { if (_tok === t) _a = null; };
+                a.play().catch(fail);
+            };
+            next();
+        }
+        const img = document.getElementById('rewardDetective');
+        if (img) img.addEventListener('click', play);
+        const spk = document.getElementById('rewardDetectiveSpeaker');
+        if (spk) spk.addEventListener('click', play);
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "source": "",
+  "total": 1,
+  "settings": {
+    "voice": "zh-TW-YunJheNeural",
+    "as_mp3": false,
+    "keep_wav": true,
+    "normalize": false
+  },
+  "prompts": [
+    {
+      "filename": "output1",
+      "text": "在這個校園裡，每一朵花都有自己的花期，更多的精彩故事正在靜靜綻放。",
+      "voice": "",
+      "character": ""
+    }
+  ],
+  "completed": [
+    "output1"
+  ],
+  "failed": []
+}

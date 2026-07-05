@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>快速找零</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="change.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+
+    <!-- 題目資訊 -->
+    <div id="question-panel">
+      <!-- 購買商品 -->
+      <div id="items-display"></div>
+
+      <!-- 付款 − 商品 = 找零 算式 -->
+      <div id="transaction-display">
+        <div class="txn-block">
+          <div class="txn-label">付款</div>
+          <div id="paid-display">--</div>
+          <div class="txn-unit">元</div>
+        </div>
+        <div class="txn-op">−</div>
+        <div class="txn-block">
+          <div class="txn-label">商品</div>
+          <div id="price-sum-display">--</div>
+          <div class="txn-unit">元</div>
+        </div>
+        <div class="txn-op">=</div>
+        <div class="txn-block txn-change">
+          <div class="txn-label">找零</div>
+          <div id="change-display">??</div>
+          <div class="txn-unit">元</div>
+        </div>
+      </div>
+
+      <!-- 已選金額 -->
+      <div id="selected-bar">
+        <span class="sel-label">已選</span>
+        <span id="selected-sum">0</span>
+        <span class="sel-unit">元</span>
+        <div id="selected-progress-track">
+          <div id="selected-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 計時進度條 -->
+    <div id="question-timer-bar"><div id="question-timer-fill"></div></div>
+
+    <!-- 硬幣選盤 -->
+    <div id="coin-panel"></div>
+
+    <!-- 確認按鈕 -->
+    <button id="confirm-btn" disabled>確認找零</button>
+
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="change.js"></script>
+</body>
+</html>

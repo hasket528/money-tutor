@@ -1,0 +1,224 @@
+/* ===================================================
+   G5 數字消消樂 — 遊戲專屬樣式
+=================================================== */
+
+#game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 12px 14px;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* ─── 計時條 ─── */
+#sn-timer-wrap {
+  width: 100%;
+  /* 寬度跟隨格子盤面 */
+  max-width: calc(6 * var(--sn-tile) + 5 * var(--sn-gap) + 2 * var(--sn-pad));
+  height: 6px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+#sn-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #2ed573, #7bed9f);
+  border-radius: 3px;
+  transition: width 0.6s linear, background 0.4s;
+}
+
+#sn-timer-fill.sn-danger {
+  background: linear-gradient(90deg, #FF4757, #ff6b81);
+  animation: sn-timer-pulse 0.5s infinite alternate;
+}
+@keyframes sn-timer-pulse { to { opacity: 0.38; } }
+
+/* ─── 磁磚尺寸 CSS 變數（統一控制所有響應式尺寸）─── */
+:root {
+  --sn-tile:    42px;
+  --sn-font:    1.2rem;
+  --sn-gap:     3px;
+  --sn-pad:     6px;
+  --sn-radius:  8px;
+}
+@media (min-width: 600px) {
+  :root { --sn-tile: 58px; --sn-font: 1.55rem; --sn-gap: 4px; --sn-pad: 8px; --sn-radius: 10px; }
+}
+@media (min-width: 900px) {
+  :root { --sn-tile: 72px; --sn-font: 1.9rem;  --sn-gap: 5px; --sn-pad: 10px; --sn-radius: 12px; }
+}
+@media (min-width: 1200px) {
+  :root { --sn-tile: 84px; --sn-font: 2.2rem;  --sn-gap: 6px; --sn-pad: 12px; --sn-radius: 14px; }
+}
+
+/* ─── 格子盤面 ─── */
+#sn-grid {
+  display: grid;
+  grid-template-columns: repeat(6, var(--sn-tile));
+  grid-template-rows: repeat(8, var(--sn-tile));
+  gap: var(--sn-gap);
+  background: rgba(0,0,0,0.35);
+  border-radius: calc(var(--sn-pad) * 2 + 2px);
+  padding: var(--sn-pad);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  flex-shrink: 0;
+}
+
+/* ─── 格子 ─── */
+.sn-cell {
+  width: var(--sn-tile);
+  height: var(--sn-tile);
+  border-radius: var(--sn-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--sn-font);
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  transition: transform 0.1s;
+  will-change: transform;
+}
+
+.sn-empty {
+  background: rgba(255,255,255,0.04);
+  cursor: default;
+}
+
+/* 五種數字顏色 */
+.sn-v1 { background: #FF6B6B; color: rgba(0,0,0,0.72); box-shadow: 0 2px 6px rgba(255,107,107,0.45); }
+.sn-v2 { background: #4ECDC4; color: rgba(0,0,0,0.72); box-shadow: 0 2px 6px rgba(78,205,196,0.45); }
+.sn-v3 { background: #FFD700; color: rgba(0,0,0,0.72); box-shadow: 0 2px 6px rgba(255,215,0,0.45); }
+.sn-v4 { background: #A55EEA; color: rgba(255,255,255,0.92); box-shadow: 0 2px 6px rgba(165,94,234,0.45); }
+.sn-v5 { background: #FF8B35; color: rgba(0,0,0,0.72); box-shadow: 0 2px 6px rgba(255,139,53,0.45); }
+
+/* ─── Emoji 主題格子（字型略大） ─── */
+.sn-cell.sn-emoji-tile {
+  font-size: clamp(1.4rem, calc(var(--sn-tile) * 0.52), 2.6rem);
+}
+
+/* ─── 主題選擇 2×2 格按鈕 ─── */
+.sn-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sn-theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 13px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.88);
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.sn-theme-btn:active {
+  background: rgba(255,255,255,0.15);
+  transform: scale(0.96);
+}
+
+.sn-tb-icon  { font-size: 2rem; line-height: 1; }
+.sn-tb-label { font-size: 0.88rem; font-weight: 700; }
+
+/* ─── 滑鼠懸停預覽整組 ─── */
+.sn-cell.sn-hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 2.5px #fff, 0 4px 16px rgba(255,255,255,0.32) !important;
+  z-index: 2;
+}
+
+/* ─── 消除爆炸動畫 ─── */
+.sn-cell.sn-popping {
+  animation: sn-pop 0.33s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  pointer-events: none;
+  z-index: 3;
+}
+@keyframes sn-pop {
+  0%   { transform: scale(1.0); opacity: 1; }
+  38%  { transform: scale(1.45); opacity: 0.8; }
+  100% { transform: scale(0);   opacity: 0; }
+}
+
+/* ─── 無效點擊搖晃 ─── */
+.sn-cell.sn-reject {
+  animation: sn-reject 0.28s ease;
+}
+@keyframes sn-reject {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); filter: brightness(0.5); }
+  75%      { transform: translateX(6px); }
+}
+
+/* ─── 提示文字 ─── */
+#sn-hint {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.28);
+  text-align: center;
+  pointer-events: none;
+  animation: sn-hint-fade 3s ease 2.5s forwards;
+}
+@keyframes sn-hint-fade { to { opacity: 0; } }
+
+/* ─── 清盤閃光 ─── */
+.sn-clear-flash {
+  position: fixed; inset: 0;
+  background: rgba(46,213,115,0.22);
+  pointer-events: none; z-index: 8500;
+  animation: sn-clear-anim 0.5s ease forwards;
+}
+@keyframes sn-clear-anim { to { opacity: 0; } }
+
+/* ─── 連消倍率提示 ─── */
+.sn-combo-label {
+  position: fixed;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #FF6B35;
+  text-shadow: 0 0 12px rgba(255,107,53,0.85);
+  pointer-events: none;
+  z-index: 7500;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: gue-score-fly 0.8s ease forwards;
+}
+
+/* ─── 難度爬坡 ─── */
+.level-up-flash {
+  position: fixed; inset: 0;
+  background: rgba(255,215,0,0.18);
+  pointer-events: none; z-index: 8500;
+  animation: sn-lvl-flash 0.6s ease forwards;
+}
+@keyframes sn-lvl-flash { to { opacity: 0; } }
+
+.level-up-text {
+  position: fixed; top: 30%; left: 50%;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900; color: #FFD700;
+  text-shadow: 0 0 20px rgba(255,215,0,0.8);
+  pointer-events: none; z-index: 8500; white-space: nowrap;
+  animation: sn-lvl-text 1.2s ease forwards;
+}
+@keyframes sn-lvl-text {
+  0%   { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  20%  { transform: translateX(-50%) translateY(-10px) scale(1.05); opacity: 1; }
+  70%  { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-30px) scale(0.9); opacity: 0; }
+}

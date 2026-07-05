@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A5 ATM提款機</title>
+
+    <!-- 簡化主題系統樣式 -->
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/a5_atm_simulator.css">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+
+</head>
+<body class="a5-unit">
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+
+    <!-- 載入 canvas-confetti 煙火庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+
+    <div id="loading-screen" class="loading-screen" aria-label="ATM系統載入中">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">ATM系統載入中...</div>
+    </div>
+    
+    <main id="app" role="main" aria-label="ATM提款機模擬學習主要內容">
+        <noscript>
+            <div class="noscript-message">
+                <h1>需要啟用 JavaScript</h1>
+                <p>此ATM模擬器需要 JavaScript 才能正常運作，請在瀏覽器設定中啟用 JavaScript。</p>
+                <p>如需協助，請聯絡您的老師或家長。</p>
+            </div>
+        </noscript>
+    </main>
+    
+    <div id="error-boundary" class="error-boundary" style="display: none;" role="alert">
+        <div class="error-content">
+            <h2>系統發生錯誤</h2>
+            <p>ATM系統執行時發生問題，請重新整理頁面再試一次。</p>
+            <p>如果問題持續發生，請聯絡系統管理員。</p>
+            <button onclick="location.reload()" class="reload-btn">重新載入系統</button>
+        </div>
+    </div>
+    
+    <script>
+        // 錯誤處理（只處理 JS 執行錯誤，忽略音訊/圖片資源載入失敗）
+        window.addEventListener('error', function(event) {
+            if (!event.error) return; // event.error=null 表示資源載入失敗（非 JS 錯誤），忽略
+            console.error('ATM系統錯誤:', event.error);
+            document.getElementById('error-boundary').style.display = 'flex';
+            document.getElementById('loading-screen').style.display = 'none';
+        });
+        
+        // 載入完成後隱藏載入畫面
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1500);
+        });
+        
+        // 全域鍵盤快捷鍵
+        document.addEventListener('keydown', function(event) {
+            // Escape 取消操作
+            if (event.key === 'Escape') {
+                if (window.ATM && window.ATM.handleCancelKey) {
+                    window.ATM.handleCancelKey();
+                }
+            }
+            
+            // 數字鍵直接輸入
+            if (event.key >= '0' && event.key <= '9' && window.ATM && window.ATM.handleNumberInput) {
+                window.ATM.handleNumberInput(event.key);
+            }
+            
+            // Enter 確認操作
+            if (event.key === 'Enter' && window.ATM && window.ATM.handleEnterKey) {
+                event.preventDefault();
+                window.ATM.handleEnterKey();
+            }
+        });
+        
+        // 設定基本的 ARIA live regions
+        document.addEventListener('DOMContentLoaded', function() {
+            const app = document.getElementById('app');
+            if (app) {
+                app.setAttribute('aria-live', 'polite');
+            }
+        });
+    </script>
+    
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-system.js"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/reward-launcher.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <script src="../js/a5_atm_simulator.js?cachebust=20260320001"></script>
+    
+    <script>
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    const perfData = performance.timing;
+                    const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+                    console.log('ATM系統載入時間:', loadTime + 'ms');
+                    
+                    if (loadTime > 5000) {
+                        console.warn('系統載入時間較長，建議檢查網路連線');
+                    }
+                }, 0);
+            });
+        }
+    </script>
+    
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+</body>
+</html>

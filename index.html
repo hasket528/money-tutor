@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生活數學王</title>
+    <link rel="stylesheet" href="css/ai-theme.css">
+    
+    <style>
+        /* CSS 變數定義，方便管理主題顏色 */
+        :root {
+            --bg-primary: #f0f7ff;
+            --text-primary: #334e68;
+            --primary-color: #007bff;
+            --secondary-color: #ffc107;
+            --accent-color: #28a745;
+            --card-bg: #ffffff;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            --radius: 12px;
+            --transition: all 0.3s ease-in-out;
+        }
+        
+        /* 深色主題變數 */
+        [data-theme="dark"] {
+            --bg-primary: #1a1a2e;
+            --text-primary: #e2e8f0;
+            --primary-color: #6366f1;
+            --secondary-color: #fbbf24;
+            --accent-color: #10b981;
+            --card-bg: #2d2d44;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            --card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            --radius: 12px;
+            --transition: all 0.3s ease-in-out;
+        }
+
+        /* 基礎樣式 */
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            min-height: 100vh;
+            transition: var(--transition);
+        }
+
+        .container {
+            padding: 30px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 標題 */
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 3em;
+            font-weight: 700;
+            text-shadow: 2px 2px 5px rgba(0, 123, 255, 0.1);
+        }
+
+        /* 頁籤導覽列 */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            padding: 10px;
+            border-radius: 50px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+        }
+        
+        /* 頁籤內容面板 */
+        .tab-content {
+            display: none; /* 預設隱藏 */
+            width: 100%;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block; /* 啟用時顯示 */
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 單元網格佈局 */
+        .unit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+
+        /* 單元按鈕樣式 */
+        .unit-btn {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 25px;
+            border-radius: var(--radius);
+            border: 1px solid #e0e0e0;
+            box-shadow: var(--card-shadow);
+            text-align: left;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-height: 120px;
+        }
+
+        .unit-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .unit-icon {
+            font-size: 2.5em;
+            width: 128px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .unit-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .unit-text .code {
+            font-size: 0.9em;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .unit-text .title {
+            font-size: 1.2em;
+            font-weight: 600;
+            min-height: 2.4em;
+            line-height: 1.2em;
+        }
+        
+        .unit-text .subtitle {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        /* AI功能標籤樣式 */
+        .ai-feature {
+            font-size: 0.7em;
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-top: 4px;
+            display: inline-block;
+            font-weight: 500;
+        }
+        
+        /* 頁面標題區域 */
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        /* ── 雙角色介紹區 ─────────────────────────── */
+        .ai-dual-intro {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 32px;
+            margin-top: 24px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .ai-char-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ai-char-avatar {
+            width: 96px;
+            height: 96px;
+            flex-shrink: 0;
+        }
+
+        .ai-char-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 兩角色使用不同週期 + 半週期錯相，避免同步跳動 */
+        @keyframes floatBob {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-10px); }
+        }
+
+        .detective-block .ai-char-avatar {
+            animation: floatBob 3.2s ease-in-out infinite;
+        }
+
+        .doctor-block .ai-char-avatar {
+            animation: floatBob 3.6s ease-in-out infinite;
+            animation-delay: -1.8s;   /* 半週期錯開，兩人一上一下 */
+        }
+
+        .chatdog-block .ai-char-avatar {
+            animation: floatBob 3.4s ease-in-out infinite;
+            animation-delay: -0.9s;   /* 與另外兩位錯相，三人波浪起伏 */
+        }
+
+        .ai-char-name {
+            font-weight: 700;
+            font-size: 1em;
+            margin: 8px 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-primary);
+        }
+
+        .ai-voice-btn {
+            background: none;
+            border: 1px solid #E5E7EB;
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 2px 6px;
+            border-radius: 20px;
+            transition: background 0.15s;
+            line-height: 1.4;
+        }
+
+        .ai-voice-btn:hover { background: rgba(0,0,0,0.07); }
+        .ai-voice-btn:active { transform: scale(0.94); }
+
+        .ai-char-bubble {
+            background: var(--card-bg);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            text-align: center;
+        }
+
+        .ai-char-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-bottom-color: var(--card-bg);
+        }
+
+        .detective-block .ai-char-bubble { border-top: 3px solid #F59E0B; }
+        .doctor-block   .ai-char-bubble { border-top: 3px solid #7C3AED; }
+
+        @media (min-width: 521px) {
+            .bubble-line { white-space: nowrap; }
+        }
+
+        .ai-char-bubble p {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 0.9em;
+            line-height: 1.55;
+        }
+        
+
+        /* 禁用/即將推出樣式 */
+        .unit-btn.disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+            opacity: 0.6;
+            pointer-events: none; /* 讓連結不可點擊 */
+        }
+        
+        .unit-btn.disabled:hover {
+            transform: none;
+            box-shadow: var(--card-shadow);
+            border-color: #e0e0e0;
+        }
+        
+        /* 主題過渡動畫 */
+        .theme-transitioning * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        /* 顏色拾取器高亮效果 */
+        .color-picker-highlight {
+            box-shadow: 0 0 10px 2px rgba(102, 126, 234, 0.6) !important;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .tabs {
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-radius: var(--radius);
+                gap: 8px;
+                justify-content: center;
+                padding: 8px;
+            }
+            .tab-btn {
+                white-space: normal;
+                flex: 1 1 calc(50% - 8px);
+                min-width: 0;
+                font-size: 0.95em;
+                padding: 10px 12px;
+                text-align: center;
+                line-height: 1.3;
+            }
+            .unit-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .ai-dual-intro { grid-template-columns: 1fr; max-width: 420px; }
+        }
+
+        /* 金博士可點擊 */
+        /* 金博士：點擊整個區塊都可觸發，hover 紫色光暈 */
+        .doctor-block {
+            cursor: pointer;
+        }
+        .doctor-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 12px rgba(124,58,237,0.55));
+            transition: filter 0.25s;
+        }
+        .doctor-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .doctor-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(124,58,237,0.18);
+        }
+
+        /* 小金探：點擊整個區塊可觸發，hover 橙色光暈（與金博士有所區別） */
+        .detective-block {
+            cursor: pointer;
+        }
+        .detective-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 14px rgba(251,146,60,0.7));
+            transition: filter 0.25s;
+        }
+        .detective-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .detective-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(245,158,11,0.22);
+        }
+
+        /* 金好聊：點擊整個區塊直接開啟購物對話練習，hover 綠色光暈（呼應領巾） */
+        .chatdog-block {
+            cursor: pointer;
+        }
+        .chatdog-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 14px rgba(34,197,94,0.65));
+            transition: filter 0.25s;
+        }
+        .chatdog-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .chatdog-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(34,197,94,0.2);
+        }
+
+        /* 小金探對話視窗 */
+        #detective-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #detective-modal-overlay.open { display: flex; }
+        #detective-modal {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px 28px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            animation: modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #detective-modal .modal-close-btn {
+            position: absolute; top: 14px; right: 16px;
+            background: none; border: none; font-size: 1.4rem;
+            cursor: pointer; color: #9CA3AF; line-height: 1;
+            padding: 2px 6px; border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        #detective-modal .modal-close-btn:hover { background: #F3F4F6; color: #374151; }
+        #detective-modal .modal-detective-row {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 22px; text-align: left;
+        }
+        #detective-modal .modal-avatar { width: 100px; height: 100px; flex-shrink: 0; }
+        #detective-modal .modal-avatar img { width: 100%; height: 100%; object-fit: contain; }
+        #detective-modal .modal-speech-bubble {
+            background: #FFF7ED; border: 2px solid #F59E0B;
+            border-radius: 14px; padding: 10px 14px;
+            font-size: 0.9rem; font-weight: 600; color: #92400e;
+            line-height: 1.6; position: relative; text-align: left; flex: 0 1 auto;
+        }
+        #detective-modal .modal-speech-bubble::before {
+            content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+            left: -10px; border: 6px solid transparent; border-right-color: #F59E0B;
+        }
+        #detective-modal .modal-speech-bubble::after {
+            content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+            left: -7px; border: 5px solid transparent; border-right-color: #FFF7ED;
+        }
+        #detective-modal .modal-games-card {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg,#FFF7ED,#FFFBEB);
+            border: 2px solid #F59E0B; border-radius: 16px;
+            text-decoration: none; color: inherit;
+            margin-bottom: 16px; cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        #detective-modal .modal-games-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245,158,11,0.25);
+        }
+        #detective-modal .modal-games-card .adv-text { text-align: center; }
+        #detective-modal .modal-cancel-btn {
+            width: 100%; padding: 11px; border: 1.5px solid #E5E7EB;
+            border-radius: 12px; background: none; cursor: pointer;
+            font-size: 0.95rem; color: #6B7280;
+            transition: background 0.15s, color 0.15s;
+        }
+        #detective-modal .modal-cancel-btn:hover { background: #F3F4F6; color: #6B7280; }
+
+        /* 金博士對話視窗遮罩 */
+        #doctor-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #doctor-modal-overlay.open {
+            display: flex;
+        }
+
+        /* 對話視窗卡片 */
+        #doctor-modal {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px 28px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            animation: modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.85) translateY(20px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        #doctor-modal .modal-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: #9CA3AF;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        #doctor-modal .modal-close-btn:hover { background: #F3F4F6; color: #374151; }
+
+        /* 金博士 + 氣泡橫排 */
+        #doctor-modal .modal-doctor-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        #doctor-modal .modal-avatar {
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+        }
+        #doctor-modal .modal-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 對話氣泡 */
+        #doctor-modal .modal-speech-bubble {
+            background: #F5F3FF;
+            border: 2px solid #DDD6FE;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #4C1D95;
+            line-height: 1.6;
+            position: relative;
+            text-align: left;
+            flex: 0 1 auto;
+        }
+        #doctor-modal .modal-speech-bubble::before {
+            content: '';
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            left: -10px;
+            border: 6px solid transparent;
+            border-right-color: #DDD6FE;
+        }
+        #doctor-modal .modal-speech-bubble::after {
+            content: '';
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            left: -7px;
+            border: 5px solid transparent;
+            border-right-color: #F5F3FF;
+        }
+
+        #doctor-modal .modal-adventure-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #fbbf24;
+            border-radius: 14px;
+            padding: 16px 18px;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(217,119,6,0.18);
+            margin-bottom: 14px;
+        }
+        #doctor-modal .modal-adventure-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(217,119,6,0.28);
+        }
+        #doctor-modal .modal-adventure-card .adv-icon {
+            font-size: 2.6rem;
+            flex-shrink: 0;
+        }
+        #doctor-modal .modal-adventure-card .adv-text {
+            text-align: center;
+        }
+        #doctor-modal .modal-adventure-card .adv-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #92400e;
+        }
+        #doctor-modal .modal-adventure-card .adv-desc {
+            font-size: 0.8rem;
+            color: #78350f;
+            margin-top: 3px;
+        }
+        #doctor-modal .modal-adventure-card .adv-arrow {
+            font-size: 1.3rem;
+            color: #d97706;
+            flex-shrink: 0;
+        }
+
+        #doctor-modal .modal-cancel-btn {
+            width: 100%; padding: 11px; border: 1.5px solid #E5E7EB;
+            border-radius: 12px; background: none; cursor: pointer;
+            font-size: 0.95rem; color: #6B7280;
+            transition: background 0.15s, color 0.15s;
+        }
+        #doctor-modal .modal-cancel-btn:hover { background: #F3F4F6; color: #6B7280; }
+
+        /* 桌面端：金博士／小金探彈窗頭像放大到 300×300，彈窗加寬容納 */
+        @media (min-width: 768px) {
+            #detective-modal, #doctor-modal { max-width: 660px; }
+            #detective-modal .modal-avatar,
+            #doctor-modal .modal-avatar { width: 300px; height: 300px; }
+        }
+    </style>
+
+    <!-- 关键：在页面渲染前根据 hash 添加 CSS 规则，立即隐藏/显示正确的标签页 -->
+    <script>
+        (function() {
+            const hash = window.location.hash.substring(1);
+            if (hash === 'part2' || hash === 'part3' || hash === 'part4') {
+                // 通过添加 style 来覆盖 HTML 中的默认 active 状态，使用 id 以便后续移除
+                document.write('<style id="initial-tab-styles">');
+                document.write('.tab-btn[data-target="part1"] { background: transparent !important; color: var(--text-primary) !important; box-shadow: none !important; }');
+                document.write('.tab-btn[data-target="' + hash + '"] { background: var(--primary-color) !important; color: white !important; box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3) !important; }');
+                document.write('#part1.tab-content { display: none !important; }');
+                document.write('#' + hash + '.tab-content { display: block !important; }');
+                document.write('</style>');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>💰 金錢小達人</h1>
+            <div class="ai-dual-intro">
+                <!-- 小金探 -->
+                <div class="ai-char-block detective-block" onclick="openDetectiveModal()" title="點擊進入遊戲室">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/hint_detective.png" alt="小金探">
+                    </div>
+                    <div class="ai-char-name">
+                        小金探
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('detective')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('detective')">
+                        <p><span class="bubble-line">大家好！我是小金探，</span><br><span class="bubble-line">學習遇到困難了嗎？來找我幫忙，</span><br><span class="bubble-line">我會給你一些小提示，幫你找到解題的線索！</span></p>
+                    </div>
+                </div>
+                <!-- 金博士 -->
+                <div class="ai-char-block doctor-block" onclick="openDoctorModal()" title="點擊查看金錢故事冒險">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/money_doctor.png" alt="金博士">
+                    </div>
+                    <div class="ai-char-name">
+                        金博士
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('doctor')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('doctor')">
+                        <p><span class="bubble-line">很高興見到你，我是金博士，</span><br><span class="bubble-line">學習與金錢及生活有關的知識，</span><br><span class="bubble-line">將能讓你受用一生，開始今天的課程吧！</span></p>
+                    </div>
+                </div>
+                <!-- 金好聊 -->
+                <div class="ai-char-block chatdog-block" onclick="openChatDogPractice()" title="點擊進入購物對話練習">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/money_chat_dog.png" alt="金好聊">
+                    </div>
+                    <div class="ai-char-name">
+                        金好聊
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('chatdog')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('chatdog')">
+                        <p><span class="bubble-line">汪！我是金好聊，</span><br><span class="bubble-line">最喜歡聽你說話了！跟我一起去逛商店，</span><br><span class="bubble-line">練習開口說、輕鬆買東西吧！</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            (function () {
+                const SPEECH = {
+                    detective:       '大家好！我是小金探，學習遇到困難了嗎？來找我幫忙，我會給你一些小提示，幫你找到解題的線索！',
+                    doctor:          '很高興見到你，我是金博士，學習與金錢及生活有關的知識，將能讓你受用一生，開始今天的課程吧！',
+                    doctorModal:     '你想要接受不一樣的挑戰嗎？進入金錢冒險的故事中，看看你能不能全部過關！',
+                    detectiveModal:  '學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。快來遊戲室，挑戰趣味小遊戲，看看你能闖過幾關！',
+                    chatdog:         '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
+                };
+                let _voices = [];
+                if (window.speechSynthesis) {
+                    _voices = speechSynthesis.getVoices();
+                    speechSynthesis.addEventListener('voiceschanged', () => { _voices = speechSynthesis.getVoices(); });
+                }
+
+                // 有網路：微軟 Online → Yating → Google → 其他；無網路：直接用 Yating 系統語音
+                function _pickVoice(prefer) {
+                    const online = navigator.onLine;
+                    const msOn  = online ? _voices.filter(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) : [];
+                    const msSys = _voices.filter(v => /microsoft/i.test(v.name) && !/online/i.test(v.name) && v.lang.startsWith('zh'));
+                    const goog  = online ? _voices.filter(v => /google/i.test(v.name) && v.lang.startsWith('zh')) : [];
+                    if (prefer) {
+                        const hit = msOn.find(v => new RegExp(prefer, 'i').test(v.name));
+                        if (hit) return hit;
+                    }
+                    return msOn[0] ||
+                           msSys.find(v => /yating/i.test(v.name)) ||
+                           goog[0] ||
+                           msSys[0] ||
+                           _voices.find(v => v.lang === 'zh-TW');
+                }
+
+                // ── 預錄音檔播放（.wav → .mp3 → TTS 依序後備）──
+                // 檔名見 voicegen/lists/*.csv；放進 audio/chatbot/ 即優先播放。
+                const AUDIO_BASE = 'audio/chatbot/';
+                const FILE_MAP = {
+                    [SPEECH.detective]:      'index_detective_intro',
+                    [SPEECH.doctor]:         'index_doctor_intro',
+                    [SPEECH.doctorModal]:    'index_doctor_modal',
+                    [SPEECH.detectiveModal]: 'index_detective_modal',
+                    [SPEECH.chatdog]:        'index_chatdog_intro',
+                };
+                let _charAudio = null, _charToken = null;
+                function _stopCharAudio() {
+                    _charToken = null;
+                    if (_charAudio) { try { _charAudio.pause(); } catch (e) {} _charAudio = null; }
+                }
+                function _playCharAudio(file, onFail) {
+                    const exts = ['wav', 'mp3']; let i = 0; const token = {}; _charToken = token;
+                    const tryNext = () => {
+                        if (_charToken !== token) return;
+                        if (i >= exts.length) { onFail && onFail(); return; }
+                        const audio = new Audio(AUDIO_BASE + file + '.' + exts[i++]);
+                        _charAudio = audio;
+                        let advanced = false;
+                        const fail = () => { if (advanced) return; advanced = true; tryNext(); };
+                        audio.onerror = fail;
+                        audio.onended = () => { if (_charToken === token) _charAudio = null; };
+                        audio.play().catch(fail);
+                    };
+                    tryNext();
+                }
+
+                // 主入口：先播預錄音檔，找不到才用瀏覽器即時 TTS
+                function _speak(text, type) {
+                    _stopCharAudio();
+                    if (window.speechSynthesis) speechSynthesis.cancel();
+                    const file = FILE_MAP[text];
+                    if (file) { _playCharAudio(file, () => _speakTTS(text, type)); return; }
+                    _speakTTS(text, type);
+                }
+
+                function _speakTTS(text, type) {
+                    if (!window.speechSynthesis) return;
+                    speechSynthesis.cancel();
+                    const utt = new SpeechSynthesisUtterance(text);
+                    utt.lang = 'zh-TW';
+                    if (type === 'doctor') {
+                        utt.rate  = 0.88;
+                        utt.voice = _pickVoice('yunjian|云健');
+                    } else {
+                        utt.rate  = 0.92;
+                        utt.voice = _pickVoice(null);
+                    }
+                    speechSynthesis.speak(utt);
+                }
+
+                // 停止角色語音（含預錄音檔）；供彈窗關閉時呼叫
+                window.stopCharacterVoice = function () {
+                    _stopCharAudio();
+                    if (window.speechSynthesis) speechSynthesis.cancel();
+                };
+
+                window.speakCharacter = function (type) {
+                    _speak(SPEECH[type], type);
+                };
+
+                // 播放指定 key 的語音文字（對話框開啟時使用）
+                window.speakCharacterText = function (speechKey, voiceType) {
+                    _speak(SPEECH[speechKey], voiceType);
+                };
+            })();
+
+            // 金好聊：直接開啟購物對話練習（dialogue 模組）
+            window.openChatDogPractice = function () {
+                window.stopCharacterVoice?.();
+                window.location.href = 'dialogue/index.html';
+            };
+
+            window.openDoctorModal = function () {
+                document.getElementById('doctor-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+                // 開啟時自動播放金博士語音
+                if (window.speakCharacter) {
+                    setTimeout(() => speakCharacterText('doctorModal', 'doctor'), 300);
+                }
+            };
+
+            window.closeDoctorModal = function (event) {
+                if (event && event.target !== document.getElementById('doctor-modal-overlay')) return;
+                window.stopCharacterVoice?.();
+                document.getElementById('doctor-modal-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            window.openDetectiveModal = function () {
+                document.getElementById('detective-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+                if (window.speakCharacter) {
+                    setTimeout(() => speakCharacterText('detectiveModal', 'detective'), 300);
+                }
+            };
+
+            window.closeDetectiveModal = function (event) {
+                if (event && event.target !== document.getElementById('detective-modal-overlay')) return;
+                window.stopCharacterVoice?.();
+                document.getElementById('detective-modal-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+            </script>
+        </div>
+        
+        <!-- ── 金博士對話視窗 ────────────────────────────────── -->
+        <div id="doctor-modal-overlay" onclick="closeDoctorModal(event)">
+            <div id="doctor-modal">
+                <button class="modal-close-btn" onclick="closeDoctorModal(null)" title="關閉">✕</button>
+
+                <!-- 金博士說話區 -->
+                <div class="modal-doctor-row">
+                    <div class="modal-avatar">
+                        <img src="images/common/money_doctor.png" alt="金博士">
+                    </div>
+                    <div class="modal-speech-bubble">
+                        你想要接受不一樣的挑戰嗎？<br>
+                        進入金錢冒險的故事中，<br>
+                        看看你能不能全部過關！
+                    </div>
+                </div>
+
+                <!-- 冒險卡片 -->
+                <a href="adventure/index.html" class="modal-adventure-card">
+                    <span class="adv-icon">🗺️</span>
+                    <div class="adv-text">
+                        <div class="adv-title">一日金錢冒險</div>
+                        <div class="adv-desc">6 關卡故事模式 · 整合所有單元技能 · 完成後開啟獎勵</div>
+                    </div>
+                </a>
+
+                <button class="modal-cancel-btn" onclick="closeDoctorModal(null)">稍後再說</button>
+            </div>
+        </div>
+
+        <!-- ── 小金探對話視窗 ────────────────────────────────── -->
+        <div id="detective-modal-overlay" onclick="closeDetectiveModal(event)">
+            <div id="detective-modal">
+                <button class="modal-close-btn" onclick="closeDetectiveModal(null)" title="關閉">✕</button>
+                <div class="modal-detective-row">
+                    <div class="modal-avatar">
+                        <img src="images/common/hint_detective.png" alt="小金探">
+                    </div>
+                    <div class="modal-speech-bubble">
+                        學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。<br>
+                        快來遊戲室，挑戰趣味小遊戲，<br>
+                        看看你能闖過幾關！
+                    </div>
+                </div>
+                <a href="games/index.html" class="modal-games-card">
+                    <span style="font-size:2rem;">🎮</span>
+                    <div class="adv-text">
+                        <div class="adv-title" style="color:#92400e;">小金探的遊戲室</div>
+                        <div class="adv-desc" style="color:#78350f;">多款趣味小遊戲， 邊玩邊學</div>
+                    </div>
+                </a>
+                <button class="modal-cancel-btn" onclick="closeDetectiveModal(null)">稍後再說</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-target="part1">第一部分：基礎技能</button>
+            <button class="tab-btn" data-target="part2">第二部分：核心課程</button>
+            <button class="tab-btn" data-target="part3">第三部分：預算規劃</button>
+            <button class="tab-btn" data-target="part4">第四部分：進階應用</button>
+        </div>
+
+        <!-- 立即执行脚本：根据 hash 调整标签按钮状态 -->
+        <script>
+            (function() {
+                const hash = window.location.hash.substring(1);
+                if (hash && ['part1', 'part2', 'part3', 'part4'].includes(hash)) {
+                    document.querySelectorAll('.tab-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.target === hash) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+            })();
+        </script>
+
+        <div id="part1" class="tab-content active">
+            <div class="unit-grid">
+                <a href="html/f1_object_correspondence.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F1</div>
+                        <div class="title">數量與物品的對應</div>
+                    </div>
+                </a>
+                <a href="html/f2_rote_and_rational_counting.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F2</div>
+                        <div class="title">數量與點數</div>
+                    </div>
+                </a>
+                <a href="html/f3_number_recognition.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F3</div>
+                        <div class="title">認識數字與數量</div>
+                    </div>
+                </a>
+                <a href="html/f4_number_sorting.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F4</div>
+                        <div class="title">數字排序</div>
+                    </div>
+                </a>
+                <a href="html/f5_quantity_comparison.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F5</div>
+                        <div class="title">數量大小的比較</div>
+                    </div>
+                </a>
+                <a href="html/f6_number_composition.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-f6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F6</div>
+                        <div class="title">數的合成與分解</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div id="part2" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/c1_money_types.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C1</div>
+                        <div class="title">金錢的種類與面額</div>
+                    </div>
+                </a>
+                <a href="html/c2_money_counting.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C2</div>
+                        <div class="title">金錢的點數與加總</div>
+                    </div>
+                </a>
+                <a href="html/c3_money_exchange.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C3</div>
+                        <div class="title">金錢面額的兌換</div>
+                    </div>
+                </a>
+                <a href="html/c4_correct_amount.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C4</div>
+                        <div class="title">正確的金額</div>
+                    </div>
+                </a>
+                <a href="html/c5_sufficient_payment.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C5</div>
+                        <div class="title">足額付款</div>
+                    </div>
+                </a>
+                <a href="html/c6_making_change.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-c6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C6</div>
+                        <div class="title">找零與計算</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div id="part3" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/b1_daily_budget.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b1.png" alt="B1" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='💰'"></div>
+                    <div class="unit-text">
+                        <div class="code">B1</div>
+                        <div class="title">今天帶多少錢</div>
+                    </div>
+                </a>
+                <a href="html/b2_allowance_diary.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b2.png" alt="B2" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='📒'"></div>
+                    <div class="unit-text">
+                        <div class="code">B2</div>
+                        <div class="title">零用錢日記</div>
+                    </div>
+                </a>
+                <a href="html/b3_savings_plan.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b3.png" alt="B3" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🐷'"></div>
+                    <div class="unit-text">
+                        <div class="code">B3</div>
+                        <div class="title">存錢計畫</div>
+                    </div>
+                </a>
+                <a href="html/b4_sale_comparison.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b4.png" alt="B4" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🏷️'"></div>
+                    <div class="unit-text">
+                        <div class="code">B4</div>
+                        <div class="title">特賣比一比</div>
+                    </div>
+                </a>
+                <a href="html/b5_party_budget.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b5.png" alt="B5" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🎂'"></div>
+                    <div class="unit-text">
+                        <div class="code">B5</div>
+                        <div class="title">派對活動採購</div>
+                    </div>
+                </a>
+                <a href="html/b6_market_shopping.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-b6.png" alt="B6" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🛒'"></div>
+                    <div class="unit-text">
+                        <div class="code">B6</div>
+                        <div class="title">菜市場買菜</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div id="part4" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/a1_vending_machine.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A1</div>
+                        <div class="title">自動飲料販賣機</div>
+                    </div>
+                </a>
+                <a href="html/a2_barber_shop_kiosk.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A2</div>
+                        <div class="title">理髮店售票機</div>
+                    </div>
+                </a>
+                <a href="html/a3_mcdonalds_order.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A3</div>
+                        <div class="title">美式速食自助點餐</div>
+                    </div>
+                </a>
+                <a href="html/a4_simulated_shopping.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A4</div>
+                        <div class="title">模擬購物</div>
+                    </div>
+                </a>
+                <a href="html/a5_atm_simulator.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A5</div>
+                        <div class="title">ATM提款機</div>
+                    </div>
+                </a>
+                <a href="html/a6_train_ticket.html" class="unit-btn">
+                    <div class="unit-icon"><img src="images/index/icon-index-a6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A6</div>
+                        <div class="title">火車購票</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 立即执行脚本：根据 hash 调整内容面板状态 -->
+        <script>
+            (function() {
+                const hash = window.location.hash.substring(1);
+                if (hash && ['part1', 'part2', 'part3', 'part4'].includes(hash)) {
+                    document.querySelectorAll('.tab-content').forEach(panel => {
+                        panel.classList.remove('active');
+                        if (panel.id === hash) {
+                            panel.classList.add('active');
+                        }
+                    });
+                }
+            })();
+        </script>
+    </div>
+
+    <script>
+        // 切換標籤頁的函數
+        function switchTab(targetId) {
+            // 移除初始加載時的內聯樣式（防止 !important 規則干擾）
+            const initialStyles = document.getElementById('initial-tab-styles');
+            if (initialStyles) {
+                initialStyles.remove();
+            }
+
+            // 處理按鈕的 active 狀態
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.target === targetId) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 處理內容面板的顯示
+            document.querySelectorAll('.tab-content').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        }
+
+        // 檢查 URL hash 並顯示對應的標籤頁
+        function checkHash() {
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                switchTab(hash);
+            }
+        }
+
+        // 監聽 hash 變化
+        window.addEventListener('hashchange', checkHash);
+
+        // 點擊標籤按鈕時更新 hash
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabsContainer = document.querySelector('.tabs');
+            tabsContainer.addEventListener('click', (event) => {
+                const clickedButton = event.target.closest('.tab-btn');
+                if (!clickedButton) return;
+
+                const targetId = clickedButton.dataset.target;
+                window.location.hash = targetId;
+                switchTab(targetId);
+            });
+        });
+    </script>
+    
+    <script src="js/audio-unlocker.js"></script>
+    <script src="js/theme-system.js"></script>
+
+</body>
+</html>

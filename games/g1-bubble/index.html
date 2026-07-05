@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>數字泡泡</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="bubble.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+
+    <!-- 點擊模式：目標面板 -->
+    <div id="target-panel">
+      <div id="target-row">
+        <span class="tp-label">找</span>
+        <span id="target-display">--</span>
+        <span class="tp-arrow" style="display:none">→</span>
+        <span class="tp-label" style="display:none">目前</span>
+        <span id="sum-display" style="display:none">0</span>
+      </div>
+      <div id="target-timer-track">
+        <div id="target-timer-fill"></div>
+      </div>
+    </div>
+
+    <!-- 數字接龍模式：號碼列 + 計時條 -->
+    <div id="chain-bar" style="display:none"></div>
+    <div id="chain-timer-wrap" style="display:none">
+      <div id="chain-timer-fill"></div>
+    </div>
+
+    <!-- 操作提示 -->
+    <div id="hint-text"></div>
+
+    <!-- 泡泡動態插入此處 -->
+
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="bubble.js"></script>
+</body>
+</html>
