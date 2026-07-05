@@ -202,7 +202,7 @@
         /* ── 雙角色介紹區 ─────────────────────────── */
         .ai-dual-intro {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 32px;
             margin-top: 24px;
             width: 100%;
@@ -213,6 +213,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-width: 0;
         }
 
         .ai-char-avatar {
@@ -273,6 +274,8 @@
 
         .ai-char-bubble {
             background: var(--card-bg);
+            max-width: 100%;
+            box-sizing: border-box;
             padding: 12px 16px;
             border-radius: 12px;
             box-shadow: var(--card-shadow);
@@ -294,8 +297,10 @@
 
         .detective-block .ai-char-bubble { border-top: 3px solid #F59E0B; }
         .doctor-block   .ai-char-bubble { border-top: 3px solid #7C3AED; }
+        .chatdog-block  .ai-char-bubble { border-top: 3px solid #22C55E; }
 
-        @media (min-width: 521px) {
+        /* 三欄版面需 >920px 才夠寬容納不換行台詞 */
+        @media (min-width: 921px) {
             .bubble-line { white-space: nowrap; }
         }
 
@@ -334,6 +339,15 @@
         }
         
         /* 響應式設計 */
+        @media (max-width: 920px) {
+            /* 頁籤列在中等寬度先允許換行，避免水平溢出 */
+            .tabs {
+                flex-wrap: wrap;
+                border-radius: var(--radius);
+                justify-content: center;
+            }
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 2.5em; }
             .tabs {
