@@ -399,7 +399,7 @@
 
     // ── 預錄語音檔對照（原始台詞 → 檔名）────────────────────────────
     // 與 voicegen/extract_voice.js 的 filename 規則一致，直接由內容庫反推。
-    // speak() 先試 audio/chatbot/{檔名}.wav→.mp3，找不到才用瀏覽器即時 TTS。
+    // speak() 先試 audio/chatbot/{檔名}.mp3→.wav，找不到才用瀏覽器即時 TTS。
     const VOICE_FILES = (function buildVoiceFileMap() {
         const map = new Map();
         const put = (text, file) => { if (text && !map.has(text)) map.set(text, file); };
@@ -427,7 +427,7 @@
         return map;
     })();
 
-    // ── 預錄音檔播放（.wav → .mp3 → TTS 依序後備）────────────────
+    // ── 預錄音檔播放（.mp3 → .wav → TTS 依序後備）────────────────
     let _chatbotAudio = null;
     let _chatbotAudioToken = null;
 
@@ -441,7 +441,7 @@
 
     // 依序嘗試副檔名；全部失敗才呼叫 onFail（即時 TTS）
     function playChatbotAudio(file, onFail) {
-        const exts = ['wav', 'mp3'];
+        const exts = ['mp3', 'wav'];
         let i = 0;
         const token = {};
         _chatbotAudioToken = token;
