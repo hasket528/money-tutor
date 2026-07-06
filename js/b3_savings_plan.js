@@ -2266,6 +2266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     this._completeDragSession();
                 });
             } else if (placedTotal > targetAmount) {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 c.drag.errorCount++;
                 this.audio.play('error');
                 Game.TimerManager.setTimeout(() => {
@@ -2278,6 +2279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Game.TimerManager.setTimeout(() => { this._clearNormalDropZone(); }, 240, 'ui');
                 }
             } else {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 c.drag.errorCount++;
                 this.audio.play('error');
                 Game.TimerManager.setTimeout(() => {
@@ -2596,6 +2598,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const elapsed = c.startTime ? (Date.now() - c.startTime) : 0;
             const mins = Math.floor(elapsed / 60000);
             const secs = Math.floor((elapsed % 60000) / 1000);
+
+            // 學習紀錄（月曆存錢模式：以完成存款天數計）
+            window.LearningTracker?.save({ unit: 'b3', unitName: 'B3 存錢計畫', series: 'B',
+                score: c.clickedDays || 0, total: c.clickedDays || 0,
+                difficulty: this.state.settings?.difficulty,
+                durationSec: Math.floor(elapsed / 1000) });
 
             const app = document.getElementById('app');
             document.body.style.overflow = 'auto';
