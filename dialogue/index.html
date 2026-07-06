@@ -413,6 +413,20 @@
         <p id="import-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
       </div>
 
+      <!-- 對話包分享（自訂情境＋老師錄音） -->
+      <div class="settings-block">
+        <h3 class="settings-block-title">對話包分享</h3>
+        <p class="editor-desc" style="margin-bottom:10px">將「自訂情境」連同老師錄音打包成單一檔案，可分享給其他老師，或搬到別台電腦匯入使用。</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="btn-export-pack" style="font-size:0.85rem;padding:8px 14px">📦 匯出對話包</button>
+          <label class="btn-secondary" style="font-size:0.85rem;padding:8px 14px;cursor:pointer">
+            📂 匯入對話包
+            <input type="file" id="input-import-pack" accept=".json" hidden>
+          </label>
+        </div>
+        <p id="pack-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
+      </div>
+
       <!-- AI 評分引擎 -->
       <div class="settings-block">
         <h3 class="settings-block-title">AI 智能評分（進階・選用）</h3>
@@ -500,6 +514,17 @@
       <button class="btn-header-action" id="btn-save-scenario">儲存</button>
     </header>
     <div class="editor-body">
+
+      <details class="editor-quickstart">
+        <summary>📖 三分鐘上手：怎麼做一個自己的練習？</summary>
+        <ol>
+          <li><strong>取名字</strong>：填情境名稱（例：合作社買午餐）、挑個圖示與顏色。</li>
+          <li><strong>加步驟</strong>：每一步填「店員說的話」＋「學生要說的標準答案」。錯誤選項留空會自動補。</li>
+          <li><strong>加聲音（可選）</strong>：每步驟可按 🎙️ 錄下老師自己的聲音；不錄也沒關係，電腦會自動朗讀。</li>
+          <li><strong>儲存</strong>：回到首頁就能看到新卡片，學生立刻可以練習（說話／選項／打字三種模式都通用）。</li>
+        </ol>
+        <p>做好的情境可到「設定 → 對話包分享」匯出成單一檔案，分享給其他老師。</p>
+      </details>
 
       <div class="form-section">
         <div class="form-group">
@@ -597,6 +622,12 @@
           <input class="form-input" id="edit-opt3" type="text" placeholder="錯誤選項 3" autocomplete="off">
         </div>
         <p class="form-hint">點選模式使用；正確選項（標準答案）會自動加入</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">回饋語（可選）</label>
+        <input class="form-input" id="edit-fb-perfect" type="text" placeholder="答對時的稱讚，留空用預設：很好！說得很棒！" autocomplete="off">
+        <input class="form-input" id="edit-fb-failed" type="text" placeholder="答錯時的提示，留空用預設：可以這樣說：「標準答案」" autocomplete="off" style="margin-top:8px">
       </div>
 
       <div class="form-group">

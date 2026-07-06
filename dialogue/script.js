@@ -749,6 +749,76 @@ function saveCustom(arr) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
 }
 
+// ─── 對話包匯出/匯入（自訂情境＋老師錄音打包分享）──────────
+// 格式：{ version:1, type:'dialogue-pack', exported, scenarios:[…], audio:{ key: dataURL } }
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+function dataURLToBlob(dataURL) {
+  const [head, body] = dataURL.split(',');
+  const mime  = head.match(/data:([^;]+)/)?.[1] || 'audio/webm';
+  const bytes = atob(body);
+  const arr   = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function exportDialoguePack() {
+  const customs = loadCustom();
+  if (customs.length === 0) return null;
+  const audio = {};
+  for (const sc of customs) {
+    const keys = await dbAudioKeys(`${sc.id}::`).catch(() => []);
+    for (const key of keys) {
+      const blob = await dbAudioGet(key).catch(() => null);
+      if (blob) audio[key] = await blobToDataURL(blob);
+    }
+  }
+  return JSON.stringify({
+    version: 1, type: 'dialogue-pack', exported: Date.now(),
+    scenarios: customs, audio,
+  });
+}
+
+// 回傳 { scenarios, audios }（匯入數量）。id 撞號自動重編，錄音 key 跟著改。
+async function importDialoguePack(jsonText) {
+  const data = JSON.parse(jsonText);
+  if (data.type !== 'dialogue-pack' || !Array.isArray(data.scenarios)) {
+    throw new Error('不是對話包檔案');
+  }
+  const existing = loadCustom();
+  const usedIds  = new Set([...existing.map(s => s.id), ...SCENARIOS_DATA.scenarios.map(s => s.id)]);
+  const audioMap = data.audio || {};
+  let audios = 0;
+
+  for (let i = 0; i < data.scenarios.length; i++) {
+    const sc = data.scenarios[i];
+    if (!sc?.id || !Array.isArray(sc.steps)) continue;
+    let newId = sc.id;
+    if (usedIds.has(newId)) newId = `custom_${Date.now()}_${i}`;
+    usedIds.add(newId);
+
+    for (const [key, dataURL] of Object.entries(audioMap)) {
+      if (!key.startsWith(`${sc.id}::`)) continue;
+      const newKey = newId + key.slice(sc.id.length);
+      try {
+        await dbAudioSave(newKey, dataURLToBlob(dataURL));
+        audios++;
+      } catch {}
+    }
+    existing.push({ ...sc, id: newId, available: true });
+  }
+  saveCustom(existing);
+  return { scenarios: data.scenarios.length, audios };
+}
+
 // ─── 內建情境關鍵字覆寫 ───────────────────────────────
 // 教師可在設定頁修改內建情境的判定關鍵字，存在本機（不動 scenarios.js、不影響任何語音）。
 // 僅在「說話／打字」模式的評分用；選擇/看圖造句走精確比對，不受影響。
@@ -2719,6 +2789,13 @@ function openStepEditor(idx) {
   document.getElementById('edit-opt2').value = opts[2] ?? '';
   document.getElementById('edit-opt3').value = opts[3] ?? '';
 
+  // 回饋語：只回填「非預設」的自訂值，預設值留白（placeholder 說明預設內容）
+  const ans0 = step?.accepted_phrases?.[0] ?? '';
+  const fbP  = step?.feedback?.perfect ?? '';
+  const fbF  = step?.feedback?.failed  ?? '';
+  document.getElementById('edit-fb-perfect').value = (fbP && fbP !== '很好！說得很棒！') ? fbP : '';
+  document.getElementById('edit-fb-failed').value  = (fbF && fbF !== `可以這樣說：「${ans0}」`) ? fbF : '';
+
   // 進階：看圖造句句框（item-slot）回填
   const fr = step?.frame;
   let frTpl = '', frChoices = '';
@@ -2770,9 +2847,9 @@ function saveStep() {
     llm_context_hint:  '',
     options:           [answer, ...wrongOpts.slice(0, 3)],
     feedback: {
-      perfect: '很好！說得很棒！',
+      perfect: document.getElementById('edit-fb-perfect').value.trim() || '很好！說得很棒！',
       partial: `說出了重點！試試說完整：「${answer}」`,
-      failed:  `可以這樣說：「${answer}」`,
+      failed:  document.getElementById('edit-fb-failed').value.trim() || `可以這樣說：「${answer}」`,
     },
   };
 
@@ -2935,6 +3012,41 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusEl.textContent = `✅ 已匯入 ${count} 筆紀錄`;
     } catch {
       statusEl.textContent = '❌ 匯入失敗，請確認檔案格式';
+    }
+    e.target.value = '';
+  });
+
+  // 對話包匯出/匯入
+  document.getElementById('btn-export-pack').addEventListener('click', async () => {
+    const statusEl = document.getElementById('pack-status');
+    statusEl.textContent = '⏳ 打包中…';
+    try {
+      const json = await exportDialoguePack();
+      if (!json) { statusEl.textContent = '沒有自訂情境可以匯出，先到首頁「➕ 自訂情境」建立一個吧！'; return; }
+      const blob = new Blob([json], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = `對話包_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      statusEl.textContent = '✅ 已匯出（含老師錄音）';
+    } catch {
+      statusEl.textContent = '❌ 匯出失敗，請再試一次';
+    }
+  });
+
+  document.getElementById('input-import-pack').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('pack-status');
+    statusEl.textContent = '⏳ 匯入中…';
+    try {
+      const { scenarios, audios } = await importDialoguePack(await file.text());
+      statusEl.textContent = `✅ 已匯入 ${scenarios} 個情境、${audios} 段錄音`;
+      renderSettings();
+    } catch (err) {
+      statusEl.textContent = `❌ 匯入失敗：${err.message || '請確認是對話包檔案'}`;
     }
     e.target.value = '';
   });

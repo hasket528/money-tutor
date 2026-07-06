@@ -1699,6 +1699,24 @@ body {
   line-height: 1.5;
 }
 
+/* 編輯器三分鐘上手說明（摺疊） */
+.editor-quickstart {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  color: var(--gray-700, #374151);
+}
+.editor-quickstart summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #92400E;
+}
+.editor-quickstart ol { margin: 8px 0 4px; padding-left: 20px; line-height: 1.7; }
+.editor-quickstart p  { margin: 6px 0 2px; color: var(--gray-600, #475569); }
+
 /* 語音工作室（步驟編輯器：TTS 試聽／老師錄音） */
 .voice-studio-row {
   display: flex;
