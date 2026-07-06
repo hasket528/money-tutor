@@ -2173,6 +2173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔄 重置遊戲狀態
             this.resetGameState();
             this.state.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             const gameConfig = NumberSortingConfig.getGameConfig(this.state.settings);
             

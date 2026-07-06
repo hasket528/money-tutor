@@ -1582,6 +1582,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔄 重置遊戲狀態
             this.resetGameState();
             this.state.startTime = Date.now(); // 記錄開始時間
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.setupGameUI();
             if (this.state.settings.difficulty === 'easy' && this.state.settings.assistClick) {
                 AssistClick.activate();

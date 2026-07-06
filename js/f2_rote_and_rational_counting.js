@@ -2346,6 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 🔧 [重構] 使用統一的狀態重置函數
                 this.resetGameState();
                 this.state.startTime = Date.now(); // 記錄開始時間
+                window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
                 Game.Debug.logConfig(this.state.settings.difficulty, this.ModeConfig[this.state.settings.difficulty]);
 

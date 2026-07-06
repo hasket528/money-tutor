@@ -1074,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔧 [重構] 使用統一重置函數
             this.resetGameState();
             this.state.startTime = Date.now();  // 記錄測驗開始時間
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.generateQuestions();
             this.setupQuizUI();
             if (this.state.settings.difficulty === 'easy' && this.state.settings.assistClick) {
@@ -1748,6 +1749,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 顯示回饋訊息
             this.elements.feedbackArea.style.display = 'block';
 
+            // 學習紀錄：逐題明細（題目＝點數的目標總額）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentQuestionIndex}題：點數 ${this.state.correctTotal} 元`, isCorrect);
+
             if (isCorrect) {
                 this.state.score++;
                 this.showCenterFeedback('🎉', '#4CAF50', '答對了！');
@@ -1825,6 +1830,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.querySelectorAll('.option-btn')
                 .forEach(btn => btn.disabled = true);
+
+            // 學習紀錄：逐題明細（選項模式）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentQuestionIndex}題：點數 ${this.state.correctTotal} 元`, isCorrect);
 
             if (isCorrect) {
                 this.state.score++;

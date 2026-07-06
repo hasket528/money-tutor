@@ -3446,6 +3446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 1;
             this.state.quiz.totalQuestions = this.state.settings.questionCount;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.state.quiz.questions = [];
             this.state.quiz.score = 0;
             this.state.quiz.attempts = 0;
@@ -5366,6 +5367,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const { itemPrice, isAffordable, totalMoney, item } = question;
             const itemName = item?.name || '物品';
             const isCorrect = userSaysEnough === isAffordable;
+
+            // 學習紀錄：逐題明細（題目＝夠不夠判斷情境）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.quiz.currentQuestion}題：${totalMoney}元買${itemPrice}元${itemName} 夠不夠`, isCorrect);
 
             Game.Debug.log('judge', '🔍 判斷邏輯分析:', {
                 itemPrice,

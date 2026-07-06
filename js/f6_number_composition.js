@@ -1365,6 +1365,7 @@ const Game = {
         // 🔄 重置遊戲狀態
         this.resetGameState();
         this.state.startTime = Date.now();
+        window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
         this.generateQuestions();
         this.renderQuestion();
         if (this.state.settings.difficulty === 'easy' && this.state.settings.assistClick) {

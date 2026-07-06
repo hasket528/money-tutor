@@ -4523,6 +4523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.score = 0;
             this.state.currentQuestionIndex = 0;
             this.state.startTime = Date.now();  // 記錄測驗開始時間
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.generateQuestions();
             this.setupQuizUI();
             if (this.state.settings.difficulty === 'easy' && this.state.settings.assistClick) {

@@ -1753,6 +1753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 1;
             this.state.quiz.totalQuestions = this.state.settings.questionCount;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             try {
                 // 生成所有題目

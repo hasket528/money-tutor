@@ -3403,6 +3403,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 1;
             this.state.quiz.totalQuestions = this.state.settings.questionCount;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             Game.Debug.log('state', '🎯 測驗狀態初始化:', this.state.quiz);
 
@@ -6369,6 +6370,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 標記為已回答
             this.state.gameState.questionAnswered = true;
+
+            // 學習紀錄：逐題明細（題目＝找零金額）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.quiz.currentQuestion}題：找零 ${correctAmount} 元`, isCorrect);
 
             // 取得選擇的選項元素
             const selectedOption = document.querySelector(`.change-option[data-option-index="${optionIndex}"]`);

@@ -3129,6 +3129,7 @@ class QuantityComparisonGame {
         this.resetGameState();
         this.totalLevels = gameConfig.questionCount.value;
         this.state.startTime = Date.now(); // 記錄開始時間
+        window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
         
         // 設置計時器
         if (gameConfig.timeLimit.value) {
