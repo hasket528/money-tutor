@@ -5,6 +5,7 @@
 //   custom_audio { key, blob, mime, ts }
 //     key 慣例：`${scenarioId}::${stepId}::say`（店員台詞錄音；未來回饋語用 ::fb）
 
+// ⚠️ DB_VERSION 與 stores 需和 js/learning-tracker.js、index.html countRecords 保持一致
 const DB_NAME    = 'shopping-practice';
 const DB_VERSION = 2;
 const STORE      = 'records';

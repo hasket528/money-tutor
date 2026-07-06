@@ -420,6 +420,119 @@
             box-shadow: 0 6px 20px rgba(34,197,94,0.2);
         }
 
+        /* ── 金隊長：成長基地入口橫幅 ── */
+        .captain-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            max-width: 900px;
+            margin: 22px auto 0;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #fffdf5, #fff7e0);
+            border: 2px solid #f5d576;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+            transition: var(--transition);
+            box-sizing: border-box;
+            text-align: left;
+        }
+        .captain-banner:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
+            border-color: #f0b429;
+        }
+        .captain-banner .captain-avatar { width: 76px; height: 76px; flex-shrink: 0; }
+        .captain-banner .captain-avatar img {
+            width: 100%; height: 100%; object-fit: contain;
+            animation: floatBob 3.0s ease-in-out infinite;
+        }
+        .captain-banner .captain-text { flex: 1; min-width: 0; }
+        .captain-banner .captain-name {
+            font-weight: 800; font-size: 1.05em; color: #92400e;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .captain-banner .captain-line { font-size: 0.85em; color: #78350f; margin-top: 3px; line-height: 1.5; }
+        .captain-banner .captain-cta {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff; font-weight: 700; font-size: 0.9em;
+            padding: 9px 16px; border-radius: 24px; white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);
+        }
+        @media (max-width: 600px) {
+            .captain-banner { flex-wrap: wrap; justify-content: center; text-align: center; }
+            .captain-banner .captain-text { flex: 1 1 100%; }
+            .captain-banner .captain-name { justify-content: center; }
+        }
+
+        /* ── 金隊長成長基地彈窗 ── */
+        #captain-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 9000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        #captain-modal-overlay.open { display: flex; }
+        #captain-modal {
+            background: var(--card-bg); border-radius: 18px;
+            max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto;
+            padding: 22px 24px; position: relative;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+        }
+        #captain-modal .modal-close-btn {
+            position: absolute; top: 10px; right: 12px;
+            background: none; border: none; font-size: 1.2em; cursor: pointer; color: #64748b;
+        }
+        .captain-modal-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+        .captain-modal-head img { width: 84px; height: 84px; object-fit: contain; flex-shrink: 0; }
+        .captain-modal-head .bubble {
+            background: #fff7e0; border: 1px solid #f5d576; border-radius: 12px;
+            padding: 10px 14px; font-size: 0.9em; color: #78350f; line-height: 1.6;
+        }
+        .captain-current {
+            text-align: center; font-size: 0.95em; margin: 10px 0;
+            padding: 8px; background: #f0f7ff; border-radius: 10px; color: var(--text-primary);
+        }
+        .captain-students { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0; }
+        .captain-stu-chip {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 22px;
+            border: 2px solid #dbe7f5; background: #fff;
+            cursor: pointer; font-size: 0.9em; font-family: inherit;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .captain-stu-chip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+        .captain-stu-chip:hover { border-color: #f0b429; }
+        .captain-stu-chip.selected {
+            border-color: #f59e0b; background: #fff7e0; font-weight: 700; color: #92400e;
+        }
+        .captain-newrow { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
+        .captain-newrow input {
+            padding: 8px 12px; border: 1.5px solid #dbe7f5; border-radius: 10px;
+            font-size: 0.9em; font-family: inherit; width: 180px;
+        }
+        .captain-newrow button {
+            padding: 8px 16px; border: none; border-radius: 10px;
+            background: var(--accent-color); color: #fff; font-weight: 700;
+            cursor: pointer; font-family: inherit; font-size: 0.9em;
+        }
+        .captain-stats {
+            display: flex; gap: 10px; justify-content: center; margin: 12px 0; flex-wrap: wrap;
+        }
+        .captain-stats .stat {
+            background: #f8fbff; border: 1px solid #dbe7f5; border-radius: 12px;
+            padding: 8px 18px; text-align: center; font-size: 0.85em; color: var(--text-primary);
+        }
+        .captain-stats .stat b { display: block; font-size: 1.3em; color: var(--primary-color); }
+        .captain-links { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+        .captain-links a {
+            text-decoration: none; padding: 9px 18px; border-radius: 12px;
+            font-size: 0.9em; font-weight: 700;
+            background: #eaf3ff; color: #1d4ed8; border: 1px solid #dbe7f5;
+        }
+        .captain-links a:hover { background: #dbeafe; }
+
         /* 小金探對話視窗 */
         #detective-modal-overlay {
             display: none;
@@ -711,6 +824,21 @@
                 </div>
             </div>
 
+            <!-- 金隊長：成長基地入口 -->
+            <div class="captain-banner" onclick="openCaptainBase()" title="點擊進入成長基地">
+                <div class="captain-avatar">
+                    <img src="images/common/captain_gold.png" alt="金隊長">
+                </div>
+                <div class="captain-text">
+                    <div class="captain-name">
+                        🤖 金隊長・成長基地
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('captain')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="captain-line">「你的努力，我已經記錄下來了！」選好學生資料，所有課程表現都會自動記錄成長。</div>
+                </div>
+                <div class="captain-cta" id="captain-current-chip">👤 選擇學生</div>
+            </div>
+
             <script>
             (function () {
                 const SPEECH = {
@@ -719,6 +847,7 @@
                     doctorModal:     '你想要接受不一樣的挑戰嗎？進入金錢冒險的故事中，看看你能不能全部過關！',
                     detectiveModal:  '學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。快來遊戲室，挑戰趣味小遊戲，看看你能闖過幾關！',
                     chatdog:         '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
+                    captain:         '大家好，我是金隊長！你的努力，我都會記錄下來。選好你的名字，跟我一起完成今天的任務，每天比昨天更進步！',
                 };
                 let _voices = [];
                 if (window.speechSynthesis) {
@@ -752,6 +881,7 @@
                     [SPEECH.doctorModal]:    'index_doctor_modal',
                     [SPEECH.detectiveModal]: 'index_detective_modal',
                     [SPEECH.chatdog]:        'index_chatdog_intro',
+                    [SPEECH.captain]:        'index_captain_intro',
                 };
                 let _charAudio = null, _charToken = null;
                 function _stopCharAudio() {
@@ -907,6 +1037,162 @@
                 <button class="modal-cancel-btn" onclick="closeDetectiveModal(null)">稍後再說</button>
             </div>
         </div>
+
+        <!-- ── 金隊長成長基地 ────────────────────────────────── -->
+        <div id="captain-modal-overlay" onclick="closeCaptainBase(event)">
+            <div id="captain-modal">
+                <button class="modal-close-btn" onclick="closeCaptainBase(null)" title="關閉">✕</button>
+                <div class="captain-modal-head">
+                    <img src="images/common/captain_gold.png" alt="金隊長">
+                    <div class="bubble">選擇或建立你的學生資料——之後所有課程、購物練習與獎勵的表現，我都會自動記錄下來！</div>
+                </div>
+                <div class="captain-current" id="captain-current-banner">目前學生：<b>訪客</b></div>
+                <div class="captain-students" id="captain-student-list"></div>
+                <div class="captain-newrow">
+                    <input id="captain-new-name" type="text" maxlength="12" placeholder="輸入新學生姓名" autocomplete="off">
+                    <button onclick="captainCreateStudent()">➕ 建立</button>
+                </div>
+                <div class="captain-stats" id="captain-stats"></div>
+                <div class="captain-links">
+                    <a href="reward/index.html" target="RewardSystem">🎁 獎勵系統</a>
+                    <a href="dialogue/teacher.html">📊 學習歷程</a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // ── 金隊長成長基地：學生資料（與 reward / dialogue 共用同一份名冊與目前學生）──
+        (function () {
+            const ROSTER_KEY  = 'rewardSystemStudents';
+            const CURRENT_KEY = 'sp_currentStudent';
+
+            function loadRoster() {
+                try { return JSON.parse(localStorage.getItem(ROSTER_KEY) || '[]'); }
+                catch { return []; }
+            }
+            function getCurrent() {
+                try { return JSON.parse(localStorage.getItem(CURRENT_KEY) || 'null'); }
+                catch { return null; }
+            }
+            function setCurrent(stu) {
+                if (stu) localStorage.setItem(CURRENT_KEY, JSON.stringify({ id: stu.id, name: stu.name }));
+                else localStorage.removeItem(CURRENT_KEY);
+                renderCaptainBase();
+                updateCaptainChip();
+            }
+
+            function updateCaptainChip() {
+                const cur = getCurrent();
+                const chip = document.getElementById('captain-current-chip');
+                if (chip) chip.textContent = cur ? `👤 ${cur.name}` : '👤 選擇學生';
+            }
+
+            // 統計：練習次數（與 dialogue/單元共用的 IndexedDB records）＋ 獎勵金幣（reward 分數）
+            // 版本須與 dialogue/db.js、js/learning-tracker.js 一致（目前 2）並建立相同 stores，
+            // 否則全新瀏覽器上先開此處會建立無資料表的空 DB，導致單元記錄靜默失敗。
+            function countRecords(studentId) {
+                return new Promise((resolve) => {
+                    try {
+                        const req = indexedDB.open('shopping-practice', 2);
+                        req.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('records')) {
+                                const store = db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
+                                store.createIndex('ts',         'ts',         { unique: false });
+                                store.createIndex('scenarioId', 'scenarioId', { unique: false });
+                            }
+                            if (!db.objectStoreNames.contains('custom_audio')) {
+                                db.createObjectStore('custom_audio', { keyPath: 'key' });
+                            }
+                        };
+                        req.onsuccess = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('records')) { db.close(); resolve(0); return; }
+                            const q = db.transaction('records', 'readonly').objectStore('records').getAll();
+                            q.onsuccess = () => { db.close(); resolve((q.result || []).filter(r =>
+                                studentId != null ? String(r.studentId) === String(studentId) : true).length); };
+                            q.onerror = () => { db.close(); resolve(0); };
+                        };
+                        req.onerror = () => resolve(0);
+                        req.onblocked = () => resolve(0);
+                    } catch { resolve(0); }
+                });
+            }
+
+            window.renderCaptainBase = async function () {
+                const roster = loadRoster();
+                const cur    = getCurrent();
+
+                document.getElementById('captain-current-banner').innerHTML =
+                    cur ? `目前學生：<b>${cur.name}</b>（之後的練習都會記在這個名字下）`
+                        : '目前學生：<b>訪客</b>（尚未選擇，紀錄不會歸戶）';
+
+                const list = document.getElementById('captain-student-list');
+                list.innerHTML = '';
+                roster.forEach(stu => {
+                    const chip = document.createElement('button');
+                    chip.className = 'captain-stu-chip' + (cur && String(cur.id) === String(stu.id) ? ' selected' : '');
+                    chip.innerHTML = (stu.photo ? `<img src="${stu.photo}" alt="">` : '👤') +
+                                     `<span>${stu.name || '未命名'}</span>`;
+                    chip.addEventListener('click', () => setCurrent(stu));
+                    list.appendChild(chip);
+                });
+                const guest = document.createElement('button');
+                guest.className = 'captain-stu-chip' + (!cur ? ' selected' : '');
+                guest.innerHTML = '👋 <span>訪客模式</span>';
+                guest.addEventListener('click', () => setCurrent(null));
+                list.appendChild(guest);
+
+                const statsEl = document.getElementById('captain-stats');
+                if (cur) {
+                    const stu = roster.find(s => String(s.id) === String(cur.id));
+                    const n = await countRecords(cur.id);
+                    statsEl.innerHTML = `
+                        <div class="stat"><b>${n}</b>📚 練習次數</div>
+                        <div class="stat"><b>${stu?.score ?? 0}</b>🪙 獎勵分數</div>`;
+                } else {
+                    statsEl.innerHTML = '';
+                }
+            };
+
+            window.captainCreateStudent = function () {
+                const input = document.getElementById('captain-new-name');
+                const name  = input.value.trim();
+                if (!name) { input.focus(); return; }
+                const roster = loadRoster();
+                if (roster.length >= 15) { alert('學生名冊最多 15 位，請先到獎勵系統整理名冊。'); return; }
+                if (roster.some(s => s.name === name)) { alert('已有同名學生，請直接點選，或改用不同名字。'); return; }
+                const stu = { id: Date.now() + Math.random(), name, photo: null, score: 0 };
+                roster.push(stu);
+                localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+                // 同步 reward 的顯示清單（若存在）
+                try {
+                    const disp = JSON.parse(localStorage.getItem('rewardSystemDisplayed') || 'null');
+                    if (Array.isArray(disp)) {
+                        disp.push(String(stu.id));
+                        localStorage.setItem('rewardSystemDisplayed', JSON.stringify(disp));
+                    }
+                } catch {}
+                input.value = '';
+                setCurrent(stu);
+            };
+
+            window.openCaptainBase = function () {
+                renderCaptainBase();
+                document.getElementById('captain-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.closeCaptainBase = function (event) {
+                if (event && event.target !== document.getElementById('captain-modal-overlay')) return;
+                window.stopCharacterVoice?.();
+                document.getElementById('captain-modal-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            document.addEventListener('DOMContentLoaded', updateCaptainChip);
+        })();
+        </script>
 
         <div class="tabs">
             <button class="tab-btn active" data-target="part1">第一部分：基礎技能</button>

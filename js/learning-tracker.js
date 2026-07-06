@@ -12,16 +12,18 @@ const LearningTracker = (() => {
   async function _open() {
     if (_db) return _db;
     return new Promise((resolve, reject) => {
-      // 不指定版本：跟隨現有 DB 版本（dialogue/db.js 負責升級 schema），
-      // 指定舊版本號會在 DB 已升級後拋 VersionError。
-      const req = indexedDB.open(DB_NAME);
+      // 版本須與 dialogue/db.js 的 DB_VERSION 一致（目前 2），
+      // 且 onupgradeneeded 建立相同的 stores——確保「哪個頁面先開」都能得到完整 schema。
+      const req = indexedDB.open(DB_NAME, 2);
       req.onupgradeneeded = (e) => {
-        // 只在 DB 尚不存在時建立基本 store
         const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE)) {
           const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
           store.createIndex('ts',         'ts',         { unique: false });
           store.createIndex('scenarioId', 'scenarioId', { unique: false });
+        }
+        if (!db.objectStoreNames.contains('custom_audio')) {
+          db.createObjectStore('custom_audio', { keyPath: 'key' });
         }
       };
       req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
