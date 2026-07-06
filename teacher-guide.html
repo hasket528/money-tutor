@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師指南｜金錢小達人</title>
+    <style>
+        :root {
+            --primary: #007bff; --text: #334e68; --bg: #f0f7ff;
+            --card: #ffffff; --line: #dbe7f5; --accent: #28a745; --warn: #92400e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            line-height: 1.75;
+        }
+        .wrap { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
+        header.guide-head { text-align: center; margin-bottom: 28px; }
+        header.guide-head h1 { color: var(--primary); font-size: 2.1em; margin: 0 0 6px; }
+        header.guide-head p  { margin: 0; opacity: 0.85; }
+        .top-nav { text-align: center; margin: 14px 0 4px; font-size: 0.92em; }
+        .top-nav a { color: var(--primary); text-decoration: none; margin: 0 10px; }
+        section { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+                  padding: 22px 26px; margin-bottom: 22px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); }
+        h2 { color: var(--primary); font-size: 1.35em; margin: 0 0 12px; border-left: 5px solid var(--primary);
+             padding-left: 10px; }
+        h3 { font-size: 1.05em; margin: 18px 0 6px; color: #1d4ed8; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+        th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+        th { background: #eaf3ff; white-space: nowrap; }
+        tr:nth-child(even) td { background: #f8fbff; }
+        .tag { display: inline-block; background: #eaf3ff; color: #1d4ed8; border-radius: 12px;
+               padding: 1px 10px; font-size: 0.85em; margin-right: 4px; white-space: nowrap; }
+        .note { font-size: 0.85em; color: var(--warn); background: #fffbeb; border: 1px solid #fde68a;
+                border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+        .card-mini { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fbfdff; }
+        .card-mini b { color: #1d4ed8; }
+        ol.flow { padding-left: 22px; } ol.flow li { margin-bottom: 6px; }
+        .print-btn { position: fixed; right: 18px; bottom: 18px; background: var(--primary); color: #fff;
+                     border: none; border-radius: 30px; padding: 12px 20px; font-size: 0.95em; cursor: pointer;
+                     box-shadow: 0 4px 14px rgba(0,123,255,0.4); }
+        .table-scroll { overflow-x: auto; }
+        @media print {
+            body { background: #fff; }
+            section { box-shadow: none; border-color: #bbb; page-break-inside: avoid; }
+            .print-btn, .top-nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <header class="guide-head">
+        <h1>💰 金錢小達人・教師指南</h1>
+        <p>特殊教育金錢教學互動教材｜課綱對應・IEP 目標範例・使用建議</p>
+        <nav class="top-nav">
+            <a href="index.html">← 回教材主頁</a>
+            <a href="#units">單元對照表</a>
+            <a href="#dialogue">購物對話練習</a>
+            <a href="#studio">教師自編工具</a>
+            <a href="#privacy">資料與隱私</a>
+        </nav>
+    </header>
+
+    <section>
+        <h2>一、教材定位與適用對象</h2>
+        <p><strong>金錢小達人</strong>是一套針對<strong>認知功能輕度至中度障礙學生</strong>設計的金錢教育互動教材，涵蓋「數學基礎 → 貨幣認知 → 生活應用 → 預算規劃 → 溝通泛化」完整學習路徑。適用於國小至國中特教班、資源班之個別化教學與小組教學，亦可供家長在家延伸練習。</p>
+        <div class="grid2">
+            <div class="card-mini"><b>設計原則</b><br>大按鈕與高對比介面、全程語音支持（台灣中文）、立即回饋、無錯學習（errorless learning）、系統性提示褪除、可調難度與題數。</div>
+            <div class="card-mini"><b>環境需求</b><br>電腦或平板＋Edge / Chrome 瀏覽器即可，無需安裝軟體。語音以 Microsoft 雅婷（線上）效果最佳；購物對話練習支援離線使用（PWA）。</div>
+        </div>
+        <h3>系統組成</h3>
+        <p>
+            <span class="tag">📚 24 個學習單元（F/C/A/B 四系列）</span>
+            <span class="tag">🐕 購物對話練習（金好聊）</span>
+            <span class="tag">🎁 全站共用獎勵系統</span>
+            <span class="tag">📝 作業單產生器（可印/PDF）</span>
+            <span class="tag">🕵️ 遊戲室</span>
+            <span class="tag">🦉 金錢故事冒險</span>
+        </p>
+    </section>
+
+    <section id="units">
+        <h2>二、24 單元 × 課綱對應 × IEP 目標範例</h2>
+        <p style="font-size:0.9em">學習路徑建議由 F（基礎）往 A/B（應用）推進；各單元皆有難度設定與輔助點擊模式，可依學生能力起點切入。</p>
+
+        <h3>F 系列｜數學基礎（數與量前備能力）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>F1 數量與物品的對應</td><td>一對一對應概念</td><td>數學：數與量（低年段調整）</td><td>能將 5 個物品與位置一一對應，連續 3 次正確率 80%</td></tr>
+            <tr><td>F2 數量與點數</td><td>唱數與理性計數</td><td>數學：數與量</td><td>能正確點數 10 以內物品並說出總數，正確率 80%</td></tr>
+            <tr><td>F3 認識數字與數量</td><td>數字認讀與數量連結</td><td>數學：數與量</td><td>能將數字 1–10 與對應數量配對，正確率 80%</td></tr>
+            <tr><td>F4 數字排序</td><td>數序概念</td><td>數學：數與量</td><td>能將 1–20 數字卡由小到大排列，3 次中 2 次獨立完成</td></tr>
+            <tr><td>F5 數量大小的比較</td><td>多少／大小比較</td><td>數學：數與量、關係</td><td>能比較兩組數量並指出較多者，正確率 80%</td></tr>
+            <tr><td>F6 數的合成與分解</td><td>10 以內合成分解</td><td>數學：數與量</td><td>能完成 10 以內數的合成與分解，正確率 75%</td></tr>
+        </table></div>
+
+        <h3>C 系列｜貨幣認知</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>C1 金錢的種類與面額</td><td>辨識硬幣與紙鈔</td><td>生活管理：金錢與財物管理／數學：數與量</td><td>能指認 1、5、10、50 元硬幣與 100 元紙鈔，正確率 90%</td></tr>
+            <tr><td>C2 金錢的點數與加總</td><td>點數金額</td><td>生活管理：金錢與財物管理／數學</td><td>能點數 50 元以內混合硬幣並說出總額，正確率 80%</td></tr>
+            <tr><td>C3 金錢面額的兌換</td><td>等值兌換概念</td><td>生活管理：金錢與財物管理</td><td>能完成 10 元＝兩個 5 元等兌換操作，3 次中 2 次正確</td></tr>
+            <tr><td>C4 正確的金額</td><td>依標價拿出正確金額</td><td>生活管理：金錢與財物管理</td><td>能依 50 元內標價拿出正確金額，正確率 80%</td></tr>
+            <tr><td>C5 足額付款</td><td>「夠不夠買」判斷</td><td>生活管理：消費與理財</td><td>能判斷持有金額是否足夠購買指定商品，正確率 80%</td></tr>
+            <tr><td>C6 找零與計算</td><td>找零概念與驗算</td><td>生活管理：消費與理財／數學</td><td>能在 100 元內交易中確認找零是否正確，正確率 75%</td></tr>
+        </table></div>
+
+        <h3>A 系列｜生活應用（真實情境模擬）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>A1 自動飲料販賣機</td><td>投幣、選商品、取找零完整流程</td><td>生活管理：社區生活應用</td><td>能獨立完成販賣機購物流程（選品→投幣→取物），3 次中 2 次成功</td></tr>
+            <tr><td>A2 理髮店售票機</td><td>售票機操作與服務消費</td><td>生活管理：社區生活應用</td><td>能依需求於售票機選擇服務並完成付款，提示不超過 1 次</td></tr>
+            <tr><td>A3 美式速食自助點餐</td><td>自助點餐機操作、套餐選擇</td><td>生活管理：社區生活應用／社會技巧</td><td>能操作點餐機完成一份套餐點購與付款，獨立完成 80% 步驟</td></tr>
+            <tr><td>A4 模擬購物</td><td>多商店購物、挑選與結帳</td><td>生活管理：消費與理財</td><td>能依購物清單選購 3 項商品並完成結帳，正確率 80%</td></tr>
+            <tr><td>A5 ATM提款機</td><td>提款流程與金融安全</td><td>生活管理：金錢與財物管理（金融工具）</td><td>能在模擬 ATM 完成提款流程並遵守密碼安全原則，3 次中 2 次獨立</td></tr>
+            <tr><td>A6 火車購票</td><td>購票機操作、車票資訊判讀</td><td>生活管理：行動與交通／社區生活應用</td><td>能購買指定起訖站車票並說出票面資訊，提示不超過 2 次</td></tr>
+        </table></div>
+
+        <h3>B 系列｜預算規劃（理財素養）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>B1 今天帶多少錢</td><td>依行程估算所需金額</td><td>生活管理：消費與理財</td><td>能依 2 項活動行程算出當日所需金額並備妥錢幣，正確率 80%</td></tr>
+            <tr><td>B2 零用錢日記</td><td>收支記錄習慣</td><td>生活管理：消費與理財</td><td>能記錄一週零用錢收支並說出結餘，連續 2 週達成</td></tr>
+            <tr><td>B3 存錢計畫</td><td>儲蓄目標與延宕滿足</td><td>生活管理：消費與理財</td><td>能為目標商品訂定存錢計畫並依計畫投入存款，達成率 80%</td></tr>
+            <tr><td>B4 特賣比一比</td><td>比價與優惠判斷</td><td>生活管理：消費與理財</td><td>能比較兩家商店同商品價格並選出較划算者，正確率 80%</td></tr>
+            <tr><td>B5 派對活動採購</td><td>預算內完成多項採購</td><td>生活管理：消費與理財</td><td>能在指定預算內完成派對採購清單，不超支</td></tr>
+            <tr><td>B6 菜市場買菜</td><td>傳統市場交易與找零</td><td>生活管理：社區生活應用</td><td>能於模擬市場完成 3 攤採買並驗算找零，正確率 75%</td></tr>
+        </table></div>
+
+        <p class="note">＊課綱對應為<strong>建議層級</strong>（十二年國教特殊需求領域課程「生活管理」「社會技巧」及數學領域調整應用），請依貴校校本課程計畫與學生 IEP 微調具體學習表現代碼。</p>
+    </section>
+
+    <section id="dialogue">
+        <h2>三、購物對話練習（金好聊）— 溝通泛化模組</h2>
+        <p>以 10 個社區場所（便利商店、早餐店、超市、藥局、夜市攤販、公車、捷運⋯）、200+ 對話步驟，訓練學生「開口買東西」的功能性溝通。對應課綱：<span class="tag">社會技巧：基本溝通與互動</span><span class="tag">語文：口語表達（調整）</span></p>
+        <div class="grid2">
+            <div class="card-mini"><b>三種反應模式</b><br>🎤 說話（語音辨識）／🔘 選項點選／⌨️ 打字——依學生口語能力選擇，同一教材三種近端目標。</div>
+            <div class="card-mini"><b>四級提示鷹架（自動褪除）</b><br>L4 完整示範 → L3 句框填空 → L2 詞庫組句 → L1 獨立表達。連續答對自動升級（精熟標準可調），支持無錯學習。</div>
+            <div class="card-mini"><b>IEP 數據</b><br>自動記錄每位學生的正確率、提示等級、嘗試次數；一鍵列印<strong>個別學習報告</strong>與班級總覽，直接作為 IEP 檢核佐證。</div>
+            <div class="card-mini"><b>學生名冊共用</b><br>與獎勵系統共用名冊；完成練習自動累積獎勵分數，增強系統一體化。</div>
+        </div>
+    </section>
+
+    <section id="studio">
+        <h2>四、教師自編工具：對話工作室 🎙️（本教材特色）</h2>
+        <p>老師<strong>不需任何技術背景</strong>，即可自編貼近班級生活的對話教材：</p>
+        <ol class="flow">
+            <li>購物練習首頁點「<strong>➕ 自訂情境</strong>」，輸入情境名稱（例：合作社買午餐）。</li>
+            <li>逐步填入「店員說的話」與「學生的標準答案」，錯誤選項可留空自動補齊。</li>
+            <li>每一步可按 <strong>🎙️ 錄音</strong> 錄下老師自己的聲音（學生對熟悉聲音反應更佳）；不錄則由電腦語音自動朗讀。</li>
+            <li>儲存後立即出現在首頁，三種模式與四級鷹架<strong>全部自動適用</strong>。</li>
+            <li>到「設定 → <strong>對話包分享</strong>」可將自編情境連同錄音匯出成單一檔案，分享給其他老師匯入使用。</li>
+        </ol>
+        <p class="note">自編情境與錄音都儲存在瀏覽器本機，不需網路帳號；換電腦請使用「對話包」匯出／匯入搬移。</p>
+    </section>
+
+    <section>
+        <h2>五、獎勵系統與作業單</h2>
+        <div class="grid2">
+            <div class="card-mini"><b>🎁 獎勵系統（全站共用）</b><br>建立學生名冊（可放照片）→ 各單元完成挑戰自動送分 → 累積分數兌換班級增強物。支援自訂加分圖示與音效；主站與購物練習共用同一份名冊與分數。</div>
+            <div class="card-mini"><b>📝 作業單產生器</b><br>各單元設定頁可一鍵產生對應紙本作業單（含金錢圖示），支援難度與題數調整、直接列印或下載 PDF，作為課後評量與家庭練習。</div>
+        </div>
+        <h3>建議教學流程</h3>
+        <ol class="flow">
+            <li><strong>起點評估</strong>：以 F、C 系列確認數概念與貨幣認知起點。</li>
+            <li><strong>情境教學</strong>：依 IEP 目標選擇 A 系列單元，先「輔助點擊模式」再褪除為普通模式。</li>
+            <li><strong>素養延伸</strong>：B 系列建立預算與儲蓄概念。</li>
+            <li><strong>溝通泛化</strong>：購物對話練習，從選項模式進階到說話模式，再到真實社區情境演練。</li>
+            <li><strong>評量與增強</strong>：作業單檢核學習成效；獎勵系統維持動機；學習報告佐證 IEP。</li>
+        </ol>
+    </section>
+
+    <section id="privacy">
+        <h2>六、資料與隱私聲明</h2>
+        <p>本教材為純前端網頁：<strong>學生姓名、照片、成績、錄音全部只儲存在該台電腦的瀏覽器中（localStorage / IndexedDB），不會上傳到任何伺服器</strong>。清除瀏覽器資料會一併清除上述紀錄，重要資料請以「學習資料備份」與「對話包分享」功能定期匯出保存。</p>
+    </section>
+
+    <button class="print-btn" onclick="window.print()">🖨️ 列印本指南</button>
+</div>
+</body>
+</html>
