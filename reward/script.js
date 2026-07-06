@@ -871,6 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="button-group">
                     <button class="add-point-btn" data-id="${student.id}">加分</button>
                     <button class="subtract-point-btn" data-id="${student.id}">扣分</button>
+                    <button class="growth-page-btn" data-id="${student.id}" style="background-color:#f0b429;color:#4a2b00;">🌱 成長頁</button>
                 </div>
             </div>
             <div class="student-info">
@@ -900,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteBtn = studentRow.querySelector('.delete-btn');
 
         addPointBtn.addEventListener('click', () => updateScore(student, 1));
+        studentRow.querySelector('.growth-page-btn').addEventListener('click', () => openGrowthPage(student));
         subtractPointBtn.addEventListener('click', () => {
              if (student.score > 0) updateScore(student, -1);
         });
@@ -1076,5 +1078,154 @@ document.addEventListener('DOMContentLoaded', () => {
      setTimeout(() => {
          processPendingRewards();
      }, 1000);
+
+    // ─── 學生成長頁（徽章/寶石/寵物/寶物；共用邏輯在 ../js/growth-system.js）───
+    // 重要：所有金幣增減都走閉包內的 students 陣列＋saveToLocalStorage()，
+    // 與計分板同一份資料，避免 localStorage 直寫互相覆蓋。
+    let _gpStudent = null, _gpRecords = [];
+
+    async function openGrowthPage(student) {
+        if (typeof GrowthSystem === 'undefined') { alert('成長系統載入失敗，請重新整理頁面'); return; }
+        _gpStudent = student;
+        _gpRecords = await GrowthSystem.readAllRecords();
+        renderGrowthPage();
+        document.getElementById('growth-overlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    window.closeGrowthPage = function () {
+        document.getElementById('growth-overlay').classList.remove('open');
+        document.body.style.overflow = '';
+        refreshDisplay(!!document.querySelector('.rank-number'));   // 金幣可能已變動
+    };
+
+    function gpMsg(t) { document.getElementById('gp-msg').textContent = t || ''; }
+
+    function renderGrowthPage() {
+        const stu = _gpStudent;
+        const G   = GrowthSystem;
+
+        document.getElementById('gp-photo').src = stu.photo || DEFAULT_AVATAR;
+        document.getElementById('gp-name').textContent = stu.name || '學生';
+        document.getElementById('gp-coins').textContent = stu.score;
+        const gems = G.gemsAvailable(_gpRecords, stu.id);
+        document.getElementById('gp-gems').textContent = gems;
+        document.getElementById('gp-practices').textContent = G.myRecords(_gpRecords, stu.id).length;
+
+        // ── 寵物 ──
+        const pet      = G.petData(stu.id);
+        const stageIdx = G.petStage(pet);
+        const stage    = G.PET_STAGES[stageIdx];
+        const next     = G.PET_STAGES[stageIdx + 1];
+        document.getElementById('gp-pet-img').src = '../' + stage.img;
+        document.getElementById('gp-pet-name').textContent = stage.name;
+
+        const bar       = document.getElementById('gp-bar');
+        const label     = document.getElementById('gp-bar-label');
+        const feedBtn   = document.getElementById('gp-feed-btn');
+        const evolveBtn = document.getElementById('gp-evolve-btn');
+
+        if (!next) {
+            bar.style.width = '100%';
+            label.textContent = '🎉 已是最終型態，繼續保持好表現！';
+            evolveBtn.hidden = true;
+            feedBtn.disabled = true;
+        } else if (next.gems && pet.growth >= next.need) {
+            bar.style.width = '100%';
+            label.textContent = `成長值滿了！用 ${next.gems} 顆 💎 進化成「${next.name}」`;
+            evolveBtn.hidden = false;
+            evolveBtn.disabled = gems < next.gems;
+            feedBtn.disabled = true;
+        } else {
+            const base = stage.need, target = next.need;
+            const pct = Math.max(3, Math.min(100, Math.round((pet.growth - base) / (target - base) * 100)));
+            bar.style.width = pct + '%';
+            label.textContent = `成長值 ${pet.growth} / ${target}`;
+            evolveBtn.hidden = true;
+            feedBtn.disabled = stu.score < G.FEED_COST;
+        }
+
+        feedBtn.onclick = () => {
+            if (stu.score < G.FEED_COST) { gpMsg('金幣不夠——完成金隊長的任務可以賺金幣！'); return; }
+            stu.score -= G.FEED_COST;
+            const p = G.petData(stu.id);
+            p.growth += G.FEED_GAIN;
+            G.savePet(stu.id, p);
+            saveToLocalStorage();
+            try { playSound('bonus'); } catch (e) {}
+            gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
+            renderGrowthPage();
+        };
+        evolveBtn.onclick = () => {
+            const p = G.petData(stu.id);
+            const nxt = G.PET_STAGES[G.petStage(p) + 1];
+            if (!nxt?.gems) return;
+            if (!G.spendGems(_gpRecords, stu.id, nxt.gems)) {
+                gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！');
+                return;
+            }
+            p.evolved = true;
+            G.savePet(stu.id, p);
+            try { playSound('bonus'); } catch (e) {}
+            gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`);
+            renderGrowthPage();
+        };
+
+        // ── 徽章牆 ──
+        const { fresh } = G.computeBadges(stu.id, _gpRecords, G.questMeta(stu.id), stu);
+        const earned = G.badgeStore(stu.id);
+        const bHost = document.getElementById('gp-badges');
+        bHost.innerHTML = '';
+        G.BADGES.forEach(b => {
+            const chip = document.createElement('div');
+            chip.className = 'gp-chip' + (earned[b.id] ? '' : ' locked');
+            chip.title = earned[b.id] ? `獲得於 ${new Date(earned[b.id]).toLocaleDateString('zh-TW')}` : '尚未解鎖';
+            chip.innerHTML = `<div class="ic">${b.icon}</div><div class="nm">${b.name}</div>`;
+            bHost.appendChild(chip);
+        });
+        if (fresh.length) gpMsg(`🏅 解鎖新徽章「${fresh[0].icon} ${fresh[0].name}」！`);
+
+        // ── 寶物櫃 ──
+        const owned = G.treasures(stu.id);
+        const tHost = document.getElementById('gp-treasures');
+        tHost.innerHTML = '';
+        G.TREASURES.forEach(t => {
+            const has = owned.includes(t.id);
+            const chip = document.createElement('div');
+            chip.className = 'gp-chip' + (has ? '' : ' locked');
+            chip.innerHTML = `<div class="ic">${t.icon}</div><div class="nm">${t.name}</div>` +
+                (has ? `<div class="nm" style="color:#16a34a">已擁有</div>`
+                     : `<button class="buy" ${gems < t.gems ? 'disabled' : ''}>💎×${t.gems} 兌換</button>`);
+            if (!has) {
+                chip.querySelector('.buy')?.addEventListener('click', () => {
+                    if (G.buyTreasure(_gpRecords, stu.id, t.id)) {
+                        try { playSound('bonus'); } catch (e) {}
+                        gpMsg(`🎁 兌換成功！獲得「${t.icon} ${t.name}」`);
+                        renderGrowthPage();
+                    } else {
+                        gpMsg('寶石不夠——拿到 🌟 無錯通過就能獲得寶石！');
+                    }
+                });
+            }
+            tHost.appendChild(chip);
+        });
+
+        // ── 今日任務（唯讀） ──
+        const qHost = document.getElementById('gp-quests');
+        const qm = G.questMeta(stu.id);
+        const tk = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());
+        if (qm && qm.date === tk && Array.isArray(qm.quests)) {
+            qHost.innerHTML = '';
+            qm.quests.forEach(q => {
+                const line = document.createElement('div');
+                line.className = 'gp-quest-line';
+                const st = q.claimed ? '✅ 已領獎' : q.done ? '🪙 可領獎' : '⬜ 進行中';
+                line.innerHTML = `<span>${q.icon}</span><span style="flex:1">${q.desc}</span><b>${st}</b>`;
+                qHost.appendChild(line);
+            });
+        } else {
+            qHost.innerHTML = '<div class="gp-quest-line">今天還沒領任務——到主頁點「金隊長」出任務！</div>';
+        }
+    }
 
 }); // End of DOMContentLoaded

@@ -1214,15 +1214,10 @@
                     <div id="captain-quests"></div>
                 </div>
 
-                <div id="captain-badge-sec" hidden>
-                    <div class="captain-sec-title">🏅 徽章牆</div>
-                    <div class="badge-grid" id="captain-badges"></div>
-                </div>
-
                 <div class="captain-quote" id="captain-quote" hidden></div>
 
                 <div class="captain-links">
-                    <a href="reward/index.html" target="RewardSystem">🎁 獎勵系統</a>
+                    <a href="reward/index.html" target="RewardSystem">🌱 學生成長頁（徽章・寵物・寶物）</a>
                     <a href="dialogue/teacher.html">📊 學習歷程</a>
                 </div>
             </div>
@@ -1535,46 +1530,11 @@
                 el.hidden = false;
             }
 
-            // ── 徽章定義與判定 ──
-            const BADGES = [
-                { id: 'first_step', icon: '🔰', name: '初次上路',
-                  test: (my) => my.length >= 1 },
-                { id: 'flawless_1', icon: '🌟', name: '無錯新星',
-                  test: (my) => my.some(r => r.flawless) },
-                { id: 'streak_3', icon: '🔥', name: '連續3天練習',
-                  test: (my) => {
-                      const days = [...new Set(my.map(r => dayKeyOf(r.ts)))].sort();
-                      for (let i = 0; i + 2 < days.length; i++) {
-                          const a = new Date(days[i]), c = new Date(days[i + 2]);
-                          if ((c - a) / 86400000 === 2) return true;
-                      }
-                      return false;
-                  } },
-                { id: 'quest_10', icon: '🚀', name: '任務達人×10',
-                  test: (my, meta) => (meta.totalClaimed || 0) >= 10 },
-                { id: 'talk_5', icon: '💬', name: '聊天高手×5',
-                  test: (my) => my.filter(r => !isMainRec(r)).length >= 5 },
-                { id: 'series_F', icon: '🧮', name: 'F系列制霸',
-                  test: (my) => ['f1','f2','f3','f4','f5','f6'].every(u => my.some(r => r.situationId === u)) },
-                { id: 'series_C', icon: '🪙', name: 'C系列制霸',
-                  test: (my) => ['c1','c2','c3','c4','c5','c6'].every(u => my.some(r => r.situationId === u)) },
-                { id: 'series_B', icon: '📒', name: 'B系列制霸',
-                  test: (my) => ['b1','b2','b3','b4','b5','b6'].every(u => my.some(r => r.situationId === u)) },
-                { id: 'series_A', icon: '🏪', name: 'A系列制霸',
-                  test: (my) => ['a1','a2','a3','a4','a5','a6'].every(u => my.some(r => r.situationId === u)) },
-                { id: 'rich_100', icon: '💰', name: '百元富翁',
-                  test: (my, meta, stu) => (stu?.score || 0) >= 100 },
-            ];
-            function badgeStore(stuId) {
-                try { return JSON.parse(localStorage.getItem(`mt_badges_${stuId}`) || '{}'); } catch { return {}; }
-            }
-
             function renderQuestsAndBadges(cur, records) {
                 const qSec = document.getElementById('captain-quest-sec');
-                const bSec = document.getElementById('captain-badge-sec');
                 document.getElementById('captain-quote').hidden = true;
-                if (!cur) { qSec.hidden = true; bSec.hidden = true; return; }
-                qSec.hidden = false; bSec.hidden = false;
+                if (!cur) { qSec.hidden = true; return; }
+                qSec.hidden = false;
 
                 // 任務：讀/建今日清單 → 判定 → 渲染
                 let store = questStore(cur.id);
@@ -1606,30 +1566,7 @@
                     qHost.appendChild(card);
                 });
 
-                // 徽章：判定 → 新獲得的存檔＋動畫
-                const my = records.filter(r => String(r.studentId) === String(cur.id));
-                const roster = loadRoster();
-                const stu = roster.find(s => String(s.id) === String(cur.id));
-                const earned = badgeStore(cur.id);
-                let newBadge = null;
-                BADGES.forEach(b => {
-                    if (!earned[b.id] && b.test(my, store, stu)) {
-                        earned[b.id] = Date.now();
-                        newBadge = b;
-                    }
-                });
-                localStorage.setItem(`mt_badges_${cur.id}`, JSON.stringify(earned));
-
-                const bHost = document.getElementById('captain-badges');
-                bHost.innerHTML = '';
-                BADGES.forEach(b => {
-                    const chip = document.createElement('div');
-                    chip.className = 'badge-chip' + (earned[b.id] ? (newBadge?.id === b.id ? ' fresh' : '') : ' locked');
-                    chip.title = earned[b.id] ? `獲得於 ${new Date(earned[b.id]).toLocaleDateString('zh-TW')}` : '尚未解鎖';
-                    chip.innerHTML = `<div class="b-icon">${b.icon}</div><div class="b-name">${b.name}</div>`;
-                    bHost.appendChild(chip);
-                });
-                if (newBadge) showCaptainQuote(`🏅 解鎖新徽章「${newBadge.icon} ${newBadge.name}」！每一次努力，都會成為成長的力量！`);
+                // 徽章判定與展示已移至「學生成長頁」（reward 系統，js/growth-system.js 共用邏輯）
             }
 
             window.renderCaptainBase = async function () {
