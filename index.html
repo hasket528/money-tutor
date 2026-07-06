@@ -199,6 +199,109 @@
             margin-bottom: 40px;
         }
         
+        /* ── 三吉祥物改為「隱藏舞台」：主頁預設不顯示，
+               向左滑動（或右緣 ✨ 鈕）開啟聚光燈旋轉舞台 ── */
+        .ai-dual-intro { display: none !important; }
+
+        /* ✨ 低調觸發鈕（右緣中央） */
+        #stage-hint {
+            position: fixed; right: 6px; top: 50%; transform: translateY(-50%);
+            z-index: 800; background: none; border: none; cursor: pointer;
+            font-size: 1.5em; opacity: 0.45; padding: 10px 6px;
+            transition: opacity 0.2s, transform 0.2s;
+            animation: hintTwinkle 3.2s ease-in-out infinite;
+        }
+        #stage-hint:hover { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        @keyframes hintTwinkle { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+        /* ── 後台舞台 ── */
+        #stage-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9600;
+            background:
+                repeating-linear-gradient(90deg, rgba(80,20,60,0.22) 0 26px, rgba(0,0,0,0) 26px 52px),
+                radial-gradient(ellipse at 50% 0%, #3b1f4e 0%, #1b0f2e 55%, #0d0718 100%);
+            align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #stage-overlay.open { display: flex; }
+
+        .stage-inner {
+            position: relative; text-align: center;
+            width: min(94vw, 560px); perspective: 1000px; padding: 20px 0 34px;
+        }
+        /* 聚光燈（光錐＋輕微搖擺） */
+        .stage-spotlight {
+            position: absolute; top: -6vh; left: 50%; transform: translateX(-50%);
+            width: min(80vw, 460px); height: 78vh; pointer-events: none;
+            background: radial-gradient(ellipse 46% 60% at 50% 12%, rgba(255,246,205,0.55), rgba(255,246,205,0.10) 55%, transparent 72%);
+            clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+            animation: spotSway 5.5s ease-in-out infinite alternate;
+            transform-origin: top center;
+        }
+        @keyframes spotSway {
+            0%   { transform: translateX(-50%) rotate(-2.5deg); }
+            100% { transform: translateX(-50%) rotate(2.5deg); }
+        }
+        /* 舞台地板光暈 */
+        .stage-floor {
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+            width: min(70vw, 380px); height: 46px; border-radius: 50%;
+            background: radial-gradient(ellipse, rgba(255,244,200,0.35), transparent 70%);
+            pointer-events: none;
+        }
+
+        .stage-char {
+            position: relative; transform-style: preserve-3d;
+            transition: transform 0.42s ease, opacity 0.42s ease;
+        }
+        .stage-char.spin-out { transform: rotateY(95deg) scale(0.55); opacity: 0; }
+        .stage-char.spin-pre { transition: none; transform: rotateY(-95deg) scale(0.55); opacity: 0; }
+        .stage-char img {
+            width: min(48vw, 250px); max-height: 42vh; object-fit: contain;
+            filter: drop-shadow(0 20px 32px rgba(0,0,0,0.6));
+        }
+        .stage-name {
+            font-size: 1.5em; font-weight: 800; color: #ffe9a8; margin-top: 10px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .stage-name .ai-voice-btn { border-color: rgba(255,233,168,0.5); color: #ffe9a8; background: rgba(255,255,255,0.08); }
+        .stage-desc { color: #efeadf; font-size: 0.95em; margin: 8px 14px 14px; line-height: 1.7; }
+        .stage-action {
+            display: inline-block; border: none; cursor: pointer; font-family: inherit;
+            background: linear-gradient(135deg, #f7c948, #de911d);
+            color: #4a2b00; font-size: 1.02em; font-weight: 800;
+            padding: 12px 30px; border-radius: 28px;
+            box-shadow: 0 6px 20px rgba(222,145,29,0.5);
+            transition: transform 0.15s;
+        }
+        .stage-action:hover { transform: scale(1.06); }
+
+        .stage-arrow {
+            position: absolute; top: 42%; transform: translateY(-50%);
+            width: 52px; height: 52px; border-radius: 50%;
+            border: 2px solid rgba(255,233,168,0.55); background: rgba(255,255,255,0.08);
+            color: #ffe9a8; font-size: 1.35em; cursor: pointer; z-index: 2;
+            transition: background 0.15s, transform 0.15s;
+        }
+        .stage-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.12); }
+        .stage-arrow.left  { left: -6px; }
+        .stage-arrow.right { right: -6px; }
+
+        .stage-close {
+            position: absolute; top: 14px; right: 16px; z-index: 3;
+            background: none; border: none; color: rgba(255,255,255,0.7);
+            font-size: 1.5em; cursor: pointer;
+        }
+        .stage-close:hover { color: #fff; }
+        .stage-dots { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+        .stage-dots span { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+        .stage-dots span.on { background: #ffe9a8; }
+        .stage-tip {
+            position: absolute; bottom: 12px; left: 0; right: 0;
+            color: rgba(255,255,255,0.45); font-size: 0.75em; text-align: center; pointer-events: none;
+        }
+
         /* ── 雙角色介紹區 ─────────────────────────── */
         .ai-dual-intro {
             display: grid;
@@ -1059,6 +1162,128 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── 隱藏角色舞台（左滑或 ✨ 開啟）──────────────── -->
+        <button id="stage-hint" onclick="openStage()" title="✨ 有隱藏的朋友們……" aria-label="開啟角色舞台">✨</button>
+        <div id="stage-overlay" role="dialog" aria-modal="true" aria-label="角色舞台">
+            <button class="stage-close" onclick="closeStage()" title="關閉">✕</button>
+            <div class="stage-inner">
+                <div class="stage-spotlight"></div>
+                <div class="stage-floor"></div>
+                <button class="stage-arrow left"  onclick="rotateStage(-1)" aria-label="上一位">◀</button>
+                <button class="stage-arrow right" onclick="rotateStage(1)"  aria-label="下一位">▶</button>
+                <div class="stage-char" id="stage-char">
+                    <img id="stage-img" src="" alt="">
+                    <div class="stage-name">
+                        <span id="stage-name"></span>
+                        <button class="ai-voice-btn" id="stage-voice" title="播放語音">🔊</button>
+                    </div>
+                    <div class="stage-desc" id="stage-desc"></div>
+                    <button class="stage-action" id="stage-action"></button>
+                </div>
+                <div class="stage-dots" id="stage-dots"></div>
+                <div class="stage-tip">◀ ▶ 切換角色 ・ 點角色按鈕進入活動 ・ ESC 離開</div>
+            </div>
+        </div>
+
+        <script>
+        // ── 隱藏角色舞台：聚光燈＋3D 旋轉換角 ──
+        (function () {
+            const CHARS = [
+                { img: 'images/common/hint_detective.png', name: '小金探', speech: 'detective',
+                  desc: '學習遇到困難了嗎？來找我幫忙，我會給你解題的小提示！累了也可以來遊戲室放鬆一下。',
+                  btn: '🎮 小金探的遊戲室', act: () => { closeStage(); openDetectiveModal(); } },
+                { img: 'images/common/money_doctor.png', name: '金博士', speech: 'doctor',
+                  desc: '想接受不一樣的挑戰嗎？進入金錢故事冒險，看看你能不能全部過關！',
+                  btn: '🗺️ 金錢故事冒險', act: () => { closeStage(); openDoctorModal(); } },
+                { img: 'images/common/money_chat_dog.png', name: '金好聊', speech: 'chatdog',
+                  desc: '汪！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
+                  btn: '🛒 購物對話練習', act: () => { window.stopCharacterVoice?.(); window.location.href = 'dialogue/index.html'; } },
+            ];
+            let idx = 0, spinning = false;
+
+            const charEl = () => document.getElementById('stage-char');
+
+            function renderStage() {
+                const c = CHARS[idx];
+                document.getElementById('stage-img').src = c.img;
+                document.getElementById('stage-img').alt = c.name;
+                document.getElementById('stage-name').textContent = c.name;
+                document.getElementById('stage-desc').textContent = c.desc;
+                const btn = document.getElementById('stage-action');
+                btn.textContent = c.btn;
+                btn.onclick = c.act;
+                document.getElementById('stage-voice').onclick = () => window.speakCharacter?.(c.speech);
+                document.getElementById('stage-dots').innerHTML =
+                    CHARS.map((_, i) => `<span class="${i === idx ? 'on' : ''}"></span>`).join('');
+            }
+
+            window.rotateStage = function (dir) {
+                if (spinning) return;
+                spinning = true;
+                const el = charEl();
+                el.classList.add('spin-out');                    // 目前角色旋出
+                setTimeout(() => {
+                    idx = (idx + dir + CHARS.length) % CHARS.length;
+                    renderStage();
+                    el.classList.remove('spin-out');
+                    el.classList.add('spin-pre');                // 下一位從幕後（反向）就位
+                    void el.offsetWidth;                          // 強制 reflow
+                    el.classList.remove('spin-pre');              // 旋入
+                    setTimeout(() => { spinning = false; }, 440);
+                }, 430);
+            };
+
+            window.openStage = function () {
+                idx = 0;
+                renderStage();
+                document.getElementById('stage-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.closeStage = function () {
+                window.stopCharacterVoice?.();
+                document.getElementById('stage-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeStage();
+                else if (document.getElementById('stage-overlay').classList.contains('open')) {
+                    if (e.key === 'ArrowRight') rotateStage(1);
+                    if (e.key === 'ArrowLeft')  rotateStage(-1);
+                }
+            });
+
+            // ── 左滑手勢（觸控＋滑鼠拖曳）──
+            function anyOverlayOpen() {
+                return ['stage-overlay', 'captain-modal-overlay', 'detective-modal-overlay', 'doctor-modal-overlay']
+                    .some(id => document.getElementById(id)?.classList.contains('open'));
+            }
+            let sx = null, sy = null;
+            document.addEventListener('touchstart', (e) => {
+                sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+            }, { passive: true });
+            document.addEventListener('touchend', (e) => {
+                if (sx == null || anyOverlayOpen()) { sx = null; return; }
+                const dx = e.changedTouches[0].clientX - sx;
+                const dy = e.changedTouches[0].clientY - sy;
+                sx = null;
+                if (dx < -80 && Math.abs(dy) < 70) openStage();
+            }, { passive: true });
+            let mx = null, my = null;
+            document.addEventListener('mousedown', (e) => { mx = e.clientX; my = e.clientY; });
+            function endDrag(e) {
+                if (mx == null || anyOverlayOpen()) { mx = null; return; }
+                const dx = e.clientX - mx, dy = e.clientY - my;
+                mx = null;
+                if (dx < -120 && Math.abs(dy) < 80) openStage();
+            }
+            document.addEventListener('mouseup', endDrag);
+            // 從連結/圖片上開始拖曳時瀏覽器走原生 drag（不發 mouseup）→ 用 dragend 補判
+            document.addEventListener('dragend', endDrag);
+        })();
+        </script>
 
         <script>
         // ── 金隊長成長基地：學生資料（與 reward / dialogue 共用同一份名冊與目前學生）──
