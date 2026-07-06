@@ -108,8 +108,28 @@
   <button class="t-btn t-btn-secondary no-print" onclick="loadData()">重新整理</button>
   <button class="t-btn t-btn-primary no-print" onclick="exportCSV()">📥 匯出 CSV</button>
   <button class="t-btn t-btn-primary no-print" onclick="window.print()">🖨 列印</button>
+  <button class="t-btn t-btn-primary no-print" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
   <button class="t-btn t-btn-danger no-print" onclick="clearData()">清除紀錄</button>
 </header>
+
+<!-- 學習週報（列印專用；printWeeklyReport 動態填入） -->
+<div id="weekly-report" style="display:none"></div>
+<style>
+  #weekly-report { font-size: 14px; color: #1E293B; line-height: 1.8; }
+  #weekly-report h1 { font-size: 1.35rem; text-align: center; margin: 0 0 2px; }
+  #weekly-report .wr-sub { text-align: center; font-size: 0.85rem; color: #475569; margin-bottom: 14px; }
+  #weekly-report table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 8px 0 14px; }
+  #weekly-report th { background: #EFF6FF; padding: 6px 8px; border: 1px solid #CBD5E1; text-align: left; }
+  #weekly-report td { padding: 6px 8px; border: 1px solid #CBD5E1; }
+  #weekly-report .wr-sec { font-weight: 700; margin: 12px 0 4px; }
+  #weekly-report .wr-lines { border-bottom: 1px solid #94A3B8; height: 30px; }
+  #weekly-report .wr-sign { display: flex; justify-content: space-between; margin-top: 26px; font-size: 0.9rem; }
+  body.weekly-print-mode #weekly-report { display: block !important; }
+  @media print {
+    body.weekly-print-mode .t-header,
+    body.weekly-print-mode .t-body { display: none !important; }
+  }
+</style>
 
 <div class="t-body">
 
@@ -475,6 +495,82 @@ function statusTag(stars) {
 
 function starBar(n) {
   return [1,2,3].map(i => `<span class="star${i <= n ? ' lit' : ''}">⭐</span>`).join('');
+}
+
+// ── 學習週報（近 7 天，家庭聯絡簿用）──
+async function printWeeklyReport() {
+  const who = document.getElementById('stu-filter').value;
+  if (who === '__all__' || who === '__guest__') {
+    alert('請先在「學生」下拉選定一位學生，再列印週報。');
+    return;
+  }
+  const stuName = document.getElementById('stu-filter').selectedOptions[0].textContent;
+  const all = await dbAll();
+  const now = Date.now();
+  const WEEK = 7 * 86400_000;
+  const mine     = all.filter(r => stuKey(r) === who);
+  const thisWeek = mine.filter(r => now - r.ts < WEEK);
+  const lastWeek = mine.filter(r => now - r.ts >= WEEK && now - r.ts < 2 * WEEK);
+
+  const acc = (list) => {
+    let c = 0, t = 0;
+    list.forEach(r => { c += (r.score || 0); t += (r.total || 0); });
+    return t > 0 ? Math.round(c / t * 100) : null;
+  };
+  const accNow = acc(thisWeek), accPrev = acc(lastWeek);
+  const trend = accPrev == null || accNow == null ? '—'
+              : accNow > accPrev ? `📈 進步（${accPrev}% → ${accNow}%）`
+              : accNow < accPrev ? `📉 退步（${accPrev}% → ${accNow}%）`
+              : `➡️ 持平（${accNow}%）`;
+
+  const byU = {};
+  thisWeek.forEach(r => {
+    const key = r.situationName || r.situationId;
+    if (!byU[key]) byU[key] = { n: 0, c: 0, t: 0, dur: 0, star: 0 };
+    byU[key].n++; byU[key].c += (r.score || 0); byU[key].t += (r.total || 0);
+    byU[key].dur += (r.durationSec || 0);
+    if (r.flawless) byU[key].star++;
+  });
+  const totalDur = thisWeek.reduce((a, r) => a + (r.durationSec || 0), 0);
+  const rows = Object.entries(byU).map(([name, s]) =>
+    `<tr><td>${name}${s.star ? ' 🌟×' + s.star : ''}</td><td>${s.n}</td>
+     <td>${s.t > 0 ? Math.round(s.c / s.t * 100) + '%' : '—'}</td>
+     <td>${Math.floor(s.dur / 60)} 分 ${s.dur % 60} 秒</td></tr>`).join('');
+
+  // 本週新徽章（讀 mt_badges_{id} 的取得時間）
+  const BADGE_NAMES = { first_step:'🔰初次上路', flawless_1:'🌟無錯新星', streak_3:'🔥連續3天練習',
+    quest_10:'🚀任務達人', talk_5:'💬聊天高手', series_F:'🧮F系列制霸', series_C:'🪙C系列制霸',
+    series_B:'📒B系列制霸', series_A:'🏪A系列制霸', rich_100:'💰百元富翁' };
+  let newBadges = [];
+  try {
+    const earned = JSON.parse(localStorage.getItem(`mt_badges_${who}`) || '{}');
+    newBadges = Object.entries(earned).filter(([, ts]) => now - ts < WEEK)
+      .map(([id]) => BADGE_NAMES[id] || id);
+  } catch {}
+
+  const sr = { easy: 0, ok: 0, hard: 0 };
+  thisWeek.forEach(r => { if (r.selfRating) sr[r.selfRating] = (sr[r.selfRating] || 0) + 1; });
+
+  const fmt = (ts) => new Date(ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+  document.getElementById('weekly-report').innerHTML = `
+    <h1>💰 金錢小達人・學習週報</h1>
+    <div class="wr-sub">學生：<b>${stuName}</b>　期間：${fmt(now - WEEK + 86400_000)} ～ ${fmt(now)}　（本週練習 ${thisWeek.length} 次・共 ${Math.floor(totalDur / 60)} 分鐘）</div>
+    <div class="wr-sec">📚 本週練習內容</div>
+    ${thisWeek.length
+        ? `<table><tr><th>單元／情境</th><th>次數</th><th>正確率</th><th>時間</th></tr>${rows}</table>`
+        : '<p>本週尚無練習紀錄。</p>'}
+    <div class="wr-sec">📈 整體表現：${trend}</div>
+    <div class="wr-sec">🏅 本週新獲得徽章：${newBadges.length ? newBadges.join('、') : '—'}</div>
+    <div class="wr-sec">💬 學生自評：😀 簡單 ×${sr.easy}　😐 普通 ×${sr.ok}　😣 好難 ×${sr.hard}</div>
+    <div class="wr-sec">✏️ 老師的話</div>
+    <div class="wr-lines"></div><div class="wr-lines"></div><div class="wr-lines"></div>
+    <div class="wr-sign"><span>老師簽名：＿＿＿＿＿＿＿＿</span><span>家長簽名：＿＿＿＿＿＿＿＿</span><span>日期：＿＿＿＿＿＿</span></div>`;
+
+  document.body.classList.add('weekly-print-mode');
+  const cleanup = () => document.body.classList.remove('weekly-print-mode');
+  window.onafterprint = cleanup;
+  window.print();
+  setTimeout(cleanup, 2000);   // 保險（部分瀏覽器不觸發 onafterprint）
 }
 
 async function clearData() {
