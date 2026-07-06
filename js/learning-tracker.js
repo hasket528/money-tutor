@@ -34,8 +34,12 @@ const LearningTracker = (() => {
   // ── 錯誤嘗試計數（反覆練習機制下，答錯不會反映在最終分數，需另行累計）──
   // 各單元在「答錯」分支呼叫 LearningTracker.logWrong()；save() 時一併寫入並歸零。
   let _wrongCount = 0;
+  let _steps = [];   // 逐題明細 [{q, ok}]，save 時寫入 stepDetail 後歸零
   function logWrong(n = 1) { _wrongCount += n; }
-  function resetWrong()    { _wrongCount = 0; }   // 單元重新開始時可呼叫
+  // 逐題記錄：q＝題目描述（例「第3題：辨識 10 元」）、ok＝是否答對。
+  // 用法：各單元判題點呼叫 logStep(label, true/false)；答錯分支仍另呼叫 logWrong()。
+  function logStep(q, ok) { _steps.push({ q: String(q).slice(0, 60), ok: !!ok }); }
+  function resetWrong()    { _wrongCount = 0; _steps = []; }   // 單元重新開始時可呼叫
 
   // 「🌟 無錯通過」徽章：完成畫面上統一顯示（一處實作，24 單元通用）
   function _showFlawlessBadge() {
@@ -111,8 +115,11 @@ const LearningTracker = (() => {
       try { student = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch {}
       const wrongAttempts = data.wrongAttempts ?? _wrongCount;
       _wrongCount = 0;
+      const stepDetail = data.stepDetail ?? (_steps.length ? _steps : undefined);
+      _steps = [];
       const record = {
         wrongAttempts,
+        ...(stepDetail ? { stepDetail } : {}),
         flawless:     (data.total || 0) > 0 && wrongAttempts === 0 &&
                       (data.score || 0) >= (data.total || 0),
         studentId:    student?.id   ?? null,
@@ -144,7 +151,7 @@ const LearningTracker = (() => {
     }
   }
 
-  return { save, logWrong, resetWrong };
+  return { save, logWrong, logStep, resetWrong };
 })();
 
 // ⚠️ 頂層 const 不會掛上 window；各單元以 window.LearningTracker?.save() 呼叫，

@@ -379,8 +379,19 @@ async function loadData() {
         const trend  = prevPct == null ? '—' : lastPct > prevPct ? '📈' : lastPct < prevPct ? '📉' : '➡️';
         const when   = new Date(last.ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
         const sortedList = [...s.list].sort((a, b) => a.ts - b.ts);
+        // 逐題明細（stepDetail）：彙整常錯題目，供展開列顯示
+        const qStat = {};
+        sortedList.forEach(r => (r.stepDetail || []).forEach(st => {
+          if (!qStat[st.q]) qStat[st.q] = { t: 0, w: 0 };
+          qStat[st.q].t++;
+          if (!st.ok) qStat[st.q].w++;
+        }));
+        const wrongQs = Object.entries(qStat).filter(([, v]) => v.w > 0)
+          .sort((a, b) => b[1].w - a[1].w).slice(0, 8);
+        const lastDetail = [...sortedList].reverse().find(r => r.stepDetail)?.stepDetail;
+        const hasDetail = !!lastDetail;
         tr.innerHTML = `
-          <td>${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
+          <td>${hasDetail ? '<span class="dt-toggle" style="cursor:pointer;color:var(--blue);font-weight:800" title="展開逐題明細">▸</span> ' : ''}${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
           <td>${showMastery ? MASTERY_TAG[masteryStatus(sortedList, mastery)] : '—'}</td>
           <td>${s.count}</td>
           <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
@@ -391,6 +402,29 @@ async function loadData() {
           <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
           <td>${last.score}/${last.total}（${when}）</td>
           <td class="trend" title="與前一次相比">${trend}</td>`;
+
+        // 展開列：常錯題目＋最近一次逐題（有 stepDetail 才生成）
+        if (hasDetail) {
+          const dtr = document.createElement('tr');
+          dtr.hidden = true;
+          const wrongHtml = wrongQs.length
+            ? wrongQs.map(([q, v]) => `<li>${q}　<span class="acc-low">❌×${v.w}</span>／共 ${v.t} 次</li>`).join('')
+            : '<li>沒有答錯的題目 👍</li>';
+          const seqHtml = lastDetail.map(st =>
+            `<span title="${st.q}" style="margin-right:4px">${st.ok ? '✅' : '❌'}</span>`).join('');
+          dtr.innerHTML = `<td colspan="11" style="background:#F8FAFC">
+            <div style="font-size:0.82rem;padding:4px 6px">
+              <b>📌 常錯題目</b><ul style="margin:4px 0 8px 18px;padding:0">${wrongHtml}</ul>
+              <b>🕐 最近一次逐題</b>：${seqHtml}
+            </div></td>`;
+          tr.querySelector('.dt-toggle').addEventListener('click', () => {
+            dtr.hidden = !dtr.hidden;
+            tr.querySelector('.dt-toggle').textContent = dtr.hidden ? '▸' : '▾';
+          });
+          tbl.appendChild(tr);
+          tbl.appendChild(dtr);
+          return;
+        }
       }
       tbl.appendChild(tr);
     });

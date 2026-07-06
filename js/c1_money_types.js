@@ -932,6 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔧 [重構] 使用統一重置函數
             this.resetGameState();
             this.state.startTime = Date.now();  // 記錄遊戲開始時間
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.generateQuestions();
             this.setupQuizUI();
             if (this.state.settings.difficulty === 'easy' && this.state.settings.assistClick) {
@@ -1239,6 +1240,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.elements.optionsArea.querySelectorAll('.product-item')
                 .forEach(btn => btn.style.pointerEvents = 'none');
+
+            // 學習紀錄：逐題明細（題目＝辨識目標面額）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentQuestionIndex}題：辨識 ${correctAnswer.name || correctAnswer.value + ' 元'}`, isCorrect);
 
             if (isCorrect) {
                 this.state.score++;
