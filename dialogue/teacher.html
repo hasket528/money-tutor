@@ -192,6 +192,14 @@ function buildStudentFilter(records) {
       seen.set(String(r.studentId), r.studentName || '未命名');
     }
   });
+  // 目前學生也納入（涵蓋名冊被清除但仍選著學生的狀態）
+  try {
+    const cur = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null');
+    if (cur?.id != null && !seen.has(String(cur.id))) seen.set(String(cur.id), cur.name || '未命名');
+  } catch {}
+  document.getElementById('stu-filter-hint').textContent = seen.size === 0
+    ? '⚠️ 這台瀏覽器還沒有學生名冊——請到主頁「金隊長・成長基地」建立學生（名冊儲存在各瀏覽器本機，不會跨裝置同步）'
+    : '在主頁「金隊長・成長基地」選好學生後，練習紀錄會自動歸戶';
   sel.innerHTML = '<option value="__all__">全部學生</option>' +
     [...seen.entries()].map(([id, name]) => `<option value="${id}">${name}</option>`).join('') +
     '<option value="__guest__">未指定（訪客）</option>';
@@ -222,10 +230,12 @@ async function loadData() {
   const byUnit = {};
   mains.forEach(r => {
     const u = r.situationId;
-    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, dur: 0, diffs: {}, list: [] };
+    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, list: [] };
     byUnit[u].count++;
     byUnit[u].correct += (r.score || 0);
     byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
+    byUnit[u].wrongTries += (r.wrongAttempts || 0);
+    if (r.flawless) byUnit[u].flawless++;
     byUnit[u].dur     += (r.durationSec || 0);
     const dk = r.difficulty || 'normal';
     byUnit[u].diffs[dk] = (byUnit[u].diffs[dk] || 0) + 1;
@@ -251,7 +261,7 @@ async function loadData() {
     wrap.className = 'table-scroll';
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
 
     units.forEach(([u, name]) => {
       const s  = byUnit[u];
@@ -259,7 +269,7 @@ async function loadData() {
       if (!s) {
         tr.className = 'never';
         tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="../html/${UNIT_PAGE[u]}.html">▶ 去練習</a></td>
-          <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
+          <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
       } else {
         const attempts = s.correct + s.wrong;
         const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
@@ -271,11 +281,12 @@ async function loadData() {
         const trend  = prevPct == null ? '—' : lastPct > prevPct ? '📈' : lastPct < prevPct ? '📉' : '➡️';
         const when   = new Date(last.ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
         tr.innerHTML = `
-          <td>${name}</td>
+          <td>${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
           <td>${s.count}</td>
           <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
           <td class="acc-good">${s.correct}</td>
           <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
+          <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
           <td class="${accClass(avgPct)}">${avgPct}%</td>
           <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
           <td>${last.score}/${last.total}（${when}）</td>
@@ -371,7 +382,7 @@ async function loadData() {
         <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
         <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }
@@ -395,13 +406,14 @@ async function clearData() {
 async function exportCSV() {
   const records = await dbAll();
   if (records.length === 0) { alert('尚無學習紀錄'); return; }
-  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','總計','星數','時長(秒)']];
+  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','無錯通過','總計','星數','時長(秒)']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
     rows.push([d, r.studentName || '未指定', isMain(r) ? '主課程' : '購物練習',
       r.scenarioName || r.scenarioId, r.situationName || r.situationId,
       DIFF[r.difficulty] || r.difficulty || '', r.score,
-      Math.max(0, (r.total || 0) - (r.score || 0)), r.total, r.stars || 0, r.durationSec || 0]);
+      Math.max(0, (r.total || 0) - (r.score || 0)), r.wrongAttempts || 0,
+      r.flawless ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

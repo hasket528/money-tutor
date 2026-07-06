@@ -3055,6 +3055,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔄 重置遊戲狀態
             this.resetGameState();
             this.state.startTime = Date.now(); // 記錄開始時間
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤嘗試計數歸零
 
             Game.Debug.logConfig(this.state.settings.difficulty, this.ModeConfig[this.state.settings.difficulty]);
 
@@ -4094,6 +4095,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (btnIcon) btnIcon.textContent = '❌';
                     }
 
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.Audio.playSound('error', difficulty, config);
                     this.Speech.speak('incorrect', difficulty, config, {
                         targetCount: placedCount,
@@ -4287,6 +4289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Game.TimerManager.setTimeout(async () => await this.startNewTurn(), config.timing.nextQuestionDelay, 'turnTransition');
                 });
             } else {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.Audio.playSound('error', difficulty, config);
                 this.Speech.speak('incorrect', difficulty, config, {}, () => {
                     if (config.allowRetry && this.state.settings.testMode === 'retry') {
@@ -4357,10 +4360,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.handleTurnComplete(difficulty, config);
                 }
             } else {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.Audio.playSound('error', difficulty, config);
                 this.Speech.speak('incorrect', difficulty, config);
             }
-            
+
             this.state.selectedCard.classList.remove('selected-card');
             this.state.selectedCard = null;
         },
@@ -5731,6 +5735,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }, 1000, 'turnTransition');
                     });
                 } else {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.Audio.playSound('error', difficulty, config);
                     this.Speech.speak('incorrect', difficulty, config);
 

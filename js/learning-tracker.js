@@ -31,15 +31,47 @@ const LearningTracker = (() => {
     });
   }
 
+  // ── 錯誤嘗試計數（反覆練習機制下，答錯不會反映在最終分數，需另行累計）──
+  // 各單元在「答錯」分支呼叫 LearningTracker.logWrong()；save() 時一併寫入並歸零。
+  let _wrongCount = 0;
+  function logWrong(n = 1) { _wrongCount += n; }
+  function resetWrong()    { _wrongCount = 0; }   // 單元重新開始時可呼叫
+
+  // 「🌟 無錯通過」徽章：完成畫面上統一顯示（一處實作，24 單元通用）
+  function _showFlawlessBadge() {
+    try {
+      if (document.getElementById('lt-flawless-badge')) return;
+      const el = document.createElement('div');
+      el.id = 'lt-flawless-badge';
+      el.textContent = '🌟 全程無錯通過！金隊長已記錄';
+      el.style.cssText = 'position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;' +
+        'background:linear-gradient(135deg,#f7c948,#de911d);color:#4a2b00;font-weight:800;' +
+        'padding:12px 26px;border-radius:30px;font-size:1.05em;box-shadow:0 8px 24px rgba(222,145,29,.5);' +
+        'animation:ltBadgePop .4s ease;font-family:inherit;pointer-events:none;';
+      const style = document.createElement('style');
+      style.textContent = '@keyframes ltBadgePop{0%{transform:translateX(-50%) scale(.4);opacity:0}' +
+        '70%{transform:translateX(-50%) scale(1.12)}100%{transform:translateX(-50%) scale(1)}}';
+      document.head.appendChild(style);
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.transition = 'opacity .6s'; el.style.opacity = '0'; }, 4200);
+      setTimeout(() => el.remove(), 5000);
+    } catch (e) {}
+  }
+
   // 儲存一次練習結果
-  // data: { unit, unitName, series, score, total, difficulty, durationSec, stars? }
+  // data: { unit, unitName, series, score, total, difficulty, durationSec, stars?, wrongAttempts? }
   async function save(data) {
     try {
       const db = await _open();
       // 與 dialogue 相同的學生維度（sp_currentStudent；null＝訪客）
       let student = null;
       try { student = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch {}
+      const wrongAttempts = data.wrongAttempts ?? _wrongCount;
+      _wrongCount = 0;
       const record = {
+        wrongAttempts,
+        flawless:     (data.total || 0) > 0 && wrongAttempts === 0 &&
+                      (data.score || 0) >= (data.total || 0),
         studentId:    student?.id   ?? null,
         studentName:  student?.name ?? null,
         // 與 dialogue 紀錄格式對齊，讓 teacher.html 可一起顯示
@@ -62,12 +94,13 @@ const LearningTracker = (() => {
         req.onsuccess = resolve;
         req.onerror   = () => reject(req.error);
       });
+      if (record.flawless) _showFlawlessBadge();
     } catch (e) {
       // 靜默失敗，不影響遊戲本體
     }
   }
 
-  return { save };
+  return { save, logWrong, resetWrong };
 })();
 
 // ⚠️ 頂層 const 不會掛上 window；各單元以 window.LearningTracker?.save() 呼叫，
