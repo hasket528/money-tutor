@@ -1873,7 +1873,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260707b';
+            const BUILD_VERSION = '20260707c';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {
@@ -2119,7 +2119,9 @@
         </script>
 
         <footer style="margin-top:40px; padding:18px 0 6px; text-align:center; font-size:0.9em; color:var(--text-primary); opacity:0.85;">
-            <a href="teacher-guide.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">👩‍🏫 教師指南（課綱對應・IEP・使用說明）</a>
+            <a href="teacher-guide.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">👩‍🏫 教師指南</a>
+            <span style="margin:0 8px; opacity:0.4;">｜</span>
+            <a href="lesson-plans.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">📚 單元教案包</a>
             <span style="margin:0 8px; opacity:0.4;">｜</span>
             <a href="dialogue/teacher.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">📊 學習歷程總覽</a>
         </footer>

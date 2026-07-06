@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單元教案包｜金錢小達人</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f0f7ff; color: #334e68;
+               font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif; line-height: 1.7; }
+        .wrap { max-width: 900px; margin: 0 auto; padding: 26px 18px 60px; }
+        header.top { text-align: center; margin-bottom: 18px; }
+        header.top h1 { color: #007bff; margin: 0 0 4px; }
+        .top-nav { text-align: center; font-size: 0.9em; margin-bottom: 14px; }
+        .top-nav a { color: #007bff; text-decoration: none; margin: 0 8px; }
+        .toc { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 22px; }
+        .toc a { text-decoration: none; font-size: 0.78em; font-weight: 700; color: #1d4ed8;
+                 background: #eaf3ff; border: 1px solid #dbe7f5; border-radius: 14px; padding: 4px 10px; }
+        .plan { background: #fff; border: 1.5px solid #dbe7f5; border-radius: 14px;
+                padding: 22px 26px; margin-bottom: 20px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); }
+        .plan h2 { color: #007bff; border-left: 5px solid #007bff; padding-left: 10px;
+                   margin: 0 0 4px; font-size: 1.2em; }
+        .plan .series-tag { font-size: 0.72em; color: #64748b; font-weight: 700; }
+        .plan table { width: 100%; border-collapse: collapse; font-size: 0.87em; margin-top: 10px; }
+        .plan th { background: #eaf3ff; color: #1d4ed8; text-align: left; padding: 7px 10px;
+                   width: 110px; white-space: nowrap; vertical-align: top; font-size: 0.92em; }
+        .plan td { border: 1px solid #e8eef7; padding: 7px 10px; vertical-align: top; }
+        .plan ol { margin: 0; padding-left: 18px; }
+        .plan ol li { margin-bottom: 3px; }
+        .print-btn { position: fixed; right: 18px; bottom: 18px; background: #007bff; color: #fff;
+                     border: none; border-radius: 30px; padding: 12px 20px; cursor: pointer;
+                     font-size: 0.95em; font-family: inherit; box-shadow: 0 4px 14px rgba(0,123,255,0.4); }
+        @media print {
+            body { background: #fff; }
+            .toc, .top-nav, .print-btn { display: none; }
+            .plan { page-break-after: always; box-shadow: none; border-color: #bbb; }
+            .plan:last-child { page-break-after: auto; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="top">
+        <h1>📚 金錢小達人・單元教案包</h1>
+        <div style="font-size:0.88em;color:#64748b">24 單元教學計畫｜課綱對應・IEP 目標・教學流程（每單元一頁，可直接列印）</div>
+    </header>
+    <nav class="top-nav"><a href="index.html">← 回教材主頁</a><a href="teacher-guide.html">教師指南</a></nav>
+    <div class="toc" id="toc"></div>
+    <div id="plans"></div>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ 列印全部教案</button>
+
+<script>
+// 共用教學流程模板（{...} 由各單元 flow 覆寫特定步驟）
+const PLANS = [
+// ── F 系列：基礎技能 ──
+{ code:'F1', name:'數量與物品的對應', series:'第一部分：基礎技能', page:'f1_object_correspondence',
+  goal:'能將物品與位置/圖卡一一對應，建立「一個對一個」的數量前備概念。',
+  prereq:'能點選/拖曳螢幕物件；能專注操作 3 分鐘。',
+  flow:['引起動機：實物示範——每個杯子放一根吸管（一對一）。','教師示範單元操作一輪（投影），放聲思考「一個蘋果配一個盤子」。','引導練習：開啟「輔助點擊模式」，學生跟隨提示完成 3 題。','獨立練習：普通模式 5–10 題；答錯讓學生先自行修正再提示。','評量延伸：列印作業單；用教室實物（碗＋湯匙）做泛化練習。'],
+  assess:'系統紀錄正確率 ≥80%＋作業單 8 成正確；觀察能否不經提示完成對應。',
+  curriculum:'數學領域（調整）：數與量・低年段；特殊需求領域生活管理：物品配對應用',
+  iep:'能在 5 分鐘內完成 5 組一對一對應，連續 3 次正確率達 80%。' },
+{ code:'F2', name:'數量與點數', series:'第一部分：基礎技能', page:'f2_rote_and_rational_counting',
+  goal:'能唱數 1–20，並以理性計數（手指一物念一數）數出物品總數。',
+  prereq:'一對一對應（F1）。',
+  flow:['引起動機：唱數兒歌／拍手數數。','示範「點一個、數一個」，強調最後一個數字＝總數（基數概念）。','引導練習：輔助點擊模式 3 題，教師與學生齊聲點數。','獨立練習：普通模式，數量由 5 內漸增至 10、20。','評量延伸：作業單；數教室裡的門窗、書本。'],
+  assess:'10 以內點數正確率 ≥80%；能說出「總共有幾個」。',
+  curriculum:'數學領域（調整）：數與量・計數；生活管理：日常數量應用',
+  iep:'能正確點數 10 以內物品並說出總數，連續 3 次正確率 80%。' },
+{ code:'F3', name:'認識數字與數量', series:'第一部分：基礎技能', page:'f3_number_recognition',
+  goal:'能認讀數字 1–20，並將數字與對應數量連結。',
+  prereq:'能點數（F2）。',
+  flow:['引起動機：找找生活中的數字（電梯、時鐘、價標）。','示範數字卡與數量圖配對，唸出數字名。','引導練習：輔助模式配對 3 題；可上傳自訂圖片（學生喜愛的主題）提升動機。','獨立練習：普通/困難模式混合認讀與配對。','評量延伸：作業單；超市 DM 圈出指定數字。'],
+  assess:'數字 1–10 認讀與配對正確率 ≥80%。',
+  curriculum:'數學領域（調整）：數與量・數字認讀；生活管理：社區數字資訊',
+  iep:'能將數字 1–10 與對應數量正確配對，正確率 80%。' },
+{ code:'F4', name:'數字排序', series:'第一部分：基礎技能', page:'f4_number_sorting',
+  goal:'能將數字依大小排出正確順序，建立數序與序數概念。',
+  prereq:'數字認讀（F3）。',
+  flow:['引起動機：排隊叫號情境（號碼牌）。','示範由小到大拖曳排序，邊排邊唸。','引導練習：3 個數字內的排序；反複練習模式允許重試。','獨立練習：漸增至 5 個數字；困難模式亂序起點。','評量延伸：作業單；撲克牌排序遊戲。'],
+  assess:'5 個數字排序正確率 ≥80%；能指出「第幾個」。',
+  curriculum:'數學領域（調整）：數與量・順序；生活管理：排隊等候應用',
+  iep:'能將 1–20 內 5 個數字由小到大排序，3 次中 2 次獨立完成。' },
+{ code:'F5', name:'數量大小的比較', series:'第一部分：基礎技能', page:'f5_quantity_comparison',
+  goal:'能比較兩組數量的多少，理解「比較多／比較少／一樣多」。',
+  prereq:'點數（F2）。',
+  flow:['引起動機：分點心——哪一盤比較多？','示範先點數再比較的策略。','引導練習：差距大的組別開始（5 vs 2）。','獨立練習：漸進到差距小（6 vs 7）；計時挑戰維持專注。','評量延伸：作業單；比較文具、積木堆。'],
+  assess:'比較判斷正確率 ≥80%；能說出比較用語。',
+  curriculum:'數學領域（調整）：數與量・比較與關係',
+  iep:'能比較 10 以內兩組數量並正確指出較多者，正確率 80%。' },
+{ code:'F6', name:'數的合成與分解', series:'第一部分：基礎技能', page:'f6_number_composition',
+  goal:'能操作 10 以內數的合成與分解，為加減與付款組合鋪路。',
+  prereq:'點數與比較（F2、F5）。',
+  flow:['引起動機：分糖果——5 顆分兩堆有哪些分法？','示範合成（3 和 2 合起來是 5）與分解（5 可以分成…）。','引導練習：具體物圖示輔助，反複練習模式。','獨立練習：單次作答模式檢核；自訂主題物件提升參與。','評量延伸：作業單；連結 C 系列「換錢」前備。'],
+  assess:'10 以內合成分解正確率 ≥75%。',
+  curriculum:'數學領域（調整）：數與量・合成分解',
+  iep:'能完成 10 以內數的合成與分解各 5 題，正確率 75%。' },
+// ── C 系列：核心課程 ──
+{ code:'C1', name:'金錢的種類與面額', series:'第二部分：核心課程', page:'c1_money_types',
+  goal:'能辨識常用硬幣（1、5、10、50 元）與紙鈔（100、500、1000 元）。',
+  prereq:'數字認讀（F3）。',
+  flow:['引起動機：摸摸真錢幣——大小、顏色、數字在哪裡。','示範單元：點選指定面額，說出辨識線索（顏色/大小/數字）。','引導練習：反複練習模式，答錯即時修正。','獨立練習：單次作答檢核；混入紙鈔。','評量延伸：作業單＋真幣分類盒；🌟 無錯通過可得寶石。'],
+  assess:'指認四種硬幣與百元鈔正確率 ≥90%。',
+  curriculum:'生活管理：金錢與財物管理・貨幣認識；數學領域（調整）：數與量',
+  iep:'能指認 1、5、10、50 元硬幣與 100 元紙鈔，正確率 90%。' },
+{ code:'C2', name:'金錢的點數與加總', series:'第二部分：核心課程', page:'c2_money_counting',
+  goal:'能點數混合面額錢幣並說出總金額。',
+  prereq:'認識面額（C1）、合成（F6）。',
+  flow:['引起動機：撲滿倒出來有多少錢？','示範策略：先數大面額、同面額一組一組數。','引導練習：同面額點數（10 元×3）。','獨立練習：混合面額 50 元內 → 100 元內。','評量延伸：作業單；點數真幣並記錄。'],
+  assess:'50 元內混合點數正確率 ≥80%。',
+  curriculum:'生活管理：金錢與財物管理；數學領域（調整）：計數與加法應用',
+  iep:'能點數 50 元以內混合硬幣並說出總額，正確率 80%。' },
+{ code:'C3', name:'金錢面額的兌換', series:'第二部分：核心課程', page:'c3_money_exchange',
+  goal:'理解等值兌換（5 個 1 元＝1 個 5 元），建立面額轉換能力。',
+  prereq:'點數金額（C2）。',
+  flow:['引起動機：零錢太重了！怎麼換成大的？','示範小換大（拖入 5 個 1 元換 1 個 5 元）並驗算。','引導練習：反複作答模式；教師強調「一樣多」。','獨立練習：大換小、多列兌換。','評量延伸：作業單；教室銀行角色扮演。'],
+  assess:'基本兌換操作 3 次中 2 次獨立正確。',
+  curriculum:'生活管理：金錢與財物管理・等值概念',
+  iep:'能完成 10 元＝兩個 5 元等三種基本兌換，3 次中 2 次正確。' },
+{ code:'C4', name:'正確的金額', series:'第二部分：核心課程', page:'c4_correct_amount',
+  goal:'能依標價拿出恰好的金額（組合面額）。',
+  prereq:'點數與兌換（C2、C3）。',
+  flow:['引起動機：自動販賣機只吃剛剛好的錢！','示範看標價→選面額→湊足金額，放聲說策略（先拿大的）。','引導練習：簡單模式（淡化提示要拿的錢）。','獨立練習：普通/困難模式，多種組合。','評量延伸：作業單「看圖拿錢」；教室商店實作。'],
+  assess:'50 元內依標價取幣正確率 ≥80%。',
+  curriculum:'生活管理：金錢與財物管理・付款準備',
+  iep:'能依 50 元內標價拿出正確金額，正確率 80%。' },
+{ code:'C5', name:'足額付款', series:'第二部分：核心課程', page:'c5_sufficient_payment',
+  goal:'能判斷「我的錢夠不夠買」，避免消費挫折。',
+  prereq:'點數金額（C2）。',
+  flow:['引起動機：想買 25 元的糖果，口袋只有 20 元…','示範比較「我有的」與「要付的」，判斷夠/不夠。','引導練習：差距大的判斷開始。','獨立練習：接近金額的判斷（29 vs 30）。','評量延伸：作業單；購物前的「夠不夠」自問句訓練。'],
+  assess:'夠不夠判斷正確率 ≥80%；能說出判斷理由。',
+  curriculum:'生活管理：消費與理財・購買決策',
+  iep:'能判斷持有金額是否足夠購買指定商品，正確率 80%。' },
+{ code:'C6', name:'找零與計算', series:'第二部分：核心課程', page:'c6_making_change',
+  goal:'理解找零概念，能驗算找零是否正確。',
+  prereq:'足額付款（C5）、合成分解（F6）。',
+  flow:['引起動機：付 50 元買 30 元果汁，店員要找多少？','示範以「補數」策略算找零，並驗算（30＋20＝50）。','引導練習：整十找零；反複練習模式。','獨立練習：任意金額；困難模式驗算店員找錯的情境。','評量延伸：作業單；真實購物驗算回家作業。'],
+  assess:'100 元內找零驗算正確率 ≥75%。',
+  curriculum:'生活管理：消費與理財・交易核對；數學領域（調整）：減法應用',
+  iep:'能在 100 元內交易中確認找零是否正確，正確率 75%。' },
+// ── B 系列：預算規劃 ──
+{ code:'B1', name:'今天帶多少錢', series:'第三部分：預算規劃', page:'b1_daily_budget',
+  goal:'能依當日行程估算所需金額並備妥錢幣。',
+  prereq:'點數與取幣（C2、C4）。',
+  flow:['引起動機：今天要搭車＋買午餐，該帶多少？','示範列出行程→查費用→加總→備錢兩步驟流程。','引導練習：單一行程；提示金額數字泡泡輔助。','獨立練習：兩項以上行程；自訂學生真實行程。','評量延伸：作業單；製作「我的一日花費表」。'],
+  assess:'兩項行程估算與備錢正確率 ≥80%。',
+  curriculum:'生活管理：消費與理財・預算編列',
+  iep:'能依 2 項活動行程算出當日所需金額並備妥錢幣，正確率 80%。' },
+{ code:'B2', name:'零用錢日記', series:'第三部分：預算規劃', page:'b2_allowance_diary',
+  goal:'建立收支記錄習慣，能計算結餘。',
+  prereq:'加減概念（F6、C6）。',
+  flow:['引起動機：錢怎麼不見了？記下來就知道！','示範記錄收入/支出並算結餘。','引導練習：跟著單元事件記帳；計算過程提示。','獨立練習：自訂事件（學生真實零用錢）。','評量延伸：作業單；實體零用錢週記本。'],
+  assess:'一週模擬記帳結餘計算正確率 ≥80%。',
+  curriculum:'生活管理：消費與理財・記帳',
+  iep:'能記錄一週零用錢收支並說出結餘，連續 2 週達成。' },
+{ code:'B3', name:'存錢計畫', series:'第三部分：預算規劃', page:'b3_savings_plan',
+  goal:'能為目標訂定存錢計畫並依計畫執行（延宕滿足）。',
+  prereq:'點數金額（C2）。',
+  flow:['引起動機：想買的玩具 200 元，怎麼存到？','示範月曆存錢：每天存固定金額，看撲滿累積。','引導練習：簡單模式（面額已分解）逐日投入。','獨立練習：普通/困難模式自行組合面額；系統會記錄存錯次數。','評量延伸：實體撲滿＋存錢月曆表同步進行。'],
+  assess:'完成一輪月曆存錢達標；存款組合正確率 ≥80%。',
+  curriculum:'生活管理：消費與理財・儲蓄',
+  iep:'能為目標商品訂定存錢計畫並依計畫投入存款，達成率 80%。' },
+{ code:'B4', name:'特賣比一比', series:'第三部分：預算規劃', page:'b4_sale_comparison',
+  goal:'能比較不同商店同商品價格，選出較划算者。',
+  prereq:'數量比較（F5）、點數金額（C2）。',
+  flow:['引起動機：兩家店的餅乾價錢不一樣！','示範讀價標→比較→說出「哪家便宜、便宜多少」。','引導練習：差距明顯的比價。','獨立練習：含特價標籤／買一送一的判斷。','評量延伸：作業單；超市 DM 比價任務。'],
+  assess:'比價判斷正確率 ≥80%。',
+  curriculum:'生活管理：消費與理財・聰明消費',
+  iep:'能比較兩家商店同商品價格並選出較划算者，正確率 80%。' },
+{ code:'B5', name:'派對活動採購', series:'第三部分：預算規劃', page:'b5_party_budget',
+  goal:'能在固定預算內完成多項採購不超支。',
+  prereq:'足額判斷（C5）、比價（B4）。',
+  flow:['引起動機：班級派對交給你採購！','示範看清單→選商品→隨時檢查剩餘預算。','引導練習：少量品項＋充裕預算。','獨立練習：品項多、預算緊；付款與找零整合。','評量延伸：真實班級活動採購計畫書。'],
+  assess:'預算內完成採購清單、不超支。',
+  curriculum:'生活管理：消費與理財・預算執行',
+  iep:'能在指定預算內完成派對採購清單，不超支。' },
+{ code:'B6', name:'菜市場買菜', series:'第三部分：預算規劃', page:'b6_market_shopping',
+  goal:'能在傳統市場情境完成多攤採買、付款與驗算找零。',
+  prereq:'付款與找零（C4、C6）。',
+  flow:['引起動機：幫家人買晚餐食材！','示範攤位導航→點餐→付款→核對找零。','引導練習：單一攤位完整流程。','獨立練習：多攤採買；答錯 3 次系統自動提示。','評量延伸：親子市場實地任務單。'],
+  assess:'完成 3 攤採買與找零驗算正確率 ≥75%。',
+  curriculum:'生活管理：社區生活應用・市場交易',
+  iep:'能於模擬市場完成 3 攤採買並驗算找零，正確率 75%。' },
+// ── A 系列：進階應用 ──
+{ code:'A1', name:'自動飲料販賣機', series:'第四部分：進階應用', page:'a1_vending_machine',
+  goal:'能獨立完成販賣機購物流程（選品→投幣→取物→取找零）。',
+  prereq:'取幣（C4）。',
+  flow:['引起動機：校園販賣機使用經驗分享。','示範完整流程，強調投幣口/退幣桿/取物口位置。','引導練習：輔助點擊模式跟隨步驟。','獨立練習：普通模式指定任務→自選任務；投幣優先模式挑戰。','評量延伸：真實販賣機實地演練（家長協作）。'],
+  assess:'流程獨立完成 3 次中 2 次；系統步驟錯誤數下降。',
+  curriculum:'生活管理：社區生活應用・自助設備',
+  iep:'能獨立完成販賣機購物流程，3 次中 2 次成功。' },
+{ code:'A2', name:'理髮店售票機', series:'第四部分：進階應用', page:'a2_barber_shop_kiosk',
+  goal:'能操作服務型售票機，依需求選擇服務並完成付款。',
+  prereq:'販賣機經驗（A1）。',
+  flow:['引起動機：百元理髮的售票機看過嗎？','示範選服務→投幣→取票流程。','引導練習：指定服務任務。','獨立練習：金額組合付款；投幣優先模式。','評量延伸：社區百元理髮實地體驗。'],
+  assess:'售票流程獨立完成率；付款錯誤次數下降。',
+  curriculum:'生活管理：社區生活應用・服務消費',
+  iep:'能依需求於售票機選擇服務並完成付款，提示不超過 1 次。' },
+{ code:'A3', name:'美式速食自助點餐', series:'第四部分：進階應用', page:'a3_mcdonalds_order',
+  goal:'能操作自助點餐機完成點餐、付款與取餐。',
+  prereq:'足額付款（C5）。',
+  flow:['引起動機：速食店點餐機初體驗影片。','示範選餐（單點/套餐）→確認→付款→取餐號。','引導練習：指定餐點任務；魔法商品自訂學生愛吃的品項。','獨立練習：套餐比較與找零驗算。','評量延伸：家庭速食店實地任務。'],
+  assess:'點餐流程獨立完成；找零驗算正確率 ≥75%。',
+  curriculum:'生活管理：社區生活應用・自助點餐；社會技巧：公共禮儀',
+  iep:'能操作點餐機完成一份套餐點購與付款，獨立完成 80% 步驟。' },
+{ code:'A4', name:'模擬購物', series:'第四部分：進階應用', page:'a4_simulated_shopping',
+  goal:'能在多類型商店依清單選購商品並完成結帳。',
+  prereq:'B 系列預算能力。',
+  flow:['引起動機：12 種商店逛街地圖。','示範清單購物：找商品→比價→結帳。','引導練習：便利商店 3 項清單。','獨立練習：不同商店類型輪替；難度分級作業單搭配。','評量延伸：真實購物清單任務（家長回饋單）。'],
+  assess:'依清單購足率；結帳金額正確率 ≥80%。',
+  curriculum:'生活管理：消費與理財・清單購物',
+  iep:'能依購物清單選購 3 項商品並完成結帳，正確率 80%。' },
+{ code:'A5', name:'ATM 提款機', series:'第四部分：進階應用', page:'a5_atm_simulator',
+  goal:'能完成 ATM 提款流程並遵守金融安全守則。',
+  prereq:'數字輸入（F3）。',
+  flow:['引起動機：提款卡與密碼的祕密（安全教育切入）。','示範插卡→密碼→提款→取卡取鈔，強調遮擋密碼。','引導練習：普通模式步驟提示。','獨立練習：隨機任務（提款/存款/轉帳）；金融安全知識問答。','評量延伸：銀行/超商 ATM 實地觀察。'],
+  assess:'提款流程獨立完成 3 次中 2 次；能複誦 2 條安全守則。',
+  curriculum:'生活管理：金錢與財物管理・金融工具與安全',
+  iep:'能在模擬 ATM 完成提款流程並遵守密碼安全原則，3 次中 2 次獨立。' },
+{ code:'A6', name:'火車購票', series:'第四部分：進階應用', page:'a6_train_ticket',
+  goal:'能操作購票機購買指定車票並判讀票面資訊。',
+  prereq:'取幣與找零（C4、C6）。',
+  flow:['引起動機：規劃一趟小旅行！','示範選起訖站→票種→張數→付款→取票。','引導練習：指定行程任務；自訂車站（學生家附近）。','獨立練習：錢包組成限制下的付款；找零驗證。','評量延伸：車站實地購票體驗（安全隨行）。'],
+  assess:'購票流程獨立完成；能說出票面起訖站與票價。',
+  curriculum:'生活管理：行動與交通・大眾運輸',
+  iep:'能購買指定起訖站車票並說出票面資訊，提示不超過 2 次。' },
+];
+
+const toc = document.getElementById('toc');
+const host = document.getElementById('plans');
+PLANS.forEach(p => {
+    const a = document.createElement('a');
+    a.href = '#plan-' + p.code;
+    a.textContent = p.code;
+    toc.appendChild(a);
+
+    const div = document.createElement('div');
+    div.className = 'plan';
+    div.id = 'plan-' + p.code;
+    div.innerHTML = `
+        <div class="series-tag">${p.series}</div>
+        <h2>${p.code}　${p.name}</h2>
+        <table>
+            <tr><th>🎯 教學目標</th><td>${p.goal}</td></tr>
+            <tr><th>🧩 先備能力</th><td>${p.prereq}</td></tr>
+            <tr><th>🪜 教學流程</th><td><ol>${p.flow.map(s => `<li>${s}</li>`).join('')}</ol></td></tr>
+            <tr><th>📏 評量方式</th><td>${p.assess}（可於「學習歷程總覽」檢視正確率、錯誤嘗試與 🎯 精熟標記）</td></tr>
+            <tr><th>📖 課綱對應＊</th><td>${p.curriculum}</td></tr>
+            <tr><th>📝 IEP 目標例句</th><td>${p.iep}</td></tr>
+            <tr><th>🔗 單元連結</th><td><a href="html/${p.page}.html">html/${p.page}.html</a>｜作業單：單元設定頁內開啟</td></tr>
+        </table>`;
+    host.appendChild(div);
+});
+document.getElementById('plans').insertAdjacentHTML('beforeend',
+    '<p style="font-size:0.8em;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 12px;">＊課綱對應為建議層級（十二年國教特殊需求領域課程「生活管理」「社會技巧」及數學領域調整應用），請依校本課程計畫與學生 IEP 微調具體學習表現代碼。</p>');
+</script>
+</body>
+</html>
