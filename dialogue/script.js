@@ -534,6 +534,12 @@ function playShopkeeperAudio(step) {
   const avatar = document.getElementById('shopkeeper-avatar');
   const base    = `audio/clerk/${state.scenario.id}`;
   const stepId  = step.id;
+
+  // 自訂情境：老師錄音（IndexedDB blob）→ 即時 TTS。不查伺服器音檔（必為 404）。
+  if (state.scenario?.isCustom) {
+    playCustomStepAudio(step, avatar);
+    return;
+  }
   // 候選清單：情境專屬 → 共用版（_unknown_）；各試 mp3 與 wav。
   // mp3 優先（檔小、預錄主格式；wav 已備份移出，留 .wav 後備相容舊部署）
   const candidates = [
@@ -575,6 +581,34 @@ function playShopkeeperAudio(step) {
   }
 
   tryNext();
+}
+
+// 自訂情境步驟語音：老師錄音 blob（custom_audio store）優先，缺檔走即時 TTS。
+// 與 playShopkeeperAudio 相同的頭像動畫／心理 OS 行為。
+function playCustomStepAudio(step, avatar) {
+  const fullPrompt = step.shopkeeper_prompt || '';
+  const osMatch    = fullPrompt.match(/（([^）]*)）/);
+  const osText     = osMatch ? osMatch[1].trim() : '';
+  const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
+  const speakOS    = () => { if (osText) setTimeout(() => speakInnerOS(osText), 350); };
+  const doTTS      = () => tts.speak(clerkLine || fullPrompt, 0.85, speakOS);
+
+  const key = `${state.scenario.id}::${step.id}::say`;
+  (typeof dbAudioGet === 'function' ? dbAudioGet(key) : Promise.resolve(null))
+    .then(blob => {
+      if (!blob) { doTTS(); return; }
+      const url   = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      _shopkeeperAudio = audio;
+      audio.onplay  = () => avatar?.classList.add('speaking');
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (_shopkeeperAudio === audio) { avatar?.classList.remove('speaking'); speakOS(); }
+      };
+      audio.onerror = () => { URL.revokeObjectURL(url); if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } };
+      audio.play().catch(() => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } });
+    })
+    .catch(doTTS);
 }
 
 // 以學生語音朗讀（選項喇叭用）。onEnd：唸完（或無法唸）後的回呼，供「播完再出彈窗」使用。
@@ -1216,6 +1250,8 @@ function playClerkIntro(scenario) {
 // ─── 回饋語音播放（優先音檔，fallback TTS）──────────────
 function playFeedbackAudio(text, score) {
   stopAllAudio();
+  // 自訂情境無預錄回饋檔，直接即時 TTS（避免 404 徒勞查找）
+  if (state.scenario?.isCustom) { tts.speak(text); return; }
   const step = state.situation.steps[state.stepIndex];
   const base = `audio/feedback/${state.scenario.id}_${state.situation.id}_${step.id}_${score}`;
   const candidates = [`${base}.mp3`, `${base}.wav`];
@@ -1309,6 +1345,22 @@ function renderHome() {
     grid.appendChild(wrap);
   });
 
+  // 「➕ 自訂情境」入口卡：老師自編對話的第一入口（設定頁亦可管理）
+  const addWrap = document.createElement('div');
+  addWrap.className = 'scenario-card-wrap';
+  const addCard = document.createElement('button');
+  addCard.className = 'scenario-card scenario-card-add';
+  addCard.setAttribute('aria-label', '建立自訂情境');
+  addCard.innerHTML = `
+    <div class="card-icon-wrap"><span class="card-icon">➕</span></div>
+    <span class="card-name">自訂情境</span>
+    <span class="card-steps">🧑‍🏫 老師自編對話</span>
+    <span class="card-badge">建立新情境 →</span>
+  `;
+  addCard.addEventListener('click', () => { sfx.click(); openScenarioEditor(-1); });
+  addWrap.appendChild(addCard);
+  grid.appendChild(addWrap);
+
   renderHomeStudentStrip();
   showScreen('screen-home');
 }
@@ -1339,6 +1391,18 @@ function startScenario(scenario) {
     el.style.setProperty('--scene-color',  theme.color);
     el.style.setProperty('--scene-lt',     theme.bg);
     el.style.setProperty('--scene-accent', theme.accent || theme.color);
+  }
+
+  // 自訂情境：無 situations 子層（扁平 steps），包成單一情境直接進難度選擇
+  if (!scenario.situations && Array.isArray(scenario.steps)) {
+    startWithSituation({
+      id:   'custom',
+      name: '自訂練習',
+      icon: scenario.icon || '💬',
+      desc: '',
+      steps: scenario.steps,
+    });
+    return;
   }
 
   const sitIcon = document.getElementById('sit-icon');
@@ -2293,6 +2357,8 @@ function renderSettings() {
         const arr = loadCustom();
         arr.splice(idx, 1);
         saveCustom(arr);
+        // 一併清除此情境的所有老師錄音
+        if (typeof dbAudioDeletePrefix === 'function') dbAudioDeletePrefix(`${sc.id}::`).catch(() => {});
         renderSettings();
       }
     });
@@ -2487,6 +2553,8 @@ function saveScenario() {
   sfx.click();
   nav.pop();
   renderSettings();
+  // 從首頁 ➕ 卡進來時，pop 回首頁需重繪卡片列表
+  if (document.getElementById('screen-home').classList.contains('active')) renderHome();
 }
 
 
@@ -2624,9 +2692,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 難度選擇頁：上一頁（=情境選擇）+ 返回主頁
+  // 難度選擇頁：上一頁（=情境選擇；自訂情境無此層 → 回主頁）+ 返回主頁
   document.getElementById('btn-diff-back').addEventListener('click', () => {
-    if (state.scenario) showScreen('screen-situation');
+    if (state.scenario?.situations) showScreen('screen-situation');
     else renderHome();
   });
   document.getElementById('btn-diff-home').addEventListener('click', renderHome);

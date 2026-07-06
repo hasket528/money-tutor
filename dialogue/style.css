@@ -144,6 +144,21 @@ body {
   overflow: hidden;
 }
 
+/* 「➕ 自訂情境」入口卡：虛線框，與內容卡區隔 */
+.scenario-card-add {
+  border: 2px dashed var(--gray-300, #CBD5E1);
+  background: transparent;
+  box-shadow: none;
+}
+.scenario-card-add:hover {
+  border-color: var(--primary, #2563EB);
+  background: var(--white);
+}
+.scenario-card-add .card-badge {
+  background: var(--gray-100, #F1F5F9);
+  color: var(--gray-600, #475569);
+}
+
 /* 店員介紹按鈕（浮在卡片右上角） */
 .clerk-intro-btn {
   position: absolute;

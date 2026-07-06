@@ -2,10 +2,13 @@
 // 資料結構：
 //   record { id(auto), scenarioId, situationId, difficulty,
 //             score, total, steps[], durationSec, ts }
+//   custom_audio { key, blob, mime, ts }
+//     key 慣例：`${scenarioId}::${stepId}::say`（店員台詞錄音；未來回饋語用 ::fb）
 
 const DB_NAME    = 'shopping-practice';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE      = 'records';
+const AUDIO_STORE = 'custom_audio';
 
 let _db = null;
 
@@ -19,6 +22,9 @@ async function dbOpen() {
         const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
         store.createIndex('ts',         'ts',         { unique: false });
         store.createIndex('scenarioId', 'scenarioId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(AUDIO_STORE)) {
+        db.createObjectStore(AUDIO_STORE, { keyPath: 'key' });
       }
     };
     req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
@@ -52,6 +58,52 @@ async function dbClear() {
     req.onsuccess = resolve;
     req.onerror   = () => reject(req.error);
   });
+}
+
+// ─── 自訂情境錄音（老師語音工作室）───────────────────
+
+async function dbAudioSave(key, blob) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(AUDIO_STORE, 'readwrite').objectStore(AUDIO_STORE)
+      .put({ key, blob, mime: blob.type || 'audio/webm', ts: Date.now() });
+    req.onsuccess = () => resolve(key);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function dbAudioGet(key) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(AUDIO_STORE, 'readonly').objectStore(AUDIO_STORE).get(key);
+    req.onsuccess = () => resolve(req.result?.blob || null);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function dbAudioDelete(key) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(AUDIO_STORE, 'readwrite').objectStore(AUDIO_STORE).delete(key);
+    req.onsuccess = resolve;
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+// 列出指定前綴的所有 key（例：刪除整個情境時清掉其全部錄音）
+async function dbAudioKeys(prefix = '') {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(AUDIO_STORE, 'readonly').objectStore(AUDIO_STORE).getAllKeys();
+    req.onsuccess = () => resolve((req.result || []).filter(k => String(k).startsWith(prefix)));
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function dbAudioDeletePrefix(prefix) {
+  const keys = await dbAudioKeys(prefix);
+  await Promise.all(keys.map(k => dbAudioDelete(k)));
+  return keys.length;
 }
 
 // 匯出全部資料（JSON 字串）
