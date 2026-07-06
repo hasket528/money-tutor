@@ -5075,6 +5075,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isWrongAction) {
                 // 累計錯誤次數
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.state.gameState.normalMode.errorCount++;
                 this.state.gameState.normalMode.totalErrors++;
                 if (window.TutorContext) TutorContext.update({ errorCount: this.state.gameState.normalMode.errorCount });
@@ -6279,6 +6280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.Debug.log('payment', '[Normal Mode Payment] 付款錯誤，退回金額');
 
                 // ★★★ 增加錯誤計數 ★★★
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.state.gameState.normalMode.paymentErrorCount++;
                 const errorCount = this.state.gameState.normalMode.paymentErrorCount;
                 this.Debug.log('payment', '[Normal Mode Payment] 付款錯誤次數:', errorCount);
@@ -6347,6 +6349,7 @@ document.addEventListener('DOMContentLoaded', () => {
          * coinFirst 模式：處理付款錯誤（金額不符）
          */
         _handleCoinFirstPaymentError(inserted, required) {
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.state.gameState.normalMode.paymentErrorCount++;
             const errorCount = this.state.gameState.normalMode.paymentErrorCount;
             this.audio.playSound('error');

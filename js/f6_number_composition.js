@@ -3330,6 +3330,7 @@ const Game = {
                     });
                 } else {
                     btn.classList.add('incorrect');
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.Audio.play('errorSound');
                     this.Speech.speak(NumberCompositionConfig.speech.incorrect[Math.floor(Math.random() * NumberCompositionConfig.speech.incorrect.length)]);
 
@@ -4008,6 +4009,7 @@ const Game = {
             });
         } else {
             // 答錯
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.Audio.play('errorSound');
         }
     },
@@ -4293,6 +4295,7 @@ const Game = {
                 } else {
                     // 答錯了
                     btn.classList.add('incorrect');
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.Audio.play('errorSound');
 
                     if (testMode === 'retry') {
@@ -4403,6 +4406,7 @@ const Game = {
                 } else {
                     // 答錯了
                     btn.classList.add('incorrect');
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.Audio.play('errorSound');
 
                     if (testMode === 'retry') {
@@ -4527,6 +4531,7 @@ const Game = {
                         }, 300);
                     } else {
                         // 答錯了
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.Audio.play('errorSound');
 
                         if (testMode === 'single') {
@@ -4654,6 +4659,7 @@ const Game = {
                         }, 300);
                     } else {
                         // 答錯了
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.Audio.play('errorSound');
 
                         if (testMode === 'single') {
@@ -4784,6 +4790,7 @@ const Game = {
                         }, 300);
                     } else {
                         // 答錯了
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.Audio.play('errorSound');
 
                         if (testMode === 'single') {
@@ -5042,6 +5049,7 @@ const Game = {
             });
         } else {
             // 不應該發生，因為按鈕只在完成時啟用
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.Audio.play('errorSound');
         }
     },
@@ -5097,6 +5105,7 @@ const Game = {
     // =====================================================
     handleIncorrectAnswer(btn, correctAnswer) {
         btn.classList.add('incorrect');
+        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
         this.Audio.play('errorSound');
 
         const { testMode } = this.state.settings;

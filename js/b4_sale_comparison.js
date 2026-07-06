@@ -2022,6 +2022,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (diff === 'normal' && this.state.quiz.selectErrorCount >= 3) {
                         this._revealCardPrices(left, right);
                     }
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     Game.Speech.speak('這邊比較貴喔，再看看另一邊');
                     Game.TimerManager.setTimeout(() => {
@@ -2594,6 +2595,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (diff === 'normal' && this.state.quiz.selectErrorCount >= 3) {
                         this._revealTripleCardPrices(curr);
                     }
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     Game.Speech.speak('不對喔，請再比較看看');
                     Game.TimerManager.setTimeout(() => {
@@ -2678,6 +2680,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const b = document.getElementById(`badge-${ci}`);
                             if (b) b.textContent = rank === 0 ? '1️⃣' : rank === 1 ? '2️⃣' : '3️⃣';
                         });
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this._showCenterFeedback('❌', '答錯了！');
                         Game.Speech.speak('不對喔，請看看正確的排序，再試一次！');
                             Game.TimerManager.setTimeout(() => {
@@ -2983,6 +2986,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.handleDiffAnswer(true, correctDiff);
                         } else {
                             this.audio.play('error');
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this._showCenterFeedback('❌', '再試一次！');
                             this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                             const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -3406,6 +3410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             btn.classList.remove('b4-diff-opt-masked');
                             btn.classList.add('wrong-ans');
                             this.audio.play('error');
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this._showCenterFeedback('❌', '再試一次！');
                             this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                             const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -4194,6 +4199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.handleDiffAnswer(true, correctDiff);
                     } else {
                         this.audio.play('error');
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this._showCenterFeedback('❌', '再試一次！');
                         this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                         const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -4473,6 +4479,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const diffWrongSpeechBase = `差額是${toTWD(correctDiff)}`;
                 {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     if (revealAnswer) {
                         // 普通模式第3次：說出答案，並保留正確選項高亮

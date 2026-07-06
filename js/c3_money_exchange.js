@@ -562,6 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 統一的錯誤處理
                     const difficulty = MoneyExchange3.getSettings('difficulty');
                     const config = MoneyExchange3.ModeConfig[difficulty];
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     MoneyExchange3.Audio.playErrorSound(difficulty, config);
                     
                     const answerMode = MoneyExchange3.getSettings('mode');
@@ -2297,6 +2298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const droppedValue = parseInt(droppedElement.dataset.value);
                 if (droppedValue !== question.sourceValue) {
                     Game.Debug.log('drag', `❌ 金錢類型不符：需要${question.sourceValue}元，但拖曳了${droppedValue}元`);
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     MoneyExchange3.Audio.playErrorSound(mode, config);
                     return;
                 }
@@ -2408,6 +2410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const droppedValue = parseInt(droppedElement.dataset.value);
                 if (droppedValue !== question.sourceValue) {
                     Game.Debug.log('drag', `❌ 金錢類型不符：需要${question.sourceValue}元，但拖曳了${droppedValue}元`);
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     MoneyExchange3.Audio.playErrorSound(mode, config);
                     return;
                 }
@@ -2663,6 +2666,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // 1. 播放音效反饋
                 if (config.audioFeedback) {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     MoneyExchange3.Audio.playErrorSound(mode, config);
                 }
                 
@@ -5492,6 +5496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (droppedValue !== sourceValue) {
                 Game.Debug.log('drag', `❌ 金錢類型不符：拖拽${droppedValue}元，需要${sourceValue}元`);
                 const config = this.ModeConfig[difficulty];
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.Audio.playErrorSound(difficulty, config);
                 return;
             }
@@ -7073,6 +7078,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Game.Debug.log('drag', `❌ 金錢類型不符：拖曳${droppedValue}元，需要${sourceValue}元`);
                 const mode = this.Core.StateManager.getCurrentMode();
                 const config = this.ModeConfig[mode];
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 MoneyExchange3.Audio.playErrorSound(mode, config);
                 return;
             }
@@ -7122,6 +7128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 驗證金錢類型
             if (droppedValue !== sourceValue) {
                 Game.Debug.log('drag', `❌ 金錢類型不符：拖曳${droppedValue}元，需要${sourceValue}元`);
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 MoneyExchange3.Audio.playErrorSound(mode, config);
                 return;
             }
@@ -7645,6 +7652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Game.Debug.log('exchange', '❌ 困難模式兌換未完成');
                 const mode = this.Core.StateManager.getCurrentMode();
                 const config = this.ModeConfig[mode];
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 MoneyExchange3.Audio.playErrorSound(mode, config);
                 
                 // 生成錯誤訊息

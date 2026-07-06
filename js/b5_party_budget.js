@@ -2099,6 +2099,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 g.streak = 0;
                 g.roundErrors = (g.roundErrors || 0) + 1;
                 this.audio.play('error');
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this._showCenterFeedback('❌', '還有商品沒選到！');
                 Game.Speech.speak(`不對喔，記得要選所有指定的商品喔！請再試一次！`);
                 if (g.roundErrors >= 3) {
@@ -2719,6 +2720,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.isProcessing = false;
                 this.audio.play('error');
                 g.p2ErrorCount = (g.p2ErrorCount || 0) + 1;
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this._showCenterFeedback('❌', '付太少了！');
                 Game.Speech.speak(`付太少了，還差${toTWD(total - wTotal)}，請再拖入金錢`);
                 const walletArea = document.getElementById('b5p2-wallet-area');
@@ -3295,6 +3297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.audio.play('error');
                 g.changeErrorCount = (g.changeErrorCount || 0) + 1;
                 const b5ChangeDir = placedTotal > change ? '太多了' : '太少了';
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this._showCenterFeedback('❌', `找零算${b5ChangeDir}！`);
                 Game.Speech.speak(`不對喔，找零算${b5ChangeDir}，請再試一次`);
                 const walletZone = document.getElementById('b5c-wallet-zone');

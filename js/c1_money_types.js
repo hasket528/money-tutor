@@ -1261,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             } else {
                 // 播放錯誤音效
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 document.getElementById('error-sound')?.play();
 
                 Game.TimerManager.setTimeout(() => {

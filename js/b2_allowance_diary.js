@@ -2126,6 +2126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.state.settings.retryMode === 'retry') {
                     this.state.quiz.errorCount++;
                     const willShowHint = this.state.quiz.errorCount >= 3;
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     const b2EasyErrDir = chosen > effectiveAnswer ? '太多了' : '太少了';
                     Game.Speech.speak(`不對喔，算${b2EasyErrDir}，請再試一次`);
@@ -2139,6 +2140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 1600, 'turnTransition');
                 } else {
                     this.state.quiz.answeredHistory.push({ startAmount: question.startAmount, events: question.events, answer: effectiveAnswer, correct: false, _theme: question._theme });
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '答錯了！');
                     // 告知正確答案後進入第2頁
                     Game.Speech.speak(`正確答案是${toTWD(effectiveAnswer)}`, () => {
@@ -2416,6 +2418,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? (diff33 > 0 ? `不對喔，算太多了，請再試一次` : `不對喔，算太少了，請再試一次`)
                     : `不對喔，請再試一次`;
                 if (this.state.settings.retryMode === 'retry') {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     Game.Speech.speak(errSpeech);
                     Game.TimerManager.setTimeout(() => {
@@ -2428,6 +2431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 1800, 'turnTransition');
                 } else {
                     this.state.quiz.answeredHistory.push({ startAmount: question.startAmount, events: this._getEffectiveEvents(question), answer: effectiveAnswer, correct: false, _theme: question._theme });
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '答錯了！');
                     // 告知正確答案後進入第2頁
                     Game.Speech.speak(`正確答案是${toTWD(effectiveAnswer)}`, () => {

@@ -4675,6 +4675,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 普通模式答錯處理（完全獨立）
         // =====================================================
         handleNormalModeIncorrectAnswer(question) {
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.audio.playErrorSound();
 
             const { mode } = this.state.settings;
@@ -4701,6 +4702,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 困難模式答錯處理（完全獨立）
         // =====================================================
         handleHardModeIncorrectAnswer(question) {
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.audio.playErrorSound();
 
             const { mode } = this.state.settings;

@@ -6901,6 +6901,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // 答錯了
                     errorCount++;
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.playSound('error');
 
                     const speechText = `答錯了！找零應該是 ${changeExpected} 元`;
@@ -8419,6 +8420,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 普通模式：累計找零錯誤次數，3次後高亮正確答案
                 this.state.gameState.changeErrorCount++;
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.Debug.log('flow', `[A3-McDonald] 找零錯誤次數: ${this.state.gameState.changeErrorCount}`);
                 if (this.state.gameState.changeErrorCount >= 3 && !this.state.gameState.changeHintShown) {
                     this.state.gameState.changeHintShown = true;

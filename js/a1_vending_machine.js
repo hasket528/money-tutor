@@ -3227,6 +3227,7 @@
                 // coinFirst 進階模式：檢查飲料是否已亮起（投入金額是否足夠）
                 if (this.isCoinFirstMode()) {
                     if (this.state.gameState.insertedAmount < product.price) {
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.audio.play('error');
                         this.showWarningMark(productId);
                         this.speech.speak('這個飲料還沒有亮起來，請再投入更多硬幣');
@@ -3237,6 +3238,7 @@
                     if (this.state.settings.taskType === 'coinFirstAssigned') {
                         const cfTarget = this.state.gameState.targetProduct;
                         if (cfTarget && product.id !== cfTarget.id) {
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this.audio.play('error');
                             this.showWrongProductMark(productId);
                             this.speech.speak(`請選擇指定的飲料：${cfTarget.name}`);
@@ -3250,6 +3252,7 @@
 
                 // 如果是指定任務且選錯飲料
                 if (this.state.settings.taskType === 'assigned' && product.id !== this.state.gameState.targetProduct.id) {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請購買指定的飲料：${this.state.gameState.targetProduct.name}`);
@@ -3282,6 +3285,7 @@
             if (this.state.settings.taskType === 'assigned' && !this.isAdvancedMode()) {
                 if (product.id !== this.state.gameState.targetProduct.id) {
                     // 選錯飲料
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請購買指定的飲料：${this.state.gameState.targetProduct.name}`);
@@ -3295,6 +3299,7 @@
                 // coinFirstAssigned 簡單模式：檢查是否為目標飲料
                 const target = this.state.gameState.targetProduct;
                 if (target && product.id !== target.id) {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請選擇 ${target.name}`);
@@ -5548,6 +5553,7 @@
                     this.speech.speak(`金額不足，還需要 ${this.convertAmountToSpeech(diff)}`);
                 } else {
                     this.showToast(`金額不足，還需要 ${diff} 元`, 'error');
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.play('error');
                 }
                 return;

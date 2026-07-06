@@ -5440,6 +5440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // 判斷錯誤
                 Game.Debug.log('judge', '❌ 判斷錯誤！');
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
 
                 // 如果不是自動判斷且音效未播放，播放錯誤音效
                 if (!autoJudgmentData && !this.state.gameState.audioPlayed) {

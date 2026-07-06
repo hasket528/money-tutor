@@ -1769,6 +1769,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 1200);
                 });
             } else {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 document.getElementById('error-sound')?.play();
 
                 if (mode === 'retry') {
@@ -1850,6 +1851,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                 // 🔧 答错时不添加红色高亮类，改用红色×标记
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 document.getElementById('error-sound')?.play();
 
                 if (mode === 'retry') {

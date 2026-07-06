@@ -3239,6 +3239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.isProcessing = false;
                 this.audio.play('error');
                 g.p2ErrorCount = (g.p2ErrorCount || 0) + 1;
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this._showCenterFeedback('❌', '付太少了！');
                 Game.Speech.speak(`付太少了，還差${toTWD(total - wTotal)}，請再拖入金錢`);
                 const walletArea = document.getElementById('b6p2-wallet-area');
@@ -3850,6 +3851,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.audio.play('error');
                 g.changeErrorCount = (g.changeErrorCount || 0) + 1;
                 const b6ChangeDir = placedTotal > change ? '太多了' : '太少了';
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this._showCenterFeedback('❌', `找零算${b6ChangeDir}！`);
                 Game.Speech.speak(`不對喔，找零算${b6ChangeDir}，請再試一次`);
                 const walletZone = document.getElementById('b6c-wallet-zone');

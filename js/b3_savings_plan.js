@@ -3089,6 +3089,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.quiz.streak = 0;
                 this.audio.play('error');
                 if (this.state.settings.retryMode === 'retry') {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     Game.Speech.speak(`不對喔，再想想看`);
                     Game.TimerManager.setTimeout(() => {
@@ -3099,6 +3100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }, 1600, 'turnTransition');
                 } else {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '答錯了！');
                     Game.Speech.speak(`正確答案是${question.answer}週`);
                     Game.TimerManager.setTimeout(() => this.nextQuestion(), 2000, 'turnTransition');
@@ -3196,6 +3198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this._showDivisionHint(question); // 答錯即顯示除法公式
                 this._showBestSavingHint(question); // 最佳存法提示（Round 31）
                 if (this.state.settings.retryMode === 'retry') {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '再試一次！');
                     Game.Speech.speak(`不對喔，參考提示再試一次`);
                     Game.TimerManager.setTimeout(() => {
@@ -3207,6 +3210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.querySelectorAll('.b3-numpad-btn').forEach(btn => btn.disabled = false);
                     }, 1800, 'turnTransition');
                 } else {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this._showCenterFeedback('❌', '答錯了！');
                     Game.Speech.speak(`正確答案是${question.answer}週`);
                     Game.TimerManager.setTimeout(() => this.nextQuestion(), 2500, 'turnTransition');

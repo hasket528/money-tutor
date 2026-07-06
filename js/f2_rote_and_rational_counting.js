@@ -2849,6 +2849,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     
                     // 答錯處理
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     const shouldRetry = testMode === 'retry' && config.allowRetry;
                 
                     if (shouldRetry) {

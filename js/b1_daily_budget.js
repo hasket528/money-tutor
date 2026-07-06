@@ -1354,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this._checkB1AllItemsCorrect(curr, items);
                         });
                     } else {
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.audio.play('error');
                         btn.classList.add('b1-nchoice-wrong');
                         Game.TimerManager.setTimeout(() => btn.classList.remove('b1-nchoice-wrong'), 600, 'ui');
@@ -1446,6 +1447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 this._checkB1AllItemsCorrect(curr, items);
                             });
                         } else {
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this.audio.play('error');
                             inputVal = '';
                             updateDisp();
@@ -1530,6 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 this._renderPhase2(curr, diff);
                             });
                         } else {
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this.audio.play('error');
                             inputVal = '';
                             updateDisp();
@@ -1624,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 this._checkB1AllItemsCorrect(curr, this._getEffectiveItems(curr));
                             });
                         } else {
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this.audio.play('error');
                             inputVal = '';
                             const isOver = entered > cost;
@@ -1678,6 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this._checkB1AllItemsCorrect(curr, this._getEffectiveItems(curr));
                         });
                     } else {
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.audio.play('error');
                         choiceBtn.classList.add('b1-nchoice-wrong');
                         Game.TimerManager.setTimeout(() => choiceBtn.classList.remove('b1-nchoice-wrong'), 600, 'ui');
@@ -1866,6 +1871,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     } else {
                         // 錯誤
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.audio.play('error');
                         q.errorCount = (q.errorCount || 0) + 1;
                         const isOver = entered > correctTotal;
@@ -2191,6 +2197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (q.showHint && q.hintSlots?.length) {
                 const slotIdx = q.hintSlots.findIndex(s => s.denom === denom && !s.filled);
                 if (slotIdx === -1) {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.play('error');
                     return; // 拒絕不符合 ghost slot 的面額
                 }
@@ -2557,6 +2564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return; // nextQuestion 已由 speech callback 處理
             } else {
                 this.state.quiz.streak = 0;
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.audio.play('error');
                 this.state.quiz.errorCount = (this.state.quiz.errorCount || 0) + 1;
                 this._showFeedback('❌', '再試一次！');

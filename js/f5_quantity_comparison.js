@@ -3892,6 +3892,7 @@ class QuantityComparisonGame {
             // retry 模式自動清除（700ms），single-test 保留至下一題
             this.showIncorrectGroupAnimation(selectedGroup, testMode.allowRetry);
             this.showCorrectGroupAnimation(otherGroup);
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.playSound('incorrect');
             // 🔧 [修復] 簡單模式：增加總答題數計數
             this.totalAnswers++;
@@ -4291,7 +4292,8 @@ class QuantityComparisonGame {
         if (correctBtn) {
             correctBtn.classList.add('correct');
         }
-        
+
+        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
         this.playSound('incorrect');
         
         // 根據測驗模式播放不同的語音回饋
@@ -4760,6 +4762,7 @@ class QuantityComparisonGame {
         } else {
             // 答錯處理：添加視覺動畫效果
             this.showIncorrectGroupAnimation(selectedGroup);
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.playSound('incorrect');
 
             // 根據測試模式決定處理方式
@@ -5486,6 +5489,7 @@ class QuantityComparisonGame {
             });
         } else {
             // 🔧 [新增] 答錯處理：添加視覺標記（紅×和綠✓）
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.playSound('incorrect');
 
             const testMode = gameConfig.testMode.id;

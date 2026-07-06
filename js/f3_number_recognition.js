@@ -2478,8 +2478,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 500, 'turnTransition');
                 
             } else {
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.Audio.playSound('error', difficulty, config);
-                
+
                 if (testMode === 'retry') {
                     this.Speech.speak('incorrect', difficulty, config, {
                         userAnswer: userAnswer,

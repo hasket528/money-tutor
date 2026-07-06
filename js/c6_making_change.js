@@ -4786,6 +4786,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             // 🔧 [修正] 沒有對應提示時播放錯誤音效和語音
                             Game.Debug.warn('state', '⚠️ [拖放] 沒有找到對應的提示金錢');
+                            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                             this.audio.playErrorSound();
                             this.speech.speak('請放置正確的金錢', { interrupt: true });
                         }
@@ -4935,6 +4936,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     } else {
                                         // 🔧 [修正] 沒有對應提示時播放錯誤音效和語音
                                         Game.Debug.warn('state', '⚠️ [觸控] 沒有找到對應的提示金錢');
+                                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                                         this.audio.playErrorSound();
                                         this.speech.speak('請放置正確的金錢', { interrupt: true });
                                     }
@@ -5601,6 +5603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 步驟 1: 付款金額不足檢查 ---
             if (paidAmount < itemPrice) {
                 Game.Debug.log('state', '❌ [C6-確認付款] 付款金額不足');
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.audio.playErrorSound();
                 const neededAmount = itemPrice - paidAmount;
                 const mode = this.state.settings.mode;
@@ -5694,6 +5697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (difficulty === 'easy') {
                 if (paidAmount !== walletAmount) {
                     Game.Debug.log('state', '❌ [C6-確認付款] 付款金額不正確，應付全部錢包金額');
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.playErrorSound();
                     this.speech.speak(`請付出全部的錢，你的錢包總共有${walletAmount}元`, { interrupt: true });
                     return;
@@ -6398,6 +6402,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Game.Debug.log('state', '❌ [C6-選項選擇] 答錯了！');
 
                 // 🎯 步驟1：播放錯誤音效
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.audio.playErrorSound();
 
                 // 🎯 步驟2：立即顯示紅色×
@@ -6615,6 +6620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 答錯了，累加錯誤次數
                     question.errorCount++;
                     Game.Debug.log('state', `❌ [C6-困難模式-步驟2] 計算錯誤，錯誤次數: ${question.errorCount}`);
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.playErrorSound();
 
                     const correctAnswer = question.changeAmount;
@@ -7318,6 +7324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // 答錯了，累加錯誤次數
                     errorCount++;
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.playErrorSound();
 
                     const correctAnswer = question.changeAmount;
@@ -7995,6 +8002,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // 如果不是自動判斷且音效未播放，播放錯誤音效
                 if (!autoJudgmentData && !this.state.gameState.audioPlayed) {
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.audio.playErrorSound();
                     this.state.gameState.audioPlayed = true; // 🔧 [修正] 標記音效已播放
                 }

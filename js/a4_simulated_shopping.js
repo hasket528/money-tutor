@@ -6373,6 +6373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 🆕 [新增] 普通模式：錯誤計數與提示
                     const difficulty = this.state.settings.difficulty;
                     if (difficulty === 'normal') {
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.state.gameState.stepErrorCounts.productSelection++;
                         const errorCount = this.state.gameState.stepErrorCounts.productSelection;
                         Game.Debug.log('hint', `🔴 [商品選擇] 普通模式錯誤次數: ${errorCount}`);
@@ -8668,6 +8669,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (difficulty === 'normal') {
                     // 🆕 [普通模式] 付款錯誤計數
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.state.gameState.stepErrorCounts.payment++;
                     const errorCount = this.state.gameState.stepErrorCounts.payment;
                     Game.Debug.log('hint', `🔴 [付款] 普通模式錯誤次數: ${errorCount}`);
@@ -8713,6 +8715,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (difficulty === 'normal') {
                         // 🆕 [普通模式] 付款錯誤計數（付太多錢）
+                        window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                         this.state.gameState.stepErrorCounts.payment++;
                         const errorCount = this.state.gameState.stepErrorCounts.payment;
                         Game.Debug.log('hint', `🔴 [付款] 普通模式錯誤次數: ${errorCount}`);
@@ -10907,6 +10910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 答錯了，顯示視覺回饋
                     input.style.border = '3px solid #ef4444';
                     input.style.background = '#fef2f2';
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.state.gameState.stepErrorCounts.changeCalculation++;
                     const errorCount = this.state.gameState.stepErrorCounts.changeCalculation;
                     Game.Debug.log('hint', `🔴 [找零計算-Scene] 錯誤次數: ${errorCount}`);
@@ -11542,6 +11546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // 答錯了
                     // 🆕 [普通模式] 使用 stepErrorCounts 計數
+                    window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                     this.state.gameState.stepErrorCounts.changeCalculation++;
                     const errorCount = this.state.gameState.stepErrorCounts.changeCalculation;
                     Game.Debug.log('hint', `🔴 [找零計算-Modal] 錯誤次數: ${errorCount}`);

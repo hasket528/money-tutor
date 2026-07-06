@@ -2504,6 +2504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         handleIncorrectHardModeAnswer() {
             Game.Debug.logGameFlow('困難模式：答案錯誤');
+            window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
             this.playSound('incorrect');
 
             const testMode = this.state.settings.testMode;
@@ -3396,6 +3397,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 numberBox.classList.add('incorrect');
                 Game.Debug.logAudio('觸發錯誤音效 - 答案不正確');
+                window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
                 this.playSound('incorrect');
                 Game.Debug.log('audio', '🔊 播放錯誤音效: incorrect');
                 
