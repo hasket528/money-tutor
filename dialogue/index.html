@@ -561,6 +561,17 @@
           placeholder="例如：你好！請問有什麼需要幫忙的嗎？"></textarea>
       </div>
 
+      <div class="form-group" id="voice-studio-group">
+        <label class="form-label">店員語音（可選）</label>
+        <div class="voice-studio-row">
+          <button type="button" class="btn-vs" id="btn-vs-tts">🔊 試聽電腦語音</button>
+          <button type="button" class="btn-vs" id="btn-vs-rec">🎙️ 錄音</button>
+          <button type="button" class="btn-vs" id="btn-vs-play" hidden>▶️ 播放錄音</button>
+          <button type="button" class="btn-vs danger" id="btn-vs-del" hidden>🗑️ 刪除錄音</button>
+        </div>
+        <p class="form-hint" id="vs-status">沒有錄音時，練習會用電腦語音朗讀「店員說的話」。按 🎙️ 錄下您的聲音，學生就會聽到老師親自說的話（錄音立即儲存）。</p>
+      </div>
+
       <div class="form-group">
         <label class="form-label" for="edit-task">學生的任務說明 <span class="required">*</span></label>
         <input class="form-input" id="edit-task" type="text" placeholder="例如：跟店員打招呼" autocomplete="off">

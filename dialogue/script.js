@@ -2370,6 +2370,7 @@ function renderSettings() {
 // ─── 情境編輯器 ─────────────────────────────────────
 
 let editingScenarioIdx = -1;
+let editingScenarioId  = null;   // 進編輯器即固定（新情境預產），錄音 key 依賴它
 let editingSteps       = [];
 let selectedTheme      = THEME_PRESETS[0];
 
@@ -2448,8 +2449,9 @@ function openScenarioEditor(idx) {
   const customs = loadCustom();
   const sc      = idx >= 0 ? customs[idx] : null;
 
-  editingSteps  = sc ? JSON.parse(JSON.stringify(sc.steps)) : [];
-  selectedTheme = sc?.theme ?? THEME_PRESETS[0];
+  editingSteps      = sc ? JSON.parse(JSON.stringify(sc.steps)) : [];
+  selectedTheme     = sc?.theme ?? THEME_PRESETS[0];
+  editingScenarioId = sc?.id ?? ('custom_' + Date.now());
 
   document.getElementById('scenario-editor-title').textContent = sc ? '編輯情境' : '新增情境';
   document.getElementById('edit-name').value  = sc?.name  ?? '';
@@ -2499,6 +2501,14 @@ function renderStepList() {
         <button class="btn-step-action danger" data-a="del">✕</button>
       </div>
     `;
+    // 已有老師錄音的步驟顯示 🎙️ 徽章（非同步補上）
+    if (step.id && editingScenarioId && typeof dbAudioGet === 'function') {
+      dbAudioGet(`${editingScenarioId}::${step.id}::say`).then(blob => {
+        if (blob) item.querySelector('.step-task')?.insertAdjacentHTML(
+          'beforeend', ' <span class="step-rec-badge" title="已有老師錄音">🎙️</span>');
+      }).catch(() => {});
+    }
+
     item.querySelectorAll('[data-a]').forEach(btn => {
       btn.addEventListener('click', () => {
         switch (btn.dataset.a) {
@@ -2511,10 +2521,15 @@ function renderStepList() {
           case 'edit':
             openStepEditor(i);
             break;
-          case 'del':
+          case 'del': {
+            const sid = editingSteps[i]?.id;
+            if (sid && typeof dbAudioDelete === 'function') {
+              dbAudioDelete(`${editingScenarioId}::${sid}::say`).catch(() => {});
+            }
             editingSteps.splice(i, 1);
             renderStepList();
             break;
+          }
         }
       });
     });
@@ -2538,7 +2553,7 @@ function saveScenario() {
 
   const arr = loadCustom();
   const sc  = {
-    id:        editingScenarioIdx >= 0 ? arr[editingScenarioIdx].id : ('custom_' + Date.now()),
+    id:        editingScenarioId || ('custom_' + Date.now()),
     name,
     icon:      icon || '💬',
     theme:     selectedTheme,
@@ -2558,13 +2573,139 @@ function saveScenario() {
 }
 
 
+// ─── 語音工作室（步驟編輯器：老師錄音／TTS 試聽）──────────
+// 錄音立即存 IndexedDB（key = `${scenarioId}::${stepId}::say`），
+// 練習播放鏈：老師錄音 → 即時 TTS（見 playCustomStepAudio）。
+const voiceStudio = {
+  key: null,
+  getText: null,        // 回傳目前輸入框的店員台詞（TTS 試聽用）
+  _recorder: null,
+  _chunks: [],
+  _audio: null,
+  _stream: null,
+
+  get supported() {
+    return !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+  },
+
+  // 每次開啟步驟編輯器呼叫：綁定 key 並刷新按鈕狀態
+  async init(key, getText) {
+    this.stopAll();
+    this.key = key;
+    this.getText = getText;
+    const recBtn = document.getElementById('btn-vs-rec');
+    if (!this.supported) {
+      recBtn.hidden = true;
+      this._setStatus('此瀏覽器不支援錄音，練習將使用電腦語音朗讀。');
+    } else {
+      recBtn.hidden = false;
+    }
+    await this.refresh();
+  },
+
+  async refresh() {
+    let has = false;
+    try { has = !!(await dbAudioGet(this.key)); } catch {}
+    document.getElementById('btn-vs-play').hidden = !has;
+    document.getElementById('btn-vs-del').hidden  = !has;
+    if (has) this._setStatus('✅ 已有老師錄音，練習時會播放您的聲音。可重新錄音覆蓋。');
+  },
+
+  _setStatus(msg) {
+    const el = document.getElementById('vs-status');
+    if (el) el.textContent = msg;
+  },
+
+  previewTTS() {
+    this.stopAll();
+    const text = (this.getText?.() || '').replace(/（[^）]*）/g, '').trim();
+    if (!text) { this._setStatus('請先在上方填「店員說的話」再試聽。'); return; }
+    tts.speak(text, 0.85);
+  },
+
+  async toggleRecord() {
+    const btn = document.getElementById('btn-vs-rec');
+    if (this._recorder && this._recorder.state === 'recording') {
+      this._recorder.stop();
+      return;
+    }
+    this.stopAll();
+    try {
+      this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      this._setStatus('❌ 無法使用麥克風，請確認瀏覽器已允許麥克風權限。');
+      return;
+    }
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+               : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    this._chunks = [];
+    this._recorder = mime ? new MediaRecorder(this._stream, { mimeType: mime }) : new MediaRecorder(this._stream);
+    this._recorder.ondataavailable = (e) => { if (e.data.size) this._chunks.push(e.data); };
+    this._recorder.onstop = async () => {
+      this._stream?.getTracks().forEach(t => t.stop());
+      this._stream = null;
+      btn.textContent = '🎙️ 錄音';
+      btn.classList.remove('recording');
+      const blob = new Blob(this._chunks, { type: this._recorder.mimeType || 'audio/webm' });
+      if (blob.size < 200) { this._setStatus('錄音太短，未儲存。'); await this.refresh(); return; }
+      try {
+        await dbAudioSave(this.key, blob);
+        this._setStatus('✅ 錄音已儲存！按 ▶️ 試聽，或重新錄音覆蓋。');
+      } catch {
+        this._setStatus('❌ 錄音儲存失敗，請再試一次。');
+      }
+      await this.refresh();
+    };
+    this._recorder.start();
+    btn.textContent = '⏹ 停止錄音';
+    btn.classList.add('recording');
+    this._setStatus('🔴 錄音中……唸出「店員說的話」，唸完按「⏹ 停止錄音」。');
+  },
+
+  async playRecording() {
+    this.stopAll();
+    const blob = await dbAudioGet(this.key).catch(() => null);
+    if (!blob) { this._setStatus('沒有錄音。'); await this.refresh(); return; }
+    const url = URL.createObjectURL(blob);
+    this._audio = new Audio(url);
+    this._audio.onended = () => URL.revokeObjectURL(url);
+    this._audio.play().catch(() => {});
+  },
+
+  async deleteRecording() {
+    this.stopAll();
+    await dbAudioDelete(this.key).catch(() => {});
+    this._setStatus('已刪除錄音，練習將改用電腦語音朗讀。');
+    await this.refresh();
+  },
+
+  // 取消新增步驟時清掉孤兒錄音
+  async discardIfNew(isNewStep) {
+    this.stopAll();
+    if (isNewStep && this.key) await dbAudioDelete(this.key).catch(() => {});
+  },
+
+  stopAll() {
+    if (this._recorder?.state === 'recording') { try { this._recorder.stop(); } catch {} }
+    this._stream?.getTracks().forEach(t => t.stop());
+    this._stream = null;
+    if (this._audio) { try { this._audio.pause(); } catch {} this._audio = null; }
+    tts.cancel();
+  },
+};
+
+
 // ─── 步驟編輯器 ─────────────────────────────────────
 
 let editingStepIdx = -1;
+let editingStepId  = null;   // 進步驟編輯器即固定（新步驟預產），錄音 key 依賴它
 
 function openStepEditor(idx) {
   editingStepIdx = idx;
   const step = idx >= 0 ? editingSteps[idx] : null;
+  editingStepId = step?.id ?? ('step_' + Date.now());
+  voiceStudio.init(`${editingScenarioId}::${editingStepId}::say`, () =>
+    document.getElementById('edit-prompt').value.trim());
 
   document.getElementById('step-editor-title').textContent = step ? '編輯步驟' : '新增步驟';
   document.getElementById('edit-prompt').value   = step?.shopkeeper_prompt ?? '';
@@ -2621,7 +2762,7 @@ function saveStep() {
   }
 
   const step = {
-    id: editingStepIdx >= 0 ? (editingSteps[editingStepIdx].id ?? 'step_' + Date.now()) : 'step_' + Date.now(),
+    id: editingStepId || ('step_' + Date.now()),
     shopkeeper_prompt: prompt,
     task,
     keywords,
@@ -2656,6 +2797,7 @@ function saveStep() {
   if (editingStepIdx >= 0) editingSteps[editingStepIdx] = step;
   else editingSteps.push(step);
 
+  voiceStudio.stopAll();
   sfx.click();
   nav.pop();
   renderStepList();
@@ -2853,14 +2995,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-kw-reset-situation').addEventListener('click', resetKwSituation);
 
   // 情境編輯頁
-  document.getElementById('btn-scenario-back').addEventListener('click', () => nav.pop());
+  document.getElementById('btn-scenario-back').addEventListener('click', () => {
+    // 取消「新增情境」→ 清掉此暫定情境 id 底下的孤兒錄音
+    if (editingScenarioIdx < 0 && editingScenarioId && typeof dbAudioDeletePrefix === 'function') {
+      dbAudioDeletePrefix(`${editingScenarioId}::`).catch(() => {});
+    }
+    nav.pop();
+  });
   document.getElementById('btn-save-scenario').addEventListener('click', saveScenario);
   document.getElementById('btn-add-step').addEventListener('click', () => openStepEditor(-1));
   document.getElementById('btn-ai-gen').addEventListener('click', aiGenerateSteps);
 
   // 步驟編輯頁
-  document.getElementById('btn-step-back').addEventListener('click', () => nav.pop());
+  document.getElementById('btn-step-back').addEventListener('click', () => {
+    voiceStudio.discardIfNew(editingStepIdx < 0);   // 取消新增步驟 → 清孤兒錄音
+    nav.pop();
+  });
   document.getElementById('btn-save-step').addEventListener('click', saveStep);
+
+  // 語音工作室（步驟編輯器內）
+  document.getElementById('btn-vs-tts').addEventListener('click', () => voiceStudio.previewTTS());
+  document.getElementById('btn-vs-rec').addEventListener('click', () => voiceStudio.toggleRecord());
+  document.getElementById('btn-vs-play').addEventListener('click', () => voiceStudio.playRecording());
+  document.getElementById('btn-vs-del').addEventListener('click', () => voiceStudio.deleteRecording());
 
   // 學生選擇
   renderStudentChip();
