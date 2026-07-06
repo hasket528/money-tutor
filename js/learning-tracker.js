@@ -58,6 +58,49 @@ const LearningTracker = (() => {
     } catch (e) {}
   }
 
+  // 學生自評（後設認知）：存檔成功後彈出 😀😐😣，點選寫回該筆紀錄的 selfRating；8 秒未答自動消失
+  function _showSelfRating(recId) {
+    try {
+      if (recId == null || document.getElementById('lt-self-rating')) return;
+      const wrap = document.createElement('div');
+      wrap.id = 'lt-self-rating';
+      wrap.style.cssText = 'position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:99998;' +
+        'background:#fff;border:2px solid #93c5fd;border-radius:30px;padding:10px 18px;' +
+        'box-shadow:0 8px 24px rgba(37,99,235,.25);display:flex;align-items:center;gap:10px;' +
+        'font-family:inherit;font-size:1em;';
+      wrap.innerHTML = '<span style="font-weight:700;color:#1d4ed8;">今天覺得怎麼樣？</span>' +
+        ['easy|😀 簡單', 'ok|😐 普通', 'hard|😣 好難'].map(x => {
+          const [v, label] = x.split('|');
+          return `<button data-rate="${v}" style="border:1.5px solid #dbe7f5;background:#f8fbff;border-radius:20px;` +
+                 `padding:6px 12px;cursor:pointer;font-family:inherit;font-size:0.95em;">${label}</button>`;
+        }).join('');
+      const close = () => wrap.remove();
+      wrap.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const rate = btn.dataset.rate;
+          try {
+            const db = await _open();
+            await new Promise((resolve) => {
+              const tx = db.transaction(STORE, 'readwrite');
+              const st = tx.objectStore(STORE);
+              const g = st.get(recId);
+              g.onsuccess = () => {
+                const r = g.result;
+                if (r) { r.selfRating = rate; st.put(r); }
+              };
+              tx.oncomplete = resolve;
+              tx.onerror = resolve;
+            });
+          } catch (e) {}
+          wrap.innerHTML = '<span style="font-weight:700;color:#16a34a;">謝謝你的分享！💛</span>';
+          setTimeout(close, 1200);
+        });
+      });
+      document.body.appendChild(wrap);
+      setTimeout(() => { if (document.getElementById('lt-self-rating') === wrap && wrap.querySelector('button')) close(); }, 8000);
+    } catch (e) {}
+  }
+
   // 儲存一次練習結果
   // data: { unit, unitName, series, score, total, difficulty, durationSec, stars?, wrongAttempts? }
   async function save(data) {
@@ -88,13 +131,14 @@ const LearningTracker = (() => {
         ts:           Date.now(),
         source:       'main',   // 區分來源：main / dialogue
       };
-      await new Promise((resolve, reject) => {
+      const recId = await new Promise((resolve, reject) => {
         const tx  = db.transaction(STORE, 'readwrite');
         const req = tx.objectStore(STORE).add(record);
-        req.onsuccess = resolve;
+        req.onsuccess = () => resolve(req.result);
         req.onerror   = () => reject(req.error);
       });
       if (record.flawless) _showFlawlessBadge();
+      _showSelfRating(recId);
     } catch (e) {
       // 靜默失敗，不影響遊戲本體
     }

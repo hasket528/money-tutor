@@ -462,7 +462,7 @@ async function loadData() {
         <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
         <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${({easy:' ・ 自評 😀 簡單',ok:' ・ 自評 😐 普通',hard:' ・ 自評 😣 好難'})[r.selfRating] || ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }

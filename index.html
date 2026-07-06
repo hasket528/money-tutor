@@ -1231,6 +1231,12 @@
                     <a href="reward/index.html" target="RewardSystem">🌱 學生成長頁（徽章・寵物・寶物）</a>
                     <a href="dialogue/teacher.html">📊 學習歷程</a>
                 </div>
+                <div class="captain-links" style="margin-top:8px;">
+                    <a href="#" onclick="event.preventDefault(); captainBackup()">📦 備份全站資料</a>
+                    <a href="#" onclick="event.preventDefault(); document.getElementById('captain-restore-file').click()">📥 還原備份</a>
+                    <input type="file" id="captain-restore-file" accept=".json" hidden>
+                </div>
+                <p id="captain-backup-status" style="font-size:0.75em;color:#64748b;text-align:center;margin-top:6px;">備份包含：學生名冊、學習紀錄、徽章寵物、自編對話與錄音（存於瀏覽器本機，請定期備份）</p>
             </div>
         </div>
 
@@ -1747,7 +1753,142 @@
                 document.body.style.overflow = '';
             };
 
+            // ── 全站備份／還原（含 IndexedDB 紀錄與錄音）──
+            function readAllAudio() {
+                return new Promise((resolve) => {
+                    try {
+                        const req = indexedDB.open('shopping-practice', 2);
+                        req.onsuccess = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('custom_audio')) { db.close(); resolve([]); return; }
+                            const q = db.transaction('custom_audio', 'readonly').objectStore('custom_audio').getAll();
+                            q.onsuccess = async () => {
+                                const out = [];
+                                for (const it of (q.result || [])) {
+                                    const dataURL = await new Promise(r => {
+                                        const fr = new FileReader();
+                                        fr.onload = () => r(fr.result);
+                                        fr.onerror = () => r(null);
+                                        fr.readAsDataURL(it.blob);
+                                    });
+                                    if (dataURL) out.push({ key: it.key, mime: it.mime, ts: it.ts, dataURL });
+                                }
+                                db.close(); resolve(out);
+                            };
+                            q.onerror = () => { db.close(); resolve([]); };
+                        };
+                        req.onerror = () => resolve([]);
+                    } catch { resolve([]); }
+                });
+            }
+
+            window.captainBackup = async function () {
+                const statusEl = document.getElementById('captain-backup-status');
+                statusEl.textContent = '⏳ 打包中…';
+                try {
+                    const ls = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k.toLowerCase().includes('api_key')) continue;   // 金鑰不入備份
+                        ls[k] = localStorage.getItem(k);
+                    }
+                    const pack = {
+                        type: 'mt-full-backup', version: 1, exported: Date.now(),
+                        localStorage: ls,
+                        records: await readAllRecords(),
+                        audio: await readAllAudio(),
+                    };
+                    const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `金錢小達人備份_${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    statusEl.textContent = `✅ 已匯出備份（學習紀錄 ${pack.records.length} 筆、錄音 ${pack.audio.length} 段）`;
+                } catch (e) {
+                    statusEl.textContent = '❌ 備份失敗，請再試一次';
+                }
+            };
+
+            document.getElementById('captain-restore-file').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const statusEl = document.getElementById('captain-backup-status');
+                try {
+                    const pack = JSON.parse(await file.text());
+                    if (pack.type !== 'mt-full-backup') throw new Error('不是備份檔');
+                    if (!confirm(`確定要還原「${new Date(pack.exported).toLocaleString('zh-TW')}」的備份嗎？\n目前這台瀏覽器的資料將被取代！`)) {
+                        e.target.value = ''; return;
+                    }
+                    // localStorage
+                    Object.keys(localStorage).forEach(k => { if (!k.toLowerCase().includes('api_key')) localStorage.removeItem(k); });
+                    Object.entries(pack.localStorage || {}).forEach(([k, v]) => localStorage.setItem(k, v));
+                    // IndexedDB
+                    await new Promise((resolve, reject) => {
+                        const req = indexedDB.open('shopping-practice', 2);
+                        req.onupgradeneeded = (ev) => {
+                            const db = ev.target.result;
+                            if (!db.objectStoreNames.contains('records')) {
+                                const s = db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
+                                s.createIndex('ts', 'ts', { unique: false });
+                                s.createIndex('scenarioId', 'scenarioId', { unique: false });
+                            }
+                            if (!db.objectStoreNames.contains('custom_audio')) db.createObjectStore('custom_audio', { keyPath: 'key' });
+                        };
+                        req.onsuccess = (ev) => {
+                            const db = ev.target.result;
+                            const tx = db.transaction(['records', 'custom_audio'], 'readwrite');
+                            const rs = tx.objectStore('records');
+                            rs.clear();
+                            (pack.records || []).forEach(r => { try { rs.put(r); } catch (x) {} });
+                            const as = tx.objectStore('custom_audio');
+                            as.clear();
+                            (pack.audio || []).forEach(it => {
+                                try {
+                                    const [head, body] = it.dataURL.split(',');
+                                    const mime = head.match(/data:([^;]+)/)?.[1] || it.mime || 'audio/webm';
+                                    const bytes = atob(body);
+                                    const arr = new Uint8Array(bytes.length);
+                                    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                                    as.put({ key: it.key, blob: new Blob([arr], { type: mime }), mime, ts: it.ts || Date.now() });
+                                } catch (x) {}
+                            });
+                            tx.oncomplete = () => { db.close(); resolve(); };
+                            tx.onerror = () => { db.close(); reject(tx.error); };
+                        };
+                        req.onerror = () => reject(req.error);
+                    });
+                    statusEl.textContent = '✅ 還原完成，頁面即將重新整理…';
+                    setTimeout(() => location.reload(), 900);
+                } catch (err) {
+                    statusEl.textContent = '❌ 還原失敗：' + (err.message || '請確認是備份檔');
+                }
+                e.target.value = '';
+            });
+
             document.addEventListener('DOMContentLoaded', updateCaptainChip);
+        })();
+
+        // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
+        (function () {
+            const BUILD_VERSION = '20260707a';
+            fetch('version.txt', { cache: 'no-store' })
+                .then(r => r.ok ? r.text() : null)
+                .then(v => {
+                    if (!v || v.trim() === BUILD_VERSION) return;
+                    const bar = document.createElement('div');
+                    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1d4ed8;color:#fff;' +
+                        'text-align:center;padding:9px;font-size:0.9em;font-weight:700;cursor:pointer;font-family:inherit;';
+                    bar.textContent = '🔄 教材有新版本，點此立即更新';
+                    bar.addEventListener('click', async () => {
+                        bar.textContent = '⏳ 更新中…';
+                        try { await fetch(location.href.split('#')[0], { cache: 'reload' }); } catch (e) {}
+                        location.reload();
+                    });
+                    document.body.appendChild(bar);
+                })
+                .catch(() => {});
         })();
         </script>
 
