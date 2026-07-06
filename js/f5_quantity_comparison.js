@@ -3879,6 +3879,10 @@ class QuantityComparisonGame {
         const gameConfig = this.config.getGameConfig(this.gameSettings);
         const testMode = gameConfig.testMode;
 
+        // 學習紀錄：逐題明細（題目＝比較組合）
+        window.LearningTracker?.logStep?.(
+            `第${this.currentLevel || '?'}題：比較 ${leftQuantity} 與 ${rightQuantity}`, isCorrect);
+
         // 立即顯示動畫效果和播放音效
         if (isCorrect) {
             // 答對：✓ 顯示在點擊組上方，✕ 顯示在對方組上方（讓兩組都有明確回饋）
@@ -3994,9 +3998,13 @@ class QuantityComparisonGame {
             btn.classList.remove('selected');
         });
         button.classList.add('selected');
-        
+
         // 檢查答案
         const isCorrect = selectedAnswer === this.currentQuestion.correctAnswer;
+
+        // 學習紀錄：逐題明細（困難模式比較按鈕）
+        window.LearningTracker?.logStep?.(
+            `第${this.currentLevel || '?'}題：比較 ${this.currentQuestion.leftQuantity} 與 ${this.currentQuestion.rightQuantity}`, isCorrect);
         
         GameDebug.logScoring('📊 答題統計更新', {
             isCorrect,

@@ -5715,6 +5715,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // 學習紀錄：逐題明細（題目＝本回合對應目標）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentTurn || '?'}題：一對一對應（目標 ${this.state.correctAnswer ?? ''}）`, isCorrect);
+
             const btnText = completeBtn?.querySelector('.btn-text');
             const btnIcon = completeBtn?.querySelector('.btn-icon');
             if (completeBtn) {

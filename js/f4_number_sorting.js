@@ -2487,6 +2487,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 檢查答案是否正確
             const isCorrect = this.validateHardModeAnswer();
 
+            // 學習紀錄：逐題明細（題目＝排序目標）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentLevel || '?'}題：數字排序（${(this.state.currentNumbers || []).join('、')}）`, isCorrect);
+
             if (isCorrect) {
                 this.handleCorrectAnswer();
             } else {

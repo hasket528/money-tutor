@@ -2789,6 +2789,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const config = this.ModeConfig[difficulty];
             const isCorrect = selectedValue === this.state.correctAnswer;
 
+            // 學習紀錄：逐題明細（題目＝點數目標數量）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentTurn || '?'}題：點數 ${this.state.correctAnswer} 個`, isCorrect);
+
             Game.Debug.group('檢查答案', () => {
                 Game.Debug.logUserAction('提交答案', {
                     selectedValue,

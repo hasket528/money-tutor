@@ -4571,6 +4571,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalDisplay.textContent = `目前總額: ${currentTotal} 元`;
             }
 
+            // 學習紀錄：逐題明細（題目＝目標金額）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.gameState.questionIndex + 1}題：拿出 ${targetAmount} 元`, currentTotal === targetAmount);
+
             if (currentTotal === targetAmount) {
                 // 防止重複計分
                 if (this.state.gameState.questionAnswered) {
@@ -4621,6 +4625,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalDisplay.style.display = 'block';
                 totalDisplay.textContent = `目前總額: ${currentTotal} 元`;
             }
+
+            // 學習紀錄：逐題明細（困難模式）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.gameState.questionIndex + 1}題：拿出 ${targetAmount} 元`, currentTotal === targetAmount);
 
             if (currentTotal === targetAmount) {
                 // 防止重複計分

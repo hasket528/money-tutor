@@ -523,6 +523,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 統一完成處理策略 - 替代複雜的完成邏輯
             CompletionStrategy: {
                 process(question, isValid) {
+                    // 學習紀錄：逐題明細（題目＝兌換規則）
+                    window.LearningTracker?.logStep?.(
+                        `兌換：${question?.sourceValue ?? '?'}元 ↔ ${question?.targetValue ?? '?'}元`, !!isValid);
                     if (isValid) {
                         return this.handleSuccess(question);
                     } else {

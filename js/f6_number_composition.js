@@ -3315,6 +3315,10 @@ const Game = {
                 const userAnswer = parseInt(btn.dataset.answer);
                 const isCorrect = userAnswer === state.correctAnswer;
 
+                // 學習紀錄：逐題明細（題目＝合成目標）
+                window.LearningTracker?.logStep?.(
+                    `第${this.state.currentQuestion + 1}題：${state.knownCount} 加多少等於 ${state.totalAnswer}`, isCorrect);
+
                 if (isCorrect) {
                     btn.classList.add('correct');
                     this.Audio.play('correctSound');

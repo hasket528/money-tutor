@@ -2438,6 +2438,10 @@ document.addEventListener('DOMContentLoaded', () => {
         checkAnswer(userAnswer) {
             this.state.isAnswering = true;
             const isCorrect = userAnswer === this.state.correctAnswer;
+
+            // 學習紀錄：逐題明細（題目＝認讀目標數字）
+            window.LearningTracker?.logStep?.(
+                `第${this.state.currentTurn || '?'}題：認讀數字 ${this.state.correctAnswer}`, isCorrect);
             
             Game.Debug.logUserAction('檢查答案', { 
                 userAnswer, 
