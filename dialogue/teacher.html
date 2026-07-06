@@ -4,7 +4,7 @@
       <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>教師後台 — 購物練習</title>
+  <title>學習歷程總覽 — 金錢小達人</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -23,30 +23,51 @@
     /* ── Header ── */
     .t-header {
       background: var(--white); border-bottom: 2px solid var(--gray-200);
-      padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       position: sticky; top: 0; z-index: 10;
     }
-    .t-header h1 { font-size: 1.2rem; font-weight: 700; flex: 1; }
+    .t-header h1 { font-size: 1.15rem; font-weight: 700; flex: 1; white-space: nowrap; }
     .t-btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; font-weight: 600; }
     .t-btn-primary { background: var(--blue); color: #fff; }
     .t-btn-secondary { background: var(--gray-200); color: var(--gray-900); }
     .t-btn-danger { background: #FEE2E2; color: var(--red); }
+    .t-home-link { font-size: 0.82rem; color: var(--blue); text-decoration: none; font-weight: 600; }
 
     /* ── Layout ── */
-    .t-body { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+    .t-body { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+
+    /* ── 學生篩選 ── */
+    .student-filter {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--white); border: 2px solid var(--gray-200); border-radius: 12px;
+      padding: 10px 14px; margin-bottom: 18px; box-shadow: var(--shadow);
+    }
+    .student-filter label { font-size: 0.88rem; font-weight: 700; }
+    .student-filter select {
+      padding: 7px 12px; border-radius: 8px; border: 1.5px solid var(--gray-200);
+      font-family: inherit; font-size: 0.88rem; min-width: 160px;
+    }
 
     /* ── Summary Cards ── */
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .stat-card { background: var(--white); border: 2px solid var(--gray-200); border-radius: 14px; padding: 16px; text-align: center; box-shadow: var(--shadow); }
-    .stat-num   { font-size: 2rem; font-weight: 700; color: var(--blue); }
+    .stat-card { background: var(--white); border: 2px solid var(--gray-200); border-radius: 14px; padding: 14px; text-align: center; box-shadow: var(--shadow); }
+    .stat-num   { font-size: 1.8rem; font-weight: 700; color: var(--blue); }
     .stat-label { font-size: 0.75rem; color: var(--gray-600); margin-top: 4px; }
 
-    /* ── Scenario Table ── */
-    .section-title { font-size: 1rem; font-weight: 700; margin: 20px 0 10px; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+    /* ── 課程區塊 ── */
+    .section-title { font-size: 1.02rem; font-weight: 700; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .section-title .coverage { font-size: 0.75rem; font-weight: 600; color: var(--gray-600); background: var(--gray-200); border-radius: 12px; padding: 2px 10px; }
     .scenario-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
-    .scenario-table th { background: var(--blue-lt); color: var(--blue); font-size: 0.8rem; padding: 10px 12px; text-align: left; }
-    .scenario-table td { padding: 10px 12px; border-top: 1px solid var(--gray-200); font-size: 0.88rem; vertical-align: middle; }
+    .scenario-table th { background: var(--blue-lt); color: var(--blue); font-size: 0.78rem; padding: 9px 10px; text-align: left; white-space: nowrap; }
+    .scenario-table td { padding: 9px 10px; border-top: 1px solid var(--gray-200); font-size: 0.86rem; vertical-align: middle; }
     .scenario-table tr:hover td { background: var(--bg); }
+    .scenario-table .never td { color: #94A3B8; }
+    .acc-good { color: var(--green); font-weight: 700; }
+    .acc-mid  { color: var(--blue);  font-weight: 700; }
+    .acc-low  { color: var(--orange); font-weight: 700; }
+    .trend { font-size: 1rem; }
+    .table-scroll { overflow-x: auto; border-radius: 12px; }
+
     .star-bar { display: flex; gap: 2px; }
     .star { font-size: 0.9rem; opacity: 0.25; }
     .star.lit { opacity: 1; }
@@ -62,25 +83,27 @@
 
     /* ── Recent List ── */
     .recent-card { background: var(--white); border: 2px solid var(--gray-200); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--shadow); }
-    .recent-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .recent-header { display: flex; justify-content: space-between; margin-bottom: 4px; gap: 8px; flex-wrap: wrap; }
     .recent-scenario { font-weight: 700; }
     .recent-meta { font-size: 0.78rem; color: var(--gray-600); }
+    .stu-tag { font-size: 0.72rem; background: var(--green-lt); color: var(--green); border-radius: 10px; padding: 1px 8px; font-weight: 700; }
 
     /* ── Print ── */
     @media print {
-      .t-header .t-btn, .no-print { display: none; }
+      .t-header .t-btn, .no-print, .student-filter select { display: none; }
       .t-header { position: static; }
       body { background: white; }
-      .stat-card, .scenario-table, .weakness-card, .recent-card { box-shadow: none; border: 1px solid #ccc; }
+      .stat-card, .scenario-table, .weakness-card, .recent-card, .student-filter { box-shadow: none; border: 1px solid #ccc; }
     }
 
-    .empty-msg { text-align: center; padding: 40px; color: var(--gray-600); }
+    .empty-msg { text-align: center; padding: 28px; color: var(--gray-600); }
   </style>
 </head>
 <body>
 
 <header class="t-header">
-  <h1>📊 教師後台 — 購物練習</h1>
+  <h1>📊 學習歷程總覽 — 金錢小達人</h1>
+  <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
   <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
   <button class="t-btn t-btn-secondary no-print" onclick="loadData()">重新整理</button>
   <button class="t-btn t-btn-primary no-print" onclick="exportCSV()">📥 匯出 CSV</button>
@@ -90,19 +113,31 @@
 
 <div class="t-body">
 
+  <!-- 學生篩選 -->
+  <div class="student-filter no-print-border">
+    <label for="stu-filter">👤 學生：</label>
+    <select id="stu-filter" onchange="loadData()">
+      <option value="__all__">全部學生</option>
+    </select>
+    <span id="stu-filter-hint" style="font-size:0.78rem;color:var(--gray-600)">在主頁「金隊長・成長基地」選好學生後，練習紀錄會自動歸戶</span>
+  </div>
+
   <!-- 統計卡片 -->
   <div class="summary-grid" id="summary-grid">
     <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">總練習次數</div></div>
     <div class="stat-card"><div class="stat-num" id="s-7d">—</div><div class="stat-label">近 7 天</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-avg-star">—</div><div class="stat-label">平均星數</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-scenarios">—</div><div class="stat-label">練習過的情境</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-units">—</div><div class="stat-label">主課程單元覆蓋</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-scenarios">—</div><div class="stat-label">購物練習情境</div></div>
   </div>
 
-  <!-- 各情境表現 -->
-  <div class="section-title">📋 各情境練習狀況</div>
+  <!-- 主課程四大區塊（學習履歷主體） -->
+  <div id="series-sections"></div>
+
+  <!-- 購物對話練習 -->
+  <div class="section-title">🐕 購物對話練習（金好聊）<span class="coverage" id="dlg-coverage"></span></div>
   <div id="scenario-section"><p class="empty-msg">尚無紀錄</p></div>
 
-  <!-- 弱點步驟 -->
+  <!-- 弱點步驟（對話練習逐步驟） -->
   <div class="section-title">⚠️ 需加強的對話步驟（答錯率 ≥ 40%）</div>
   <div class="weakness-list" id="weakness-list"><p class="empty-msg">—</p></div>
 
@@ -116,27 +151,136 @@
 <script>
 const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
 
+// 主課程目錄：四大部分 × 各單元（順序即顯示順序）
+const SERIES = [
+  { key: 'F', icon: '🧮', label: '第一部分：基礎技能' },
+  { key: 'C', icon: '🪙', label: '第二部分：核心課程' },
+  { key: 'B', icon: '📒', label: '第三部分：預算規劃' },
+  { key: 'A', icon: '🏪', label: '第四部分：進階應用' },
+];
+const UNITS = {
+  F: [['f1','F1 數量與物品的對應'],['f2','F2 數量與點數'],['f3','F3 認識數字與數量'],['f4','F4 數字排序'],['f5','F5 數量大小的比較'],['f6','F6 數的合成與分解']],
+  C: [['c1','C1 金錢的種類與面額'],['c2','C2 金錢的點數與加總'],['c3','C3 金錢面額的兌換'],['c4','C4 正確的金額'],['c5','C5 足額付款'],['c6','C6 找零與計算']],
+  B: [['b1','B1 今天帶多少錢'],['b2','B2 零用錢日記'],['b3','B3 存錢計畫'],['b4','B4 特賣比一比'],['b5','B5 派對活動採購'],['b6','B6 菜市場買菜']],
+  A: [['a1','A1 自動飲料販賣機'],['a2','A2 理髮店售票機'],['a3','A3 美式速食自助點餐'],['a4','A4 模擬購物'],['a5','A5 ATM提款機'],['a6','A6 火車購票']],
+};
+const UNIT_PAGE = {
+  f1:'f1_object_correspondence', f2:'f2_rote_and_rational_counting', f3:'f3_number_recognition',
+  f4:'f4_number_sorting', f5:'f5_quantity_comparison', f6:'f6_number_composition',
+  c1:'c1_money_types', c2:'c2_money_counting', c3:'c3_money_exchange',
+  c4:'c4_correct_amount', c5:'c5_sufficient_payment', c6:'c6_making_change',
+  b1:'b1_daily_budget', b2:'b2_allowance_diary', b3:'b3_savings_plan',
+  b4:'b4_sale_comparison', b5:'b5_party_budget', b6:'b6_market_shopping',
+  a1:'a1_vending_machine', a2:'a2_barber_shop_kiosk', a3:'a3_mcdonalds_order',
+  a4:'a4_simulated_shopping', a5:'a5_atm_simulator', a6:'a6_train_ticket',
+};
+
+const isMain = (r) => r.source === 'main' || !!UNIT_PAGE[r.situationId];
+const stuKey = (r) => (r.studentId != null ? String(r.studentId) : '__guest__');
+
+function accClass(pct) { return pct >= 80 ? 'acc-good' : pct >= 60 ? 'acc-mid' : 'acc-low'; }
+
+// ── 學生下拉：名冊（rewardSystemStudents）∪ 紀錄中出現過的學生 ──
+function buildStudentFilter(records) {
+  const sel  = document.getElementById('stu-filter');
+  const keep = sel.value || '__all__';
+  let roster = [];
+  try { roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch {}
+  const seen = new Map(roster.map(s => [String(s.id), s.name || '未命名']));
+  records.forEach(r => {
+    if (r.studentId != null && !seen.has(String(r.studentId))) {
+      seen.set(String(r.studentId), r.studentName || '未命名');
+    }
+  });
+  sel.innerHTML = '<option value="__all__">全部學生</option>' +
+    [...seen.entries()].map(([id, name]) => `<option value="${id}">${name}</option>`).join('') +
+    '<option value="__guest__">未指定（訪客）</option>';
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : '__all__';
+}
+
 async function loadData() {
-  const records = await dbAll();
+  const all = await dbAll();
   document.getElementById('last-update').textContent =
     '更新：' + new Date().toLocaleTimeString('zh-TW');
 
-  if (records.length === 0) return;
+  buildStudentFilter(all);
+  const who = document.getElementById('stu-filter').value;
+  const records = who === '__all__' ? all : all.filter(r => stuKey(r) === who);
 
-  // ─── 統計 ───────────────────────────────────────
+  const mains = records.filter(isMain);
+  const dlgs  = records.filter(r => !isMain(r));
+
+  // ─── 統計卡 ───────────────────────────────────────
   const now = Date.now();
-  const r7d  = records.filter(r => now - r.ts < 7 * 86400_000).length;
-  const avgS = (records.reduce((a, r) => a + (r.stars || 0), 0) / records.length).toFixed(1);
-  const scens = new Set(records.map(r => r.scenarioId)).size;
+  document.getElementById('s-total').textContent = records.length;
+  document.getElementById('s-7d').textContent    = records.filter(r => now - r.ts < 7 * 86400_000).length;
+  document.getElementById('s-units').textContent =
+    new Set(mains.map(r => r.situationId)).size + '/24';
+  document.getElementById('s-scenarios').textContent = new Set(dlgs.map(r => r.scenarioId)).size;
 
-  document.getElementById('s-total').textContent    = records.length;
-  document.getElementById('s-7d').textContent       = r7d;
-  document.getElementById('s-avg-star').textContent = avgS + '⭐';
-  document.getElementById('s-scenarios').textContent = scens;
+  // ─── 主課程四大區塊 ───────────────────────────────
+  const byUnit = {};
+  mains.forEach(r => {
+    const u = r.situationId;
+    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, list: [] };
+    byUnit[u].count++;
+    byUnit[u].correct += (r.score || 0);
+    byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
+    byUnit[u].list.push(r);
+  });
 
-  // ─── 各情境表現 ─────────────────────────────────
+  const host = document.getElementById('series-sections');
+  host.innerHTML = '';
+  SERIES.forEach(({ key, icon, label }) => {
+    const units = UNITS[key];
+    const done  = units.filter(([u]) => byUnit[u]).length;
+
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.innerHTML = `${icon} ${label}<span class="coverage">已練習 ${done}/${units.length} 單元</span>`;
+    host.appendChild(title);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'table-scroll';
+    const tbl = document.createElement('table');
+    tbl.className = 'scenario-table';
+    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>✅ 答對</th><th>❌ 答錯</th><th>平均正確率</th><th>最近一次</th><th>趨勢</th></tr>`;
+
+    units.forEach(([u, name]) => {
+      const s  = byUnit[u];
+      const tr = document.createElement('tr');
+      if (!s) {
+        tr.className = 'never';
+        tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="../html/${UNIT_PAGE[u]}.html">▶ 去練習</a></td>
+          <td>0</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
+      } else {
+        const attempts = s.correct + s.wrong;
+        const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
+        const sorted = [...s.list].sort((a, b) => a.ts - b.ts);
+        const last   = sorted[sorted.length - 1];
+        const lastPct = last.total > 0 ? Math.round(last.score / last.total * 100) : 100;
+        const prev   = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+        const prevPct = prev && prev.total > 0 ? Math.round(prev.score / prev.total * 100) : null;
+        const trend  = prevPct == null ? '—' : lastPct > prevPct ? '📈' : lastPct < prevPct ? '📉' : '➡️';
+        const when   = new Date(last.ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+        tr.innerHTML = `
+          <td>${name}</td>
+          <td>${s.count}</td>
+          <td class="acc-good">${s.correct}</td>
+          <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
+          <td class="${accClass(avgPct)}">${avgPct}%</td>
+          <td>${last.score}/${last.total}（${when}）</td>
+          <td class="trend" title="與前一次相比">${trend}</td>`;
+      }
+      tbl.appendChild(tr);
+    });
+    wrap.appendChild(tbl);
+    host.appendChild(wrap);
+  });
+
+  // ─── 購物練習各情境 ─────────────────────────────
   const byScenario = {};
-  records.forEach(r => {
+  dlgs.forEach(r => {
     const key = r.scenarioId + '|' + r.situationId;
     if (!byScenario[key]) byScenario[key] = {
       scenarioName: r.scenarioName || r.scenarioId,
@@ -147,29 +291,33 @@ async function loadData() {
     byScenario[key].totalStars += (r.stars || 0);
     byScenario[key].bestStars = Math.max(byScenario[key].bestStars, r.stars || 0);
   });
+  document.getElementById('dlg-coverage').textContent = `${Object.keys(byScenario).length} 個情境`;
 
-  const tbl = document.createElement('table');
-  tbl.className = 'scenario-table';
-  tbl.innerHTML = `<tr><th>情境</th><th>狀況</th><th>練習次數</th><th>平均星數</th><th>最高星數</th></tr>`;
-  Object.values(byScenario).forEach(s => {
-    const avg  = (s.totalStars / s.count).toFixed(1);
-    const best = s.bestStars;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span></td>
-      <td>${statusTag(s.bestStars)}</td>
-      <td>${s.count}</td>
-      <td>${avg} ⭐</td>
-      <td>${starBar(best)}</td>`;
-    tbl.appendChild(tr);
-  });
   const sec = document.getElementById('scenario-section');
-  sec.innerHTML = '';
-  sec.appendChild(tbl);
+  if (Object.keys(byScenario).length === 0) {
+    sec.innerHTML = '<p class="empty-msg">尚無購物練習紀錄</p>';
+  } else {
+    const tbl = document.createElement('table');
+    tbl.className = 'scenario-table';
+    tbl.innerHTML = `<tr><th>情境</th><th>狀況</th><th>練習次數</th><th>平均星數</th><th>最高星數</th></tr>`;
+    Object.values(byScenario).forEach(s => {
+      const avg = (s.totalStars / s.count).toFixed(1);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span></td>
+        <td>${statusTag(s.bestStars)}</td>
+        <td>${s.count}</td>
+        <td>${avg} ⭐</td>
+        <td>${starBar(s.bestStars)}</td>`;
+      tbl.appendChild(tr);
+    });
+    sec.innerHTML = '';
+    sec.appendChild(tbl);
+  }
 
-  // ─── 弱點步驟 ────────────────────────────────────
+  // ─── 弱點步驟（購物練習逐步驟） ────────────────────
   const stepStats = {};
-  records.forEach(r => {
+  dlgs.forEach(r => {
     (r.steps || []).forEach(s => {
       if (!s?.stepId) return;
       const k = `${r.scenarioId}|${r.situationId}|${s.stepId}`;
@@ -178,11 +326,9 @@ async function loadData() {
       if (s.score !== 'perfect') stepStats[k].failed++;
     });
   });
-
   const weaknesses = Object.values(stepStats)
     .filter(s => s.total >= 3 && s.failed / s.total >= 0.4)
     .sort((a, b) => b.failed / b.total - a.failed / a.total);
-
   const wList = document.getElementById('weakness-list');
   if (weaknesses.length === 0) {
     wList.innerHTML = '<p class="empty-msg">沒有需要加強的步驟 👍</p>';
@@ -192,11 +338,9 @@ async function loadData() {
       const pct = Math.round(w.failed / w.total * 100);
       const d = document.createElement('div');
       d.className = 'weakness-card';
-      // 建立前往練習的連結（取 scenarioId / situationId）
-      const pracURL = `index.html`;
       d.innerHTML = `
         <div class="w-step">${w.label}
-          <a href="${pracURL}" class="w-practice-link no-print" title="前往練習此情境">▶ 去練習</a>
+          <a href="index.html" class="w-practice-link no-print" title="前往練習此情境">▶ 去練習</a>
           <span class="weakness-pct">${pct}% 需改進</span>
         </div>
         <div class="w-meta">${w.scene} ・ 練習 ${w.total} 次，答錯 ${w.failed} 次</div>`;
@@ -207,16 +351,18 @@ async function loadData() {
   // ─── 最近 20 筆 ──────────────────────────────────
   const recent = document.getElementById('recent-list');
   recent.innerHTML = '';
-  [...records].reverse().slice(0, 20).forEach(r => {
+  if (records.length === 0) recent.innerHTML = '<p class="empty-msg">尚無紀錄</p>';
+  [...records].sort((a, b) => b.ts - a.ts).slice(0, 20).forEach(r => {
     const date = new Date(r.ts).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const stu  = r.studentName ? `<span class="stu-tag">👤 ${r.studentName}</span>` : '';
     const d = document.createElement('div');
     d.className = 'recent-card';
     d.innerHTML = `
       <div class="recent-header">
-        <span class="recent-scenario">${r.scenarioName || r.scenarioId} ・ ${r.situationName || r.situationId}</span>
-        <span>${'⭐'.repeat(r.stars || 0)}</span>
+        <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
+        <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty} ・ 答對 ${r.score}/${r.total} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }
@@ -240,19 +386,20 @@ async function clearData() {
 async function exportCSV() {
   const records = await dbAll();
   if (records.length === 0) { alert('尚無學習紀錄'); return; }
-  const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
-  const rows = [['日期','情境','狀況','難度','答對','總計','星數','時長(秒)']];
+  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','總計','星數','時長(秒)']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
-    rows.push([d, r.scenarioName||r.scenarioId, r.situationName||r.situationId,
-      DIFF[r.difficulty]||r.difficulty, r.score, r.total, r.stars||0, r.durationSec||0]);
+    rows.push([d, r.studentName || '未指定', isMain(r) ? '主課程' : '購物練習',
+      r.scenarioName || r.scenarioId, r.situationName || r.situationId,
+      DIFF[r.difficulty] || r.difficulty || '', r.score,
+      Math.max(0, (r.total || 0) - (r.score || 0)), r.total, r.stars || 0, r.durationSec || 0]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = `shopping-practice-${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `學習歷程_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
