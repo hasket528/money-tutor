@@ -1211,7 +1211,18 @@
 
                 <div id="captain-quest-sec" hidden>
                     <div class="captain-sec-title">🚀 今日任務 <span id="quest-date" style="font-weight:600;color:#b45309;font-size:0.82em"></span></div>
+                    <div id="captain-assigned"></div>
                     <div id="captain-quests"></div>
+
+                    <details id="captain-teacher-assign" style="margin-top:8px;">
+                        <summary style="cursor:pointer;font-size:0.82em;font-weight:700;color:#64748b;">👩‍🏫 老師指派區（點開設定）</summary>
+                        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+                            <select id="assign-unit-select" style="padding:7px 10px;border-radius:10px;border:1.5px solid #dbe7f5;font-family:inherit;font-size:0.85em;"></select>
+                            <button onclick="captainAddAssign()" style="padding:7px 14px;border:none;border-radius:10px;background:#1d4ed8;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.85em;">➕ 指派</button>
+                            <span style="font-size:0.75em;color:#64748b;">指派給目前學生；學生完成後可領金幣</span>
+                        </div>
+                        <div id="assign-list" style="font-size:0.8em;color:#334155;"></div>
+                    </details>
                 </div>
 
                 <div class="captain-quote" id="captain-quote" hidden></div>
@@ -1500,6 +1511,99 @@
                 return quests;
             }
 
+            // ── 老師指派任務（mt_assign_{id}＝[{unit, ts, claimed}]）──
+            function assignStore(stuId) {
+                try { return JSON.parse(localStorage.getItem(`mt_assign_${stuId}`) || '[]'); } catch { return []; }
+            }
+            function saveAssign(stuId, arr) {
+                localStorage.setItem(`mt_assign_${stuId}`, JSON.stringify(arr));
+            }
+            function assignDone(a, stuId, records) {
+                // 指派之後完成過該單元即算達成
+                return records.some(r => String(r.studentId) === String(stuId) &&
+                                         r.situationId === a.unit && r.ts >= a.ts);
+            }
+
+            window.captainAddAssign = function () {
+                const cur = getCurrent();
+                if (!cur) { alert('請先選擇學生'); return; }
+                const unit = document.getElementById('assign-unit-select').value;
+                const arr = assignStore(cur.id);
+                if (arr.some(a => a.unit === unit && !a.claimed)) { alert('這個單元已在指派清單中'); return; }
+                arr.push({ unit, ts: Date.now(), claimed: false });
+                saveAssign(cur.id, arr);
+                renderCaptainBase();
+            };
+
+            window.captainRemoveAssign = function (idx) {
+                const cur = getCurrent();
+                if (!cur) return;
+                const arr = assignStore(cur.id);
+                arr.splice(idx, 1);
+                saveAssign(cur.id, arr);
+                renderCaptainBase();
+            };
+
+            window.captainClaimAssign = function (idx) {
+                const cur = getCurrent();
+                if (!cur) return;
+                const arr = assignStore(cur.id);
+                const a = arr[idx];
+                if (!a || a.claimed) return;
+                a.claimed = true;
+                saveAssign(cur.id, arr);
+                const roster = loadRoster();
+                const stu = roster.find(s => String(s.id) === String(cur.id));
+                if (stu) {
+                    stu.score = (stu.score || 0) + COINS_PER_QUEST;
+                    localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+                }
+                Promise.resolve(renderCaptainBase()).then(() => {
+                    const quoteEl = document.getElementById('captain-quote');
+                    if (quoteEl.hidden) showCaptainQuote('⭐ 完成老師指派的任務，獲得 ' + COINS_PER_QUEST + ' 金幣，真棒！');
+                });
+            };
+
+            function renderAssigned(cur, records) {
+                const host = document.getElementById('captain-assigned');
+                const listEl = document.getElementById('assign-list');
+                host.innerHTML = '';
+                listEl.innerHTML = '';
+                // 教師區的單元下拉（一次性填充）
+                const sel = document.getElementById('assign-unit-select');
+                if (sel.options.length === 0) {
+                    Object.entries(UNIT_NAMES).forEach(([u, name]) => {
+                        const opt = document.createElement('option');
+                        opt.value = u; opt.textContent = name;
+                        sel.appendChild(opt);
+                    });
+                }
+                if (!cur) return;
+                const arr = assignStore(cur.id);
+                arr.forEach((a, idx) => {
+                    const done = assignDone(a, cur.id, records);
+                    // 學生視角卡片
+                    const card = document.createElement('div');
+                    card.className = 'quest-card' + (a.claimed ? ' done claimed' : done ? ' done' : '');
+                    let act;
+                    if (a.claimed)   act = `<span class="quest-claimed-tag">✅ 已領獎</span>`;
+                    else if (done)   act = `<button class="quest-claim" onclick="captainClaimAssign(${idx})">🪙 領 ${COINS_PER_QUEST} 金幣</button>`;
+                    else             act = `<a class="quest-go" href="html/${UNIT_PAGES[a.unit]}.html">▶ 去挑戰</a>`;
+                    card.innerHTML = `
+                        <span class="quest-icon">⭐</span>
+                        <div class="quest-info"><div class="quest-desc">老師指派：完成「${UNIT_NAMES[a.unit]}」</div></div>
+                        <div class="quest-act">${act}</div>`;
+                    host.appendChild(card);
+                    // 教師區清單
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+                    row.innerHTML = `<span style="flex:1">${UNIT_NAMES[a.unit]}（${new Date(a.ts).toLocaleDateString('zh-TW')}）${a.claimed ? '✅' : done ? '🪙可領獎' : '⬜'}</span>
+                        <button onclick="captainRemoveAssign(${idx})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:8px;padding:3px 10px;cursor:pointer;font-family:inherit;font-size:0.85em;">移除</button>`;
+                    listEl.appendChild(row);
+                });
+                if (arr.length === 0) listEl.innerHTML = '<span style="color:#94a3b8">尚無指派</span>';
+            }
+
             window.captainClaimQuest = function (qid) {
                 const cur = getCurrent();
                 if (!cur) return;
@@ -1535,6 +1639,7 @@
                 document.getElementById('captain-quote').hidden = true;
                 if (!cur) { qSec.hidden = true; return; }
                 qSec.hidden = false;
+                renderAssigned(cur, records);   // ⭐ 老師指派任務（顯示在每日任務上方）
 
                 // 任務：讀/建今日清單 → 判定 → 渲染
                 let store = questStore(cur.id);

@@ -122,6 +122,28 @@
     <span id="stu-filter-hint" style="font-size:0.78rem;color:var(--gray-600)">在主頁「金隊長・成長基地」選好學生後，練習紀錄會自動歸戶</span>
   </div>
 
+  <!-- 精熟標準（選定個別學生時，單元列會標 ✅精熟/🔶接近/⬜未達） -->
+  <div class="student-filter no-print">
+    <label>🎯 精熟標準：</label>
+    <span id="mastery-desc" style="font-size:0.85rem;font-weight:600;color:var(--gray-600)"></span>
+    <button class="t-btn t-btn-secondary" onclick="document.getElementById('mastery-panel').hidden = !document.getElementById('mastery-panel').hidden">⚙️ 設定</button>
+    <div id="mastery-panel" hidden style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;padding-top:8px;">
+      <label style="font-size:0.82rem">正確率 ≥
+        <select id="mastery-pct">
+          <option>60</option><option>70</option><option selected>80</option><option>90</option><option>100</option>
+        </select>%
+      </label>
+      <label style="font-size:0.82rem">連續
+        <select id="mastery-streak">
+          <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+        </select> 次
+      </label>
+      <label style="font-size:0.82rem"><input type="checkbox" id="mastery-flawless"> 需 🌟 無錯通過</label>
+      <button class="t-btn t-btn-primary" onclick="saveMastery()">儲存</button>
+      <span id="mastery-scope" style="font-size:0.75rem;color:var(--gray-600)"></span>
+    </div>
+  </div>
+
   <!-- 統計卡片 -->
   <div class="summary-grid" id="summary-grid">
     <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">總練習次數</div></div>
@@ -178,6 +200,58 @@ const UNIT_PAGE = {
 const isMain = (r) => r.source === 'main' || !!UNIT_PAGE[r.situationId];
 const stuKey = (r) => (r.studentId != null ? String(r.studentId) : '__guest__');
 
+// ── 精熟標準（全班預設 mt_mastery_default；個別覆寫 mt_mastery_{id}）──
+const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: false };
+function masteryDefault() {
+  try { return { ...MASTERY_FALLBACK, ...(JSON.parse(localStorage.getItem('mt_mastery_default') || '{}')) }; }
+  catch { return { ...MASTERY_FALLBACK }; }
+}
+function masteryFor(who) {
+  if (who && who !== '__all__' && who !== '__guest__') {
+    try {
+      const o = JSON.parse(localStorage.getItem(`mt_mastery_${who}`) || 'null');
+      if (o) return { ...MASTERY_FALLBACK, ...o };
+    } catch {}
+  }
+  return masteryDefault();
+}
+function saveMastery() {
+  const who = document.getElementById('stu-filter').value;
+  const m = {
+    pct: parseInt(document.getElementById('mastery-pct').value),
+    streak: parseInt(document.getElementById('mastery-streak').value),
+    flawless: document.getElementById('mastery-flawless').checked,
+  };
+  if (who !== '__all__' && who !== '__guest__') localStorage.setItem(`mt_mastery_${who}`, JSON.stringify(m));
+  else localStorage.setItem('mt_mastery_default', JSON.stringify(m));
+  document.getElementById('mastery-panel').hidden = true;
+  loadData();
+}
+function renderMasteryBar(who) {
+  const m = masteryFor(who);
+  const scopeTxt = (who !== '__all__' && who !== '__guest__') ? '（此學生個別標準）' : '（全班預設）';
+  document.getElementById('mastery-desc').textContent =
+    `正確率 ≥ ${m.pct}%・連續 ${m.streak} 次${m.flawless ? '・需🌟無錯' : ''} ${scopeTxt}`;
+  document.getElementById('mastery-pct').value = String(m.pct);
+  document.getElementById('mastery-streak').value = String(m.streak);
+  document.getElementById('mastery-flawless').checked = m.flawless;
+  document.getElementById('mastery-scope').textContent =
+    (who !== '__all__' && who !== '__guest__') ? '將儲存為此學生的個別標準' : '將儲存為全班預設標準';
+}
+// 回傳 'mastered' | 'close' | 'not' —— list 需為該生該單元的紀錄（依 ts 升冪）
+function masteryStatus(list, m) {
+  const pass = (r) => ((r.total > 0 ? (r.score / r.total) * 100 : 100) >= m.pct) &&
+                      (!m.flawless || r.flawless);
+  if (list.length >= m.streak && list.slice(-m.streak).every(pass)) return 'mastered';
+  if (list.length > 0 && pass(list[list.length - 1])) return 'close';
+  return 'not';
+}
+const MASTERY_TAG = {
+  mastered: '<span style="color:var(--green);font-weight:800" title="已達精熟標準">✅ 精熟</span>',
+  close:    '<span style="color:var(--blue);font-weight:800" title="最近一次達標，連續次數未滿">🔶 接近</span>',
+  not:      '<span style="color:var(--gray-600)" title="尚未達標">⬜ 未達</span>',
+};
+
 function accClass(pct) { return pct >= 80 ? 'acc-good' : pct >= 60 ? 'acc-mid' : 'acc-low'; }
 
 // ── 學生下拉：名冊（rewardSystemStudents）∪ 紀錄中出現過的學生 ──
@@ -213,6 +287,9 @@ async function loadData() {
 
   buildStudentFilter(all);
   const who = document.getElementById('stu-filter').value;
+  renderMasteryBar(who);
+  const mastery = masteryFor(who);
+  const showMastery = who !== '__all__' && who !== '__guest__';
   const records = who === '__all__' ? all : all.filter(r => stuKey(r) === who);
 
   const mains = records.filter(isMain);
@@ -261,7 +338,7 @@ async function loadData() {
     wrap.className = 'table-scroll';
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>單元</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
 
     units.forEach(([u, name]) => {
       const s  = byUnit[u];
@@ -269,6 +346,7 @@ async function loadData() {
       if (!s) {
         tr.className = 'never';
         tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="../html/${UNIT_PAGE[u]}.html">▶ 去練習</a></td>
+          <td>${showMastery ? MASTERY_TAG.not : '—'}</td>
           <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
       } else {
         const attempts = s.correct + s.wrong;
@@ -280,8 +358,10 @@ async function loadData() {
         const prevPct = prev && prev.total > 0 ? Math.round(prev.score / prev.total * 100) : null;
         const trend  = prevPct == null ? '—' : lastPct > prevPct ? '📈' : lastPct < prevPct ? '📉' : '➡️';
         const when   = new Date(last.ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+        const sortedList = [...s.list].sort((a, b) => a.ts - b.ts);
         tr.innerHTML = `
           <td>${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
+          <td>${showMastery ? MASTERY_TAG[masteryStatus(sortedList, mastery)] : '—'}</td>
           <td>${s.count}</td>
           <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
           <td class="acc-good">${s.correct}</td>
