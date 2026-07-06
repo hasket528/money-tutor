@@ -222,12 +222,19 @@ async function loadData() {
   const byUnit = {};
   mains.forEach(r => {
     const u = r.situationId;
-    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, list: [] };
+    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, dur: 0, diffs: {}, list: [] };
     byUnit[u].count++;
     byUnit[u].correct += (r.score || 0);
     byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
+    byUnit[u].dur     += (r.durationSec || 0);
+    const dk = r.difficulty || 'normal';
+    byUnit[u].diffs[dk] = (byUnit[u].diffs[dk] || 0) + 1;
     byUnit[u].list.push(r);
   });
+
+  const fmtDur = (sec) => sec >= 60 ? `${Math.floor(sec / 60)} 分 ${sec % 60} 秒` : `${sec} 秒`;
+  const fmtDiffs = (diffs) => ['easy', 'normal', 'hard']
+    .filter(k => diffs[k]).map(k => `${DIFF[k]}×${diffs[k]}`).join('・') || '—';
 
   const host = document.getElementById('series-sections');
   host.innerHTML = '';
@@ -244,7 +251,7 @@ async function loadData() {
     wrap.className = 'table-scroll';
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>✅ 答對</th><th>❌ 答錯</th><th>平均正確率</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>單元</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
 
     units.forEach(([u, name]) => {
       const s  = byUnit[u];
@@ -252,7 +259,7 @@ async function loadData() {
       if (!s) {
         tr.className = 'never';
         tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="../html/${UNIT_PAGE[u]}.html">▶ 去練習</a></td>
-          <td>0</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
+          <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
       } else {
         const attempts = s.correct + s.wrong;
         const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
@@ -266,9 +273,11 @@ async function loadData() {
         tr.innerHTML = `
           <td>${name}</td>
           <td>${s.count}</td>
+          <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
           <td class="acc-good">${s.correct}</td>
           <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
           <td class="${accClass(avgPct)}">${avgPct}%</td>
+          <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
           <td>${last.score}/${last.total}（${when}）</td>
           <td class="trend" title="與前一次相比">${trend}</td>`;
       }

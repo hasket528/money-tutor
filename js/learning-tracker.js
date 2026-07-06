@@ -69,3 +69,7 @@ const LearningTracker = (() => {
 
   return { save };
 })();
+
+// ⚠️ 頂層 const 不會掛上 window；各單元以 window.LearningTracker?.save() 呼叫，
+// 少了這行所有單元記錄都會靜默跳過（2026-07-06 實測踩雷）。
+window.LearningTracker = LearningTracker;
