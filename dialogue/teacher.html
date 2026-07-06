@@ -300,7 +300,7 @@ async function loadData() {
   document.getElementById('s-total').textContent = records.length;
   document.getElementById('s-7d').textContent    = records.filter(r => now - r.ts < 7 * 86400_000).length;
   document.getElementById('s-units').textContent =
-    new Set(mains.map(r => r.situationId)).size + '/24';
+    new Set(mains.filter(r => UNIT_PAGE[r.situationId]).map(r => r.situationId)).size + '/24';
   document.getElementById('s-scenarios').textContent = new Set(dlgs.map(r => r.scenarioId)).size;
 
   // ─── 主課程四大區塊 ───────────────────────────────
