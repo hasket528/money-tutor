@@ -1953,6 +1953,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalQuestions = this.state.totalQuestions;
             const percentage = Math.round((correctCount / totalQuestions) * 100);
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'c2', unitName: 'C2 金錢的點數與加總', series: 'C',
+                score: correctCount, total: totalQuestions, difficulty: this.state.settings?.difficulty,
+                durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
             // 計算完成時間
             const endTime = Date.now();
             const elapsedMs = this.state.startTime ? (endTime - this.state.startTime) : 0;

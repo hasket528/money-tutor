@@ -1370,6 +1370,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalQuestions = this.state.totalQuestions;
             const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'c1', unitName: 'C1 金錢的種類與面額', series: 'C',
+                score: correctAnswers, total: totalQuestions, difficulty: this.state.settings?.difficulty,
+                durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
             // 計算完成時間
             const elapsedTime = this.state.startTime ? (Date.now() - this.state.startTime) : 0;
             const minutes = Math.floor(elapsedTime / 60000);

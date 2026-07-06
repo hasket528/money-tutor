@@ -2928,6 +2928,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const correctAnswers = Math.floor(score / 10);
                 const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+                // 學習紀錄
+                window.LearningTracker?.save({ unit: 'f2', unitName: 'F2 數量與點數', series: 'F',
+                    score: correctAnswers, total: totalQuestions, difficulty,
+                    durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
                 // 計算完成時間
                 const endTime = Date.now();
                 const elapsedMs = this.state.startTime ? (endTime - this.state.startTime) : 0;

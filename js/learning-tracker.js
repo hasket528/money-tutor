@@ -6,15 +6,17 @@
 
 const LearningTracker = (() => {
   const DB_NAME    = 'shopping-practice';
-  const DB_VERSION = 1;
   const STORE      = 'records';
   let _db = null;
 
   async function _open() {
     if (_db) return _db;
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      // 不指定版本：跟隨現有 DB 版本（dialogue/db.js 負責升級 schema），
+      // 指定舊版本號會在 DB 已升級後拋 VersionError。
+      const req = indexedDB.open(DB_NAME);
       req.onupgradeneeded = (e) => {
+        // 只在 DB 尚不存在時建立基本 store
         const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE)) {
           const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
@@ -32,7 +34,12 @@ const LearningTracker = (() => {
   async function save(data) {
     try {
       const db = await _open();
+      // 與 dialogue 相同的學生維度（sp_currentStudent；null＝訪客）
+      let student = null;
+      try { student = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch {}
       const record = {
+        studentId:    student?.id   ?? null,
+        studentName:  student?.name ?? null,
         // 與 dialogue 紀錄格式對齊，讓 teacher.html 可一起顯示
         scenarioId:   data.series || data.unit,
         scenarioName: data.series ? `${data.series} 系列` : data.unitName || data.unit,

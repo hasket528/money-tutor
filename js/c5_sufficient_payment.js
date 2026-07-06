@@ -4244,6 +4244,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const correctAnswers = score / 10;
             const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'c5', unitName: 'C5 足額付款', series: 'C',
+                score: correctAnswers, total: totalQuestions, difficulty: this.state.settings?.difficulty,
+                durationSec: startTime ? Math.floor((Date.now() - startTime) / 1000) : 0 });
+
             // 計算完成時間
             const endTime = Date.now();
             const elapsedMs = startTime ? (endTime - startTime) : 0;

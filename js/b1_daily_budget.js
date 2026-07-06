@@ -2929,6 +2929,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const accuracy = q.totalQuestions > 0
                 ? Math.round((q.correctCount / q.totalQuestions) * 100) : 0;
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'b1', unitName: 'B1 今天帶多少錢', series: 'B',
+                score: q.correctCount, total: q.totalQuestions, difficulty: this.state.settings?.difficulty,
+                durationSec: Math.floor(elapsed / 1000) });
+
             let badge, badgeColor;
             if (accuracy === 100)    { badge = '完美 🥇'; badgeColor = '#f59e0b'; }
             else if (accuracy >= 90) { badge = '優異 🥇'; badgeColor = '#f59e0b'; }

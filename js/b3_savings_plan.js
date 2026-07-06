@@ -3283,6 +3283,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const accuracy = q.totalQuestions > 0
                 ? Math.round((q.correctCount / q.totalQuestions) * 100) : 0;
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'b3', unitName: 'B3 存錢計畫', series: 'B',
+                score: q.correctCount, total: q.totalQuestions, difficulty: this.state.settings?.difficulty,
+                durationSec: Math.floor(elapsed / 1000) });
+
             let perfText, perfMedal;
             if (accuracy === 100)    { perfText = `🥇 完美！全部答對！`;                         perfMedal = '🥇'; }
             else if (accuracy >= 90) { perfText = `🥇 完成了 ${q.correctCount} 題，表現優異！`;   perfMedal = '🥇'; }

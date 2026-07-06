@@ -7582,6 +7582,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const endTime = Date.now();
             const startTime = this.state.gameState.startTime || endTime;
             const elapsedSeconds = Math.floor((endTime - startTime) / 1000);
+
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'a2', unitName: 'A2 理髮店售票機', series: 'A',
+                score: completedCount, total: completedCount,
+                difficulty: this.state.settings?.difficulty, durationSec: elapsedSeconds });
             const minutes = Math.floor(elapsedSeconds / 60);
             const seconds = elapsedSeconds % 60;
             const timeDisplay = minutes > 0 ? `${minutes} 分 ${seconds} 秒` : `${seconds} 秒`;

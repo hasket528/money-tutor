@@ -4492,6 +4492,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const accuracy = g.totalRounds > 0
                 ? Math.round((g.correctCount / g.totalRounds) * 100) : 0;
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'b6', unitName: 'B6 菜市場買菜', series: 'B',
+                score: g.correctCount, total: g.totalRounds, difficulty: this.state.settings?.difficulty,
+                durationSec: Math.floor(elapsed / 1000) });
+
             let badge;
             if (accuracy === 100)    badge = '完美 🥇';
             else if (accuracy >= 90) badge = '優異 🥇';

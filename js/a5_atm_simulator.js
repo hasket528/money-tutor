@@ -2680,6 +2680,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'final-complete':
                     if (window.TutorContext) TutorContext.update({ screen: 'result' });
+                    // 學習紀錄（一次交易完成＝一次練習）
+                    if (!this._sessionRecorded) {
+                        this._sessionRecorded = true;
+                        window.LearningTracker?.save({ unit: 'a5', unitName: 'A5 ATM提款機', series: 'A',
+                            score: 1, total: 1, difficulty: this.state.settings?.difficulty,
+                            durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+                    }
                     screenContent.innerHTML = this.generateFinalCompleteScreen();
                     this.updateTitleBar(5, '交易完成');
                     break;

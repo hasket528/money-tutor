@@ -3577,6 +3577,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const accuracy = g.totalRounds > 0
                 ? Math.round((g.correctCount / g.totalRounds) * 100) : 0;
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'b5', unitName: 'B5 派對活動採購', series: 'B',
+                score: g.correctCount, total: g.totalRounds, difficulty: this.state.settings?.difficulty,
+                durationSec: Math.floor(elapsed / 1000) });
+
             let badge, badgeColor, medalIcon;
             if (accuracy === 100)    { badge = '完美 🥇'; badgeColor = '#f59e0b'; medalIcon = '🥇'; }
             else if (accuracy >= 90) { badge = '優異 🥇'; badgeColor = '#f59e0b'; medalIcon = '🥇'; }

@@ -5841,6 +5841,11 @@ class QuantityComparisonGame {
         const accuracy = this.totalAnswers > 0 ?
             Math.round((this.correctAnswers / this.totalAnswers) * 100) : 0;
 
+        // 學習紀錄
+        window.LearningTracker?.save({ unit: 'f5', unitName: 'F5 數量大小的比較', series: 'F',
+            score: this.correctAnswers, total: this.totalAnswers, difficulty: this.state?.settings?.difficulty,
+            durationSec: this.state?.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
         GameDebug.logScoring('📊 結果畫面計算', {
             correctAnswers: this.correctAnswers,
             totalAnswers: this.totalAnswers,

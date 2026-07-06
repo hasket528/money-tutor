@@ -6150,6 +6150,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalQuestions = this.state.totalQuestions;
             const percentage = Math.round((totalScore / totalQuestions) * 100);
 
+            // 學習紀錄
+            window.LearningTracker?.save({ unit: 'c3', unitName: 'C3 金錢面額的兌換', series: 'C',
+                score: totalScore, total: totalQuestions, difficulty,
+                durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
             // 計算完成時間
             const endTime = Date.now();
             const elapsedMs = this.state.startTime ? (endTime - this.state.startTime) : 0;

@@ -5210,6 +5210,11 @@ const Game = {
         const correctAnswers = this.state.score;
         const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+        // 學習紀錄
+        window.LearningTracker?.save({ unit: 'f6', unitName: 'F6 數的合成與分解', series: 'F',
+            score: correctAnswers, total: totalQuestions, difficulty: this.state.settings?.difficulty,
+            durationSec: this.state.startTime ? Math.floor((Date.now() - this.state.startTime) / 1000) : 0 });
+
         // 計算完成時間
         const endTime = Date.now();
         const elapsedMs = this.state.startTime ? (endTime - this.state.startTime) : 0;
