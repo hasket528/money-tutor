@@ -1233,6 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hardDailyAmounts,
                 hardSavedAmounts: [],
             };
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             this.showWelcomeScreen();
         },
@@ -2254,6 +2255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!c.drag || c.drag.mode !== 'normal') return;
             if (this.state.isProcessing) return;
             const { placedTotal, targetAmount } = c.drag;
+            window.LearningTracker?.logStep?.(`存錢：投入正確金額(${targetAmount}元)`, placedTotal === targetAmount);
             if (placedTotal === targetAmount) {
                 this.state.isProcessing = true;
                 this.audio.play('correct');
@@ -3074,6 +3076,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.isProcessing = true;
 
             const isCorrect = chosen === question.answer;
+            window.LearningTracker?.logStep?.(`存錢：算需要幾週`, isCorrect);
 
             document.querySelectorAll('.b3-choice-btn').forEach(btn => {
                 btn.disabled = true;
@@ -3183,6 +3186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.isProcessing = true;
 
             const isCorrect = input === question.answer;
+            window.LearningTracker?.logStep?.(`存錢：算需要幾週`, isCorrect);
 
             const displayEl = document.getElementById('b3-input-display');
             if (displayEl) displayEl.style.background = isCorrect ? '#064e3b' : '#7f1d1d';

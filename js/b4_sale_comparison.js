@@ -954,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
             q.streak            = 0;
             q.comparisonHistory = [];
             q.startTime         = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             q.questions         = this._generateQuestions(q.totalQuestions);
 
             this.state.phase         = 'select';
@@ -1955,6 +1956,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ── Select Phase Handler ────────────────────────────────
         handleSelectClick(isCorrect, curr, correctSide, left, right) {
+            window.LearningTracker?.logStep?.(`比價：選較便宜`, isCorrect);
             this._clearSelectHintTimer();
             const diff = this.state.settings.difficulty;
             // 點擊時揭露兩張卡片的價格
@@ -2548,6 +2550,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // easy/normal 模式：點選最便宜的那家
         _handleTripleSelectClick(isCorrect, clickedIdx, curr, diff) {
+            window.LearningTracker?.logStep?.(`比價：選最便宜`, isCorrect);
             this._revealTripleCardPrices(curr);
             const correctCard = document.getElementById(`tcard-${curr.cheapestIdx}`);
             const clickedCard = document.getElementById(`tcard-${clickedIdx}`);
@@ -2631,6 +2634,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.isProcessing = true;
                 this._revealTripleCardPrices(curr);
                 const isCorrect = (order[0] === curr.cheapestIdx && order[1] === curr.middleIdx && order[2] === curr.mostExpIdx);
+                window.LearningTracker?.logStep?.(`比價：排序價格`, isCorrect);
 
                 Game.TimerManager.setTimeout(() => {
                     if (isCorrect) {
@@ -2987,6 +2991,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             this.audio.play('error');
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`比價：算差額`, false);
                             this._showCenterFeedback('❌', '再試一次！');
                             this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                             const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -3411,6 +3416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             btn.classList.add('wrong-ans');
                             this.audio.play('error');
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`比價：算差額`, false);
                             this._showCenterFeedback('❌', '再試一次！');
                             this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                             const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -4200,6 +4206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         this.audio.play('error');
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`比價：算差額`, false);
                         this._showCenterFeedback('❌', '再試一次！');
                         this.state.quiz.diffErrorCount = (this.state.quiz.diffErrorCount || 0) + 1;
                         const revealNow = this.state.quiz.diffErrorCount >= 3;
@@ -4438,6 +4445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleDiffAnswer(isCorrect, correctDiff) {
+            window.LearningTracker?.logStep?.(`比價：算差額`, isCorrect);
             if (isCorrect) {
                 this.audio.play('correct');
                 // 在算式卡（第2個框）顯示答案文字，取代浮動彈窗

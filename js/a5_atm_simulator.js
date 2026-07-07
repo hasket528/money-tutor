@@ -2404,6 +2404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 0;
             this.state.quiz.score = 0;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this.state.quiz.completedTransactions = [];
 
             // 隨機模式：重設 bag 並抽第一輪類型
@@ -2903,6 +2904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                             if (this.state.settings.difficulty === 'normal') {
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`提款：選擇金額`, false);
                                 this.state.gameState.normalModeErrors.withdrawAmountErrorCount++;
                                 const errorCount = this.state.gameState.normalModeErrors.withdrawAmountErrorCount;
                                 ATM.Debug.log('hint', `🔢 [Normal-Mode] 提款金額選擇錯誤次數: ${errorCount}`);
@@ -2948,6 +2950,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // 選擇了正確的金額，清除提示
                         ATM.Debug.log('hint', `✅ [Amount] 選擇正確：${amount}`);
+                        window.LearningTracker?.logStep?.(`提款：選擇金額`, true);
                         this.clearATMEasyHint();
                     }
 
@@ -4422,6 +4425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isNormalMode && progress >= correctPin.length) {
                         ATM.Debug.log('hint', `❌ [Normal-Mode] 密碼已輸入完成，應按確認鍵`);
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`輸入密碼：完成後按確認鍵`, false);
                         this.state.gameState.normalModeErrors.pinCancelErrorCount++;
                         const errorCount = this.state.gameState.normalModeErrors.pinCancelErrorCount;
                         ATM.Debug.log('hint', `🔢 [Normal-Mode] 密碼完成後按錯誤次數: ${errorCount}`);
@@ -4448,6 +4452,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                         if (isNormalMode) {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`輸入密碼`, false);
                             this.state.gameState.normalModeErrors.pinErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.pinErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 密碼輸入錯誤次數: ${errorCount}`);
@@ -4715,6 +4720,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                 if (this.state.settings.difficulty === 'normal') {
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`輸入密碼：完成後按確認鍵`, false);
                     this.state.gameState.normalModeErrors.pinCancelErrorCount++;
                     const errorCount = this.state.gameState.normalModeErrors.pinCancelErrorCount;
                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 密碼輸入時按取消鈕錯誤次數: ${errorCount}`);
@@ -5076,6 +5082,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (enteredPin === correctPin) {
                 // ✅ 步驟切換：密碼正確 → 選擇功能
+                window.LearningTracker?.logStep?.(`輸入密碼`, true);
                 this.updateFlowStep('SELECT_SERVICE', 'ENTER_PIN');
                 if (!this.state.settings.clickMode) this.playStepSuccess();
 
@@ -5482,6 +5489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                 if (this.state.settings.difficulty === 'normal') {
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`主選單：選擇功能`, false);
                     this.state.gameState.normalModeErrors.mainMenuErrorCount++;
                     const errorCount = this.state.gameState.normalModeErrors.mainMenuErrorCount;
                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 主選單選擇錯誤次數: ${errorCount}`);
@@ -5532,6 +5540,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.state.settings.difficulty === 'normal') {
                 this.state.gameState.normalModeErrors.mainMenuErrorCount = 0;
             }
+            window.LearningTracker?.logStep?.(`主選單：選擇功能`, true);
 
             // 選擇正確，清除提示
             if (this.shouldShowHint()) {
@@ -6269,6 +6278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 檢查是否選擇了正確的金額
             if (selectedAmount === correctAmount) {
                 // 正確！關閉彈窗並繼續流程
+                window.LearningTracker?.logStep?.(`存款：放入正確金額`, true);
                 this.speech.speak(`正確！存入${this.convertAmountToSpeech(correctAmount)}`);
 
                 // 設定存款金額
@@ -6295,6 +6305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // 錯誤！增加錯誤次數
                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                window.LearningTracker?.logStep?.(`存款：放入正確金額`, false);
                 depositState.errorCount++;
                 ATM.Debug.log('coin', `❌ [普通模式存款] 錯誤次數: ${depositState.errorCount}/3`);
 
@@ -7175,6 +7186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                             if (this.state.settings.difficulty === 'normal') {
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`存款：操作順序`, false);
                                 this.state.gameState.normalModeErrors.depositCancelErrorCount++;
                                 const errorCount = this.state.gameState.normalModeErrors.depositCancelErrorCount;
                                 ATM.Debug.log('hint', `🔢 [Normal-Mode] 存款取消按鈕錯誤次數: ${errorCount}`);
@@ -7209,6 +7221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                             if (this.state.settings.difficulty === 'normal') {
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`存款：操作順序`, false);
                                 this.state.gameState.normalModeErrors.depositCancelErrorCount++;
                                 const errorCount = this.state.gameState.normalModeErrors.depositCancelErrorCount;
                                 ATM.Debug.log('hint', `🔢 [Normal-Mode] 存款取消按鈕錯誤次數（未存入鈔票）: ${errorCount}`);
@@ -7274,6 +7287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                             if (this.state.settings.difficulty === 'normal') {
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`存款：確認`, false);
                                 this.state.gameState.normalModeErrors.depositConfirmErrorCount++;
                                 const errorCount = this.state.gameState.normalModeErrors.depositConfirmErrorCount;
                                 ATM.Debug.log('hint', `🔢 [Normal-Mode] 存款確認按鈕錯誤次數（未存入鈔票）: ${errorCount}`);
@@ -7786,16 +7800,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 let errorCount = 0;
                                 if (currentScene === 'bank-code-entry') {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                                     this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼輸入錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'account-entry') {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                                     this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳帳號輸入錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'transfer-amount-entry') {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                                     this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳金額輸入錯誤次數: ${errorCount}`);
@@ -7839,6 +7856,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 let hintSelector = '';
                                 if (currentScene === 'bank-code-entry' && this.state.gameState.easyModeHints.assignedBankCode) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                                     this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                                     const p = this.state.gameState.transfer.bankCode.length;
@@ -7847,6 +7865,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼清除鍵錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'account-entry' && this.state.gameState.easyModeHints.assignedAccountNumber) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                                     this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                                     const p = this.state.gameState.transfer.accountNumber.length;
@@ -7855,6 +7874,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 帳號清除鍵錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'transfer-amount-entry' && this.state.gameState.easyModeHints.assignedAmount) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                                     this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                                     const amtStr = this.state.gameState.easyModeHints.assignedAmount.toString();
@@ -7894,6 +7914,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 let hintSelector = '';
                                 if (currentScene === 'bank-code-entry' && this.state.gameState.easyModeHints.assignedBankCode) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                                     this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                                     const p = this.state.gameState.transfer.bankCode.length;
@@ -7902,6 +7923,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼取消鍵錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'account-entry' && this.state.gameState.easyModeHints.assignedAccountNumber) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                                     this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                                     const p = this.state.gameState.transfer.accountNumber.length;
@@ -7910,6 +7932,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 帳號取消鍵錯誤次數: ${errorCount}`);
                                 } else if (currentScene === 'transfer-amount-entry' && this.state.gameState.easyModeHints.assignedAmount) {
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                                     this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                                     errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                                     const amtStr = this.state.gameState.easyModeHints.assignedAmount.toString();
@@ -7958,6 +7981,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在確認鍵顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                             this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼完成後按錯誤次數: ${errorCount}`);
@@ -7981,6 +8005,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                             this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼輸入錯誤次數: ${errorCount}`);
@@ -8066,6 +8091,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在確認鍵顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                             this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 帳號完成後按錯誤次數: ${errorCount}`);
@@ -8089,6 +8115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                             this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳帳號輸入錯誤次數: ${errorCount}`);
@@ -8168,6 +8195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在確認鍵顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                             this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳金額完成後按錯誤次數: ${errorCount}`);
@@ -8194,6 +8222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後顯示提示
                         if (this.state.settings.difficulty === 'normal') {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                             this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                             const errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                             ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳金額輸入錯誤次數: ${errorCount}`);
@@ -8335,6 +8364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在下一位數字顯示提示
                     if (this.state.settings.difficulty === 'normal') {
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`轉帳：輸入銀行代碼`, false);
                         this.state.gameState.normalModeErrors.bankCodeErrorCount++;
                         const errorCount = this.state.gameState.normalModeErrors.bankCodeErrorCount;
                         ATM.Debug.log('hint', `🔢 [Normal-Mode] 銀行代碼未完成按確認鍵錯誤次數: ${errorCount}`);
@@ -8373,6 +8403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在下一位數字顯示提示
                     if (this.state.settings.difficulty === 'normal') {
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`轉帳：輸入帳號`, false);
                         this.state.gameState.normalModeErrors.accountNumberErrorCount++;
                         const errorCount = this.state.gameState.normalModeErrors.accountNumberErrorCount;
                         ATM.Debug.log('hint', `🔢 [Normal-Mode] 帳號未完成按確認鍵錯誤次數: ${errorCount}`);
@@ -8405,6 +8436,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 🔧 [新增] 普通模式：追蹤錯誤次數，3次後在第一位數字顯示提示
                     if (this.state.settings.difficulty === 'normal') {
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`轉帳：輸入金額`, false);
                         this.state.gameState.normalModeErrors.transferAmountErrorCount++;
                         const errorCount = this.state.gameState.normalModeErrors.transferAmountErrorCount;
                         ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳金額未輸入按確認鍵錯誤次數: ${errorCount}`);
@@ -8689,6 +8721,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.shouldShowHint() && this.state.settings.sessionType !== 'free') {
                     ATM.Debug.log('flow', '❌ 取消按鈕：簡單/普通指定任務模式下不允許取消（轉帳確認頁）');
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`轉帳：核對資料`, false);
                     this.state.gameState.normalModeErrors.transferVerifyErrorCount++;
                     const errorCount = this.state.gameState.normalModeErrors.transferVerifyErrorCount;
                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 轉帳確認頁取消鍵錯誤次數: ${errorCount}`);
@@ -8786,6 +8819,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.shouldShowHint() && this.state.settings.sessionType !== 'free') {
                     ATM.Debug.log('flow', '❌ 取消按鈕：簡單/普通指定任務模式下不允許取消（最終確認頁）');
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`轉帳：確認`, false);
                     this.state.gameState.normalModeErrors.transferConfirmErrorCount++;
                     const errorCount = this.state.gameState.normalModeErrors.transferConfirmErrorCount;
                     ATM.Debug.log('hint', `🔢 [Normal-Mode] 最終確認頁取消鍵錯誤次數: ${errorCount}`);

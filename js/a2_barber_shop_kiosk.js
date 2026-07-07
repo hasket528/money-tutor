@@ -2123,6 +2123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 重置已完成訂單數
             this.state.gameState.completedOrders = 0;
             this.state.gameState.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             if (window.TutorContext) {
                 TutorContext.reset();
                 TutorContext.update({ screen: 'game', phase: 'selectItem', difficulty: this.state.settings.difficulty, totalQuestions: this.state.settings.questionCount, questionIndex: 0 });
@@ -5076,6 +5077,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isWrongAction) {
                 // 累計錯誤次數
                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                window.LearningTracker?.logStep?.(`普通模式：畫面操作順序（步驟${currentStep}）`, false);
                 this.state.gameState.normalMode.errorCount++;
                 this.state.gameState.normalMode.totalErrors++;
                 if (window.TutorContext) TutorContext.update({ errorCount: this.state.gameState.normalMode.errorCount });
@@ -6267,6 +6269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (inserted === required) {
                 // 正確付款，重置錯誤計數
+                window.LearningTracker?.logStep?.(`付款：${this.state.gameState.selectedService?.name || '服務'}(${required}元)`, true);
                 this.Debug.log('payment', '[Normal Mode Payment] 付款正確！');
                 this.state.gameState.normalMode.paymentErrorCount = 0;
 
@@ -6281,6 +6284,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // ★★★ 增加錯誤計數 ★★★
                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                window.LearningTracker?.logStep?.(`付款：${this.state.gameState.selectedService?.name || '服務'}(${required}元)`, false);
                 this.state.gameState.normalMode.paymentErrorCount++;
                 const errorCount = this.state.gameState.normalMode.paymentErrorCount;
                 this.Debug.log('payment', '[Normal Mode Payment] 付款錯誤次數:', errorCount);
@@ -6322,6 +6326,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (service) {
                 // coinFirstAssigned：必須精確等於服務價格
                 if (inserted === service.price) {
+                    window.LearningTracker?.logStep?.(`投幣付款：${service.name}(${service.price}元)`, true);
                     this.Debug.log('payment', '[coinFirst] 投幣正確！亮燈服務:', service.name);
                     // 煙火改在選擇正確服務時觸發（selectService），此處不重複
                     this.TimerManager.setTimeout(() => {
@@ -6335,6 +6340,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const services = this.serviceConfig[this.state.settings.difficulty].services;
                 const matched = services.find(s => s.price === inserted);
                 if (matched) {
+                    window.LearningTracker?.logStep?.(`投幣付款：${matched.name}(${matched.price}元)`, true);
                     this.Debug.log('payment', '[coinFirst] 投幣匹配服務:', matched.name);
                     this.TimerManager.setTimeout(() => {
                         this.updateServiceAvailabilityByAmount();
@@ -6350,6 +6356,8 @@ document.addEventListener('DOMContentLoaded', () => {
          */
         _handleCoinFirstPaymentError(inserted, required) {
             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+            const _cfSvc = this.state.gameState.normalMode.assignedService;
+            window.LearningTracker?.logStep?.(_cfSvc ? `投幣付款：${_cfSvc.name}(${_cfSvc.price}元)` : `投幣付款：${inserted}元`, false);
             this.state.gameState.normalMode.paymentErrorCount++;
             const errorCount = this.state.gameState.normalMode.paymentErrorCount;
             this.audio.playSound('error');

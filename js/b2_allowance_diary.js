@@ -790,6 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
             q.correctCount    = 0;
             q.streak          = 0;
             q.startTime       = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             q.questions       = this._generateQuestions(s.questionCount);
             q.currentInput    = '';
 
@@ -2092,6 +2093,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const effectiveAnswer = this._getEffectiveAnswer(question);
             const isCorrect = chosen === effectiveAnswer;
+            window.LearningTracker?.logStep?.(`記帳：算出剩餘金額`, isCorrect);
 
             document.querySelectorAll('.b2-choice-btn').forEach(btn => {
                 btn.disabled = true;
@@ -2375,6 +2377,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const effectiveAnswer = this._getEffectiveAnswer(question);
             const isCorrect = input === effectiveAnswer;
+            window.LearningTracker?.logStep?.(`記帳：算出剩餘金額`, isCorrect);
 
             const displayEl = document.getElementById('b2-input-display');
             if (displayEl) displayEl.style.background = isCorrect ? '#064e3b' : '#7f1d1d';

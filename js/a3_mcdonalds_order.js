@@ -2877,6 +2877,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 🔧 [修正] 記錄測驗開始時間（修正完成時間顯示為0秒的問題）
             this.state.gameState.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             if (window.TutorContext) {
                 TutorContext.reset();
                 TutorContext.update({ screen: 'game', phase: 'selectItem', difficulty: this.state.settings.difficulty, totalQuestions: this.state.settings.questionCount, questionIndex: 0 });
@@ -6890,6 +6891,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔧 [Phase 3] 確認按鈕
             this.EventManager.on(confirmBtn, 'click', () => {
                 const userAnswer = parseInt(input.value);
+                window.LearningTracker?.logStep?.(`找零計算（應找${changeExpected}元）`, userAnswer === changeExpected);
                 if (userAnswer === changeExpected) {
                     // 答對了，進入找零驗證頁面
                     this.audio.playSound('success');
@@ -8374,6 +8376,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = true;
                 btn.style.cursor = 'not-allowed';
             });
+
+            window.LearningTracker?.logStep?.(`找零選項（應找${this.state.gameState.changeExpected}元）`, isCorrect);
 
             if (isCorrect) {
                 // 正確答案：播放 correct02.mp3（success 音效已使用 correct02.mp3）

@@ -1799,6 +1799,7 @@
             this.state.gameState.completedQuestions = 0;
             this.state.gameState.correctAnswers = 0;
             this.state.gameState.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             // 🔧 [關鍵修正] 重置所有交易相關狀態，防止上一輪殘留
             this.state.gameState.selectedProduct = null;
@@ -3239,11 +3240,15 @@
                         const cfTarget = this.state.gameState.targetProduct;
                         if (cfTarget && product.id !== cfTarget.id) {
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`任務：投幣後選擇 ${cfTarget.name}`, false);
                             this.audio.play('error');
                             this.showWrongProductMark(productId);
                             this.speech.speak(`請選擇指定的飲料：${cfTarget.name}`);
                             this.handleNormalModeAction('selectWrongProduct');
                             return;
+                        }
+                        if (cfTarget) {
+                            window.LearningTracker?.logStep?.(`任務：投幣後選擇 ${cfTarget.name}`, true);
                         }
                     }
                     // 飲料已亮起，可以選
@@ -3253,6 +3258,7 @@
                 // 如果是指定任務且選錯飲料
                 if (this.state.settings.taskType === 'assigned' && product.id !== this.state.gameState.targetProduct.id) {
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`任務：選擇 ${this.state.gameState.targetProduct.name}`, false);
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請購買指定的飲料：${this.state.gameState.targetProduct.name}`);
@@ -3262,6 +3268,7 @@
 
                 // 選對了！這是正確操作
                 if (this.state.settings.taskType === 'assigned') {
+                    window.LearningTracker?.logStep?.(`任務：選擇 ${this.state.gameState.targetProduct.name}`, true);
                     this.audio.play('correct');
                     this.startFireworksAnimation();
                 }
@@ -3286,12 +3293,14 @@
                 if (product.id !== this.state.gameState.targetProduct.id) {
                     // 選錯飲料
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`任務：選擇 ${this.state.gameState.targetProduct.name}`, false);
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請購買指定的飲料：${this.state.gameState.targetProduct.name}`);
                     return;
                 } else {
                     // 選對飲料：播放正確音效和煙火動畫
+                    window.LearningTracker?.logStep?.(`任務：選擇 ${this.state.gameState.targetProduct.name}`, true);
                     this.audio.play('correct');
                     this.startFireworksAnimation();
                 }
@@ -3300,11 +3309,13 @@
                 const target = this.state.gameState.targetProduct;
                 if (target && product.id !== target.id) {
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`任務：投幣後選擇 ${target.name}`, false);
                     this.audio.play('error');
                     this.showWrongProductMark(productId);
                     this.speech.speak(`選錯了，請選擇 ${target.name}`);
                     return;
                 } else {
+                    if (target) window.LearningTracker?.logStep?.(`任務：投幣後選擇 ${target.name}`, true);
                     this.audio.play('correct');
                     this.startFireworksAnimation();
                 }
@@ -5547,6 +5558,7 @@
             const diff = product.price - this.state.gameState.insertedAmount;
 
             if (diff > 0) {
+                window.LearningTracker?.logStep?.(`任務：投入足夠金額購買 ${product.name}(${product.price}元)`, false);
                 // 簡單模式：使用警告系統
                 if (this.state.settings.difficulty === 'easy') {
                     this.audio.play('error03');
@@ -5558,6 +5570,7 @@
                 }
                 return;
             }
+            window.LearningTracker?.logStep?.(`任務：投入足夠金額購買 ${product.name}(${product.price}元)`, true);
 
             // 簡單模式：清除所有提示
             if (this.state.settings.difficulty === 'easy') {

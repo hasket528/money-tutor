@@ -590,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
             q.correctCount    = 0;
             q.streak          = 0;
             q.startTime       = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             q.questions       = this._generateQuestions(q.totalQuestions);
 
             this.state.wallet        = [];
@@ -1338,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const chosen = parseInt(btn.dataset.amount);
+                    window.LearningTracker?.logStep?.(`Phase1：算商品價格`, chosen === correct);
                     if (chosen === correct) {
                         overlay.remove();
                         this.audio.play('correct');
@@ -1432,6 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (k === 'ok') {
                         const entered = parseInt(inputVal, 10);
                         if (!inputVal || isNaN(entered)) return;
+                        window.LearningTracker?.logStep?.(`Phase1：算商品價格`, entered === correct);
                         if (entered === correct) {
                             overlay.remove();
                             this.audio.play('correct');
@@ -1515,6 +1518,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (k === 'ok') {
                         const entered = parseInt(inputVal, 10);
                         if (!inputVal || isNaN(entered)) return;
+                        window.LearningTracker?.logStep?.(`Phase1：算總金額`, entered === correctTotal);
                         if (entered === correctTotal) {
                             overlay.remove();
                             this.audio.play('correct');
@@ -1616,6 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (k === '⌫') { inputVal = inputVal.slice(0, -1); }
                     else if (k === '✓') {
                         const entered = parseInt(inputVal);
+                        window.LearningTracker?.logStep?.(`Phase1：算商品價格`, entered === cost);
                         if (entered === cost) {
                             overlay.remove();
                             this.audio.play('correct');
@@ -1671,6 +1676,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 choiceBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const chosen = parseInt(choiceBtn.dataset.amount);
+                    window.LearningTracker?.logStep?.(`Phase1：算商品價格`, chosen === cost);
                     if (chosen === cost) {
                         overlay.remove();
                         this.audio.play('correct');
@@ -2198,6 +2204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const slotIdx = q.hintSlots.findIndex(s => s.denom === denom && !s.filled);
                 if (slotIdx === -1) {
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`Phase2：投入正確面額`, false);
                     this.audio.play('error');
                     return; // 拒絕不符合 ghost slot 的面額
                 }
@@ -2542,6 +2549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCorrect   = diff === 'easy' ? walletTotal >= requiredTotal : walletTotal === requiredTotal;
 
             Game.Debug.log('state', `確認：錢包${walletTotal} 需要${requiredTotal} 正確=${isCorrect}`);
+            window.LearningTracker?.logStep?.(`Phase2：付款(需${requiredTotal}元)`, isCorrect);
 
             if (isCorrect) {
                 Game.TimerManager.clearByCategory('countdown'); // 停止倒數計時器

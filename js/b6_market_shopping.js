@@ -783,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.correctCount = 0;
             g.streak       = 0;
             g.startTime    = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             g.missions     = this._pickMissions(s.rounds, s.difficulty);
             g.receipts     = [];
             g.stallStats   = {};
@@ -2491,7 +2492,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             document.body.appendChild(modal);
             Game.Speech.speak(`合計${total}元，預算${g.mission.budget}元，確認去付款！`);
-            const go = () => { if (modal.parentNode) modal.remove(); callback(); };
+            let logged = false;
+            const go = () => {
+                if (!logged) {
+                    logged = true;
+                    // 學習紀錄：逐題明細（題目＝本關選購清單，通過攤位件數＋預算守門）
+                    window.LearningTracker?.logStep?.(
+                        `第${g.currentRound + 1}關：選購清單商品（${items.map(i => i.name).join('、')}）`, total <= g.mission.budget);
+                }
+                if (modal.parentNode) modal.remove();
+                callback();
+            };
             Game.EventManager.on(document.getElementById('b6-cc-go'), 'click', go, {}, 'gameUI');
             const autoT = Game.TimerManager.setTimeout(go, 5000, 'ui');
             // 點擊背景也關閉
@@ -3233,6 +3244,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const g      = this.state.game;
             const diff   = this.state.settings.difficulty;
             const wTotal = this._b6P2GetWalletTotal();
+            // 學習紀錄：逐題明細（題目＝本關結帳付款）
+            window.LearningTracker?.logStep?.(`第${g.currentRound + 1}關：結帳付款（應付${total}元）`, wTotal >= total);
 
             // 付款不足
             if (wTotal < total) {
@@ -3845,6 +3858,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const g    = this.state.game;
             const diff = this.state.settings.difficulty;
             const placedTotal = (g.changePlaced || []).reduce((s, p) => s + p.denom, 0);
+
+            // 學習紀錄：逐題明細（題目＝本關找零）
+            window.LearningTracker?.logStep?.(`第${g.currentRound + 1}關：找零（應找${change}元）`, placedTotal === change);
 
             if (placedTotal !== change) {
                 this.state.isProcessing = false;

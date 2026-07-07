@@ -759,6 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.correctCount = 0;
             g.streak       = 0;
             g.startTime    = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
 
             // 預先生成所有關卡資料
             const themeKeys = ['birthday', 'halloween', 'picnic'];
@@ -2051,6 +2052,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const allTargetSelected = g.selectedIds.size === g.targetIds.size;
             const isCorrect = allTargetSelected && g.selectedIds.size > 0;
 
+            // 學習紀錄：逐題明細（題目＝本關購物清單）
+            window.LearningTracker?.logStep?.(
+                `第${g.currentRound + 1}關：選購清單商品（${g.targetItems.map(i => i.name).join('、')}）`, isCorrect);
+
             document.querySelectorAll('.b5-item-card').forEach(c => c.classList.add('disabled'));
             const btn = document.getElementById('b5-confirm-btn');
             if (btn) btn.disabled = true;
@@ -2716,6 +2721,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.isProcessing = true;
             const g      = this.state.game;
             const wTotal = this._b5P2GetWalletTotal();
+            // 學習紀錄：逐題明細（題目＝本關結帳付款）
+            window.LearningTracker?.logStep?.(`第${g.currentRound + 1}關：結帳付款（應付${total}元）`, wTotal >= total);
             if (wTotal < total) {
                 this.state.isProcessing = false;
                 this.audio.play('error');
@@ -3291,6 +3298,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const g    = this.state.game;
             const diff = this.state.settings.difficulty;
             const placedTotal = (g.changePlaced || []).reduce((s, p) => s + p.denom, 0);
+
+            // 學習紀錄：逐題明細（題目＝本關找零）
+            window.LearningTracker?.logStep?.(`第${g.currentRound + 1}關：找零（應找${change}元）`, placedTotal === change);
 
             if (placedTotal !== change) {
                 this.state.isProcessing = false;

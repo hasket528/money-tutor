@@ -3148,6 +3148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 0;
             this.state.quiz.score = 0;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             if (window.TutorContext) {
                 TutorContext.reset();
                 TutorContext.update({ screen: 'game', phase: 'selectItem', difficulty: this.state.settings.difficulty, totalQuestions: this.state.settings.questionCount, questionIndex: 0 });
@@ -6364,6 +6365,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 檢查是否為指定任務且選擇正確
             if (this.state.settings.taskType === 'assigned') {
                 const targetItem = this.state.gameState.currentTransaction.targetItem;
+                window.LearningTracker?.logStep?.(`選擇商品：${targetItem.name}`, selectedItem.id === targetItem.id);
                 if (selectedItem.id !== targetItem.id) {
                     // 🔧 [新增] 錯誤時重置處理狀態，允許重新選擇
                     this.state.gameState.isProcessingProductSelection = false;
@@ -8670,6 +8672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (difficulty === 'normal') {
                     // 🆕 [普通模式] 付款錯誤計數
                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                    window.LearningTracker?.logStep?.(`付款（應付${itemPrice}元）`, false);
                     this.state.gameState.stepErrorCounts.payment++;
                     const errorCount = this.state.gameState.stepErrorCounts.payment;
                     Game.Debug.log('hint', `🔴 [付款] 普通模式錯誤次數: ${errorCount}`);
@@ -8716,6 +8719,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (difficulty === 'normal') {
                         // 🆕 [普通模式] 付款錯誤計數（付太多錢）
                         window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                        window.LearningTracker?.logStep?.(`付款（應付${itemPrice}元）`, false);
                         this.state.gameState.stepErrorCounts.payment++;
                         const errorCount = this.state.gameState.stepErrorCounts.payment;
                         Game.Debug.log('hint', `🔴 [付款] 普通模式錯誤次數: ${errorCount}`);
@@ -8752,6 +8756,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // --- 步驟 4: 付款成功流程 ---
+            window.LearningTracker?.logStep?.(`付款（應付${itemPrice}元）`, true);
             this.state.gameState.isProcessingPayment = true;
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -10886,6 +10891,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 確認按鈕
             confirmBtn.addEventListener('click', () => {
                 const userAnswer = parseInt(input.value);
+                window.LearningTracker?.logStep?.(`找零計算（應找${transaction.changeExpected}元）`, userAnswer === transaction.changeExpected);
                 if (userAnswer === transaction.changeExpected) {
                     // 答對了，顯示視覺回饋後進入找零驗證頁面
                     input.style.border = '3px solid #10b981';
@@ -11530,6 +11536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 確認按鈕
             confirmBtn.addEventListener('click', () => {
                 const userAnswer = parseInt(input.value);
+                window.LearningTracker?.logStep?.(`找零計算（應找${transaction.changeExpected}元）`, userAnswer === transaction.changeExpected);
                 if (userAnswer === transaction.changeExpected) {
                     // 答對了，關閉彈窗，進入找零驗證頁面
                     this.audio.playCorrect02Sound();

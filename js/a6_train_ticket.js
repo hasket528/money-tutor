@@ -3516,6 +3516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.quiz.currentQuestion = 0;
             this.state.quiz.score = 0;
             this.state.quiz.startTime = Date.now();
+            window.LearningTracker?.resetWrong?.();   // 學習紀錄：錯誤/逐題計數歸零
             this._completionScreenShown = false;
             if (window.TutorContext) {
                 TutorContext.reset();
@@ -6164,6 +6165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (stationId !== correctStation) {
                                     // ❌ 選擇錯誤
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`購票：選擇起站`, false);
                                     this.state.gameState.stepErrorCounts.askStart++;
                                     const errorCount = this.state.gameState.stepErrorCounts.askStart;
                                     Game.Debug.log('hint', `❌ [普通模式] 選擇錯誤的出發站 (錯誤次數: ${errorCount})`);
@@ -6189,6 +6191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (stationId !== correctStation) {
                                     // ❌ 選擇錯誤
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`購票：選擇起站`, false);
                                     this.state.gameState.stepErrorCounts.askStart++;
                                     const errorCount = this.state.gameState.stepErrorCounts.askStart;
                                     Game.Debug.log('hint', `❌ [困難模式] 選擇錯誤的出發站 (錯誤次數: ${errorCount})`);
@@ -6225,6 +6228,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const isPresetMode = this.state.settings.taskType === 'preset';
                             if (isPresetMode) {
                                 this.state.gameState.ticketProcess.userSelectedStartStation = true;
+                                window.LearningTracker?.logStep?.(`購票：選擇起站`, true);
                                 Game.Debug.log('flow', '✅ [預設模式] 使用者已選擇出發站');
                             }
 
@@ -6377,6 +6381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (stationId !== correctStation) {
                                     // ❌ 選擇錯誤
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`購票：選擇迄站`, false);
                                     this.state.gameState.stepErrorCounts.askEnd++;
                                     const errorCount = this.state.gameState.stepErrorCounts.askEnd;
                                     Game.Debug.log('hint', `❌ [普通模式] 選擇錯誤的抵達站 (錯誤次數: ${errorCount})`);
@@ -6402,6 +6407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (stationId !== correctStation) {
                                     // ❌ 選擇錯誤
                                     window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                    window.LearningTracker?.logStep?.(`購票：選擇迄站`, false);
                                     this.state.gameState.stepErrorCounts.askEnd++;
                                     const errorCount = this.state.gameState.stepErrorCounts.askEnd;
                                     Game.Debug.log('hint', `❌ [困難模式] 選擇錯誤的抵達站 (錯誤次數: ${errorCount})`);
@@ -6436,6 +6442,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const isPresetMode = this.state.settings.taskType === 'preset';
                             if (isPresetMode) {
                                 this.state.gameState.ticketProcess.userSelectedEndStation = true;
+                                window.LearningTracker?.logStep?.(`購票：選擇迄站`, true);
                                 Game.Debug.log('flow', '✅ [預設模式] 使用者已點擊抵達站按鈕');
                             }
 
@@ -6683,6 +6690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (trainTypeId !== correctTrainType) {
                                 // ❌ 選擇錯誤
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`購票：選擇車種`, false);
                                 this.state.gameState.stepErrorCounts.askType++;
                                 const errorCount = this.state.gameState.stepErrorCounts.askType;
                                 Game.Debug.log('hint', `❌ [普通模式] 選擇錯誤的車種 (錯誤次數: ${errorCount})`);
@@ -6708,6 +6716,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (trainTypeId !== correctTrainType) {
                                 // ❌ 選擇錯誤
                                 window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                                window.LearningTracker?.logStep?.(`購票：選擇車種`, false);
                                 this.state.gameState.stepErrorCounts.askType++;
                                 const errorCount = this.state.gameState.stepErrorCounts.askType;
                                 Game.Debug.log('hint', `❌ [困難模式] 選擇錯誤的車種 (錯誤次數: ${errorCount})`);
@@ -6731,6 +6740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.playFireworks();
                         }
 
+                        window.LearningTracker?.logStep?.(`購票：選擇車種`, true);
                         this.DialogueManager.nextStep(trainTypeId);
                     }, {}, 'trainTypeSelect');
                 });
@@ -6852,6 +6862,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (currentCount !== correctCount) {
                             // ❌ 選擇錯誤
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`購票：選擇張數`, false);
                             this.state.gameState.stepErrorCounts.askCount++;
                             const errorCount = this.state.gameState.stepErrorCounts.askCount;
                             Game.Debug.log('hint', `❌ [普通模式] 選擇錯誤的張數 (錯誤次數: ${errorCount})`);
@@ -6877,6 +6888,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (currentCount !== correctCount) {
                             // ❌ 選擇錯誤
                             window.LearningTracker?.logWrong?.();   // 學習紀錄：錯誤嘗試
+                            window.LearningTracker?.logStep?.(`購票：選擇張數`, false);
                             this.state.gameState.stepErrorCounts.askCount++;
                             const errorCount = this.state.gameState.stepErrorCounts.askCount;
                             Game.Debug.log('hint', `❌ [困難模式] 選擇錯誤的張數 (錯誤次數: ${errorCount})`);
@@ -6902,6 +6914,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.playFireworks();
                     }
 
+                    window.LearningTracker?.logStep?.(`購票：選擇張數`, true);
                     this.DialogueManager.nextStep(currentCount);
                 }, {}, 'ticketCount');
 
