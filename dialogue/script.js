@@ -749,8 +749,10 @@ function saveCustom(arr) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
 }
 
-// ─── 對話包匯出/匯入（自訂情境＋老師錄音打包分享）──────────
-// 格式：{ version:1, type:'dialogue-pack', exported, scenarios:[…], audio:{ key: dataURL } }
+// ─── 對話包匯出/匯入（自訂情境＋老師錄音＋照片打包分享）──────────
+// 格式：{ version:2, type:'dialogue-pack', exported, scenarios:[…], audio:{ key: dataURL } }
+// v2 起 audio map 一併含照片 blob（key 尾 ::img、__scene::img）；匯入以 `${sc.id}::`
+// 前綴通用再映射，故 v1 舊包（無照片）仍可匯入，向下相容。
 
 function blobToDataURL(blob) {
   return new Promise((resolve, reject) => {
@@ -782,7 +784,7 @@ async function exportDialoguePack() {
     }
   }
   return JSON.stringify({
-    version: 1, type: 'dialogue-pack', exported: Date.now(),
+    version: 2, type: 'dialogue-pack', exported: Date.now(),
     scenarios: customs, audio,
   });
 }
@@ -1569,11 +1571,20 @@ function renderStep() {
   } else {
     avatarEl.textContent = voiceManager.getAvatar();
   }
+  // 教師自訂場景照片（IndexedDB）優先覆蓋店員頭像
+  const _rScId = state.scenario?.id, _rIdx = state.stepIndex;
+  if (_rScId) {
+    resolveCustomImageURL(`${_rScId}::__scene::img`).then(url => {
+      if (url && state.scenario?.id === _rScId && state.stepIndex === _rIdx) {
+        avatarEl.innerHTML = `<img src="${url}" alt="${avatarName}">`;
+      }
+    });
+  }
 
   // 店員對話
   document.getElementById('shopkeeper-speech-text').textContent = step.shopkeeper_prompt;
 
-  // 商品圖片
+  // 商品圖片：教師自訂照片(IndexedDB) ＞ scenarios.js 內建 image
   const imgCard = document.getElementById('step-image-card');
   const imgEl   = document.getElementById('step-image');
   const lblEl   = document.getElementById('step-image-label');
@@ -1588,6 +1599,17 @@ function renderStep() {
     imgEl.src         = '';
     imgEl.alt         = '';
     lblEl.textContent = '';
+  }
+  // 教師自訂步驟照片（IndexedDB）優先顯示（即使沒有內建 image 也會出現）
+  if (_rScId && step.id) {
+    resolveCustomImageURL(`${_rScId}::${step.id}::img`).then(url => {
+      if (!url || state.scenario?.id !== _rScId || state.stepIndex !== _rIdx) return;
+      imgEl.onerror     = null;
+      imgEl.src         = url;
+      imgEl.alt         = step.image_label || step.task || '照片';
+      lblEl.textContent = step.image_label || '';
+      imgCard.hidden    = false;
+    });
   }
 
   // 任務
@@ -2529,6 +2551,7 @@ function openScenarioEditor(idx) {
 
   renderColorSwatches();
   renderStepList();
+  scenePhoto.init(`${editingScenarioId}::__scene::img`);
   nav.push('screen-scenario-editor');
 }
 
@@ -2595,6 +2618,8 @@ function renderStepList() {
             const sid = editingSteps[i]?.id;
             if (sid && typeof dbAudioDelete === 'function') {
               dbAudioDelete(`${editingScenarioId}::${sid}::say`).catch(() => {});
+              dbAudioDelete(`${editingScenarioId}::${sid}::img`).catch(() => {});
+              _customImgCache.delete(`${editingScenarioId}::${sid}::img`);
             }
             editingSteps.splice(i, 1);
             renderStepList();
@@ -2764,6 +2789,94 @@ const voiceStudio = {
   },
 };
 
+// ─── 照片工作室（場景圖／步驟插圖：教師上傳真實照片，存 IndexedDB）──────
+// 與錄音同一 store（custom_audio），key 慣例：
+//   步驟插圖 `${scenarioId}::${stepId}::img`、場景圖 `${scenarioId}::__scene::img`
+// 播放時優先讀本機照片，無則退回 scenarios.js 的 image/clerkImage 內建路徑。
+function compressImageToBlob(file, maxDim = 900, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const r = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * r); h = Math.round(h * r);
+      }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      cv.toBlob(b => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src = url;
+  });
+}
+
+// 播放端照片解析（帶快取，key 未變不重建 URL；上傳/刪除時清該 key 快取）
+const _customImgCache = new Map();  // key -> objectURL | null
+async function resolveCustomImageURL(key) {
+  if (_customImgCache.has(key)) return _customImgCache.get(key);
+  let url = null;
+  try {
+    const blob = typeof dbAudioGet === 'function' ? await dbAudioGet(key) : null;
+    if (blob) url = URL.createObjectURL(blob);
+  } catch {}
+  _customImgCache.set(key, url);
+  return url;
+}
+
+// 通用照片上傳器（步驟編輯器與情境編輯器共用）
+function makePhotoUploader({ previewId, removeBtnId, statusId }) {
+  return {
+    key: null,
+    async init(key) { this.key = key; await this.refresh(); },
+    async refresh() {
+      let blob = null;
+      try { blob = this.key ? await dbAudioGet(this.key) : null; } catch {}
+      const prev = document.getElementById(previewId);
+      const rm   = document.getElementById(removeBtnId);
+      if (!prev) return;
+      if (prev.dataset.objUrl) { URL.revokeObjectURL(prev.dataset.objUrl); prev.dataset.objUrl = ''; }
+      if (blob) {
+        const u = URL.createObjectURL(blob);
+        prev.src = u; prev.hidden = false; prev.dataset.objUrl = u;
+        if (rm) rm.hidden = false;
+      } else {
+        prev.hidden = true; prev.removeAttribute('src');
+        if (rm) rm.hidden = true;
+      }
+    },
+    async upload(file) {
+      if (!file || !this.key) return;
+      const st = statusId && document.getElementById(statusId);
+      try {
+        const blob = await compressImageToBlob(file);
+        await dbAudioSave(this.key, blob);
+        _customImgCache.delete(this.key);
+        if (st) st.textContent = '✅ 照片已儲存，練習時會顯示這張。';
+      } catch {
+        if (st) st.textContent = '❌ 照片處理失敗，請換一張再試。';
+      }
+      await this.refresh();
+    },
+    async remove() {
+      if (!this.key) return;
+      await dbAudioDelete(this.key).catch(() => {});
+      _customImgCache.delete(this.key);
+      const st = statusId && document.getElementById(statusId);
+      if (st) st.textContent = '已移除照片，練習時會用內建圖示。';
+      await this.refresh();
+    },
+    async discardIfNew(isNew) {
+      if (isNew && this.key) { await dbAudioDelete(this.key).catch(() => {}); _customImgCache.delete(this.key); }
+    },
+  };
+}
+const stepPhoto  = makePhotoUploader({ previewId: 'edit-step-photo-preview',  removeBtnId: 'btn-step-photo-del',  statusId: 'step-photo-status' });
+const scenePhoto = makePhotoUploader({ previewId: 'edit-scene-photo-preview', removeBtnId: 'btn-scene-photo-del', statusId: 'scene-photo-status' });
+
 
 // ─── 步驟編輯器 ─────────────────────────────────────
 
@@ -2776,6 +2889,7 @@ function openStepEditor(idx) {
   editingStepId = step?.id ?? ('step_' + Date.now());
   voiceStudio.init(`${editingScenarioId}::${editingStepId}::say`, () =>
     document.getElementById('edit-prompt').value.trim());
+  stepPhoto.init(`${editingScenarioId}::${editingStepId}::img`);
 
   document.getElementById('step-editor-title').textContent = step ? '編輯步驟' : '新增步驟';
   document.getElementById('edit-prompt').value   = step?.shopkeeper_prompt ?? '';
@@ -3121,9 +3235,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 步驟編輯頁
   document.getElementById('btn-step-back').addEventListener('click', () => {
     voiceStudio.discardIfNew(editingStepIdx < 0);   // 取消新增步驟 → 清孤兒錄音
+    stepPhoto.discardIfNew(editingStepIdx < 0);      // 取消新增步驟 → 清孤兒照片
     nav.pop();
   });
   document.getElementById('btn-save-step').addEventListener('click', saveStep);
+
+  // 照片上傳（步驟插圖＋場景圖）
+  document.getElementById('edit-step-photo-input').addEventListener('change', (e) => {
+    if (e.target.files?.[0]) stepPhoto.upload(e.target.files[0]); e.target.value = '';
+  });
+  document.getElementById('btn-step-photo-del').addEventListener('click', () => stepPhoto.remove());
+  document.getElementById('edit-scene-photo-input').addEventListener('change', (e) => {
+    if (e.target.files?.[0]) scenePhoto.upload(e.target.files[0]); e.target.value = '';
+  });
+  document.getElementById('btn-scene-photo-del').addEventListener('click', () => scenePhoto.remove());
 
   // 語音工作室（步驟編輯器內）
   document.getElementById('btn-vs-tts').addEventListener('click', () => voiceStudio.previewTTS());

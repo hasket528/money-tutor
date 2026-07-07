@@ -541,6 +541,16 @@
             <div class="color-swatches" id="edit-color" role="group" aria-label="主題色選擇"></div>
           </div>
         </div>
+        <div class="form-group" id="scene-photo-group">
+          <label class="form-label">場景照片（可選）</label>
+          <div class="voice-studio-row">
+            <label class="btn-vs" for="edit-scene-photo-input" style="cursor:pointer">📷 上傳照片</label>
+            <input type="file" id="edit-scene-photo-input" accept="image/*" hidden>
+            <button type="button" class="btn-vs danger" id="btn-scene-photo-del" hidden>🗑️ 移除照片</button>
+          </div>
+          <img id="edit-scene-photo-preview" class="photo-preview" alt="場景照片預覽" hidden>
+          <p class="form-hint" id="scene-photo-status">上傳這個情境的實景照片（例如學校合作社招牌、店員本人）取代店員頭像；不上傳則用內建店員圖。照片只存這台裝置。</p>
+        </div>
       </div>
 
       <!-- AI 輔助生成 -->
@@ -595,6 +605,17 @@
           <button type="button" class="btn-vs danger" id="btn-vs-del" hidden>🗑️ 刪除錄音</button>
         </div>
         <p class="form-hint" id="vs-status">沒有錄音時，練習會用電腦語音朗讀「店員說的話」。按 🎙️ 錄下您的聲音，學生就會聽到老師親自說的話（錄音立即儲存）。</p>
+      </div>
+
+      <div class="form-group" id="step-photo-group">
+        <label class="form-label">步驟插圖照片（可選）</label>
+        <div class="voice-studio-row">
+          <label class="btn-vs" for="edit-step-photo-input" style="cursor:pointer">📷 上傳照片</label>
+          <input type="file" id="edit-step-photo-input" accept="image/*" hidden>
+          <button type="button" class="btn-vs danger" id="btn-step-photo-del" hidden>🗑️ 移除照片</button>
+        </div>
+        <img id="edit-step-photo-preview" class="photo-preview" alt="步驟照片預覽" hidden>
+        <p class="form-hint" id="step-photo-status">上傳真實照片（例如商品、招牌）當這一步的插圖；不上傳則用內建圖示。照片只存這台裝置。</p>
       </div>
 
       <div class="form-group">
