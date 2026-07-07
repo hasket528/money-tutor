@@ -171,6 +171,14 @@ async function finish() {
     let stu = null;
     try { stu = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch (e) {}
 
+    // 建議起點寫入該學生（金隊長每日任務冷啟動會優先採用；全對＝已達進階則清除舊建議）
+    try {
+        if (stu && stu.id != null) {
+            if (rec) localStorage.setItem('mt_startpoint_' + stu.id, rec);
+            else     localStorage.removeItem('mt_startpoint_' + stu.id);
+        }
+    } catch (e) {}
+
     const detail = answers.map((a, i) =>
         `<tr><td>${ITEMS[i].skill}</td><td>${a.ok ? '✅' : '❌'}</td></tr>`).join('');
 
