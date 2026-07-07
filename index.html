@@ -694,7 +694,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.45);
-            z-index: 9000;
+            z-index: 9700; /* 高於隱藏舞台(9600)：從舞台點角色時彈窗蓋在舞台上，不需先關舞台 */
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -764,7 +764,7 @@
         /* 金好聊 購物對話練習彈窗（比照小金探樣式，綠色系呼應領巾）*/
         #chatdog-modal-overlay {
             display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.45); z-index: 9000;
+            background: rgba(0,0,0,0.45); z-index: 9700; /* 高於隱藏舞台(9600) */
             align-items: center; justify-content: center; padding: 20px;
         }
         #chatdog-modal-overlay.open { display: flex; }
@@ -831,7 +831,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.45);
-            z-index: 9000;
+            z-index: 9700; /* 高於隱藏舞台(9600) */
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -1376,13 +1376,13 @@
             const CHARS = [
                 { img: 'images/common/hint_detective.png', name: '小金探', speech: 'detective',
                   desc: '學習遇到困難了嗎？來找我幫忙，我會給你解題的小提示！累了也可以來遊戲室放鬆一下。',
-                  btn: '🎮 小金探的遊戲室', act: () => { closeStage(); openDetectiveModal(); } },
+                  btn: '🎮 小金探的遊戲室', act: () => { openDetectiveModal(); } },
                 { img: 'images/common/money_doctor.png', name: '金博士', speech: 'doctor',
                   desc: '想接受不一樣的挑戰嗎？進入金錢故事冒險，看看你能不能全部過關！',
-                  btn: '🗺️ 金錢故事冒險', act: () => { closeStage(); openDoctorModal(); } },
+                  btn: '🗺️ 金錢故事冒險', act: () => { openDoctorModal(); } },
                 { img: 'images/common/money_chat_dog.png', name: '金好聊', speech: 'chatdog',
                   desc: '汪！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
-                  btn: '🛒 購物對話練習', act: () => { window.stopCharacterVoice?.(); window.location.href = 'dialogue/index.html'; } },
+                  btn: '🛒 購物對話練習', act: () => { openChatDogModal(); } },
             ];
             let idx = 0, spinning = false;
 
@@ -1432,7 +1432,15 @@
             };
 
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeStage();
+                if (e.key === 'Escape') {
+                    // 若舞台上疊了角色彈窗，Esc 先關彈窗（留在舞台），否則才關舞台
+                    const openModalClose = [['detective-modal-overlay', 'closeDetectiveModal'],
+                                            ['doctor-modal-overlay', 'closeDoctorModal'],
+                                            ['chatdog-modal-overlay', 'closeChatDogModal']]
+                        .find(([id]) => document.getElementById(id)?.classList.contains('open'));
+                    if (openModalClose) window[openModalClose[1]]?.(null);
+                    else closeStage();
+                }
                 else if (document.getElementById('stage-overlay').classList.contains('open')) {
                     if (e.key === 'ArrowRight') rotateStage(1);
                     if (e.key === 'ArrowLeft')  rotateStage(-1);
