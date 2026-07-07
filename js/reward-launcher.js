@@ -2,6 +2,21 @@
  * 獎勵系統啟動器
  * 可從任何頁面呼叫獎勵系統，並傳送學生表現分數
  */
+
+// ── 主站 PWA：註冊 Service Worker（各單元頁皆載入本檔 → 一處註冊涵蓋全站）──
+// 以本檔（js/reward-launcher.js）位置推站根：上一層即站根，sw.js 在站根、scope=站根。
+(function registerMainSW() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const cs = document.currentScript;
+    if (!cs || !cs.src) return;
+    const swUrl = new URL('../sw.js', cs.src).href;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(swUrl).catch(() => {});
+    });
+  } catch (e) {}
+})();
+
 const RewardLauncher = {
     // 獎勵系統視窗參考
     rewardWindow: null,

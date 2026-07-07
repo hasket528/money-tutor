@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>生活數學王</title>
+    <!-- PWA：可安裝＋離線 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1d4ed8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="金錢小達人">
+    <link rel="apple-touch-icon" href="images/common/captain_gold.png">
     <link rel="stylesheet" href="css/ai-theme.css">
     
     <style>
@@ -2041,9 +2048,16 @@
             document.addEventListener('DOMContentLoaded', updateCaptainChip);
         })();
 
+        // ── 主站 PWA：註冊 Service Worker（首頁；各單元頁由 reward-launcher.js 註冊）──
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260707h';
+            const BUILD_VERSION = '20260707i';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {
