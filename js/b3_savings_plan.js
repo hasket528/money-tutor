@@ -2215,14 +2215,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 一般模式
+            // 一般模式：放置時不即時判斷（放太多也不擋），一律等按「確認」才評分（普通比照困難）
             const newTotal = c.drag.placedTotal + denom;
-            const target = c.drag.targetAmount;
-            if (newTotal > target && this.state.settings.difficulty !== 'hard') {
-                this.audio.play('error');
-                Game.Speech.speak(`放太多了！目標是${toTWD(target)}`);
-                return;
-            }
             this.audio.play('coin');
             const uid = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
             c.drag.placedItems.push({ denom, uid });
