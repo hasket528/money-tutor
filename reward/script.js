@@ -1079,12 +1079,20 @@ document.addEventListener('DOMContentLoaded', () => {
          processPendingRewards();
      }, 1000);
 
+     // 從導覽列「🌟 成就與寵物」（?page=growth）進來 → 自動開啟成就與寵物頁
+     if (new URLSearchParams(location.search).get('page') === 'growth') {
+         const roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]');
+         if (roster.length) setTimeout(() => openGrowthPage(roster[0]), 150);
+         else setTimeout(() => alert('目前還沒有學生～請先在「主頁 → 金婆婆」建立學生。'), 300);
+     }
+
     // ─── 學生成長頁（徽章/寶石/寵物/寶物；共用邏輯在 ../js/growth-system.js）───
     // 重要：所有金幣增減都走閉包內的 students 陣列＋saveToLocalStorage()，
     // 與計分板同一份資料，避免 localStorage 直寫互相覆蓋。
     let _gpStudent = null, _gpRecords = [];
     let _creaturePage = 0;                       // 寵物圖鑑分頁
-    let _myPetKey = null, _myPetStage = null;    // 我的寵物：目前選中的寵物 key 與檢視階段
+    let _myPetKey = null, _myPetStage = null;    // (舊)我的寵物切換
+    let _savePetIdx = 0, _savePetStage = null;   // 我的存錢寵物：0=存錢豬，其後=已解鎖寵物；_savePetStage=檢視階段
     const CREATURE_PAGE_SIZE = 8;                // 圖鑑每頁隻數
 
     async function openGrowthPage(student) {
@@ -1112,11 +1120,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!host || !G.CREATURES) return;
         const gems = G.gemsAvailable(_gpRecords, stu.id);
         const all  = G.CREATURES;
-        const totalPages = Math.max(1, Math.ceil(all.length / CREATURE_PAGE_SIZE));
+        const pageSize = window.matchMedia('(min-width: 768px)').matches ? 10 : 6;  // 桌面端 10、窄螢幕 6（依版面調整）
+        const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
         if (_creaturePage >= totalPages) _creaturePage = totalPages - 1;
         if (_creaturePage < 0) _creaturePage = 0;
-        const start = _creaturePage * CREATURE_PAGE_SIZE;
-        const pageItems = all.slice(start, start + CREATURE_PAGE_SIZE);
+        const start = _creaturePage * pageSize;
+        const pageItems = all.slice(start, start + pageSize);
         host.innerHTML = '';
         pageItems.forEach(c => {
             const st = G.creatureState(_gpRecords, stu.id, c.key);
@@ -1126,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 圖片優先，載入失敗自動退回 emoji
             const emo = c.stages[st.stage];
             const visual = locked
-                ? '<div class="gp-crt-emoji">❓</div>'
+                ? `<div class="gp-crt-emoji"><img class="gp-crt-img gp-crt-locked-img" src="../images/pets/pet_${c.key}_s0.png" alt="未解鎖" onerror="this.replaceWith(document.createTextNode('❓'))"></div>`
                 : `<div class="gp-crt-emoji"><img class="gp-crt-img" src="../images/pets/pet_${c.key}_s${st.stage}.png" alt="${c.name}" onerror="this.replaceWith(document.createTextNode('${emo}'))"></div>`;
             let sub = '', btn = '';
             if (locked) {
@@ -1213,72 +1222,115 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('gp-photo').src = stu.photo || DEFAULT_AVATAR;
         document.getElementById('gp-name').textContent = stu.name || '學生';
+        // 學生切換下拉（可切換不同學生的成就與寵物頁）
+        const sw = document.getElementById('gp-student-switch');
+        if (sw) {
+            const roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]');
+            sw.innerHTML = '';
+            roster.forEach(s => {
+                const o = document.createElement('option');
+                o.value = String(s.id); o.textContent = s.name || '未命名';
+                if (String(s.id) === String(stu.id)) o.selected = true;
+                sw.appendChild(o);
+            });
+            sw.onchange = () => { const s = roster.find(x => String(x.id) === sw.value); if (s) openGrowthPage(s); };
+        }
         document.getElementById('gp-coins').textContent = stu.score;
         const gems = G.gemsAvailable(_gpRecords, stu.id);
         document.getElementById('gp-gems').textContent = gems;
         document.getElementById('gp-practices').textContent = G.myRecords(_gpRecords, stu.id).length;
 
-        // ── 寵物 ──
-        const pet      = G.petData(stu.id);
-        const stageIdx = G.petStage(pet);
-        const stage    = G.PET_STAGES[stageIdx];
-        const next     = G.PET_STAGES[stageIdx + 1];
-        document.getElementById('gp-pet-img').src = '../' + stage.img;
-        document.getElementById('gp-pet-name').textContent = stage.name;
+        // ── 我的存錢寵物：◀▶ 切換（存錢豬 + 已解鎖收集寵物）；下方切換「已達階段」──
+        const unlockedPets = (G.CREATURES || []).filter(cc => G.creatureState(_gpRecords, stu.id, cc.key).stage >= 0);
+        const pets = [{ type: 'pig' }].concat(unlockedPets.map(cc => ({ type: 'creature', c: cc })));
+        if (_savePetIdx == null || _savePetIdx < 0 || _savePetIdx >= pets.length) _savePetIdx = 0;
+        const curPet = pets[_savePetIdx];
 
+        const imgEl     = document.getElementById('gp-pet-img');
+        const nameEl    = document.getElementById('gp-pet-name');
         const bar       = document.getElementById('gp-bar');
         const label     = document.getElementById('gp-bar-label');
         const feedBtn   = document.getElementById('gp-feed-btn');
         const evolveBtn = document.getElementById('gp-evolve-btn');
+        const stageEl   = document.getElementById('gp-pet-stage');
+        const petPrev   = document.getElementById('gp-pet-prev');
+        const petNext   = document.getElementById('gp-pet-next');
+        petPrev.disabled = petNext.disabled = pets.length <= 1;
+        petPrev.onclick = () => { _savePetIdx = (_savePetIdx - 1 + pets.length) % pets.length; _savePetStage = null; renderGrowthPage(); };
+        petNext.onclick = () => { _savePetIdx = (_savePetIdx + 1) % pets.length; _savePetStage = null; renderGrowthPage(); };
 
-        if (!next) {
-            bar.style.width = '100%';
-            label.textContent = '🎉 已是最終型態，繼續保持好表現！';
-            evolveBtn.hidden = true;
-            feedBtn.disabled = true;
-        } else if (next.gems && pet.growth >= next.need) {
-            bar.style.width = '100%';
-            label.textContent = `成長值滿了！用 ${next.gems} 顆 💎 進化成「${next.name}」`;
-            evolveBtn.hidden = false;
-            evolveBtn.disabled = gems < next.gems;
-            feedBtn.disabled = true;
+        // 階段切換列（只到已達階段；imgFor(vs) 回傳該階段圖片路徑）
+        const renderStageSwitch = (maxStage, imgFor) => {
+            if (_savePetStage == null || _savePetStage > maxStage || _savePetStage < 0) _savePetStage = maxStage;
+            const vs = _savePetStage;
+            imgEl.src = imgFor(vs);
+            stageEl.innerHTML =
+                `<button class="gp-page-btn gp-sm" id="gp-ps-prev" ${vs <= 0 ? 'disabled' : ''}>◀</button>` +
+                `<span class="gp-pet-stage-label">已進化階段 ${vs + 1} / ${maxStage + 1}</span>` +
+                `<button class="gp-page-btn gp-sm" id="gp-ps-next" ${vs >= maxStage ? 'disabled' : ''}>▶</button>`;
+            const sp = stageEl.querySelector('#gp-ps-prev'), sn = stageEl.querySelector('#gp-ps-next');
+            if (sp) sp.onclick = () => { if (vs > 0) { _savePetStage = vs - 1; renderGrowthPage(); } };
+            if (sn) sn.onclick = () => { if (vs < maxStage) { _savePetStage = vs + 1; renderGrowthPage(); } };
+        };
+
+        if (curPet.type === 'pig') {
+            const pet      = G.petData(stu.id);
+            const stageIdx = G.petStage(pet);
+            const stage    = G.PET_STAGES[stageIdx];
+            const next     = G.PET_STAGES[stageIdx + 1];
+            nameEl.textContent = stage.name;
+            renderStageSwitch(stageIdx, (vs) => '../' + G.PET_STAGES[vs].img);
+            feedBtn.hidden = false;
+            if (!next) {
+                bar.style.width = '100%';
+                label.textContent = '🎉 已是最終型態，繼續保持好表現！';
+                evolveBtn.hidden = true; feedBtn.disabled = true;
+            } else if (next.gems && pet.growth >= next.need) {
+                bar.style.width = '100%';
+                label.textContent = `成長值滿了！用 ${next.gems} 顆 💎 進化成「${next.name}」`;
+                evolveBtn.hidden = false; evolveBtn.disabled = gems < next.gems; feedBtn.disabled = true;
+            } else {
+                const base = stage.need, target = next.need;
+                const pct = Math.max(3, Math.min(100, Math.round((pet.growth - base) / (target - base) * 100)));
+                bar.style.width = pct + '%';
+                label.textContent = `成長值 ${pet.growth} / ${target}`;
+                evolveBtn.hidden = true; feedBtn.disabled = stu.score < G.FEED_COST;
+            }
+            feedBtn.onclick = () => {
+                if (stu.score < G.FEED_COST) { gpMsg('金幣不夠——完成金隊長的任務可以賺金幣！'); return; }
+                stu.score -= G.FEED_COST;
+                const p = G.petData(stu.id); p.growth += G.FEED_GAIN; G.savePet(stu.id, p);
+                saveToLocalStorage();
+                try { playSound('bonus'); } catch (e) {}
+                gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
+                renderGrowthPage();
+            };
+            evolveBtn.onclick = () => {
+                const p = G.petData(stu.id);
+                const nxt = G.PET_STAGES[G.petStage(p) + 1];
+                if (!nxt?.gems) return;
+                if (!G.spendGems(_gpRecords, stu.id, nxt.gems)) { gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！'); return; }
+                p.evolved = true; G.savePet(stu.id, p);
+                try { playSound('bonus'); } catch (e) {}
+                gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`);
+                renderGrowthPage();
+            };
         } else {
-            const base = stage.need, target = next.need;
-            const pct = Math.max(3, Math.min(100, Math.round((pet.growth - base) / (target - base) * 100)));
-            bar.style.width = pct + '%';
-            label.textContent = `成長值 ${pet.growth} / ${target}`;
-            evolveBtn.hidden = true;
-            feedBtn.disabled = stu.score < G.FEED_COST;
+            const c  = curPet.c;
+            const st = G.creatureState(_gpRecords, stu.id, c.key);
+            nameEl.textContent = c.name;
+            feedBtn.hidden = true; evolveBtn.hidden = true;
+            renderStageSwitch(st.stage, (vs) => `../images/pets/pet_${c.key}_s${vs}.png`);
+            if (st.next != null) {
+                bar.style.width = Math.max(6, Math.min(100, Math.round((st.grown / Math.max(1, st.next)) * 100))) + '%';
+                label.textContent = `再練 ${Math.max(0, st.next - st.grown)} 次就會進化`;
+            } else {
+                bar.style.width = '100%';
+                label.textContent = '🎉 已完全進化！';
+            }
         }
 
-        feedBtn.onclick = () => {
-            if (stu.score < G.FEED_COST) { gpMsg('金幣不夠——完成金隊長的任務可以賺金幣！'); return; }
-            stu.score -= G.FEED_COST;
-            const p = G.petData(stu.id);
-            p.growth += G.FEED_GAIN;
-            G.savePet(stu.id, p);
-            saveToLocalStorage();
-            try { playSound('bonus'); } catch (e) {}
-            gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
-            renderGrowthPage();
-        };
-        evolveBtn.onclick = () => {
-            const p = G.petData(stu.id);
-            const nxt = G.PET_STAGES[G.petStage(p) + 1];
-            if (!nxt?.gems) return;
-            if (!G.spendGems(_gpRecords, stu.id, nxt.gems)) {
-                gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！');
-                return;
-            }
-            p.evolved = true;
-            G.savePet(stu.id, p);
-            try { playSound('bonus'); } catch (e) {}
-            gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`);
-            renderGrowthPage();
-        };
-
-        // ── 我的寵物（已解鎖切換）＋ 收集寵物圖鑑（分頁）──
-        renderMyPet();
+        // ── 收集寵物圖鑑（分頁）──
         renderCreatures();
 
         // ── 徽章牆 ──

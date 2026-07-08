@@ -556,7 +556,7 @@
             box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
             border-color: #f0b429;
         }
-        .captain-banner .captain-avatar { width: 76px; height: 76px; flex-shrink: 0; }
+        .captain-banner .captain-avatar { width: clamp(80px, 16vw, 120px); height: clamp(80px, 16vw, 120px); flex-shrink: 0; }
         .captain-banner .captain-avatar img {
             width: 100%; height: 100%; object-fit: contain;
             animation: floatBob 3.0s ease-in-out infinite;
@@ -564,7 +564,7 @@
         .captain-banner .captain-text { flex: 1; min-width: 0; }
         .captain-banner .captain-name {
             font-weight: 800; font-size: 1.05em; color: #92400e;
-            display: flex; align-items: center; gap: 6px;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
         }
         .captain-banner .captain-line { font-size: 0.85em; color: #78350f; margin-top: 3px; line-height: 1.5; }
         .captain-banner .captain-cta {
@@ -584,7 +584,7 @@
             border: 2px solid #a7e3a0; border-radius: 16px; box-shadow: var(--card-shadow);
             box-sizing: border-box; text-align: left;
         }
-        .create-banner .captain-avatar { width: 74px; height: 108px; flex-shrink: 0; align-self: center; }
+        .create-banner .captain-avatar { width: clamp(80px, 16vw, 120px); height: clamp(80px, 16vw, 120px); flex-shrink: 0; align-self: center; }
         .create-banner .captain-avatar img { width: 100%; height: 100%; object-fit: contain; animation: floatBob 3.2s ease-in-out infinite; }
         .create-banner .captain-text { flex: 1; min-width: 0; }
         .create-banner .captain-name { font-weight: 800; font-size: 1.05em; color: #15803d; display: flex; align-items: center; gap: 6px; }
@@ -631,7 +631,19 @@
             text-align: center; font-size: 0.95em; margin: 10px 0;
             padding: 8px; background: #f0f7ff; border-radius: 10px; color: var(--text-primary);
         }
-        .captain-students { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0; }
+        .captain-students { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 10px 0; }
+        .captain-stu-select { flex: 1 1 auto; min-width: 0; max-width: 240px; padding: 8px 12px; border-radius: 10px; border: 1.5px solid #f5d576; font-family: inherit; font-size: 0.95em; background: #fffdf5; cursor: pointer; }
+        .captain-reward-btn { flex-shrink: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 800; border: none; border-radius: 10px; padding: 9px 15px; cursor: pointer; font-family: inherit; font-size: 0.9em; white-space: nowrap; box-shadow: 0 3px 10px rgba(217,119,6,0.3); }
+        .captain-reward-btn:hover { filter: brightness(1.05); }
+        .captain-guest-btn { flex-shrink: 0; background: #f1f5f9; color: #475569; font-weight: 700; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 13px; cursor: pointer; font-family: inherit; font-size: 0.9em; white-space: nowrap; }
+        .captain-guest-btn.selected { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+        /* 金婆婆版：只顯示建立學生表單，隱藏選學生/統計/任務 */
+        #captain-modal.mode-grandma #captain-current-banner,
+        #captain-modal.mode-grandma #captain-student-list,
+        #captain-modal.mode-grandma #captain-stats,
+        #captain-modal.mode-grandma #captain-quest-sec { display: none !important; }
+        /* 金隊長版：隱藏建立學生表單 */
+        #captain-modal:not(.mode-grandma) #captain-create-block { display: none; }
         .captain-stu-chip {
             display: flex; align-items: center; gap: 6px;
             padding: 7px 14px; border-radius: 22px;
@@ -655,7 +667,7 @@
             cursor: pointer; font-family: inherit; font-size: 0.9em;
         }
         .captain-stats {
-            display: flex; gap: 10px; justify-content: center; margin: 12px 0; flex-wrap: wrap;
+            display: flex; gap: 10px; justify-content: center; align-items: center; margin: 12px 0; flex-wrap: wrap;
         }
         .captain-stats .stat {
             background: #f8fbff; border: 1px solid #dbe7f5; border-radius: 12px;
@@ -1033,6 +1045,20 @@
     </script>
 </head>
 <body>
+    <style>
+        .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+        .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+        .site-nav a:hover { background:rgba(255,255,255,0.30); }
+        .site-nav a.current { background:#f59e0b; }
+    </style>
+    <nav class="site-nav">
+        <a href="index.html" class="current">🏠 主頁</a>
+        <a href="reward/index.html">🏆 優良表現獎勵板</a>
+        <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
+        <a href="dialogue/teacher.html">📊 學習歷程總覽</a>
+        <a href="teacher-guide.html">👩‍🏫 教師指南</a>
+        <a href="lesson-plans.html">📚 單元教案包</a>
+    </nav>
     <div class="container">
         <div class="page-header">
             <h1>💰 金錢小達人</h1>
@@ -1094,22 +1120,16 @@
                     <div class="captain-cta" id="captain-current-chip">👤 選擇學生</div>
                 </div>
 
-                <div class="create-banner">
+                <div class="create-banner" onclick="openCaptainBase('grandma')" title="點擊建立新學生">
                     <div class="captain-avatar">
                         <img src="images/common/grandma_gold.png" alt="金婆婆">
                     </div>
                     <div class="captain-text">
                         <div class="captain-name">
                             🌱 金婆婆・創建學生
-                            <button class="ai-voice-btn" onclick="speakCharacter('grandma')" title="播放語音">🔊</button>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('grandma')" title="播放語音">🔊</button>
                         </div>
-                        <div class="captain-line">「歡迎新朋友～告訴金婆婆你的名字，我會像照顧小苗一樣陪你長大。」</div>
-                        <div class="create-row">
-                            <input id="home-new-name" type="text" maxlength="12" placeholder="輸入新學生姓名" autocomplete="off"
-                                   onkeydown="if(event.key==='Enter'){event.preventDefault();homeCreateStudent();}">
-                            <button onclick="homeCreateStudent()">➕ 建立</button>
-                        </div>
-                        <div class="create-msg" id="home-create-msg"></div>
+                        <div class="captain-line">「歡迎新朋友～點我，告訴金婆婆你的名字。」在彈出的視窗裡輸入姓名，就能建立新學生。</div>
                     </div>
                 </div>
             </div>
@@ -1361,12 +1381,19 @@
             <div id="captain-modal">
                 <button class="modal-close-btn" onclick="closeCaptainBase(null)" title="關閉">✕</button>
                 <div class="captain-modal-head">
-                    <img src="images/common/captain_gold.png" alt="金隊長">
-                    <div class="bubble">選擇或建立你的學生資料——之後所有課程、購物練習與獎勵的表現，我都會自動記錄下來！</div>
+                    <img id="captain-modal-img" src="images/common/captain_gold.png" alt="金隊長">
+                    <div class="bubble" id="captain-modal-bubble">選擇你的學生資料——之後所有課程、購物練習與獎勵的表現，我都會自動記錄下來！</div>
                 </div>
                 <div class="captain-current" id="captain-current-banner">目前學生：<b>訪客</b></div>
                 <div class="captain-students" id="captain-student-list"></div>
-                <div style="font-size:0.8em;color:#94a3b8;text-align:center;margin:8px 0;">要新增學生？回主頁點「🌱 金婆婆・創建學生」</div>
+                <div id="captain-create-block">
+                    <div class="captain-newrow">
+                        <input id="captain-new-name" type="text" maxlength="12" placeholder="🌱 金婆婆幫你建立：輸入新學生姓名" autocomplete="off"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();captainCreateStudent('captain-new-name','captain-create-msg');}">
+                        <button onclick="captainCreateStudent('captain-new-name','captain-create-msg')">➕ 建立</button>
+                    </div>
+                    <div class="create-msg" id="captain-create-msg" style="text-align:center;"></div>
+                </div>
                 <div class="captain-stats" id="captain-stats"></div>
 
                 <div id="captain-quest-sec" hidden>
@@ -1378,9 +1405,6 @@
 
                 <div class="captain-quote" id="captain-quote" hidden></div>
 
-                <div class="captain-links">
-                    <a href="dialogue/teacher.html">📊 學習歷程總覽（能力快篩・學生成長・備份還原・老師指派都在這）</a>
-                </div>
             </div>
         </div>
 
@@ -1853,6 +1877,11 @@
                 // 徽章判定與展示已移至「學生成長頁」（reward 系統，js/growth-system.js 共用邏輯）
             }
 
+            // 開啟「獎勵版」（學生優良表現獎勵版＋成長頁；原稱計分版）
+            window.openRewardBoard = function () {
+                window.open('reward/index.html', 'RewardBoard');
+            };
+
             window.renderCaptainBase = async function () {
                 const roster = loadRoster();
                 const cur    = getCurrent();
@@ -1861,21 +1890,45 @@
                     cur ? `目前學生：<b>${cur.name}</b>（之後的練習都會記在這個名字下）`
                         : '目前學生：<b>訪客</b>（尚未選擇，紀錄不會歸戶）';
 
+                // 學生下拉（不含訪客）＋ 訪客模式鈕 ＋ 獎勵版鈕（由左至右）
                 const list = document.getElementById('captain-student-list');
                 list.innerHTML = '';
-                roster.forEach(stu => {
-                    const chip = document.createElement('button');
-                    chip.className = 'captain-stu-chip' + (cur && String(cur.id) === String(stu.id) ? ' selected' : '');
-                    chip.innerHTML = (stu.photo ? `<img src="${stu.photo}" alt="">` : '👤') +
-                                     `<span>${stu.name || '未命名'}</span>`;
-                    chip.addEventListener('click', () => setCurrent(stu));
-                    list.appendChild(chip);
+                const sel = document.createElement('select');
+                sel.className = 'captain-stu-select';
+                if (roster.length === 0) {
+                    const o = document.createElement('option');
+                    o.textContent = '（尚無學生，請在下方建立）'; o.disabled = true; o.selected = true;
+                    sel.appendChild(o);
+                } else {
+                    const ph = document.createElement('option');
+                    ph.value = ''; ph.textContent = '── 選擇學生 ──'; ph.disabled = true;
+                    if (!cur) ph.selected = true;
+                    sel.appendChild(ph);
+                    roster.forEach(stu => {
+                        const o = document.createElement('option');
+                        o.value = String(stu.id);
+                        o.textContent = stu.name || '未命名';
+                        if (cur && String(cur.id) === String(stu.id)) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                }
+                sel.addEventListener('change', () => {
+                    const stu = roster.find(s => String(s.id) === sel.value);
+                    if (stu) setCurrent(stu);
                 });
-                const guest = document.createElement('button');
-                guest.className = 'captain-stu-chip' + (!cur ? ' selected' : '');
-                guest.innerHTML = '👋 <span>訪客模式</span>';
-                guest.addEventListener('click', () => setCurrent(null));
-                list.appendChild(guest);
+                list.appendChild(sel);
+                const gbtn = document.createElement('button');
+                gbtn.className = 'captain-guest-btn' + (!cur ? ' selected' : '');
+                gbtn.textContent = '👋 訪客模式';
+                gbtn.title = '不歸戶，紀錄不會記在特定學生名下';
+                gbtn.addEventListener('click', () => setCurrent(null));
+                list.appendChild(gbtn);
+                const rbtn = document.createElement('button');
+                rbtn.className = 'captain-reward-btn';
+                rbtn.textContent = '🏆 獎勵版';
+                rbtn.title = '開啟學生優良表現獎勵版（含成長頁）';
+                rbtn.addEventListener('click', () => window.openRewardBoard());
+                list.appendChild(rbtn);
 
                 const statsEl = document.getElementById('captain-stats');
                 const records = await readAllRecords();
@@ -1900,7 +1953,7 @@
                 const name = input.value.trim();
                 if (!name) { input.focus(); return; }
                 const roster = loadRoster();
-                if (roster.length >= 15) { setMsg('學生名冊最多 15 位，請先到「學生成長頁」整理名冊。'); return; }
+                if (roster.length >= 15) { setMsg('學生名冊最多 15 位，請先到「優良表現獎勵板」整理名冊。'); return; }
                 if (roster.some(s => s.name === name)) { setMsg('已有同名學生，請直接點選或改用不同名字。'); return; }
                 const stu = { id: Date.now() + Math.random(), name, photo: null, score: 0 };
                 roster.push(stu);
@@ -1922,7 +1975,20 @@
                 window.captainCreateStudent('home-new-name', 'home-create-msg');
             };
 
-            window.openCaptainBase = function () {
+            // mode='grandma' → 金婆婆版（顯示建立學生表單＋金婆婆角色/語氣）；否則金隊長版（不顯示建立表單）
+            window.openCaptainBase = function (mode) {
+                const grandma = mode === 'grandma';
+                const img    = document.getElementById('captain-modal-img');
+                const bubble = document.getElementById('captain-modal-bubble');
+                const block  = document.getElementById('captain-create-block');
+                if (img)    { img.src = grandma ? 'images/common/grandma_gold.png' : 'images/common/captain_gold.png'; img.alt = grandma ? '金婆婆' : '金隊長'; }
+                if (bubble) bubble.textContent = grandma
+                    ? '我是金婆婆～在下面輸入小朋友的名字，我就幫你建立一位新學生，之後像照顧小苗一樣，陪他一天一天慢慢長大！'
+                    : '選擇你的學生資料——之後所有課程、購物練習與獎勵的表現，我都會自動記錄下來！';
+                // 金婆婆版只顯示建立表單；金隊長版只顯示選學生/統計/任務（用 CSS class 控制，兼容 async 渲染）
+                const modal = document.getElementById('captain-modal');
+                if (modal) modal.classList.toggle('mode-grandma', grandma);
+                if (block && grandma) { const inp = block.querySelector('#captain-new-name'); if (inp) inp.value = ''; }
                 renderCaptainBase();
                 document.getElementById('captain-modal-overlay').classList.add('open');
                 document.body.style.overflow = 'hidden';
@@ -1948,7 +2014,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260708c';
+            const BUILD_VERSION = '20260708d';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {
@@ -2193,13 +2259,6 @@
             })();
         </script>
 
-        <footer style="margin-top:40px; padding:18px 0 6px; text-align:center; font-size:0.9em; color:var(--text-primary); opacity:0.85;">
-            <a href="teacher-guide.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">👩‍🏫 教師指南</a>
-            <span style="margin:0 8px; opacity:0.4;">｜</span>
-            <a href="lesson-plans.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">📚 單元教案包</a>
-            <span style="margin:0 8px; opacity:0.4;">｜</span>
-            <a href="dialogue/teacher.html" style="color:var(--primary-color); text-decoration:none; font-weight:600;">📊 學習歷程總覽</a>
-        </footer>
     </div>
 
     <script>

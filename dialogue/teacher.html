@@ -32,7 +32,7 @@
     .t-title-block { text-align: center; }
     .t-title-block #last-update { display: block; margin-top: 2px; }
     /* 下段：工具列，依功能分組＋分隔線 */
-    .t-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+    .t-toolbar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; width: 100%; }
     .t-toolbar-center { justify-content: center; }
     .t-toolbar-left { justify-content: flex-start; }
     .t-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -114,24 +114,37 @@
 </head>
 <body>
 
+<style>
+  .site-nav { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+  .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+  .site-nav a:hover { background:rgba(255,255,255,0.30); }
+  .site-nav a.current { background:#f59e0b; }
+  @media print { .site-nav { display:none; } }
+</style>
+<nav class="site-nav no-print">
+  <a href="../index.html">🏠 主頁</a>
+  <a href="../reward/index.html">🏆 優良表現獎勵板</a>
+  <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
+  <a href="teacher.html" class="current">📊 學習歷程總覽</a>
+  <a href="../teacher-guide.html">👩‍🏫 教師指南</a>
+  <a href="../lesson-plans.html">📚 單元教案包</a>
+</nav>
 <header class="t-header">
   <div class="t-topbar">
-    <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
     <div class="t-title-block">
       <h1>📊 學習歷程總覽 — 金錢小達人</h1>
       <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
     </div>
   </div>
-  <div class="t-toolbar t-toolbar-center no-print">
+  <div class="t-toolbar no-print">
     <div class="t-group">
-      <button class="t-btn t-btn-secondary" onclick="loadData()">🔄 重新整理</button>
+      <button class="t-btn t-btn-primary" onclick="loadData()">🔄 重新整理</button>
     </div>
     <span class="t-sep"></span>
     <div class="t-group">
       <span class="t-group-label">學生工具</span>
-      <a class="t-btn t-btn-secondary" href="../assessment.html">🧭 能力快篩</a>
-      <a class="t-btn t-btn-secondary" href="../reward/index.html" target="RewardSystem">🌱 學生成長頁</a>
-      <button class="t-btn t-btn-secondary" onclick="const p=document.getElementById('assign-panel'); p.hidden=!p.hidden; if(!p.hidden) populateAssignControls();">👩‍🏫 老師指派</button>
+      <a class="t-btn t-btn-primary" href="../assessment.html">🧭 能力快篩</a>
+      <a class="t-btn t-btn-primary" href="../reward/index.html" target="RewardSystem">🏆 獎勵版</a>
     </div>
     <span class="t-sep"></span>
     <div class="t-group">
@@ -140,27 +153,16 @@
       <button class="t-btn t-btn-primary" onclick="window.print()">🖨 列印</button>
       <button class="t-btn t-btn-primary" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
     </div>
-  </div>
-  <div class="t-toolbar t-toolbar-left no-print">
+    <span class="t-sep"></span>
     <div class="t-group">
       <span class="t-group-label">資料</span>
-      <button class="t-btn t-btn-secondary" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份</button>
-      <button class="t-btn t-btn-secondary" onclick="document.getElementById('ct-restore-file').click()">📥 還原</button>
+      <button class="t-btn t-btn-primary" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份</button>
+      <button class="t-btn t-btn-primary" onclick="document.getElementById('ct-restore-file').click()">📥 還原</button>
       <button class="t-btn t-btn-danger" onclick="clearData()">🗑️ 清除紀錄</button>
     </div>
     <input type="file" id="ct-restore-file" accept=".json" hidden onchange="CaptainTools.restoreFromFile(this.files[0], document.getElementById('ct-status')); this.value='';">
   </div>
   <span id="ct-status" class="no-print" style="font-size:0.78rem;color:var(--gray-600);width:100%"></span>
-  <div id="assign-panel" class="no-print" hidden style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;padding-top:8px;">
-    <label style="font-size:0.82rem">學生
-      <select id="assign-student" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
-    </label>
-    <label style="font-size:0.82rem">指派單元
-      <select id="assign-unit" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
-    </label>
-    <button class="t-btn t-btn-primary" onclick="doAssign()">➕ 指派</button>
-    <span id="assign-feedback" style="font-size:0.8rem;color:var(--gray-600)"></span>
-  </div>
 </header>
 
 <!-- 學習週報（列印專用；printWeeklyReport 動態填入） -->
@@ -191,6 +193,19 @@
       <option value="__all__">全部學生</option>
     </select>
     <span id="stu-filter-hint" style="font-size:0.78rem;color:var(--gray-600)">在主頁「金隊長・成長基地」選好學生後，練習紀錄會自動歸戶</span>
+  </div>
+
+  <!-- 教師指派任務（方框，參考精熟標準樣式）-->
+  <div class="student-filter no-print" id="assign-panel">
+    <label>📌 教師指派任務：</label>
+    <label style="font-size:0.82rem">學生
+      <select id="assign-student" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
+    </label>
+    <label style="font-size:0.82rem">指派單元
+      <select id="assign-unit" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
+    </label>
+    <button class="t-btn t-btn-primary" onclick="doAssign()">➕ 指派</button>
+    <span id="assign-feedback" style="font-size:0.8rem;color:var(--gray-600)"></span>
   </div>
 
   <!-- 精熟標準（選定個別學生時，單元列會標 ✅精熟/🔶接近/⬜未達） -->
@@ -278,7 +293,7 @@ function populateAssignControls() {
   try { roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch {}
   stuSel.innerHTML = roster.length
     ? roster.map(s => `<option value="${s.id}">${s.name || '未命名'}</option>`).join('')
-    : '<option value="">（尚無學生，請先到「學生成長頁」建立）</option>';
+    : '<option value="">（尚無學生，請先到主頁「金婆婆」建立）</option>';
   if (!unitSel.options.length) {
     unitSel.innerHTML = Object.values(UNITS).flat()
       .map(([u, name]) => `<option value="${u}">${name}</option>`).join('');
@@ -712,6 +727,7 @@ async function exportCSV() {
 }
 
 loadData();
+try { populateAssignControls(); } catch (e) {}   // 指派任務方框常駐顯示，載入時先填好選單
 </script>
 </body>
 </html>

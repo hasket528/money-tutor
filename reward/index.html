@@ -4,19 +4,39 @@
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生優良行為計分</title>
+    <title>學生優良表現獎勵版</title>
     <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
+    <style>
+        body { margin: 0; padding: 0; }               /* 移除 styles.css 的 body padding，導覽列才能貼齊頂端 */
+        .container { padding: 20px; }                  /* 把原本的間距移到內容容器 */
+        .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+        .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+        .site-nav a:hover { background:rgba(255,255,255,0.30); }
+        .site-nav a.current { background:#f59e0b; }
+        /* 成就與寵物頁(overlay)內的導覽列也貼頂 */
+        #growth-overlay { padding: 0 0 18px; }
+        #growth-overlay .gp-card { margin: 14px auto; }
+    </style>
+    <nav class="site-nav">
+        <a href="../index.html">🏠 主頁</a>
+        <a href="index.html" class="current">🏆 優良表現獎勵板</a>
+        <a href="index.html?page=growth">🌟 成就與寵物</a>
+        <a href="../dialogue/teacher.html">📊 學習歷程總覽</a>
+        <a href="../teacher-guide.html">👩‍🏫 教師指南</a>
+        <a href="../lesson-plans.html">📚 單元教案包</a>
+    </nav>
     <div class="container">
         <div class="title-row">
-            <a href="../index.html" class="reward-home-btn" title="回教材主頁" style="flex-shrink:0; align-self:center; background:#e0e7ff; color:#3730a3; font-weight:700; text-decoration:none; padding:8px 14px; border-radius:10px; font-size:0.9rem; white-space:nowrap;">← 回主頁</a>
             <div style="flex-grow:1; display:flex; align-items:center; justify-content:center; gap:10px;">
-                <img id="rewardCaptain" src="../images/common/captain_gold.png" alt="金隊長" title="點我看金隊長說明" style="height:70px; width:auto; object-fit:contain; cursor:pointer; animation:settingsBounce 2.5s ease-in-out infinite;">
+                <img id="rewardCaptain" src="../images/common/captain_gold.png" alt="金隊長" title="點我看金隊長說明" style="height:clamp(70px, 13vw, 120px); width:auto; object-fit:contain; cursor:pointer; animation:settingsBounce 2.5s ease-in-out infinite;">
                 <style>@keyframes settingsBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }</style>
                 <button id="rewardCaptainSpeaker" title="播放金隊長語音" aria-label="播放金隊長語音" style="background:none; border:none; cursor:pointer; font-size:1.6rem; line-height:1; padding:4px; flex-shrink:0;">🔊</button>
-                <h1 style="margin:0; flex-grow:0;">學生優良行為計分</h1>
+                <h1 style="margin:0; flex-grow:0;">🏆 學生優良表現獎勵版</h1>
             </div>
+        </div>
+        <div style="display:flex; justify-content:center; margin:4px 0 10px;">
             <div class="zoom-controls">
                 <button id="zoomOutBtn" class="zoom-btn" title="縮小視窗">−</button>
                 <button id="zoomInBtn" class="zoom-btn" title="放大視窗">+</button>
@@ -102,7 +122,8 @@
         }
         #growth-overlay.open { display: block; }
         .gp-card { max-width: 640px; margin: 0 auto; background: #fff; border: 2px solid #f5d576;
-                   border-radius: 20px; padding: 20px 22px 26px; box-shadow: 0 10px 36px rgba(217,119,6,0.18); position: relative; }
+                   border-radius: 20px; padding: 20px 22px 26px; box-shadow: 0 10px 36px rgba(217,119,6,0.18);
+                   position: relative; min-height: calc(100vh - 92px); box-sizing: border-box; }
         .gp-close { position: absolute; top: 12px; right: 14px; background: none; border: none;
                     font-size: 1.4em; cursor: pointer; color: #92400e; }
         .gp-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
@@ -135,12 +156,14 @@
         .gp-msg { text-align: center; font-size: 0.82em; color: #b45309; min-height: 1.4em; margin-top: 8px; font-weight: 700; }
 
         /* 徽章／寶物 */
-        .gp-badges, .gp-treasures { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .gp-treasures { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .gp-badges { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
         .gp-creatures { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
         .gp-crt { width: 96px; background: #fff; border: 2px solid #fde68a; border-radius: 14px; padding: 8px 6px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
         .gp-crt.locked { opacity: .8; filter: grayscale(.55); }
         .gp-crt-emoji { font-size: 2.3em; line-height: 1.1; }
         .gp-crt-img { width: 62px; height: 62px; object-fit: contain; vertical-align: middle; }
+        .gp-crt-locked-img { opacity: 0.38; filter: grayscale(1); }
         .gp-crt-name { font-weight: 800; color: #b45309; font-size: .82em; margin: 2px 0; }
         .gp-crt-sub { font-size: .72em; color: #92857a; min-height: 1.15em; }
         .gp-crt-btn { margin-top: 4px; border: none; border-radius: 8px; background: #f59e0b; color: #fff; font-weight: 800; font-size: .74em; padding: 4px 9px; cursor: pointer; font-family: inherit; }
@@ -151,6 +174,10 @@
         .gp-page-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
         .gp-page-btn.gp-sm { padding: 3px 11px; font-size: .85em; }
         .gp-page-info { font-weight: 700; color: #92400e; font-size: .9em; }
+        .gp-pet-switch { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .gp-pet-main { text-align: center; }
+        .gp-pet-stage { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+        .gp-pet-stage-label { font-size: .82em; color: #92857a; font-weight: 700; }
         .gp-mypet { margin-top: 10px; }
         .gp-mypet-empty { text-align: center; color: #92857a; font-size: .85em; background: #fffdf5; border: 1.5px dashed #fde68a; border-radius: 12px; padding: 12px; }
         .gp-mypet-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
@@ -177,13 +204,22 @@
     </style>
 
     <div id="growth-overlay">
+        <nav class="site-nav">
+            <a href="../index.html">🏠 主頁</a>
+            <a href="index.html">🏆 優良表現獎勵板</a>
+            <a href="index.html?page=growth" class="current">🌟 成就與寵物</a>
+            <a href="../dialogue/teacher.html">📊 學習歷程總覽</a>
+            <a href="../teacher-guide.html">👩‍🏫 教師指南</a>
+            <a href="../lesson-plans.html">📚 單元教案包</a>
+        </nav>
         <div class="gp-card">
-            <button class="gp-close" onclick="closeGrowthPage()" title="回計分板">✕</button>
+            <button class="gp-close" onclick="closeGrowthPage()" title="回獎勵版">✕</button>
             <div class="gp-head">
                 <img class="gp-photo" id="gp-photo" src="" alt="學生照片">
-                <div>
+                <div style="flex:1;min-width:0;">
                     <div class="gp-name" id="gp-name"></div>
-                    <div style="font-size:0.8em;color:#b45309;">🌱 我的成長頁</div>
+                    <div style="font-size:0.8em;color:#b45309;">🌟 成就與寵物</div>
+                    <select id="gp-student-switch" title="切換學生" style="margin-top:5px;max-width:100%;padding:4px 8px;border-radius:8px;border:1.5px solid #f5d576;font-family:inherit;font-size:0.85em;cursor:pointer;"></select>
                 </div>
             </div>
             <div class="gp-currency">
@@ -192,21 +228,25 @@
                 <div class="gp-cur"><b id="gp-practices">0</b><span>📚 練習次數</span></div>
             </div>
 
-            <div class="gp-sec-title">🐷 我的存錢寵物</div>
+            <div class="gp-sec-title">🐷 我的存錢寵物（◀▶ 切換已有的寵物）</div>
             <div class="gp-pet">
-                <img id="gp-pet-img" src="" alt="寵物">
-                <div class="gp-pet-name" id="gp-pet-name"></div>
+                <div class="gp-pet-switch">
+                    <button class="gp-page-btn" id="gp-pet-prev" title="上一隻">◀</button>
+                    <div class="gp-pet-main">
+                        <img id="gp-pet-img" src="" alt="寵物">
+                        <div class="gp-pet-name" id="gp-pet-name"></div>
+                    </div>
+                    <button class="gp-page-btn" id="gp-pet-next" title="下一隻">▶</button>
+                </div>
                 <div class="gp-bar-wrap"><div class="gp-bar" id="gp-bar" style="width:0%"></div></div>
                 <div class="gp-bar-label" id="gp-bar-label"></div>
                 <div class="gp-pet-btns">
                     <button class="gp-btn gp-feed" id="gp-feed-btn">🍎 餵食（花 5 金幣）</button>
                     <button class="gp-btn gp-evolve" id="gp-evolve-btn" hidden>✨ 進化（花 3 寶石）</button>
                 </div>
+                <div class="gp-pet-stage" id="gp-pet-stage"></div>
                 <div class="gp-msg" id="gp-msg"></div>
             </div>
-
-            <div class="gp-sec-title">🐾 我的寵物（左右切換已解鎖的寵物；下方切換已進化的階段）</div>
-            <div class="gp-mypet" id="gp-mypet"></div>
 
             <div class="gp-sec-title">🐣 寵物圖鑑（用寶石解鎖，之後隨學習成長進化）</div>
             <div class="gp-creatures" id="gp-creatures"></div>
