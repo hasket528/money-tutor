@@ -599,6 +599,11 @@
         }
         .captain-modal-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
         .captain-modal-head img { width: 84px; height: 84px; object-fit: contain; flex-shrink: 0; }
+        /* 桌面端：金隊長圖片放大為 300×300（窄螢幕維持 84） */
+        @media (min-width: 768px) {
+            .captain-modal-head { flex-wrap: wrap; justify-content: center; }
+            .captain-modal-head img { width: 300px; height: 300px; }
+        }
         .captain-modal-head .bubble {
             background: #fff7e0; border: 1px solid #f5d576; border-radius: 12px;
             padding: 10px 14px; font-size: 0.9em; color: #78350f; line-height: 1.6;
@@ -1895,7 +1900,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260707i';
+            const BUILD_VERSION = '20260708a';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {

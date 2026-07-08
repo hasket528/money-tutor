@@ -148,23 +148,23 @@ window.GrowthSystem = (() => {
   // ── 收集寵物（5 隻原創金錢生物；emoji 呈現，用寶石解鎖，解鎖後隨「主課程學習紀錄」成長進化）──
   //   needs = 解鎖後新增的主課程紀錄數門檻；達到才進化到該階段。資料鍵 mt_pets_{id}。
   const CREATURES = [
-    { key: 'dragon', name: '金幣龍', stages: ['🥚', '🐲', '🐉'], needs: [0, 3, 8],  gems: 0 }, // 第一隻免費
-    { key: 'piggy',  name: '撲滿豬', stages: ['🥚', '🐖', '🐷'], needs: [0, 3, 8],  gems: 1 },
-    { key: 'cat',    name: '招財貓', stages: ['🐾', '🐱', '🐈'], needs: [0, 4, 10], gems: 2 },
-    { key: 'bird',   name: '寶石鳥', stages: ['🥚', '🐣', '🦜'], needs: [0, 4, 10], gems: 2 },
-    { key: 'robot',  name: '錢錢怪', stages: ['🪙', '👾', '🤖'], needs: [0, 5, 12], gems: 3 },
-    // 第二批（再 5 隻）
-    { key: 'ox',     name: '福氣牛', stages: ['🐄', '🐂', '🐮'], needs: [0, 3, 8],  gems: 3 },
-    { key: 'koi',    name: '錦鯉魚', stages: ['🐟', '🐠', '🐡'], needs: [0, 4, 10], gems: 3 },
-    { key: 'tree',   name: '聚寶樹', stages: ['🌱', '🌿', '🌳'], needs: [0, 5, 12], gems: 4 },
-    { key: 'phoenix',name: '金鳳凰', stages: ['🥚', '🐣', '🦚'], needs: [0, 5, 12], gems: 4 },
-    { key: 'mouse',  name: '招財鼠', stages: ['🐁', '🐀', '🐹'], needs: [0, 6, 14], gems: 5 },
-    // 第三批（再 5 隻，生肖招財）
-    { key: 'rabbit', name: '元寶兔', stages: ['🥚', '🐰', '🐇'], needs: [0, 5, 12], gems: 5 },
-    { key: 'tiger',  name: '招財虎', stages: ['🐾', '🐅', '🐯'], needs: [0, 6, 14], gems: 5 },
-    { key: 'monkey', name: '金元猴', stages: ['🐒', '🐵', '🦍'], needs: [0, 6, 14], gems: 6 },
-    { key: 'dog',    name: '旺財狗', stages: ['🐶', '🐕', '🐩'], needs: [0, 6, 14], gems: 6 },
-    { key: 'sheep',  name: '福氣羊', stages: ['🐑', '🐏', '🐐'], needs: [0, 7, 16], gems: 7 },
+    // 15 隻原創奇幻生物（元素主題；蛋為純蛋、進化有驚喜）。4 階段：蛋→幼體→成長→最終。
+    // key 對應 images/pets/pet_{key}_s{0,1,2,3}.png
+    { key: 'crystalfox',     name: '水晶狐', stages: ['🥚', '💎', '🦊', '🌟'],   needs: [0, 3, 8, 15],  gems: 0 }, // 第一隻免費
+    { key: 'emberpup',       name: '火焰獸', stages: ['🥚', '🔥', '🐕', '🦁'],   needs: [0, 3, 8, 15],  gems: 1 },
+    { key: 'aquaserp',       name: '碧水靈', stages: ['🥚', '💧', '🐍', '🐉'],   needs: [0, 4, 10, 18], gems: 2 },
+    { key: 'leafling',       name: '森靈鹿', stages: ['🥚', '🌱', '🌿', '🦌'],   needs: [0, 4, 10, 18], gems: 2 },
+    { key: 'cloudwhale',     name: '雲鯨',   stages: ['🥚', '☁️', '🐳', '🐋'],   needs: [0, 5, 12, 22], gems: 3 },
+    { key: 'shadowcat',      name: '暗影貓', stages: ['🥚', '🌑', '🐈', '🐈‍⬛'], needs: [0, 5, 12, 22], gems: 3 },
+    { key: 'gearcub',        name: '機械獸', stages: ['🥚', '🔩', '⚙️', '🤖'],   needs: [0, 5, 12, 22], gems: 3 },
+    { key: 'prismbird',      name: '虹光鳥', stages: ['🥚', '🦋', '🐦', '🦚'],   needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'frostbun',       name: '霜雪兔', stages: ['🥚', '❄️', '🐰', '🦌'],   needs: [0, 6, 14, 25], gems: 4 },
+    { key: 'magmahorn',      name: '熔岩獸', stages: ['🥚', '🪨', '🐗', '🌋'],   needs: [0, 6, 14, 25], gems: 4 },
+    { key: 'stormouse',      name: '雷光鼠', stages: ['🥚', '⚡', '🐭', '🌩️'],   needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'lunartapir',     name: '夢貘',   stages: ['🥚', '🌙', '🐴', '🦄'],   needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'starfawn',       name: '星塵獸', stages: ['🥚', '⭐', '🦌', '✨'],   needs: [0, 7, 16, 28], gems: 5 },
+    { key: 'mushroomsprite', name: '菇菇精', stages: ['🥚', '🍄', '🌱', '🌳'],   needs: [0, 7, 16, 28], gems: 6 },
+    { key: 'voidkit',        name: '虛空貓', stages: ['🥚', '🌌', '🐱', '🐈'],   needs: [0, 8, 18, 32], gems: 7 },
   ];
   function petsData(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_pets_${stuId}`) || '{}'); } catch { return {}; }
