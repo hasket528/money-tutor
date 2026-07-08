@@ -165,6 +165,18 @@ window.GrowthSystem = (() => {
     { key: 'starfawn',       name: '星塵獸', stages: ['🥚', '⭐', '🦌', '✨'],   needs: [0, 7, 16, 28], gems: 5 },
     { key: 'mushroomsprite', name: '菇菇精', stages: ['🥚', '🍄', '🌱', '🌳'],   needs: [0, 7, 16, 28], gems: 6 },
     { key: 'voidkit',        name: '虛空貓', stages: ['🥚', '🌌', '🐱', '🐈'],   needs: [0, 8, 18, 32], gems: 7 },
+    // 第二批新增 5 隻（不同主題）
+    { key: 'candypup',       name: '棉花糖獸', stages: ['🥚', '🍬', '🍭', '🎂'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'sandsphinx',     name: '沙獅獸',   stages: ['🥚', '🐾', '🦁', '🗿'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'windgriff',      name: '風翼獸',   stages: ['🥚', '🐦', '🪶', '🦅'], needs: [0, 6, 14, 25], gems: 6 },
+    { key: 'honeybee',       name: '蜜糖蜂',   stages: ['🥚', '🐝', '🍯', '👑'], needs: [0, 7, 16, 28], gems: 7 },
+    { key: 'inkocto',        name: '墨靈章',   stages: ['🥚', '🐙', '🖋️', '🌀'], needs: [0, 8, 18, 32], gems: 8 },
+    // 第三批新增 5 隻（不同主題）
+    { key: 'yarnkit',        name: '毛線獸',   stages: ['🥚', '🧶', '🧦', '🧸'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'paperfold',      name: '摺紙獸',   stages: ['🥚', '📄', '🦢', '🐉'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'musicnote',      name: '音符靈',   stages: ['🥚', '🎵', '🎶', '🎼'], needs: [0, 6, 14, 25], gems: 6 },
+    { key: 'lantern',        name: '燈籠靈',   stages: ['🥚', '🏮', '✨', '🎑'], needs: [0, 7, 16, 28], gems: 6 },
+    { key: 'fossildino',     name: '化石龍',   stages: ['🥚', '🦕', '🦴', '🦖'], needs: [0, 7, 16, 28], gems: 7 },
   ];
   function petsData(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_pets_${stuId}`) || '{}'); } catch { return {}; }

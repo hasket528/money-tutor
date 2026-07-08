@@ -1083,6 +1083,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 重要：所有金幣增減都走閉包內的 students 陣列＋saveToLocalStorage()，
     // 與計分板同一份資料，避免 localStorage 直寫互相覆蓋。
     let _gpStudent = null, _gpRecords = [];
+    let _creaturePage = 0;                       // 寵物圖鑑分頁
+    let _myPetKey = null, _myPetStage = null;    // 我的寵物：目前選中的寵物 key 與檢視階段
+    const CREATURE_PAGE_SIZE = 8;                // 圖鑑每頁隻數
 
     async function openGrowthPage(student) {
         if (typeof GrowthSystem === 'undefined') { alert('成長系統載入失敗，請重新整理頁面'); return; }
@@ -1105,10 +1108,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCreatures() {
         const G = GrowthSystem, stu = _gpStudent;
         const host = document.getElementById('gp-creatures');
+        const nav  = document.getElementById('gp-creatures-nav');
         if (!host || !G.CREATURES) return;
         const gems = G.gemsAvailable(_gpRecords, stu.id);
+        const all  = G.CREATURES;
+        const totalPages = Math.max(1, Math.ceil(all.length / CREATURE_PAGE_SIZE));
+        if (_creaturePage >= totalPages) _creaturePage = totalPages - 1;
+        if (_creaturePage < 0) _creaturePage = 0;
+        const start = _creaturePage * CREATURE_PAGE_SIZE;
+        const pageItems = all.slice(start, start + CREATURE_PAGE_SIZE);
         host.innerHTML = '';
-        G.CREATURES.forEach(c => {
+        pageItems.forEach(c => {
             const st = G.creatureState(_gpRecords, stu.id, c.key);
             const locked = st.stage < 0;
             const el = document.createElement('div');
@@ -1146,6 +1156,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        // 分頁控制
+        if (nav) {
+            nav.innerHTML =
+                `<button class="gp-page-btn" id="gp-crt-prev" ${_creaturePage === 0 ? 'disabled' : ''}>◀</button>` +
+                `<span class="gp-page-info">第 ${_creaturePage + 1} / ${totalPages} 頁</span>` +
+                `<button class="gp-page-btn" id="gp-crt-next" ${_creaturePage >= totalPages - 1 ? 'disabled' : ''}>▶</button>`;
+            const prev = nav.querySelector('#gp-crt-prev'), next = nav.querySelector('#gp-crt-next');
+            if (prev) prev.onclick = () => { if (_creaturePage > 0) { _creaturePage--; renderCreatures(); } };
+            if (next) next.onclick = () => { if (_creaturePage < totalPages - 1) { _creaturePage++; renderCreatures(); } };
+        }
+    }
+
+    // 我的寵物：在已解鎖的寵物間左右切換；下方切換「已到達」的階段（未進化的階段不可看）
+    function renderMyPet() {
+        const G = GrowthSystem, stu = _gpStudent;
+        const host = document.getElementById('gp-mypet');
+        if (!host || !G.CREATURES) return;
+        const unlocked = G.CREATURES.filter(c => G.creatureState(_gpRecords, stu.id, c.key).stage >= 0);
+        if (unlocked.length === 0) {
+            host.innerHTML = '<div class="gp-mypet-empty">還沒有解鎖的寵物～到下方「寵物圖鑑」用 💎 解鎖第一隻吧！</div>';
+            return;
+        }
+        if (!_myPetKey || !unlocked.some(c => c.key === _myPetKey)) { _myPetKey = unlocked[0].key; _myPetStage = null; }
+        const idx = unlocked.findIndex(c => c.key === _myPetKey);
+        const c   = unlocked[idx];
+        const st  = G.creatureState(_gpRecords, stu.id, c.key);
+        const maxStage = st.stage;                         // 已到達的最高階段
+        if (_myPetStage == null || _myPetStage > maxStage || _myPetStage < 0) _myPetStage = maxStage;
+        const vs  = _myPetStage;
+        const emo = c.stages[vs];
+        host.innerHTML =
+            `<div class="gp-mypet-row">
+                <button class="gp-page-btn" id="gp-mp-prev" ${unlocked.length <= 1 ? 'disabled' : ''}>◀</button>
+                <div class="gp-mypet-main">
+                    <img class="gp-mypet-img" src="../images/pets/pet_${c.key}_s${vs}.png" alt="${c.name}" onerror="this.replaceWith(document.createTextNode('${emo}'))">
+                    <div class="gp-mypet-name">${c.name}（${idx + 1}/${unlocked.length}）</div>
+                </div>
+                <button class="gp-page-btn" id="gp-mp-next" ${unlocked.length <= 1 ? 'disabled' : ''}>▶</button>
+            </div>
+            <div class="gp-mypet-stage">
+                <button class="gp-page-btn gp-sm" id="gp-mp-sprev" ${vs <= 0 ? 'disabled' : ''}>◀</button>
+                <span class="gp-mypet-stage-label">階段 ${vs + 1} / ${maxStage + 1}${maxStage <= 0 ? '（尚未進化）' : ''}</span>
+                <button class="gp-page-btn gp-sm" id="gp-mp-snext" ${vs >= maxStage ? 'disabled' : ''}>▶</button>
+            </div>`;
+        const q = id => host.querySelector(id);
+        q('#gp-mp-prev').onclick = () => { _myPetKey = unlocked[(idx - 1 + unlocked.length) % unlocked.length].key; _myPetStage = null; renderMyPet(); };
+        q('#gp-mp-next').onclick = () => { _myPetKey = unlocked[(idx + 1) % unlocked.length].key; _myPetStage = null; renderMyPet(); };
+        q('#gp-mp-sprev').onclick = () => { if (vs > 0) { _myPetStage = vs - 1; renderMyPet(); } };
+        q('#gp-mp-snext').onclick = () => { if (vs < maxStage) { _myPetStage = vs + 1; renderMyPet(); } };
     }
 
     function renderGrowthPage() {
@@ -1218,7 +1277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderGrowthPage();
         };
 
-        // ── 收集寵物圖鑑 ──
+        // ── 我的寵物（已解鎖切換）＋ 收集寵物圖鑑（分頁）──
+        renderMyPet();
         renderCreatures();
 
         // ── 徽章牆 ──

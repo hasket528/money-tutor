@@ -27,11 +27,14 @@
       position: sticky; top: 0; z-index: 10;
     }
     /* 上段：返回＋標題＋更新時間 */
-    .t-topbar { display: flex; align-items: center; gap: 12px; width: 100%; }
-    .t-topbar h1 { font-size: 1.15rem; font-weight: 700; margin: 0; white-space: nowrap; }
-    .t-topbar .t-spacer { flex: 1; }
+    .t-topbar { display: flex; align-items: center; justify-content: center; gap: 6px 12px; width: 100%; position: relative; flex-wrap: wrap; }
+    .t-topbar h1 { font-size: 1.15rem; font-weight: 700; margin: 0; }
+    .t-title-block { text-align: center; }
+    .t-title-block #last-update { display: block; margin-top: 2px; }
     /* 下段：工具列，依功能分組＋分隔線 */
     .t-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+    .t-toolbar-center { justify-content: center; }
+    .t-toolbar-left { justify-content: flex-start; }
     .t-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .t-group-label { font-size: 0.7rem; color: var(--gray-600); font-weight: 700; margin-right: 2px; align-self: center; }
     .t-sep { width: 1px; align-self: stretch; min-height: 24px; background: var(--gray-200); margin: 0 4px; }
@@ -41,7 +44,7 @@
     .t-btn-secondary { background: var(--gray-200); color: var(--gray-900); }
     .t-btn-danger { background: #FEE2E2; color: var(--red); }
     @media print { .t-header { flex-direction: row; } }
-    .t-home-link { font-size: 0.82rem; color: var(--blue); text-decoration: none; font-weight: 600; }
+    .t-home-link { font-size: 0.82rem; color: var(--blue); text-decoration: none; font-weight: 600; position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
 
     /* ── Layout ── */
     .t-body { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
@@ -114,11 +117,12 @@
 <header class="t-header">
   <div class="t-topbar">
     <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
-    <h1>📊 學習歷程總覽 — 金錢小達人</h1>
-    <span class="t-spacer"></span>
-    <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
+    <div class="t-title-block">
+      <h1>📊 學習歷程總覽 — 金錢小達人</h1>
+      <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
+    </div>
   </div>
-  <div class="t-toolbar no-print">
+  <div class="t-toolbar t-toolbar-center no-print">
     <div class="t-group">
       <button class="t-btn t-btn-secondary" onclick="loadData()">🔄 重新整理</button>
     </div>
@@ -136,7 +140,8 @@
       <button class="t-btn t-btn-primary" onclick="window.print()">🖨 列印</button>
       <button class="t-btn t-btn-primary" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
     </div>
-    <span class="t-sep"></span>
+  </div>
+  <div class="t-toolbar t-toolbar-left no-print">
     <div class="t-group">
       <span class="t-group-label">資料</span>
       <button class="t-btn t-btn-secondary" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份</button>
