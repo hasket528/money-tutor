@@ -102,14 +102,31 @@
 <body>
 
 <header class="t-header">
-  <h1>📊 學習歷程總覽 — 金錢小達人</h1>
   <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
+  <h1>📊 學習歷程總覽 — 金錢小達人</h1>
   <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
+  <a class="t-btn t-btn-secondary no-print" href="../assessment.html">🧭 能力快篩</a>
+  <a class="t-btn t-btn-secondary no-print" href="../reward/index.html" target="RewardSystem">🌱 學生成長頁</a>
+  <button class="t-btn t-btn-secondary no-print" onclick="const p=document.getElementById('assign-panel'); p.hidden=!p.hidden; if(!p.hidden) populateAssignControls();">👩‍🏫 老師指派</button>
+  <button class="t-btn t-btn-secondary no-print" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份全站資料</button>
+  <button class="t-btn t-btn-secondary no-print" onclick="document.getElementById('ct-restore-file').click()">📥 還原備份</button>
+  <input type="file" id="ct-restore-file" accept=".json" hidden onchange="CaptainTools.restoreFromFile(this.files[0], document.getElementById('ct-status')); this.value='';">
   <button class="t-btn t-btn-secondary no-print" onclick="loadData()">重新整理</button>
   <button class="t-btn t-btn-primary no-print" onclick="exportCSV()">📥 匯出 CSV</button>
   <button class="t-btn t-btn-primary no-print" onclick="window.print()">🖨 列印</button>
   <button class="t-btn t-btn-primary no-print" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
   <button class="t-btn t-btn-danger no-print" onclick="clearData()">清除紀錄</button>
+  <span id="ct-status" class="no-print" style="font-size:0.78rem;color:var(--gray-600);width:100%"></span>
+  <div id="assign-panel" class="no-print" hidden style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;padding-top:8px;">
+    <label style="font-size:0.82rem">學生
+      <select id="assign-student" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
+    </label>
+    <label style="font-size:0.82rem">指派單元
+      <select id="assign-unit" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-family:inherit;"></select>
+    </label>
+    <button class="t-btn t-btn-primary" onclick="doAssign()">➕ 指派</button>
+    <span id="assign-feedback" style="font-size:0.8rem;color:var(--gray-600)"></span>
+  </div>
 </header>
 
 <!-- 學習週報（列印專用；printWeeklyReport 動態填入） -->
@@ -190,6 +207,7 @@
 </div>
 
 <script src="db.js"></script>
+<script src="../js/captain-tools.js"></script>
 <script>
 const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
 
@@ -216,6 +234,30 @@ const UNIT_PAGE = {
   a1:'a1_vending_machine', a2:'a2_barber_shop_kiosk', a3:'a3_mcdonalds_order',
   a4:'a4_simulated_shopping', a5:'a5_atm_simulator', a6:'a6_train_ticket',
 };
+
+// ── 老師指派（用共用 CaptainTools 寫入 mt_assign；學生下次開金隊長基地會看到）──
+function populateAssignControls() {
+  const stuSel = document.getElementById('assign-student');
+  const unitSel = document.getElementById('assign-unit');
+  if (!stuSel || !unitSel) return;
+  let roster = [];
+  try { roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch {}
+  stuSel.innerHTML = roster.length
+    ? roster.map(s => `<option value="${s.id}">${s.name || '未命名'}</option>`).join('')
+    : '<option value="">（尚無學生，請先到「學生成長頁」建立）</option>';
+  if (!unitSel.options.length) {
+    unitSel.innerHTML = Object.values(UNITS).flat()
+      .map(([u, name]) => `<option value="${u}">${name}</option>`).join('');
+  }
+}
+function doAssign() {
+  const stuId = document.getElementById('assign-student').value;
+  const unit  = document.getElementById('assign-unit').value;
+  const fb    = document.getElementById('assign-feedback');
+  if (!stuId) { fb.textContent = '請先選擇學生'; return; }
+  const ok = window.CaptainTools?.addAssignment(stuId, unit);
+  fb.textContent = ok ? '✅ 已指派，學生下次開金隊長基地即可看到' : '這個單元已在指派清單中';
+}
 
 const isMain = (r) => r.source === 'main' || !!UNIT_PAGE[r.situationId];
 const stuKey = (r) => (r.studentId != null ? String(r.studentId) : '__guest__');

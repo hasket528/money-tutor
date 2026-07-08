@@ -135,6 +135,15 @@
 
         /* 徽章／寶物 */
         .gp-badges, .gp-treasures { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .gp-creatures { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .gp-crt { width: 96px; background: #fff; border: 2px solid #fde68a; border-radius: 14px; padding: 8px 6px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+        .gp-crt.locked { opacity: .8; filter: grayscale(.55); }
+        .gp-crt-emoji { font-size: 2.3em; line-height: 1.1; }
+        .gp-crt-img { width: 62px; height: 62px; object-fit: contain; vertical-align: middle; }
+        .gp-crt-name { font-weight: 800; color: #b45309; font-size: .82em; margin: 2px 0; }
+        .gp-crt-sub { font-size: .72em; color: #92857a; min-height: 1.15em; }
+        .gp-crt-btn { margin-top: 4px; border: none; border-radius: 8px; background: #f59e0b; color: #fff; font-weight: 800; font-size: .74em; padding: 4px 9px; cursor: pointer; font-family: inherit; }
+        .gp-crt-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
         .gp-chip { width: 90px; text-align: center; padding: 10px 4px 8px; border: 1.5px solid #eadfc0;
                    border-radius: 12px; background: #fffdf5; }
         .gp-chip .ic { font-size: 1.6em; }
@@ -181,6 +190,10 @@
                 <div class="gp-msg" id="gp-msg"></div>
             </div>
 
+            <div class="gp-sec-title">🐣 寵物圖鑑（用寶石解鎖，之後隨學習成長進化）</div>
+            <div class="gp-creatures" id="gp-creatures"></div>
+            <div class="gp-msg" id="gp-creatures-msg"></div>
+
             <div class="gp-sec-title">🏅 徽章牆</div>
             <div class="gp-badges" id="gp-badges"></div>
 
@@ -194,7 +207,7 @@
 
     <script src="../js/growth-system.js"></script>
     <script src="../js/emoji-library.js"></script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=4"></script>
     <!-- 點擊金隊長播放語音（預錄音檔 → 瀏覽器 TTS 後備）──────────── -->
     <script>
     (function () {

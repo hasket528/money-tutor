@@ -1101,6 +1101,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function gpMsg(t) { document.getElementById('gp-msg').textContent = t || ''; }
 
+    // 收集寵物圖鑑：5 隻原創生物，用寶石解鎖，解鎖後隨主課程練習成長進化
+    function renderCreatures() {
+        const G = GrowthSystem, stu = _gpStudent;
+        const host = document.getElementById('gp-creatures');
+        if (!host || !G.CREATURES) return;
+        const gems = G.gemsAvailable(_gpRecords, stu.id);
+        host.innerHTML = '';
+        G.CREATURES.forEach(c => {
+            const st = G.creatureState(_gpRecords, stu.id, c.key);
+            const locked = st.stage < 0;
+            const el = document.createElement('div');
+            el.className = 'gp-crt' + (locked ? ' locked' : '');
+            // 圖片優先，載入失敗自動退回 emoji
+            const emo = c.stages[st.stage];
+            const visual = locked
+                ? '<div class="gp-crt-emoji">❓</div>'
+                : `<div class="gp-crt-emoji"><img class="gp-crt-img" src="../images/pets/pet_${c.key}_s${st.stage}.png" alt="${c.name}" onerror="this.replaceWith(document.createTextNode('${emo}'))"></div>`;
+            let sub = '', btn = '';
+            if (locked) {
+                sub = c.gems > 0 ? `🔒 ${c.gems} 💎 解鎖` : '🔒 免費解鎖';
+                const can = c.gems === 0 || gems >= c.gems;
+                btn = `<button class="gp-crt-btn" data-key="${c.key}" ${can ? '' : 'disabled'}>解鎖</button>`;
+            } else if (st.next != null) {
+                sub = `再練 ${Math.max(0, st.next - st.grown)} 次進化`;
+            } else {
+                sub = '🎉 已完全進化';
+            }
+            el.innerHTML = `${visual}
+                <div class="gp-crt-name">${locked ? '？？？' : c.name}</div>
+                <div class="gp-crt-sub">${sub}</div>${btn}`;
+            host.appendChild(el);
+        });
+        host.querySelectorAll('.gp-crt-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                const ok = G.unlockCreature(_gpRecords, stu.id, b.dataset.key);
+                const msg = document.getElementById('gp-creatures-msg');
+                if (ok) {
+                    try { playSound('bonus'); } catch (e) {}
+                    if (msg) msg.textContent = '🎉 解鎖成功！繼續練習牠就會長大進化！';
+                    renderGrowthPage();
+                } else if (msg) {
+                    msg.textContent = '寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！';
+                }
+            });
+        });
+    }
+
     function renderGrowthPage() {
         const stu = _gpStudent;
         const G   = GrowthSystem;
@@ -1170,6 +1217,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`);
             renderGrowthPage();
         };
+
+        // ── 收集寵物圖鑑 ──
+        renderCreatures();
 
         // ── 徽章牆 ──
         const { fresh } = G.computeBadges(stu.id, _gpRecords, G.questMeta(stu.id), stu);

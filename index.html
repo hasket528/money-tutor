@@ -266,6 +266,7 @@
         .stage-char img {
             width: min(48vw, 250px); max-height: 42vh; object-fit: contain;
             filter: drop-shadow(0 20px 32px rgba(0,0,0,0.6));
+            cursor: pointer; /* 點圖示可聽該角色語音介紹 */
         }
         .stage-name {
             font-size: 1.5em; font-weight: 800; color: #ffe9a8; margin-top: 10px;
@@ -291,7 +292,9 @@
             color: #ffe9a8; font-size: 1.35em; cursor: pointer; z-index: 2;
             transition: background 0.15s, transform 0.15s;
         }
-        .stage-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.12); }
+        @media (hover: hover) { /* 只在有滑鼠的裝置套 hover，觸控就不會「第一下變底色、第二下才切換」 */
+          .stage-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.12); }
+        }
         .stage-arrow.left  { left: -6px; }
         .stage-arrow.right { right: -6px; }
 
@@ -1326,31 +1329,14 @@
                     <div class="captain-sec-title">🚀 今日任務 <span id="quest-date" style="font-weight:600;color:#b45309;font-size:0.82em"></span></div>
                     <div id="captain-assigned"></div>
                     <div id="captain-quests"></div>
-
-                    <details id="captain-teacher-assign" style="margin-top:8px;">
-                        <summary style="cursor:pointer;font-size:0.82em;font-weight:700;color:#64748b;">👩‍🏫 老師指派區（點開設定）</summary>
-                        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
-                            <select id="assign-unit-select" style="padding:7px 10px;border-radius:10px;border:1.5px solid #dbe7f5;font-family:inherit;font-size:0.85em;"></select>
-                            <button onclick="captainAddAssign()" style="padding:7px 14px;border:none;border-radius:10px;background:#1d4ed8;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.85em;">➕ 指派</button>
-                            <span style="font-size:0.75em;color:#64748b;">指派給目前學生；學生完成後可領金幣</span>
-                        </div>
-                        <div id="assign-list" style="font-size:0.8em;color:#334155;"></div>
-                    </details>
+                    <!-- 老師指派「控制」已移至 學習歷程總覽(dialogue/teacher.html)；這裡只保留學生看到的指派卡片(captain-assigned) -->
                 </div>
 
                 <div class="captain-quote" id="captain-quote" hidden></div>
 
                 <div class="captain-links">
-                    <a href="assessment.html">🧭 能力快篩（找學習起點）</a>
-                    <a href="reward/index.html" target="RewardSystem">🌱 學生成長頁</a>
-                    <a href="dialogue/teacher.html">📊 學習歷程</a>
+                    <a href="dialogue/teacher.html">📊 學習歷程總覽（能力快篩・學生成長・備份還原・老師指派都在這）</a>
                 </div>
-                <div class="captain-links" style="margin-top:8px;">
-                    <a href="#" onclick="event.preventDefault(); captainBackup()">📦 備份全站資料</a>
-                    <a href="#" onclick="event.preventDefault(); document.getElementById('captain-restore-file').click()">📥 還原備份</a>
-                    <input type="file" id="captain-restore-file" accept=".json" hidden>
-                </div>
-                <p id="captain-backup-status" style="font-size:0.75em;color:#64748b;text-align:center;margin-top:6px;">備份包含：學生名冊、學習紀錄、徽章寵物、自編對話與錄音（存於瀏覽器本機，請定期備份）</p>
             </div>
         </div>
 
@@ -1405,6 +1391,7 @@
                 btn.textContent = c.btn;
                 btn.onclick = c.act;
                 document.getElementById('stage-voice').onclick = () => window.speakCharacter?.(c.speech);
+                document.getElementById('stage-img').onclick   = () => window.speakCharacter?.(c.speech);
                 document.getElementById('stage-dots').innerHTML =
                     CHARS.map((_, i) => `<span class="${i === idx ? 'on' : ''}"></span>`).join('');
             }
@@ -1708,26 +1695,7 @@
                                          r.situationId === a.unit && r.ts >= a.ts);
             }
 
-            window.captainAddAssign = function () {
-                const cur = getCurrent();
-                if (!cur) { alert('請先選擇學生'); return; }
-                const unit = document.getElementById('assign-unit-select').value;
-                const arr = assignStore(cur.id);
-                if (arr.some(a => a.unit === unit && !a.claimed)) { alert('這個單元已在指派清單中'); return; }
-                arr.push({ unit, ts: Date.now(), claimed: false });
-                saveAssign(cur.id, arr);
-                renderCaptainBase();
-            };
-
-            window.captainRemoveAssign = function (idx) {
-                const cur = getCurrent();
-                if (!cur) return;
-                const arr = assignStore(cur.id);
-                arr.splice(idx, 1);
-                saveAssign(cur.id, arr);
-                renderCaptainBase();
-            };
-
+            // 老師指派/移除的「控制」已移到 學習歷程總覽(teacher.html)；這裡只保留學生領獎
             window.captainClaimAssign = function (idx) {
                 const cur = getCurrent();
                 if (!cur) return;
@@ -1749,24 +1717,14 @@
             };
 
             function renderAssigned(cur, records) {
+                // 只渲染「學生看到的指派卡片」；老師指派控制已移到 學習歷程總覽
                 const host = document.getElementById('captain-assigned');
-                const listEl = document.getElementById('assign-list');
+                if (!host) return;
                 host.innerHTML = '';
-                listEl.innerHTML = '';
-                // 教師區的單元下拉（一次性填充）
-                const sel = document.getElementById('assign-unit-select');
-                if (sel.options.length === 0) {
-                    Object.entries(UNIT_NAMES).forEach(([u, name]) => {
-                        const opt = document.createElement('option');
-                        opt.value = u; opt.textContent = name;
-                        sel.appendChild(opt);
-                    });
-                }
                 if (!cur) return;
                 const arr = assignStore(cur.id);
                 arr.forEach((a, idx) => {
                     const done = assignDone(a, cur.id, records);
-                    // 學生視角卡片
                     const card = document.createElement('div');
                     card.className = 'quest-card' + (a.claimed ? ' done claimed' : done ? ' done' : '');
                     let act;
@@ -1778,14 +1736,7 @@
                         <div class="quest-info"><div class="quest-desc">老師指派：完成「${UNIT_NAMES[a.unit]}」</div></div>
                         <div class="quest-act">${act}</div>`;
                     host.appendChild(card);
-                    // 教師區清單
-                    const row = document.createElement('div');
-                    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
-                    row.innerHTML = `<span style="flex:1">${UNIT_NAMES[a.unit]}（${new Date(a.ts).toLocaleDateString('zh-TW')}）${a.claimed ? '✅' : done ? '🪙可領獎' : '⬜'}</span>
-                        <button onclick="captainRemoveAssign(${idx})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:8px;padding:3px 10px;cursor:pointer;font-family:inherit;font-size:0.85em;">移除</button>`;
-                    listEl.appendChild(row);
                 });
-                if (arr.length === 0) listEl.innerHTML = '<span style="color:#94a3b8">尚無指派</span>';
             }
 
             window.captainClaimQuest = function (qid) {
@@ -1931,119 +1882,6 @@
                 document.body.style.overflow = '';
             };
 
-            // ── 全站備份／還原（含 IndexedDB 紀錄與錄音）──
-            function readAllAudio() {
-                return new Promise((resolve) => {
-                    try {
-                        const req = indexedDB.open('shopping-practice', 2);
-                        req.onsuccess = (e) => {
-                            const db = e.target.result;
-                            if (!db.objectStoreNames.contains('custom_audio')) { db.close(); resolve([]); return; }
-                            const q = db.transaction('custom_audio', 'readonly').objectStore('custom_audio').getAll();
-                            q.onsuccess = async () => {
-                                const out = [];
-                                for (const it of (q.result || [])) {
-                                    const dataURL = await new Promise(r => {
-                                        const fr = new FileReader();
-                                        fr.onload = () => r(fr.result);
-                                        fr.onerror = () => r(null);
-                                        fr.readAsDataURL(it.blob);
-                                    });
-                                    if (dataURL) out.push({ key: it.key, mime: it.mime, ts: it.ts, dataURL });
-                                }
-                                db.close(); resolve(out);
-                            };
-                            q.onerror = () => { db.close(); resolve([]); };
-                        };
-                        req.onerror = () => resolve([]);
-                    } catch { resolve([]); }
-                });
-            }
-
-            window.captainBackup = async function () {
-                const statusEl = document.getElementById('captain-backup-status');
-                statusEl.textContent = '⏳ 打包中…';
-                try {
-                    const ls = {};
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k.toLowerCase().includes('api_key')) continue;   // 金鑰不入備份
-                        ls[k] = localStorage.getItem(k);
-                    }
-                    const pack = {
-                        type: 'mt-full-backup', version: 1, exported: Date.now(),
-                        localStorage: ls,
-                        records: await readAllRecords(),
-                        audio: await readAllAudio(),
-                    };
-                    const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `金錢小達人備份_${new Date().toISOString().slice(0, 10)}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    statusEl.textContent = `✅ 已匯出備份（學習紀錄 ${pack.records.length} 筆、錄音 ${pack.audio.length} 段）`;
-                } catch (e) {
-                    statusEl.textContent = '❌ 備份失敗，請再試一次';
-                }
-            };
-
-            document.getElementById('captain-restore-file').addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const statusEl = document.getElementById('captain-backup-status');
-                try {
-                    const pack = JSON.parse(await file.text());
-                    if (pack.type !== 'mt-full-backup') throw new Error('不是備份檔');
-                    if (!confirm(`確定要還原「${new Date(pack.exported).toLocaleString('zh-TW')}」的備份嗎？\n目前這台瀏覽器的資料將被取代！`)) {
-                        e.target.value = ''; return;
-                    }
-                    // localStorage
-                    Object.keys(localStorage).forEach(k => { if (!k.toLowerCase().includes('api_key')) localStorage.removeItem(k); });
-                    Object.entries(pack.localStorage || {}).forEach(([k, v]) => localStorage.setItem(k, v));
-                    // IndexedDB
-                    await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('shopping-practice', 2);
-                        req.onupgradeneeded = (ev) => {
-                            const db = ev.target.result;
-                            if (!db.objectStoreNames.contains('records')) {
-                                const s = db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
-                                s.createIndex('ts', 'ts', { unique: false });
-                                s.createIndex('scenarioId', 'scenarioId', { unique: false });
-                            }
-                            if (!db.objectStoreNames.contains('custom_audio')) db.createObjectStore('custom_audio', { keyPath: 'key' });
-                        };
-                        req.onsuccess = (ev) => {
-                            const db = ev.target.result;
-                            const tx = db.transaction(['records', 'custom_audio'], 'readwrite');
-                            const rs = tx.objectStore('records');
-                            rs.clear();
-                            (pack.records || []).forEach(r => { try { rs.put(r); } catch (x) {} });
-                            const as = tx.objectStore('custom_audio');
-                            as.clear();
-                            (pack.audio || []).forEach(it => {
-                                try {
-                                    const [head, body] = it.dataURL.split(',');
-                                    const mime = head.match(/data:([^;]+)/)?.[1] || it.mime || 'audio/webm';
-                                    const bytes = atob(body);
-                                    const arr = new Uint8Array(bytes.length);
-                                    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-                                    as.put({ key: it.key, blob: new Blob([arr], { type: mime }), mime, ts: it.ts || Date.now() });
-                                } catch (x) {}
-                            });
-                            tx.oncomplete = () => { db.close(); resolve(); };
-                            tx.onerror = () => { db.close(); reject(tx.error); };
-                        };
-                        req.onerror = () => reject(req.error);
-                    });
-                    statusEl.textContent = '✅ 還原完成，頁面即將重新整理…';
-                    setTimeout(() => location.reload(), 900);
-                } catch (err) {
-                    statusEl.textContent = '❌ 還原失敗：' + (err.message || '請確認是備份檔');
-                }
-                e.target.value = '';
-            });
 
             document.addEventListener('DOMContentLoaded', updateCaptainChip);
         })();

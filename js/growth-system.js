@@ -145,11 +145,62 @@ window.GrowthSystem = (() => {
     return true;
   }
 
+  // ── 收集寵物（5 隻原創金錢生物；emoji 呈現，用寶石解鎖，解鎖後隨「主課程學習紀錄」成長進化）──
+  //   needs = 解鎖後新增的主課程紀錄數門檻；達到才進化到該階段。資料鍵 mt_pets_{id}。
+  const CREATURES = [
+    { key: 'dragon', name: '金幣龍', stages: ['🥚', '🐲', '🐉'], needs: [0, 3, 8],  gems: 0 }, // 第一隻免費
+    { key: 'piggy',  name: '撲滿豬', stages: ['🥚', '🐖', '🐷'], needs: [0, 3, 8],  gems: 1 },
+    { key: 'cat',    name: '招財貓', stages: ['🐾', '🐱', '🐈'], needs: [0, 4, 10], gems: 2 },
+    { key: 'bird',   name: '寶石鳥', stages: ['🥚', '🐣', '🦜'], needs: [0, 4, 10], gems: 2 },
+    { key: 'robot',  name: '錢錢怪', stages: ['🪙', '👾', '🤖'], needs: [0, 5, 12], gems: 3 },
+    // 第二批（再 5 隻）
+    { key: 'ox',     name: '福氣牛', stages: ['🐄', '🐂', '🐮'], needs: [0, 3, 8],  gems: 3 },
+    { key: 'koi',    name: '錦鯉魚', stages: ['🐟', '🐠', '🐡'], needs: [0, 4, 10], gems: 3 },
+    { key: 'tree',   name: '聚寶樹', stages: ['🌱', '🌿', '🌳'], needs: [0, 5, 12], gems: 4 },
+    { key: 'phoenix',name: '金鳳凰', stages: ['🥚', '🐣', '🦚'], needs: [0, 5, 12], gems: 4 },
+    { key: 'mouse',  name: '招財鼠', stages: ['🐁', '🐀', '🐹'], needs: [0, 6, 14], gems: 5 },
+    // 第三批（再 5 隻，生肖招財）
+    { key: 'rabbit', name: '元寶兔', stages: ['🥚', '🐰', '🐇'], needs: [0, 5, 12], gems: 5 },
+    { key: 'tiger',  name: '招財虎', stages: ['🐾', '🐅', '🐯'], needs: [0, 6, 14], gems: 5 },
+    { key: 'monkey', name: '金元猴', stages: ['🐒', '🐵', '🦍'], needs: [0, 6, 14], gems: 6 },
+    { key: 'dog',    name: '旺財狗', stages: ['🐶', '🐕', '🐩'], needs: [0, 6, 14], gems: 6 },
+    { key: 'sheep',  name: '福氣羊', stages: ['🐑', '🐏', '🐐'], needs: [0, 7, 16], gems: 7 },
+  ];
+  function petsData(stuId) {
+    try { return JSON.parse(localStorage.getItem(`mt_pets_${stuId}`) || '{}'); } catch { return {}; }
+  }
+  function savePets(stuId, d) { localStorage.setItem(`mt_pets_${stuId}`, JSON.stringify(d)); }
+  function mainRecordCount(records, stuId) { return myRecords(records, stuId).filter(isMainRec).length; }
+  // 解鎖一隻（花寶石；記錄解鎖當下的主課程紀錄數當成長起點）
+  function unlockCreature(records, stuId, key) {
+    const c = CREATURES.find(x => x.key === key);
+    if (!c) return false;
+    const d = petsData(stuId);
+    if (d[key] && d[key].unlocked) return false;
+    if (c.gems > 0 && !spendGems(records, stuId, c.gems)) return false;
+    d[key] = { unlocked: true, at: mainRecordCount(records, stuId) };
+    savePets(stuId, d);
+    return true;
+  }
+  // 某隻目前進化階段（-1=未解鎖）＋還差幾筆到下一階
+  function creatureState(records, stuId, key) {
+    const c = CREATURES.find(x => x.key === key);
+    const d = petsData(stuId)[key];
+    if (!c) return { stage: -1, grown: 0, next: null };
+    if (!d || !d.unlocked) return { stage: -1, grown: 0, next: c.needs[1] };
+    const grown = Math.max(0, mainRecordCount(records, stuId) - (d.at || 0));
+    let stage = 0;
+    for (let i = 0; i < c.needs.length; i++) if (grown >= c.needs[i]) stage = i;
+    const next = stage < c.needs.length - 1 ? c.needs[stage + 1] : null;
+    return { stage, grown, next };
+  }
+
   function questMeta(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_quests_${stuId}`) || 'null'); } catch { return null; }
   }
 
   return {
+    CREATURES, petsData, savePets, unlockCreature, creatureState,
     readAllRecords, isMainRec, myRecords,
     BADGES, badgeStore, computeBadges,
     gemsTotal, gemsSpent, gemsAvailable, spendGems,
