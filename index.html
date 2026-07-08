@@ -574,6 +574,25 @@
             padding: 9px 16px; border-radius: 24px; white-space: nowrap;
             box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);
         }
+        /* 主頁「左：成長基地／右：創建學生」兩欄 */
+        .home-duo { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; max-width: 900px; margin: 22px auto 0; }
+        .home-duo > .captain-banner { margin: 0; max-width: none; flex: 1 1 360px; }
+        .home-duo > .create-banner  { margin: 0; flex: 1 1 360px; }
+        .create-banner {
+            display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+            background: linear-gradient(135deg, #f5fdf3, #eafbe6);
+            border: 2px solid #a7e3a0; border-radius: 16px; box-shadow: var(--card-shadow);
+            box-sizing: border-box; text-align: left;
+        }
+        .create-banner .captain-avatar { width: 74px; height: 108px; flex-shrink: 0; align-self: center; }
+        .create-banner .captain-avatar img { width: 100%; height: 100%; object-fit: contain; animation: floatBob 3.2s ease-in-out infinite; }
+        .create-banner .captain-text { flex: 1; min-width: 0; }
+        .create-banner .captain-name { font-weight: 800; font-size: 1.05em; color: #15803d; display: flex; align-items: center; gap: 6px; }
+        .create-banner .captain-line { font-size: 0.85em; color: #166534; margin-top: 3px; line-height: 1.5; }
+        .create-row { display: flex; gap: 8px; margin-top: 8px; }
+        .create-row input { flex: 1; min-width: 0; padding: 8px 12px; border: 1.5px solid #a7e3a0; border-radius: 10px; font-family: inherit; font-size: 0.9em; }
+        .create-row button { flex-shrink: 0; background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; font-weight: 700; border: none; border-radius: 10px; padding: 8px 16px; cursor: pointer; font-family: inherit; }
+        .create-msg { font-size: 0.8em; color: #166534; margin-top: 5px; min-height: 1.1em; }
         @media (max-width: 600px) {
             .captain-banner { flex-wrap: wrap; justify-content: center; text-align: center; }
             .captain-banner .captain-text { flex: 1 1 100%; }
@@ -1059,19 +1078,40 @@
                 </div>
             </div>
 
-            <!-- 金隊長：成長基地入口 -->
-            <div class="captain-banner" onclick="openCaptainBase()" title="點擊進入成長基地">
-                <div class="captain-avatar">
-                    <img src="images/common/captain_gold.png" alt="金隊長">
-                </div>
-                <div class="captain-text">
-                    <div class="captain-name">
-                        🤖 金隊長・成長基地
-                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('captain')" title="播放語音">🔊</button>
+            <!-- 左：金隊長成長基地（選學生＋任務）／右：金婆婆創建學生 -->
+            <div class="home-duo">
+                <div class="captain-banner" onclick="openCaptainBase()" title="點擊進入成長基地">
+                    <div class="captain-avatar">
+                        <img src="images/common/captain_gold.png" alt="金隊長">
                     </div>
-                    <div class="captain-line">「你的努力，我已經記錄下來了！」選好學生資料，所有課程表現都會自動記錄成長。</div>
+                    <div class="captain-text">
+                        <div class="captain-name">
+                            🤖 金隊長・成長基地
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('captain')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-line">選好學生後，所有課程表現、任務與獎勵都會自動記錄成長。點我進入基地。</div>
+                    </div>
+                    <div class="captain-cta" id="captain-current-chip">👤 選擇學生</div>
                 </div>
-                <div class="captain-cta" id="captain-current-chip">👤 選擇學生</div>
+
+                <div class="create-banner">
+                    <div class="captain-avatar">
+                        <img src="images/common/grandma_gold.png" alt="金婆婆">
+                    </div>
+                    <div class="captain-text">
+                        <div class="captain-name">
+                            🌱 金婆婆・創建學生
+                            <button class="ai-voice-btn" onclick="speakCharacter('grandma')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-line">「歡迎新朋友～告訴金婆婆你的名字，我會像照顧小苗一樣陪你長大。」</div>
+                        <div class="create-row">
+                            <input id="home-new-name" type="text" maxlength="12" placeholder="輸入新學生姓名" autocomplete="off"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault();homeCreateStudent();}">
+                            <button onclick="homeCreateStudent()">➕ 建立</button>
+                        </div>
+                        <div class="create-msg" id="home-create-msg"></div>
+                    </div>
+                </div>
             </div>
 
             <script>
@@ -1083,6 +1123,7 @@
                     detectiveModal:  '學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。快來遊戲室，挑戰趣味小遊戲，看看你能闖過幾關！',
                     chatdog:         '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
                     captain:         '大家好，我是金隊長！你的努力，我都會記錄下來。選好你的名字，跟我一起完成今天的任務，每天比昨天更進步！',
+                    grandma:         '歡迎新朋友～我是金婆婆。告訴我你的名字，我會像照顧一株小苗一樣，耐心陪著你，一天一天慢慢長大。',
                 };
                 let _voices = [];
                 if (window.speechSynthesis) {
@@ -1117,6 +1158,7 @@
                     [SPEECH.detectiveModal]: 'index_detective_modal',
                     [SPEECH.chatdog]:        'index_chatdog_intro',
                     [SPEECH.captain]:        'index_captain_intro',
+                    [SPEECH.grandma]:        'index_grandma_intro',
                 };
                 let _charAudio = null, _charToken = null;
                 function _stopCharAudio() {
@@ -1324,10 +1366,7 @@
                 </div>
                 <div class="captain-current" id="captain-current-banner">目前學生：<b>訪客</b></div>
                 <div class="captain-students" id="captain-student-list"></div>
-                <div class="captain-newrow">
-                    <input id="captain-new-name" type="text" maxlength="12" placeholder="輸入新學生姓名" autocomplete="off">
-                    <button onclick="captainCreateStudent()">➕ 建立</button>
-                </div>
+                <div style="font-size:0.8em;color:#94a3b8;text-align:center;margin:8px 0;">要新增學生？回主頁點「🌱 金婆婆・創建學生」</div>
                 <div class="captain-stats" id="captain-stats"></div>
 
                 <div id="captain-quest-sec" hidden>
@@ -1852,13 +1891,17 @@
                 renderQuestsAndBadges(cur, records);
             };
 
-            window.captainCreateStudent = function () {
-                const input = document.getElementById('captain-new-name');
-                const name  = input.value.trim();
+            // 建立學生（可從主頁金婆婆卡或彈窗呼叫；inputId/msgId 可選）
+            window.captainCreateStudent = function (inputId, msgId) {
+                const input = document.getElementById(inputId || 'captain-new-name');
+                if (!input) return;
+                const msgEl = msgId ? document.getElementById(msgId) : null;
+                const setMsg = (t) => { if (msgEl) msgEl.textContent = t; else if (t) alert(t); };
+                const name = input.value.trim();
                 if (!name) { input.focus(); return; }
                 const roster = loadRoster();
-                if (roster.length >= 15) { alert('學生名冊最多 15 位，請先到獎勵系統整理名冊。'); return; }
-                if (roster.some(s => s.name === name)) { alert('已有同名學生，請直接點選，或改用不同名字。'); return; }
+                if (roster.length >= 15) { setMsg('學生名冊最多 15 位，請先到「學生成長頁」整理名冊。'); return; }
+                if (roster.some(s => s.name === name)) { setMsg('已有同名學生，請直接點選或改用不同名字。'); return; }
                 const stu = { id: Date.now() + Math.random(), name, photo: null, score: 0 };
                 roster.push(stu);
                 localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
@@ -1872,6 +1915,11 @@
                 } catch {}
                 input.value = '';
                 setCurrent(stu);
+                setMsg('✅ 已建立「' + name + '」並設為目前學生');
+            };
+            // 主頁金婆婆卡：建立學生
+            window.homeCreateStudent = function () {
+                window.captainCreateStudent('home-new-name', 'home-create-msg');
             };
 
             window.openCaptainBase = function () {
@@ -1900,7 +1948,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260708a';
+            const BUILD_VERSION = '20260708b';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {

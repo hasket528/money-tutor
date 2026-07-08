@@ -23,14 +23,24 @@
     /* ── Header ── */
     .t-header {
       background: var(--white); border-bottom: 2px solid var(--gray-200);
-      padding: 14px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 20px; display: flex; flex-direction: column; gap: 10px;
       position: sticky; top: 0; z-index: 10;
     }
-    .t-header h1 { font-size: 1.15rem; font-weight: 700; flex: 1; white-space: nowrap; }
-    .t-btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; font-weight: 600; }
+    /* 上段：返回＋標題＋更新時間 */
+    .t-topbar { display: flex; align-items: center; gap: 12px; width: 100%; }
+    .t-topbar h1 { font-size: 1.15rem; font-weight: 700; margin: 0; white-space: nowrap; }
+    .t-topbar .t-spacer { flex: 1; }
+    /* 下段：工具列，依功能分組＋分隔線 */
+    .t-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+    .t-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .t-group-label { font-size: 0.7rem; color: var(--gray-600); font-weight: 700; margin-right: 2px; align-self: center; }
+    .t-sep { width: 1px; align-self: stretch; min-height: 24px; background: var(--gray-200); margin: 0 4px; }
+    .t-btn { padding: 7px 13px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.83rem; font-family: inherit; font-weight: 600; white-space: nowrap; transition: filter .12s; }
+    .t-btn:hover { filter: brightness(0.95); }
     .t-btn-primary { background: var(--blue); color: #fff; }
     .t-btn-secondary { background: var(--gray-200); color: var(--gray-900); }
     .t-btn-danger { background: #FEE2E2; color: var(--red); }
+    @media print { .t-header { flex-direction: row; } }
     .t-home-link { font-size: 0.82rem; color: var(--blue); text-decoration: none; font-weight: 600; }
 
     /* ── Layout ── */
@@ -102,20 +112,39 @@
 <body>
 
 <header class="t-header">
-  <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
-  <h1>📊 學習歷程總覽 — 金錢小達人</h1>
-  <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
-  <a class="t-btn t-btn-secondary no-print" href="../assessment.html">🧭 能力快篩</a>
-  <a class="t-btn t-btn-secondary no-print" href="../reward/index.html" target="RewardSystem">🌱 學生成長頁</a>
-  <button class="t-btn t-btn-secondary no-print" onclick="const p=document.getElementById('assign-panel'); p.hidden=!p.hidden; if(!p.hidden) populateAssignControls();">👩‍🏫 老師指派</button>
-  <button class="t-btn t-btn-secondary no-print" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份全站資料</button>
-  <button class="t-btn t-btn-secondary no-print" onclick="document.getElementById('ct-restore-file').click()">📥 還原備份</button>
-  <input type="file" id="ct-restore-file" accept=".json" hidden onchange="CaptainTools.restoreFromFile(this.files[0], document.getElementById('ct-status')); this.value='';">
-  <button class="t-btn t-btn-secondary no-print" onclick="loadData()">重新整理</button>
-  <button class="t-btn t-btn-primary no-print" onclick="exportCSV()">📥 匯出 CSV</button>
-  <button class="t-btn t-btn-primary no-print" onclick="window.print()">🖨 列印</button>
-  <button class="t-btn t-btn-primary no-print" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
-  <button class="t-btn t-btn-danger no-print" onclick="clearData()">清除紀錄</button>
+  <div class="t-topbar">
+    <a class="t-home-link no-print" href="../index.html">← 回教材主頁</a>
+    <h1>📊 學習歷程總覽 — 金錢小達人</h1>
+    <span class="t-spacer"></span>
+    <span id="last-update" style="font-size:0.78rem;color:var(--gray-600)"></span>
+  </div>
+  <div class="t-toolbar no-print">
+    <div class="t-group">
+      <button class="t-btn t-btn-secondary" onclick="loadData()">🔄 重新整理</button>
+    </div>
+    <span class="t-sep"></span>
+    <div class="t-group">
+      <span class="t-group-label">學生工具</span>
+      <a class="t-btn t-btn-secondary" href="../assessment.html">🧭 能力快篩</a>
+      <a class="t-btn t-btn-secondary" href="../reward/index.html" target="RewardSystem">🌱 學生成長頁</a>
+      <button class="t-btn t-btn-secondary" onclick="const p=document.getElementById('assign-panel'); p.hidden=!p.hidden; if(!p.hidden) populateAssignControls();">👩‍🏫 老師指派</button>
+    </div>
+    <span class="t-sep"></span>
+    <div class="t-group">
+      <span class="t-group-label">報表</span>
+      <button class="t-btn t-btn-primary" onclick="exportCSV()">📤 匯出 CSV</button>
+      <button class="t-btn t-btn-primary" onclick="window.print()">🖨 列印</button>
+      <button class="t-btn t-btn-primary" onclick="printWeeklyReport()" title="選定個別學生後，列印近 7 天學習週報（含家長簽名欄）">📬 學習週報</button>
+    </div>
+    <span class="t-sep"></span>
+    <div class="t-group">
+      <span class="t-group-label">資料</span>
+      <button class="t-btn t-btn-secondary" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份</button>
+      <button class="t-btn t-btn-secondary" onclick="document.getElementById('ct-restore-file').click()">📥 還原</button>
+      <button class="t-btn t-btn-danger" onclick="clearData()">🗑️ 清除紀錄</button>
+    </div>
+    <input type="file" id="ct-restore-file" accept=".json" hidden onchange="CaptainTools.restoreFromFile(this.files[0], document.getElementById('ct-status')); this.value='';">
+  </div>
   <span id="ct-status" class="no-print" style="font-size:0.78rem;color:var(--gray-600);width:100%"></span>
   <div id="assign-panel" class="no-print" hidden style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;padding-top:8px;">
     <label style="font-size:0.82rem">學生
