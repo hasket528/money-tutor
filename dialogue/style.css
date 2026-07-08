@@ -2073,6 +2073,17 @@ body {
   text-transform: uppercase;
   margin-bottom: 16px;
 }
+.ai-key-warn {
+  background: #FFF8E1;
+  border: 1px solid #FFE082;
+  border-left: 4px solid #F9A825;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #6D4C00;
+}
 .settings-row {
   display: flex;
   align-items: center;
@@ -2210,6 +2221,13 @@ body.high-contrast .btn-mic {
 body.high-contrast .scenario-card:hover,
 body.high-contrast .scenario-card:focus-visible {
   box-shadow: 0 0 0 2px var(--blue);
+}
+
+body.high-contrast .ai-key-warn {
+  background: #2A1F05;
+  border-color: #6D4C00;
+  border-left-color: #FB923C;
+  color: #FCD34D;
 }
 
 @media (prefers-reduced-motion: reduce) {

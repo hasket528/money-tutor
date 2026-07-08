@@ -3185,6 +3185,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     engine = createEngine();
   });
+  const clearKeyBtn = document.getElementById('btn-clear-api-key');
+  if (clearKeyBtn) {
+    clearKeyBtn.addEventListener('click', () => {
+      if (!localStorage.getItem('gemini_api_key')) {
+        keyStatus.textContent = '目前未設定金鑰';
+        return;
+      }
+      if (!confirm('確定要清除已儲存的 Gemini API Key 嗎？清除後將改回免費的關鍵字比對模式。')) return;
+      localStorage.removeItem('gemini_api_key');
+      keyInput.value = '';
+      keyStatus.textContent = '已清除 API Key（改用免費關鍵字比對）';
+      engine = createEngine();
+    });
+  }
 
   // 精熟標準（提示褪除門檻）
   const masterySel = document.getElementById('select-mastery');

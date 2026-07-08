@@ -339,7 +339,6 @@
     <header class="editor-header">
       <button class="btn-icon" id="btn-settings-back" aria-label="返回">←</button>
       <h2 class="editor-title">設定</h2>
-      <button class="btn-header-action" id="btn-add-scenario">＋ 新增情境</button>
     </header>
     <div class="editor-body">
 
@@ -431,10 +430,15 @@
       <div class="settings-block">
         <h3 class="settings-block-title">AI 智能評分（進階・選用）</h3>
         <p class="editor-desc" style="margin-bottom:10px"><strong>預設免費、可離線、不需金鑰</strong>，使用看圖造句精確比對與關鍵字比對。<br>若教師自備 Gemini API Key，可改用 AI 語意評分（理解「給我一個」等各種說法）；<strong>此選項會連網、可能產生費用</strong>，留空即維持免費模式。</p>
+        <div class="ai-key-warn">
+          <p style="margin:0 0 4px"><strong>⚠️ 請勿在教室公用電腦填入金鑰。</strong></p>
+          <p style="margin:0">金鑰以<strong>明文</strong>存在這台裝置的瀏覽器（未加密），任何能操作此瀏覽器的人都可在開發者工具中看到完整金鑰並複製盜用，可能造成你的 Gemini 帳戶產生費用。建議：只在個人裝置填入、先到 Google AI Studio 為金鑰設定用量上限、用完即按「清除金鑰」移除。</p>
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="input-api-key" type="password" class="form-input" placeholder="Gemini API Key（選填）"
                  style="flex:1;font-size:0.85rem" autocomplete="off">
           <button class="btn-primary" id="btn-save-api-key" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">儲存</button>
+          <button class="btn-secondary" id="btn-clear-api-key" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">清除金鑰</button>
         </div>
         <p id="api-key-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
       </div>
@@ -464,12 +468,13 @@
       <!-- 自訂情境 -->
       <div class="settings-block">
         <h3 class="settings-block-title">自訂情境</h3>
-        <p class="editor-desc">建立你自己的購物對話練習情境，儲存在這個裝置上。</p>
+        <p class="editor-desc" style="margin-bottom:10px">建立你自己的購物對話練習情境，儲存在這個裝置上。</p>
+        <button class="btn-primary" id="btn-add-scenario" style="margin-bottom:12px">＋ 新增情境</button>
         <div id="custom-scenario-list" class="custom-list"></div>
         <div id="custom-empty" class="custom-empty">
           <div class="empty-icon">📝</div>
           <p class="empty-title">尚無自訂情境</p>
-          <p class="empty-msg">點擊右上角「＋ 新增情境」開始建立</p>
+          <p class="empty-msg">點擊上方「＋ 新增情境」開始建立</p>
         </div>
       </div>
 

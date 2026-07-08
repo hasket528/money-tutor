@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sub = '🎉 已完全進化';
             }
             el.innerHTML = `${visual}
-                <div class="gp-crt-name">${c.name}</div>
+                <div class="gp-crt-name">${(c.stageNames && c.stageNames[0]) || c.name}</div>
                 <div class="gp-crt-sub">${sub}</div>${btn}`;
             host.appendChild(el);
         });
@@ -1228,23 +1228,64 @@ document.addEventListener('DOMContentLoaded', () => {
         q('#gp-mp-snext').onclick = () => { if (vs < maxStage) { _myPetStage = vs + 1; renderMyPet(); } };
     }
 
+    // 中文語音朗讀（寵物介紹詞／名稱）
+    function speakText(text) {
+        if (!text || !window.speechSynthesis) return;
+        try {
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-TW'; u.rate = 0.95;
+            const vs = speechSynthesis.getVoices();
+            u.voice = vs.find(v => /yating/i.test(v.name)) ||
+                      vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang && v.lang.startsWith('zh')) ||
+                      vs.find(v => v.lang === 'zh-TW') || null;
+            speechSynthesis.speak(u);
+        } catch (e) {}
+    }
+    window.speakPetDesc = function () {   // 點介紹詞旁喇叭鈕：朗讀目前階段介紹詞
+        const el = document.getElementById('gp-pet-desc');
+        if (el) speakText(el.textContent);
+    };
+
     // 成就與寵物頁的「金幣」獨立於計分板分數，另存 mt_coins_{id}；由「🔄 轉換成金幣」注入
     function getCoins(stuId) { return parseInt(localStorage.getItem('mt_coins_' + stuId) || '0', 10) || 0; }
     function setCoins(stuId, v) { localStorage.setItem('mt_coins_' + stuId, String(Math.max(0, v | 0))); }
 
-    // 進化演出：閃光動畫＋音效，動畫結束後才切換到新階段圖並 pop-in
+    // 經典剪影進化（不刺眼發光）：舊姿→柔和金色剪影(縮放旋轉)→換新階段圖→淡入全彩＋柔和光環。約 2.4 秒。
     function playEvolveEffect(cb) {
         const im = document.getElementById('gp-pet-img');
-        try { playSound('bonus'); } catch (e) {}
-        if (im) { im.classList.remove('gp-evolving'); void im.offsetWidth; im.classList.add('gp-evolving'); }
-        setTimeout(cb, 700);
-    }
-    function popPetImg() {
-        const im = document.getElementById('gp-pet-img');
-        if (!im) return;
-        im.classList.remove('gp-evolving');                 // 移除閃光，動畫後浮遊(gpPetBob)才能恢復
-        im.classList.remove('gp-popped'); void im.offsetWidth; im.classList.add('gp-popped');
-        setTimeout(() => im.classList.remove('gp-popped'), 560);
+        try { const a = new Audio('../audio/reward/pet_evolve.mp3'); a.volume = 0.9; a.play().catch(() => {}); } catch (e) {}   // 進化變聲音效
+        if (!im) { setTimeout(cb, 100); return; }
+        const main = im.closest('.gp-pet-main') || im.parentElement;
+        const fx = [];
+        // 用 CSS/DOM 粒子（本質透明、跨瀏覽器；透明 WebM 在此環境無法保留 alpha 故不採用）
+        if (main) {
+            const mk = (cls) => { const el = document.createElement('div'); el.className = cls; main.appendChild(el); void el.offsetWidth; el.classList.add('go'); fx.push(el); return el; };
+            mk('gp-evo-glow');    // 柔和放射光
+            mk('gp-evo-ring');    // 柔和光環
+            mk('gp-evo-smoke');   // 柔和煙霧
+            const glyphs = ['✨', '⭐', '🌟', '✨', '💫'];   // 星塵（14 顆隨機方向散開）
+            const N = 14;
+            for (let i = 0; i < N; i++) {
+                const s = document.createElement('div'); s.className = 'gp-evo-star'; s.textContent = glyphs[i % glyphs.length];
+                const ang = (Math.PI * 2 * i) / N + Math.random() * 0.5, dist = 72 + Math.random() * 58;
+                s.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(0) + 'px');
+                s.style.setProperty('--dy', (Math.sin(ang) * dist - 10).toFixed(0) + 'px');
+                s.style.animationDelay = (Math.random() * 0.4).toFixed(2) + 's';
+                main.appendChild(s); void s.offsetWidth; s.classList.add('go'); fx.push(s);
+            }
+        }
+        im.classList.remove('gp-evo-in', 'gp-evo-out'); void im.offsetWidth; im.classList.add('gp-evo-out');
+        setTimeout(function () {
+            cb();   // 換成新階段圖（同一個 img 元素）
+            const im2 = document.getElementById('gp-pet-img');
+            if (im2) { im2.classList.remove('gp-evo-out'); void im2.offsetWidth; im2.classList.add('gp-evo-in'); }
+            setTimeout(function () {
+                if (im2) im2.classList.remove('gp-evo-in'); fx.forEach(el => el.remove());
+                const nm = document.getElementById('gp-pet-name');   // 變身完＋音效播完 → 唸出新階段名稱
+                if (nm && nm.textContent) speakText(nm.textContent);
+            }, 1400);
+        }, 1100);
     }
 
     function renderGrowthPage() {
@@ -1291,10 +1332,13 @@ document.addEventListener('DOMContentLoaded', () => {
         petNext.onclick = () => { _savePetIdx = (_savePetIdx + 1) % pets.length; _savePetStage = null; renderGrowthPage(); };
 
         // 階段切換列（只到已達階段；imgFor(vs) 回傳該階段圖片路徑）
-        const renderStageSwitch = (maxStage, imgFor) => {
+        const descEl = document.getElementById('gp-pet-desc');
+        const renderStageSwitch = (maxStage, imgFor, nameFor, descFor) => {
             if (_savePetStage == null || _savePetStage > maxStage || _savePetStage < 0) _savePetStage = maxStage;
             const vs = _savePetStage;
             imgEl.src = imgFor(vs);
+            if (nameFor) nameEl.textContent = nameFor(vs);   // 名字跟著檢視的階段變（各階段不同名）
+            if (descEl) descEl.textContent = descFor ? (descFor(vs) || '') : '';   // 該階段介紹詞（含能力/特性）
             stageEl.innerHTML =
                 `<button class="gp-page-btn gp-sm" id="gp-ps-prev" ${vs <= 0 ? 'disabled' : ''}>◀</button>` +
                 `<span class="gp-pet-stage-label">切換進化階段（階段 ${vs + 1}）</span>` +
@@ -1309,8 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stageIdx = G.petStage(pet);
             const stage    = G.PET_STAGES[stageIdx];
             const next     = G.PET_STAGES[stageIdx + 1];
-            nameEl.textContent = stage.name;
-            renderStageSwitch(stageIdx, (vs) => '../' + G.PET_STAGES[vs].img);
+            renderStageSwitch(stageIdx, (vs) => '../' + G.PET_STAGES[vs].img, (vs) => G.PET_STAGES[vs].name, (vs) => G.PET_STAGES[vs].desc || '');
             feedBtn.hidden = false;
             if (!next) {
                 bar.style.width = '100%';
@@ -1334,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const p = G.petData(stu.id); p.growth += G.FEED_GAIN; G.savePet(stu.id, p);
                 const after = G.petStage(p);
                 if (after > before) {   // 餵食後跨到下一階段 → 進化動畫＋音效
-                    playEvolveEffect(() => { _savePetStage = null; gpMsg('🎉 進化了！長大到「' + G.PET_STAGES[after].name + '」！'); renderGrowthPage(); popPetImg(); });
+                    playEvolveEffect(() => { _savePetStage = null; gpMsg('🎉 進化了！長大到「' + G.PET_STAGES[after].name + '」！'); renderGrowthPage(); });
                 } else {
                     try { playSound('bonus'); } catch (e) {}
                     gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
@@ -1347,14 +1390,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!nxt?.gems) return;
                 if (!G.spendGems(_gpRecords, stu.id, nxt.gems)) { gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！'); return; }
                 p.evolved = true; G.savePet(stu.id, p);
-                playEvolveEffect(() => { _savePetStage = null; gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`); renderGrowthPage(); popPetImg(); });
+                playEvolveEffect(() => { _savePetStage = null; gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`); renderGrowthPage(); });
             };
         } else {
             const c  = curPet.c;
             const st = G.creatureState(_gpRecords, stu.id, c.key);
-            nameEl.textContent = c.name;
             feedBtn.hidden = true; evolveBtn.hidden = true;
-            renderStageSwitch(st.stage, (vs) => `../images/pets/pet_${c.key}_s${vs}.png`);
+            renderStageSwitch(st.stage, (vs) => `../images/pets/pet_${c.key}_s${vs}.png`, (vs) => (c.stageNames && c.stageNames[vs]) || c.name, (vs) => (c.stageDesc && c.stageDesc[vs]) || '');
             if (st.next != null) {
                 bar.style.width = Math.max(6, Math.min(100, Math.round((st.grown / Math.max(1, st.next)) * 100))) + '%';
                 label.textContent = `再練 ${Math.max(0, st.next - st.grown)} 次就會進化`;
