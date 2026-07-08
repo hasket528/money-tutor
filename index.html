@@ -578,6 +578,11 @@
         .home-duo { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; max-width: 900px; margin: 22px auto 0; }
         .home-duo > .captain-banner { margin: 0; max-width: none; flex: 1 1 360px; }
         .home-duo > .create-banner  { margin: 0; flex: 1 1 360px; }
+        /* 桌面端：金隊長(左)／金婆婆(右) 水平並排、等寬；窄螢幕自動上下堆疊 */
+        @media (min-width: 768px) {
+            .home-duo { flex-wrap: nowrap; }
+            .home-duo > .captain-banner, .home-duo > .create-banner { flex: 1 1 0; min-width: 0; }
+        }
         .create-banner {
             display: flex; align-items: center; gap: 16px; padding: 14px 20px;
             background: linear-gradient(135deg, #f5fdf3, #eafbe6);
@@ -1053,12 +1058,14 @@
     </style>
     <nav class="site-nav">
         <a href="index.html" class="current">🏠 主頁</a>
-        <a href="reward/index.html">🏆 優良表現獎勵板</a>
         <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
-        <a href="dialogue/teacher.html">📊 學習歷程總覽</a>
-        <a href="teacher-guide.html">👩‍🏫 教師指南</a>
-        <a href="lesson-plans.html">📚 單元教案包</a>
+        <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+        <a href="dialogue/teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+        <a href="teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+        <a href="lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+        <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
     </nav>
+    <script src="js/nav-auth.js"></script>
     <div class="container">
         <div class="page-header">
             <h1>💰 金錢小達人</h1>
@@ -1142,7 +1149,7 @@
                     doctorModal:     '你想要接受不一樣的挑戰嗎？進入金錢冒險的故事中，看看你能不能全部過關！',
                     detectiveModal:  '學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。快來遊戲室，挑戰趣味小遊戲，看看你能闖過幾關！',
                     chatdog:         '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
-                    captain:         '大家好，我是金隊長！你的努力，我都會記錄下來。選好你的名字，跟我一起完成今天的任務，每天比昨天更進步！',
+                    captain:         '大家好，我是金隊長！你的努力，我都會記錄下來。跟我一起完成今天的任務，每天比昨天更進步！',
                     grandma:         '歡迎新朋友～我是金婆婆。告訴我你的名字，我會像照顧一株小苗一樣，耐心陪著你，一天一天慢慢長大。',
                 };
                 let _voices = [];
@@ -1388,9 +1395,15 @@
                 <div class="captain-students" id="captain-student-list"></div>
                 <div id="captain-create-block">
                     <div class="captain-newrow">
-                        <input id="captain-new-name" type="text" maxlength="12" placeholder="🌱 金婆婆幫你建立：輸入新學生姓名" autocomplete="off"
+                        <input id="captain-new-name" type="text" maxlength="12" placeholder="🌱 輸入您的名字（必填）" autocomplete="off"
                                onkeydown="if(event.key==='Enter'){event.preventDefault();captainCreateStudent('captain-new-name','captain-create-msg');}">
                         <button onclick="captainCreateStudent('captain-new-name','captain-create-msg')">➕ 建立</button>
+                    </div>
+                    <div style="text-align:center; margin-top:10px;">
+                        <label style="display:inline-block; background:#e0e7ff; color:#3730a3; font-weight:700; font-size:0.85em; padding:6px 12px; border-radius:10px; cursor:pointer;">📷 加照片（選填）
+                            <input type="file" id="captain-new-photo" accept="image/*" style="display:none;" onchange="captainPreviewPhoto(this)">
+                        </label>
+                        <div><img id="captain-new-photo-preview" alt="" style="display:none; width:96px; height:96px; border-radius:14px; object-fit:cover; margin-top:8px; border:3px solid #f0b429;"></div>
                     </div>
                     <div class="create-msg" id="captain-create-msg" style="text-align:center;"></div>
                 </div>
@@ -1945,6 +1958,28 @@
             };
 
             // 建立學生（可從主頁金婆婆卡或彈窗呼叫；inputId/msgId 可選）
+            // 金婆婆建立學生：可選照片（壓縮 300px），與獎勵板共用同一份 rewardSystemStudents
+            let _captainNewPhoto = null;
+            window.captainPreviewPhoto = function (input) {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const max = 300; let w = img.width, h = img.height;
+                        if (w > h && w > max) { h = h * max / w; w = max; }
+                        else if (h > max) { w = w * max / h; h = max; }
+                        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+                        _captainNewPhoto = cv.toDataURL('image/jpeg', 0.7);
+                        const prev = document.getElementById('captain-new-photo-preview');
+                        if (prev) { prev.src = _captainNewPhoto; prev.style.display = 'inline-block'; }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
             window.captainCreateStudent = function (inputId, msgId) {
                 const input = document.getElementById(inputId || 'captain-new-name');
                 if (!input) return;
@@ -1955,7 +1990,7 @@
                 const roster = loadRoster();
                 if (roster.length >= 15) { setMsg('學生名冊最多 15 位，請先到「優良表現獎勵板」整理名冊。'); return; }
                 if (roster.some(s => s.name === name)) { setMsg('已有同名學生，請直接點選或改用不同名字。'); return; }
-                const stu = { id: Date.now() + Math.random(), name, photo: null, score: 0 };
+                const stu = { id: Date.now() + Math.random(), name, photo: _captainNewPhoto || null, score: 0 };
                 roster.push(stu);
                 localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
                 // 同步 reward 的顯示清單（若存在）
@@ -1967,6 +2002,10 @@
                     }
                 } catch {}
                 input.value = '';
+                _captainNewPhoto = null;
+                const prev = document.getElementById('captain-new-photo-preview');
+                if (prev) { prev.style.display = 'none'; prev.src = ''; }
+                const pf = document.getElementById('captain-new-photo'); if (pf) pf.value = '';
                 setCurrent(stu);
                 setMsg('✅ 已建立「' + name + '」並設為目前學生');
             };
@@ -1983,7 +2022,7 @@
                 const block  = document.getElementById('captain-create-block');
                 if (img)    { img.src = grandma ? 'images/common/grandma_gold.png' : 'images/common/captain_gold.png'; img.alt = grandma ? '金婆婆' : '金隊長'; }
                 if (bubble) bubble.textContent = grandma
-                    ? '我是金婆婆～在下面輸入小朋友的名字，我就幫你建立一位新學生，之後像照顧小苗一樣，陪他一天一天慢慢長大！'
+                    ? '我是金婆婆～在下面輸入您的名字，我就幫您建立學生資料，之後像照顧小苗一樣，陪您一天一天慢慢長大！'
                     : '選擇你的學生資料——之後所有課程、購物練習與獎勵的表現，我都會自動記錄下來！';
                 // 金婆婆版只顯示建立表單；金隊長版只顯示選學生/統計/任務（用 CSS class 控制，兼容 async 渲染）
                 const modal = document.getElementById('captain-modal');
@@ -2014,7 +2053,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260708e';
+            const BUILD_VERSION = '20260708f';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {

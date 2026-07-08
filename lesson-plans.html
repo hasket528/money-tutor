@@ -48,12 +48,14 @@
 </style>
 <nav class="site-nav">
   <a href="index.html">🏠 主頁</a>
-  <a href="reward/index.html">🏆 優良表現獎勵板</a>
   <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
-  <a href="dialogue/teacher.html">📊 學習歷程總覽</a>
-  <a href="teacher-guide.html">👩‍🏫 教師指南</a>
-  <a href="lesson-plans.html" class="current">📚 單元教案包</a>
+  <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+  <a href="dialogue/teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+  <a href="teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+  <a href="lesson-plans.html" class="current nav-teacher">📚 單元教案包</a>
+  <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
 </nav>
+<script src="js/nav-auth.js"></script>
 <div class="wrap">
     <header class="top">
         <h1>📚 金錢小達人・單元教案包</h1>

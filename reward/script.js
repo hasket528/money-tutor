@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <button type="button" id="removePhotoBtn" style="display: none; margin: 8px auto 0; padding: 4px 12px; border: 1px solid #ddd; border-radius: 5px; background: #fff; cursor: pointer;">✕ 移除照片</button>
                 </div>
-                <p style="margin: 0 0 16px; color: #888; font-size: 13px; text-align: center;">姓名與照片<b>至少填一項</b>；不放照片會用預設頭像。</p>
+                <p style="margin: 0 0 16px; color: #888; font-size: 13px; text-align: center;">姓名<b>必填</b>；照片可放可不放，不放會用預設頭像。</p>
 
                 <div class="student-selector-buttons" style="margin-top: 20px;">
                     <button class="confirm-btn" id="confirmAddStudent">確認新增</button>
@@ -147,15 +147,15 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('#confirmAddStudent').addEventListener('click', () => {
             const name = nameInput.value.trim();
 
-            if (!name && !selectedPhotoDataUrl) {
-                alert('請至少輸入姓名或選擇照片！');
+            if (!name) {
+                alert('請輸入學生姓名！（照片可放可不放）');
                 return;
             }
 
             const student = {
                 id: Date.now() + Math.random(),
-                name: name,                    // 可為空白（但姓名/照片至少一項）
-                photo: selectedPhotoDataUrl,   // 可為 null（無照片，顯示預設頭像）
+                name: name,                    // 姓名必填
+                photo: selectedPhotoDataUrl,   // 可為 null（不放照片會用預設頭像）
                 score: 0
             };
 
@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="button-group">
                     <button class="add-point-btn" data-id="${student.id}">加分</button>
                     <button class="subtract-point-btn" data-id="${student.id}">扣分</button>
-                    <button class="growth-page-btn" data-id="${student.id}" style="background-color:#f0b429;color:#4a2b00;">🌱 成長頁</button>
+                    <button class="convert-coins-btn" data-id="${student.id}" style="background-color:#f0b429;color:#4a2b00;">🔄 轉換成金幣</button>
                 </div>
             </div>
             <div class="student-info">
@@ -901,7 +901,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteBtn = studentRow.querySelector('.delete-btn');
 
         addPointBtn.addEventListener('click', () => updateScore(student, 1));
-        studentRow.querySelector('.growth-page-btn').addEventListener('click', () => openGrowthPage(student));
+        studentRow.querySelector('.convert-coins-btn').addEventListener('click', () => {
+            if (student.score <= 0) { alert('目前沒有可轉換的分數（先用加分按鈕累積分數）'); return; }
+            if (!confirm(`要把「${student.name || '此學生'}」目前的 ${student.score} 分，轉換成「成就與寵物頁」的金幣嗎？\n（轉換後計分板分數歸 0，金幣可用來餵養寵物）`)) return;
+            setCoins(student.id, getCoins(student.id) + student.score);
+            student.score = 0;
+            saveToLocalStorage();
+            refreshDisplay(!!document.querySelector('.rank-number'));
+            try { playSound('bonus'); } catch (e) {}
+            alert(`✅ 已轉換！「${student.name || '此學生'}」現在有 ${getCoins(student.id)} 金幣可餵養寵物。`);
+        });
         subtractPointBtn.addEventListener('click', () => {
              if (student.score > 0) updateScore(student, -1);
         });
@@ -1082,7 +1091,10 @@ document.addEventListener('DOMContentLoaded', () => {
      // 從導覽列「🌟 成就與寵物」（?page=growth）進來 → 自動開啟成就與寵物頁
      if (new URLSearchParams(location.search).get('page') === 'growth') {
          const roster = JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]');
-         if (roster.length) setTimeout(() => openGrowthPage(roster[0]), 150);
+         // 優先開啟主頁「金隊長」選好的目前學生，避免預設開到別的學生看到 0 金幣
+         const cur = JSON.parse(localStorage.getItem('sp_currentStudent') || 'null');
+         const target = (cur && roster.find(s => String(s.id) === String(cur.id))) || roster[0];
+         if (target) setTimeout(() => openGrowthPage(target), 150);
          else setTimeout(() => alert('目前還沒有學生～請先在「主頁 → 金婆婆」建立學生。'), 300);
      }
 
@@ -1148,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sub = '🎉 已完全進化';
             }
             el.innerHTML = `${visual}
-                <div class="gp-crt-name">${locked ? '？？？' : c.name}</div>
+                <div class="gp-crt-name">${c.name}</div>
                 <div class="gp-crt-sub">${sub}</div>${btn}`;
             host.appendChild(el);
         });
@@ -1216,6 +1228,25 @@ document.addEventListener('DOMContentLoaded', () => {
         q('#gp-mp-snext').onclick = () => { if (vs < maxStage) { _myPetStage = vs + 1; renderMyPet(); } };
     }
 
+    // 成就與寵物頁的「金幣」獨立於計分板分數，另存 mt_coins_{id}；由「🔄 轉換成金幣」注入
+    function getCoins(stuId) { return parseInt(localStorage.getItem('mt_coins_' + stuId) || '0', 10) || 0; }
+    function setCoins(stuId, v) { localStorage.setItem('mt_coins_' + stuId, String(Math.max(0, v | 0))); }
+
+    // 進化演出：閃光動畫＋音效，動畫結束後才切換到新階段圖並 pop-in
+    function playEvolveEffect(cb) {
+        const im = document.getElementById('gp-pet-img');
+        try { playSound('bonus'); } catch (e) {}
+        if (im) { im.classList.remove('gp-evolving'); void im.offsetWidth; im.classList.add('gp-evolving'); }
+        setTimeout(cb, 700);
+    }
+    function popPetImg() {
+        const im = document.getElementById('gp-pet-img');
+        if (!im) return;
+        im.classList.remove('gp-evolving');                 // 移除閃光，動畫後浮遊(gpPetBob)才能恢復
+        im.classList.remove('gp-popped'); void im.offsetWidth; im.classList.add('gp-popped');
+        setTimeout(() => im.classList.remove('gp-popped'), 560);
+    }
+
     function renderGrowthPage() {
         const stu = _gpStudent;
         const G   = GrowthSystem;
@@ -1235,7 +1266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             sw.onchange = () => { const s = roster.find(x => String(x.id) === sw.value); if (s) openGrowthPage(s); };
         }
-        document.getElementById('gp-coins').textContent = stu.score;
+        document.getElementById('gp-coins').textContent = getCoins(stu.id);
         const gems = G.gemsAvailable(_gpRecords, stu.id);
         document.getElementById('gp-gems').textContent = gems;
         document.getElementById('gp-practices').textContent = G.myRecords(_gpRecords, stu.id).length;
@@ -1266,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
             imgEl.src = imgFor(vs);
             stageEl.innerHTML =
                 `<button class="gp-page-btn gp-sm" id="gp-ps-prev" ${vs <= 0 ? 'disabled' : ''}>◀</button>` +
-                `<span class="gp-pet-stage-label">已進化階段 ${vs + 1} / ${maxStage + 1}</span>` +
+                `<span class="gp-pet-stage-label">切換進化階段（階段 ${vs + 1}）</span>` +
                 `<button class="gp-page-btn gp-sm" id="gp-ps-next" ${vs >= maxStage ? 'disabled' : ''}>▶</button>`;
             const sp = stageEl.querySelector('#gp-ps-prev'), sn = stageEl.querySelector('#gp-ps-next');
             if (sp) sp.onclick = () => { if (vs > 0) { _savePetStage = vs - 1; renderGrowthPage(); } };
@@ -1294,16 +1325,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pct = Math.max(3, Math.min(100, Math.round((pet.growth - base) / (target - base) * 100)));
                 bar.style.width = pct + '%';
                 label.textContent = `成長值 ${pet.growth} / ${target}`;
-                evolveBtn.hidden = true; feedBtn.disabled = stu.score < G.FEED_COST;
+                evolveBtn.hidden = true; feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
             }
             feedBtn.onclick = () => {
-                if (stu.score < G.FEED_COST) { gpMsg('金幣不夠——完成金隊長的任務可以賺金幣！'); return; }
-                stu.score -= G.FEED_COST;
+                if (getCoins(stu.id) < G.FEED_COST) { gpMsg('金幣不夠——請到「優良表現獎勵板」把分數「🔄 轉換成金幣」！'); return; }
+                const before = G.petStage(G.petData(stu.id));
+                setCoins(stu.id, getCoins(stu.id) - G.FEED_COST);
                 const p = G.petData(stu.id); p.growth += G.FEED_GAIN; G.savePet(stu.id, p);
-                saveToLocalStorage();
-                try { playSound('bonus'); } catch (e) {}
-                gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
-                renderGrowthPage();
+                const after = G.petStage(p);
+                if (after > before) {   // 餵食後跨到下一階段 → 進化動畫＋音效
+                    playEvolveEffect(() => { _savePetStage = null; gpMsg('🎉 進化了！長大到「' + G.PET_STAGES[after].name + '」！'); renderGrowthPage(); popPetImg(); });
+                } else {
+                    try { playSound('bonus'); } catch (e) {}
+                    gpMsg('🍎 好好吃！成長值 +' + G.FEED_GAIN);
+                    renderGrowthPage();
+                }
             };
             evolveBtn.onclick = () => {
                 const p = G.petData(stu.id);
@@ -1311,9 +1347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!nxt?.gems) return;
                 if (!G.spendGems(_gpRecords, stu.id, nxt.gems)) { gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！'); return; }
                 p.evolved = true; G.savePet(stu.id, p);
-                try { playSound('bonus'); } catch (e) {}
-                gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`);
-                renderGrowthPage();
+                playEvolveEffect(() => { _savePetStage = null; gpMsg(`✨ 進化成功！「${nxt.name}」誕生！`); renderGrowthPage(); popPetImg(); });
             };
         } else {
             const c  = curPet.c;

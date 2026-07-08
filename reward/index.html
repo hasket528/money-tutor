@@ -15,18 +15,17 @@
         .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
         .site-nav a:hover { background:rgba(255,255,255,0.30); }
         .site-nav a.current { background:#f59e0b; }
-        /* 成就與寵物頁(overlay)內的導覽列也貼頂 */
-        #growth-overlay { padding: 0 0 18px; }
-        #growth-overlay .gp-card { margin: 14px auto; }
     </style>
     <nav class="site-nav">
         <a href="../index.html">🏠 主頁</a>
-        <a href="index.html" class="current">🏆 優良表現獎勵板</a>
         <a href="index.html?page=growth">🌟 成就與寵物</a>
-        <a href="../dialogue/teacher.html">📊 學習歷程總覽</a>
-        <a href="../teacher-guide.html">👩‍🏫 教師指南</a>
-        <a href="../lesson-plans.html">📚 單元教案包</a>
+        <a href="index.html" class="current nav-teacher">🏆 優良表現獎勵板</a>
+        <a href="../dialogue/teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+        <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+        <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+        <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
     </nav>
+    <script src="../js/nav-auth.js"></script>
     <div class="container">
         <div class="title-row">
             <div style="flex-grow:1; display:flex; align-items:center; justify-content:center; gap:10px;">
@@ -116,14 +115,15 @@
     <!-- ── 學生成長頁（徽章・寶石・寵物・寶物）────────────── -->
     <style>
         #growth-overlay {
-            display: none; position: fixed; inset: 0; z-index: 9000;
+            display: none; position: fixed; inset: 0; z-index: 10050;   /* 高於頂部導覽列(10000)，才能完整覆蓋、只剩自己的導覽列 */
             background: linear-gradient(160deg, #fef9ec, #fdf2d0);
-            overflow-y: auto; padding: 18px;
+            overflow-y: auto; padding: 0;
         }
         #growth-overlay.open { display: block; }
+        /* 垂直滿版：卡片至少填滿導覽列以下的高度；內容更長則自然往下延伸(不留空白) */
         .gp-card { max-width: 640px; margin: 0 auto; background: #fff; border: 2px solid #f5d576;
                    border-radius: 20px; padding: 20px 22px 26px; box-shadow: 0 10px 36px rgba(217,119,6,0.18);
-                   position: relative; min-height: calc(100vh - 92px); box-sizing: border-box; }
+                   position: relative; min-height: calc(100vh - 54px); box-sizing: border-box; }
         .gp-close { position: absolute; top: 12px; right: 14px; background: none; border: none;
                     font-size: 1.4em; cursor: pointer; color: #92400e; }
         .gp-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
@@ -175,9 +175,21 @@
         .gp-page-btn.gp-sm { padding: 3px 11px; font-size: .85em; }
         .gp-page-info { font-weight: 700; color: #92400e; font-size: .9em; }
         .gp-pet-switch { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .gp-pet-switchbar { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 8px; font-weight: 800; color: #92400e; }
         .gp-pet-main { text-align: center; }
         .gp-pet-stage { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
         .gp-pet-stage-label { font-size: .82em; color: #92857a; font-weight: 700; }
+        /* 進化動畫 */
+        @keyframes gpEvolveFlash {
+            0% { transform: scale(1); filter: brightness(1); }
+            30% { transform: scale(1.18) rotate(-4deg); filter: brightness(1.9) drop-shadow(0 0 22px #fde68a); }
+            60% { transform: scale(0.9) rotate(3deg); filter: brightness(2.4) drop-shadow(0 0 34px #fff); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        /* 用 #id.class + !important 蓋過 .gp-pet img 的浮遊動畫(gpPetBob)，否則進化動畫不會顯示 */
+        #gp-pet-img.gp-evolving { animation: gpEvolveFlash 0.7s ease-in-out !important; }
+        @keyframes gpPopIn { 0% { transform: scale(0.35); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+        #gp-pet-img.gp-popped { animation: gpPopIn 0.5s ease-out !important; }
         .gp-mypet { margin-top: 10px; }
         .gp-mypet-empty { text-align: center; color: #92857a; font-size: .85em; background: #fffdf5; border: 1.5px dashed #fde68a; border-radius: 12px; padding: 12px; }
         .gp-mypet-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
@@ -206,11 +218,12 @@
     <div id="growth-overlay">
         <nav class="site-nav">
             <a href="../index.html">🏠 主頁</a>
-            <a href="index.html">🏆 優良表現獎勵板</a>
             <a href="index.html?page=growth" class="current">🌟 成就與寵物</a>
-            <a href="../dialogue/teacher.html">📊 學習歷程總覽</a>
-            <a href="../teacher-guide.html">👩‍🏫 教師指南</a>
-            <a href="../lesson-plans.html">📚 單元教案包</a>
+            <a href="index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+            <a href="../dialogue/teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+            <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+            <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+            <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
         </nav>
         <div class="gp-card">
             <button class="gp-close" onclick="closeGrowthPage()" title="回獎勵版">✕</button>
@@ -228,15 +241,16 @@
                 <div class="gp-cur"><b id="gp-practices">0</b><span>📚 練習次數</span></div>
             </div>
 
-            <div class="gp-sec-title">🐷 我的存錢寵物（◀▶ 切換已有的寵物）</div>
+            <div class="gp-sec-title">🐷 我的存錢寵物</div>
+            <div class="gp-pet-switchbar">
+                <button class="gp-page-btn" id="gp-pet-prev" title="上一隻">◀</button>
+                <span>切換已有的寵物</span>
+                <button class="gp-page-btn" id="gp-pet-next" title="下一隻">▶</button>
+            </div>
             <div class="gp-pet">
-                <div class="gp-pet-switch">
-                    <button class="gp-page-btn" id="gp-pet-prev" title="上一隻">◀</button>
-                    <div class="gp-pet-main">
-                        <img id="gp-pet-img" src="" alt="寵物">
-                        <div class="gp-pet-name" id="gp-pet-name"></div>
-                    </div>
-                    <button class="gp-page-btn" id="gp-pet-next" title="下一隻">▶</button>
+                <div class="gp-pet-main">
+                    <img id="gp-pet-img" src="" alt="寵物">
+                    <div class="gp-pet-name" id="gp-pet-name"></div>
                 </div>
                 <div class="gp-bar-wrap"><div class="gp-bar" id="gp-bar" style="width:0%"></div></div>
                 <div class="gp-bar-label" id="gp-bar-label"></div>
