@@ -177,6 +177,24 @@ window.GrowthSystem = (() => {
     { key: 'musicnote',      name: '音符靈',   stages: ['🥚', '🎵', '🎶', '🎼'], needs: [0, 6, 14, 25], gems: 6 },
     { key: 'lantern',        name: '燈籠靈',   stages: ['🥚', '🏮', '✨', '🎑'], needs: [0, 7, 16, 28], gems: 6 },
     { key: 'fossildino',     name: '化石龍',   stages: ['🥚', '🦕', '🦴', '🦖'], needs: [0, 7, 16, 28], gems: 7 },
+    // 第四批新增 5 隻（不同主題）
+    { key: 'bubbletea',      name: '珍奶獸',   stages: ['🥚', '🧋', '🧋', '👑'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'cactus',         name: '仙人掌獸', stages: ['🥚', '🌵', '🌵', '🌸'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'balloon',        name: '氣球獸',   stages: ['🥚', '🎈', '🎈', '🎉'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'firefly',        name: '螢火獸',   stages: ['🥚', '🐛', '✨', '🪲'], needs: [0, 7, 16, 28], gems: 6 },
+    { key: 'snail',          name: '蝸牛獸',   stages: ['🥚', '🐌', '🐌', '💎'], needs: [0, 7, 16, 28], gems: 7 },
+    // 第五批新增 5 隻（不同主題）
+    { key: 'acorn',          name: '橡實獸',   stages: ['🥚', '🌰', '🌰', '🌳'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'teacup',         name: '茶靈',     stages: ['🥚', '🍵', '🍵', '🫖'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'kite',           name: '風箏獸',   stages: ['🥚', '🪁', '🪁', '🐉'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'coral',          name: '珊瑚獸',   stages: ['🥚', '🪸', '🪸', '🐚'], needs: [0, 7, 16, 28], gems: 6 },
+    { key: 'umbrella',       name: '雨傘獸',   stages: ['🥚', '☂️', '☔', '🌈'], needs: [0, 7, 16, 28], gems: 6 },
+    // 第六批新增 5 隻（不同主題）
+    { key: 'soapbubble',     name: '泡泡獸',   stages: ['🥚', '🫧', '🫧', '🌈'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'plush',          name: '玩偶獸',   stages: ['🥚', '🧸', '🧸', '👑'], needs: [0, 5, 12, 22], gems: 4 },
+    { key: 'maple',          name: '楓葉獸',   stages: ['🥚', '🍁', '🍁', '🦌'], needs: [0, 6, 14, 25], gems: 5 },
+    { key: 'book',           name: '書靈',     stages: ['🥚', '📖', '📚', '🦉'], needs: [0, 7, 16, 28], gems: 6 },
+    { key: 'bell',           name: '鈴鐺獸',   stages: ['🥚', '🔔', '🔔', '🎐'], needs: [0, 7, 16, 28], gems: 6 },
   ];
   function petsData(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_pets_${stuId}`) || '{}'); } catch { return {}; }
