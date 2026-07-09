@@ -554,6 +554,20 @@
     </style>
 </head>
 <body>
+    <style>
+      .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+      .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+      .site-nav a:hover { background:rgba(255,255,255,0.30); }
+    </style>
+    <nav class="site-nav">
+      <a href="../index.html">🏠 主頁</a>
+      <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
+      <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+      <a href="../dialogue/teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+      <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+      <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+      <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
+    </nav>
     <div id="app"></div>
 
     <audio id="correct-sound" src="../audio/units/correct02.mp3" preload="auto"></audio>
@@ -563,6 +577,7 @@
     <script src="../js/confetti.browser.min.js"></script>
     <script src="../js/audio-unlocker.js"></script>
     <script src="../js/reward-launcher.js"></script>
+    <script src="../js/nav-auth.js"></script>
     <script src="adventure.js"></script>
 </body>
 </html>

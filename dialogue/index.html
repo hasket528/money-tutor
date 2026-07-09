@@ -56,15 +56,27 @@
        首頁：情境選擇
   ════════════════════════════════════════ -->
   <div id="screen-home" class="screen active">
+    <style>
+      .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+      .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+      .site-nav a:hover { background:rgba(255,255,255,0.30); }
+    </style>
+    <nav class="site-nav">
+      <a href="../index.html">🏠 主頁</a>
+      <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
+      <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+      <a href="teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+      <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+      <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+      <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
+    </nav>
     <header class="home-header">
       <button class="btn-settings-icon" id="btn-settings" aria-label="設定自訂情境">⚙️</button>
       <h1>購物練習</h1>
       <button class="btn-settings-icon" id="btn-history" aria-label="學習歷程" style="right:auto;left:12px;">📖</button>
       <p class="subtitle">選擇想要練習的情境</p>
       <div class="home-chip-row">
-        <a class="student-chip" href="../index.html" aria-label="回金錢小達人主頁" style="text-decoration:none;">🏠 金錢小達人</a>
         <button class="student-chip" id="btn-student" aria-label="選擇練習的學生">👤 選擇學生</button>
-        <button class="student-chip" id="btn-home-reward" aria-label="開啟獎勵系統">🎁 獎勵系統</button>
       </div>
       <div class="home-student-block">
         <span class="home-student-label">🗣️ 選擇學生語音</span>
@@ -129,9 +141,19 @@
     </header>
     <main class="diff-main">
 
-      <p class="diff-prompt">請選擇練習難度</p>
+      <p class="diff-prompt" id="diff-prompt">請選擇練習難度</p>
 
-      <div class="diff-options" role="group" aria-label="難度選擇">
+      <div class="diff-options" role="group" aria-label="練習方式">
+
+        <!-- 鷹架模式：僅各場所「主情境」顯示（見 isScaffoldPilot），置於最上方 -->
+        <button class="diff-card" id="diff-scaffold-card" hidden>
+          <div class="diff-card-header">
+            <span class="diff-dot" style="background:#7C3AED"></span>
+            <span class="diff-level-name">🪜 鷹架模式</span>
+            <span class="diff-tag diff-tag--highlight">系統帶著練・推薦</span>
+          </div>
+          <p class="diff-desc">從「看圖選詞造句」開始，答對了系統自動減少提示，一路練到自己開口說整句。適合需要循序鷹架的學生。</p>
+        </button>
 
         <button class="diff-card" data-level="easy">
           <div class="diff-card-header">
@@ -142,7 +164,7 @@
           <p class="diff-desc">只要開口說、字數長度接近就給鼓勵（部分對），適合剛開始練習開口。</p>
         </button>
 
-        <button class="diff-card diff-card--recommended" data-level="normal">
+        <button class="diff-card diff-card--recommended" id="diff-normal-card" data-level="normal">
           <div class="diff-card-header">
             <span class="diff-dot" style="background:#D97706"></span>
             <span class="diff-level-name">中級</span>
@@ -345,15 +367,14 @@
       <!-- 教學設計與隱私 -->
       <details class="settings-block about-block">
         <summary class="settings-block-title">📖 關於這個練習（教學設計・隱私）</summary>
-        <p class="editor-desc" style="margin-top:10px">本練習以特教常用的<strong>「句框教學＋提示褪除（鷹架）」</strong>設計，讓學生從固定句型逐步邁向獨立溝通。看圖造句採精確比對，<strong>不需要 AI、可完全離線、免費</strong>。</p>
-        <p class="editor-desc" style="margin-top:8px"><strong>四級鷹架（由多到少提示）：</strong></p>
+        <p class="editor-desc" style="margin-top:10px">本練習以特教常用的<strong>「句框教學＋多元反應模式」</strong>設計，讓學生用最適合自己的方式開口買東西。選項／看圖造句採精確比對，<strong>不需要 AI、可完全離線、免費</strong>。</p>
+        <p class="editor-desc" style="margin-top:8px"><strong>三段難度（判定寬鬆度可調）：</strong></p>
         <ul class="about-ladder">
-          <li><b>L4</b>　看圖造句，2 張卡選 1（最多提示）</li>
-          <li><b>L3</b>　看圖造句，4 張卡選 1</li>
-          <li><b>L2</b>　詞庫組句，自己排出句子</li>
-          <li><b>L1</b>　自由作答（最少提示，最獨立）</li>
+          <li><b>初級</b>　音節寬鬆：開口說、字數長度接近就給鼓勵</li>
+          <li><b>中級</b>　關鍵字：說到重點詞就算對（推薦）</li>
+          <li><b>高級</b>　完整語句：要說出整句標準答案</li>
         </ul>
-        <p class="editor-desc" style="margin-top:8px">學生<strong>連續答對</strong>才會減少一級提示（可在下方調整次數）；答錯會自動給更多協助。學習歷程可看到每位學生的「鷹架褪除」進步，並可列印學習報告。</p>
+        <p class="editor-desc" style="margin-top:8px">三種反應模式（🎤 說話／🔘 選項／⌨️ 打字）依學生口語能力選擇；答錯給即時協助、支持無錯學習。學習歷程可看到每位學生的進步，並可列印學習報告。</p>
         <p class="editor-desc" style="margin-top:8px;color:var(--green)"><strong>🔒 隱私：</strong>所有學生姓名與練習紀錄都只存在這台裝置（瀏覽器本機），不會上傳雲端。</p>
       </details>
 
@@ -443,8 +464,8 @@
         <p id="api-key-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600)"></p>
       </div>
 
-      <!-- 提示褪除設定 -->
-      <div class="settings-block">
+      <!-- 提示褪除設定（鷹架模式專用；隨 SCAFFOLD_ENABLED 隱藏，重啟鷹架時一併移除此 hidden）-->
+      <div class="settings-block" id="settings-mastery-block" hidden>
         <h3 class="settings-block-title">提示褪除（看圖造句階梯）</h3>
         <p class="editor-desc" style="margin-bottom:10px">學生連續答對幾次，才減少一級提示（從圖卡 2 選 1 → 4 選 1 → 詞庫組句 → 自由作答）。次數越高越嚴謹，避免猜對就降級。</p>
         <div style="display:flex;gap:8px;align-items:center">
@@ -778,6 +799,7 @@
   <script src="data/frames.js"></script>
   <script src="data/scenarios.js"></script>
   <script src="db.js"></script>
+  <script src="../js/nav-auth.js"></script>
   <script src="script.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

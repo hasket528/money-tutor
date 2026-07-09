@@ -1058,16 +1058,22 @@ const state = {
   results:     [],
   difficulty:  'normal',
   frameLadder: false,   // 句框階梯是否啟用（初/中級啟用、高級維持自由輸入）
-  promptLevel: 3,       // 提示褪除等級：4=最多支持 … 1=最少
+  promptLevel: 5,       // 提示褪除等級：6=最多支持 … 1=最少（自己說）
+  scaffoldMode: false,  // 鷹架模式：系統主導輸入模式（隱藏下方切換列，由 promptLevel 決定模式）
 };
 
 
 // ─── 提示褪除階梯（promptLevel）─────────────────────────
-// L4 句框+2卡(emoji) / L3 句框+4卡(emoji) / L2 句框+4卡(純文字) / L1 自由(選項)
+// 支持多→少（數字越小＝越獨立）：
+//   L6 看圖造句+2卡(emoji) / L5 看圖造句+4卡(emoji) / L4 詞庫組句 / L3 看句選擇 /
+//   L2 照念(看範句開口念) / L1 自己說(無提示開口說)
+// 終點是「開口說」：點選只是幫學生把句子建立起來的鷹架，最終要學生自己說出口。
 // 答對降一級（褪除支持）、答錯升一級（無錯學習，回到更多鷹架）。
-const PROMPT_LEVEL_START = { easy: 4, normal: 3, hard: 2 };
+const LADDER = { SPEAK: 1, ECHO: 2, OPTIONS: 3, WORDBANK: 4, PICK4: 5, PICK2: 6 };
+const LADDER_MIN = LADDER.SPEAK, LADDER_MAX = LADDER.PICK2;
+const PROMPT_LEVEL_START = { easy: LADDER.PICK2, normal: LADDER.PICK4, hard: LADDER.WORDBANK };
 
-// 精熟標準（ABA）：連續答對幾次才褪除一級提示，避免 L4 兩選一猜對就降級。
+// 精熟標準（ABA）：連續答對幾次才褪除一級提示，避免最易階兩選一猜對就降級。
 // 教師可在設定頁調整（1~3，預設 2）。
 function getMasteryCriterion() {
   const v = parseInt(localStorage.getItem('sp_masteryCriterion'), 10);
@@ -1080,18 +1086,22 @@ function promptLevelKey(scenarioId) {
 }
 function loadPromptLevel(scenarioId, fallback) {
   const v = parseInt(localStorage.getItem(promptLevelKey(scenarioId)), 10);
-  return (v >= 1 && v <= 4) ? v : fallback;
+  return (v >= LADDER_MIN && v <= LADDER_MAX) ? v : fallback;
 }
 function savePromptLevel(scenarioId, lvl) {
   try { localStorage.setItem(promptLevelKey(scenarioId), String(lvl)); } catch {}
 }
 // 句框階梯啟用時，依 promptLevel 決定本步驟輸入模式；否則回 null（沿用使用者選擇）
+// 'speak'/'echo' 為開口說（語音），其餘為點選模式。
 function resolveLadderMode(step) {
+  if (!state.frameLadder) return null;
+  const lvl = state.promptLevel;
+  if (lvl <= LADDER.SPEAK)   return 'speak';     // L1 自己說（無提示開口）
+  if (lvl <= LADDER.ECHO)    return 'echo';      // L2 照念（看範句開口念）
+  if (lvl <= LADDER.OPTIONS) return 'options';   // L3 看句選擇
   const frame = getStepFrame(step);
-  if (!state.frameLadder || !frame) return null;
-  if (state.promptLevel <= 1) return frame._grown ? 'frame' : 'options';   // 精熟後若有成長句框 → 用更長句框挑戰
-  if (state.promptLevel === 2 && buildWordBank(frame)) return 'wordbank';   // L2 詞庫組句
-  return 'frame';                                                           // L3/L4 看圖造句
+  if (lvl <= LADDER.WORDBANK && frame && buildWordBank(frame)) return 'wordbank'; // L4 詞庫組句
+  return frame ? 'frame' : 'options';            // L5/L6 看圖造句（無句框則退回選項）
 }
 
 const recognizer = new SpeechRecognizer();
@@ -1099,8 +1109,11 @@ const recognizer = new SpeechRecognizer();
 
 // ─── 畫面切換 ────────────────────────────────────────
 
+let _shopkeeperTimer = null;   // renderStep 排的「延遲播放店員語音」timer；換頁時要清掉以免在別頁觸發
+
 function showScreen(id) {
   stopAllAudio();
+  clearTimeout(_shopkeeperTimer);   // 取消尚未觸發的店員語音（避免離開練習頁後才響）
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
@@ -1454,6 +1467,7 @@ function startScenario(scenario) {
   state.scenario  = scenario;
   state.situation = null;
   state.results   = [];
+  state.scaffoldMode = false;   // 選新場景時先歸零，只有走鷹架入口才啟用
   // 瀏覽器不支援語音輸入（如部分 iPad Safari）時，預設改用選項模式
   state.inputMode = recognizer.supported ? 'voice' : 'options';
 
@@ -1510,18 +1524,45 @@ function renderSituationOptions() {
   });
 }
 
+// 鷹架模式總開關：目前先關閉（功能尚未成熟，只開放初/中/高級難度）。
+// 之後要重新啟用，把此旗標改回 true 即可；相關程式（階梯/照念/自己說）都保留。
+const SCAFFOLD_ENABLED = false;
+
+// 鷹架模式適用範圍：每個場所的「主情境」＝ situations 的第一個（基本購物/基本點餐/診所掛號/問捷運站…）。
+// 特殊情境（錢不夠、找不到商品…）與自訂扁平場景維持原難度流程。
+function isScaffoldPilot(scenario, situation) {
+  if (!SCAFFOLD_ENABLED) return false;
+  const first = scenario?.situations?.[0];
+  return !!first && !!situation && first.id === situation.id;
+}
+
 function startWithSituation(situation) {
   // 簡易版：截取前 3 步驟
   const steps = state.simpleMode
     ? { ...situation, steps: situation.steps.slice(0, 3) }
     : situation;
   state.situation = steps;
-  // 顯示難度選擇頁（初級=音節寬鬆 / 中級=關鍵字 / 高級=完整語句）
+  const label = `${state.scenario.name}・${situation.name}${state.simpleMode ? '（簡易）' : ''}`;
+
+  // 難度選擇頁（鷹架卡置頂＋初/中/高級）。鷹架模式只在各場所「主情境」顯示。
   document.getElementById('diff-icon').textContent = state.scenario.icon || '💬';
-  document.getElementById('diff-name').textContent =
-    `${state.scenario.name}・${situation.name}${state.simpleMode ? '（簡易）' : ''}`;
+  document.getElementById('diff-name').textContent = label;
   document.getElementById('diff-steps').textContent = `${steps.steps.length} 個對話步驟`;
+
+  const showScaffold = isScaffoldPilot(state.scenario, situation);
+  document.getElementById('diff-scaffold-card').hidden = !showScaffold;
+  // 有鷹架時它是首選（讓出「推薦」高亮）；沒有鷹架時中級維持推薦
+  document.getElementById('diff-scaffold-card').classList.toggle('diff-card--recommended', showScaffold);
+  document.getElementById('diff-normal-card').classList.toggle('diff-card--recommended', !showScaffold);
+  document.getElementById('diff-prompt').textContent = showScaffold ? '要怎麼練習？' : '請選擇練習難度';
+
   showScreen('screen-difficulty');
+}
+
+// 鷹架模式入口：系統主導，起始 L5（看圖 4 卡・中級），依表現自動褪除/加回鷹架，終點是開口說
+function startScaffoldMode() {
+  state.scaffoldMode = true;
+  startWithDifficulty('normal');
 }
 
 function startWithDifficulty(difficulty) {
@@ -1532,8 +1573,8 @@ function startWithDifficulty(difficulty) {
   // 句框階梯：初/中級啟用並走最有結構的路徑；高級維持自由輸入（挑戰）
   state.frameLadder = (difficulty !== 'hard');
   state.promptLevel = state.frameLadder
-    ? loadPromptLevel(state.scenario.id, PROMPT_LEVEL_START[difficulty] ?? 3)
-    : 1;
+    ? loadPromptLevel(state.scenario.id, PROMPT_LEVEL_START[difficulty] ?? LADDER.PICK4)
+    : LADDER.SPEAK;
   state.consecutiveCorrect = 0;   // 精熟標準：連續答對計數
   recognizer.requestPermission();
   renderStep();
@@ -1647,17 +1688,50 @@ function renderStep() {
   document.getElementById('btn-hint-trigger').hidden = (state.difficulty === 'easy');
   hideHint();
 
-  // 設定輸入模式：預設「跟讀」(開口練習)；學生可手動切看圖造句/詞庫/選擇/打字，
-  // 切過去後會沿用該模式(切到看圖造句時，句框階梯 promptLevel 照樣運作)。
-  setInputMode(state.inputMode);
+  // 設定輸入模式：
+  // ・鷹架模式：由 promptLevel 階梯決定（看圖造句→詞庫→選項→照念→自己說），學生不手動切。
+  // ・自由模式：預設「跟讀」(開口練習)；學生可手動切看圖造句/詞庫/選擇/打字並沿用。
+  if (state.scaffoldMode) {
+    applyScaffoldMode(resolveLadderMode(step) || 'options', step);
+  } else {
+    setInputMode(state.inputMode);
+  }
 
   // 播放店員語音（優先音檔，fallback TTS）
-  setTimeout(() => playShopkeeperAudio(step), 400);
+  clearTimeout(_shopkeeperTimer);
+  _shopkeeperTimer = setTimeout(() => {
+    // 只在仍停留於練習頁時才播（防呼叫後又離開頁面／快速換頁殘留）
+    if (document.getElementById('screen-practice').classList.contains('active')) playShopkeeperAudio(step);
+  }, 400);
 
   // 除錯面板更新
   if (window._debugUpdate) window._debugUpdate();
 }
 
+
+// ─── 鷹架模式：把階梯模式套到畫面 ─────────────────────
+// 'speak'/'echo' → 開口說（語音輸入）；echo 另顯示範句讓學生照念。其餘 → 一般點選模式。
+function applyScaffoldMode(ladderMode, step) {
+  const modelBox = document.getElementById('easy-hint-box');
+  const label    = document.querySelector('#easy-hint-box .easy-hint-label');
+  if (ladderMode === 'speak' || ladderMode === 'echo') {
+    if (ladderMode === 'echo') {
+      // 照念：顯示完整範句 + 喇叭（btn-easy-hint-speak 會唸 accepted_phrases[0]）
+      if (label) label.textContent = '🗣️ 照著念一次';
+      document.getElementById('easy-hint-text').textContent = `「${step.accepted_phrases[0]}」`;
+      document.getElementById('hint-text').textContent = `提示：「${step.accepted_phrases[0]}」`;
+      modelBox.hidden = false;
+    } else {
+      // 自己說：不給範句
+      modelBox.hidden = true;
+    }
+    setInputMode('voice');
+  } else {
+    if (label) label.textContent = '💡 你可以這樣說';
+    modelBox.hidden = true;
+    setInputMode(ladderMode);
+  }
+}
 
 // ─── 輸入模式切換 ────────────────────────────────────
 
@@ -1684,9 +1758,9 @@ function setInputMode(mode) {
   document.getElementById('text-input-row').hidden = (mode !== 'text');
   document.getElementById('voice-row').hidden      = (mode !== 'voice');
 
-  // AAC 模式時隱藏模式切換列
+  // AAC 模式 / 鷹架模式時隱藏模式切換列（鷹架模式由系統主導輸入模式）
   const aacOn = document.body.classList.contains('aac-mode');
-  document.querySelector('.mode-switcher').hidden = aacOn;
+  document.querySelector('.mode-switcher').hidden = aacOn || state.scaffoldMode;
   document.getElementById('voice-unsupported-note').hidden = recognizer.supported || aacOn;
 
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -1705,7 +1779,7 @@ function setInputMode(mode) {
 
 // ─── 看圖造句（句框填空）模式 ─────────────────────────
 // 受控產出：學生只能從圖卡選一個填進固定句框，判定為精確比對（零 AI、零誤判）。
-// 難度綁定提示量：初級(L4)顯示 2 張卡、中/高級(L3)顯示 4 張卡。
+// 難度綁定提示量：最易階(L6)顯示 2 張卡、次階(L5)顯示 4 張卡＋emoji。
 
 // 取得步驟的句框：手工 frame 優先；否則由既有 options 自動衍生「整句填空」frame，
 // 讓所有步驟（含未手寫 frame 的）都能用看圖造句模式，且零額外資料維護成本。
@@ -1794,8 +1868,8 @@ function renderFrameSlot() {
 
   // 卡片數量與視覺提示量由 promptLevel 決定（階梯停用時退回難度判斷）
   const lvl = state.frameLadder ? state.promptLevel
-            : (state.difficulty === 'easy' ? 4 : 3);
-  const showVisual = lvl >= 3;   // L2 以下純文字，減少視覺支持
+            : (state.difficulty === 'easy' ? LADDER.PICK2 : LADDER.PICK4);
+  const showVisual = lvl >= LADDER.PICK4;   // 詞庫階(L4)以下純文字，減少視覺支持
 
   // 句框：依 filled / 當前待填，把每個 {slot} 渲染成填好或空格
   const renderSentence = (currentKey) => {
@@ -1822,7 +1896,7 @@ function renderFrameSlot() {
     choicesEl.innerHTML = '';
 
     let choices = slot.choices.slice();
-    if (lvl >= 4) {   // L4：只給 2 張（1 正解 + 1 干擾）
+    if (lvl >= LADDER.PICK2) {   // L6：只給 2 張（1 正解 + 1 干擾）
       const correct = choices.find(c => answers.includes(c.text));
       const others  = shuffle(choices.filter(c => !answers.includes(c.text))).slice(0, 1);
       choices = shuffle([correct, ...others].filter(Boolean));
@@ -1852,8 +1926,8 @@ function renderFrameSlot() {
         if (!isCorrect) {
           choicesEl.querySelectorAll('.frame-card').forEach(b => { b.disabled = true; });
           btn.classList.add('wrong');
-          // 無錯學習：最易階(L4)答錯 → 立即高亮並朗讀正解卡
-          if (lvl >= 4) errorlessReveal(choicesEl, answers);
+          // 無錯學習：最易階(L6・2 選 1)答錯 → 立即高亮並朗讀正解卡
+          if (lvl >= LADDER.PICK2) errorlessReveal(choicesEl, answers);
           finish(false);
           return;
         }
@@ -2165,16 +2239,16 @@ function handleResult(text, result) {
 
   // 提示褪除（精熟標準）：連續答對 MASTERY 次才降一級；答錯立即升一級並重置連對。
   // 答錯升級後，學生按「再試一次」會自動得到更多鷹架（retryStep 會重繪）。
-  if (state.frameLadder && getStepFrame(step)) {
+  if (state.frameLadder && (getStepFrame(step) || state.scaffoldMode)) {
     if (result.score === 'perfect') {
       state.consecutiveCorrect = (state.consecutiveCorrect || 0) + 1;
       if (state.consecutiveCorrect >= getMasteryCriterion()) {
-        state.promptLevel = Math.max(1, state.promptLevel - 1);
+        state.promptLevel = Math.max(LADDER_MIN, state.promptLevel - 1);
         state.consecutiveCorrect = 0;
       }
     } else {
       state.consecutiveCorrect = 0;
-      state.promptLevel = Math.min(4, state.promptLevel + 1);
+      state.promptLevel = Math.min(LADDER_MAX, state.promptLevel + 1);
     }
     savePromptLevel(state.scenario.id, state.promptLevel);
   }
@@ -2294,12 +2368,12 @@ function showComplete() {
   });
 
   // 鷹架達成：本次答對時用到的「最少提示等級」（數字越小＝越獨立）
-  const LADDER_LABEL = { 4: '看圖 2 選 1（L4）', 3: '看圖 4 選 1（L3）', 2: '詞庫組句（L2）', 1: '自由作答（L1）' };
+  const LADDER_LABEL = { 6: '看圖 2 選 1（L6）', 5: '看圖 4 選 1（L5）', 4: '詞庫組句（L4）', 3: '看句選擇（L3）', 2: '照著念（L2）', 1: '自己說（L1）' };
   const lvlsUsed = state.results
     .filter(r => r?.score === 'perfect' && r?.promptLevel)
     .map(r => r.promptLevel);
   const minPromptLevel = lvlsUsed.length ? Math.min(...lvlsUsed) : null;
-  if (minPromptLevel) {
+  if (SCAFFOLD_ENABLED && minPromptLevel) {   // 鷹架隱藏時不顯示「最少提示」徽章
     const row = document.createElement('div');
     row.className = 'summary-row ladder-achieve';
     row.innerHTML = `<span class="summary-icon">🪜</span>`
@@ -3031,14 +3105,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     else renderHome();
   });
   document.getElementById('btn-diff-home').addEventListener('click', renderHome);
-  document.querySelectorAll('.diff-card').forEach(card => {
+  // 鷹架卡（置頂，僅主情境顯示）：系統帶練，終點開口說
+  document.getElementById('diff-scaffold-card').addEventListener('click', () => { sfx.click(); startScaffoldMode(); });
+  // 難度卡（初/中/高級）：只綁有 data-level 的卡，避免誤把鷹架卡當難度
+  document.querySelectorAll('.diff-card[data-level]').forEach(card => {
     card.addEventListener('click', () => {
       sfx.click();
+      state.scaffoldMode = false;   // 自由模式：學生自己選輸入方式
       startWithDifficulty(card.dataset.level);
     });
   });
 
-  // 練習頁：上一頁（=難度選擇）+ 返回主頁
+  // 練習頁：上一頁（=難度/模式選擇頁）+ 返回主頁
   document.getElementById('btn-prev').addEventListener('click', () => showScreen('screen-difficulty'));
   document.getElementById('btn-back').addEventListener('click', renderHome);
 
@@ -3273,7 +3351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 學生選擇
   renderStudentChip();
   document.getElementById('btn-student').addEventListener('click', openStudentModal);
-  document.getElementById('btn-home-reward').addEventListener('click', () => {
+  document.getElementById('btn-home-reward')?.addEventListener('click', () => {
     if (typeof RewardLauncher !== 'undefined') RewardLauncher.open();
     else window.open('../reward/index.html', 'RewardSystem', 'width=1200,height=800');
   });
@@ -3419,7 +3497,7 @@ function printReport(record) {
 function printStudentReport(records, who) {
   if (!records || !records.length) return;
   const fmt = ts => new Date(ts).toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' });
-  const LADDER = { 4: '圖卡 2 選 1（L4）', 3: '圖卡 4 選 1（L3）', 2: '詞庫組句（L2）', 1: '自由作答（L1）' };
+  const LADDER_NAMES = { 6: '圖卡 2 選 1（L6）', 5: '圖卡 4 選 1（L5）', 4: '詞庫組句（L4）', 3: '看句選擇（L3）', 2: '照著念（L2）', 1: '自己說（L1）' };
 
   const dates  = records.map(r => r.ts).sort((a, b) => a - b);
   const steps  = records.reduce((a, r) => a + (r.total || 0), 0);
@@ -3436,10 +3514,11 @@ function printStudentReport(records, who) {
   const rows = Object.entries(byScenario).map(([k, rs]) => {
     const avg  = (rs.reduce((a, r) => a + (r.stars || 0), 0) / rs.length).toFixed(1);
     const lvls = rs.map(r => r.minPromptLevel).filter(Boolean);
-    const best = lvls.length ? LADDER[Math.min(...lvls)] : '—';
+    const best = lvls.length ? LADDER_NAMES[Math.min(...lvls)] : '—';
     const recent = rs.slice().sort((a, b) => a.ts - b.ts).slice(-5).map(r => (r.stars || 0) + '⭐').join(' → ');
     return `<tr><td>${k}</td><td style="text-align:center">${rs.length}</td><td style="text-align:center">${avg}⭐</td>`
-      + `<td style="text-align:center">${best}</td><td>${recent}</td></tr>`;
+      + (SCAFFOLD_ENABLED ? `<td style="text-align:center">${best}</td>` : '')
+      + `<td>${recent}</td></tr>`;
   }).join('');
 
   document.getElementById('print-report-sheet').innerHTML = `
@@ -3450,10 +3529,10 @@ function printStudentReport(records, who) {
       整體答對率：${accuracy}%　平均星數：${avgStars}⭐　用過提示的練習：${hintSessions} 次
     </div>
     <table>
-      <tr><th>情境</th><th>次數</th><th>平均</th><th>最佳鷹架（最少提示）</th><th>最近 5 次星數</th></tr>
+      <tr><th>情境</th><th>次數</th><th>平均</th>${SCAFFOLD_ENABLED ? '<th>最佳鷹架（最少提示）</th>' : ''}<th>最近 5 次星數</th></tr>
       ${rows}
     </table>
-    <p style="margin-top:14px;font-size:0.82rem;color:#475569">說明：「最佳鷹架」越接近 <b>L1（自由作答）</b> 表示學生越能獨立完成對話，代表提示褪除成功；L4→L1 為鷹架由多到少的四個等級。</p>`;
+    ${SCAFFOLD_ENABLED ? '<p style="margin-top:14px;font-size:0.82rem;color:#475569">說明：「最佳鷹架」越接近 <b>L1（自己說）</b> 表示學生越能獨立開口完成對話，代表提示褪除成功；L6→L1 為鷹架由多到少的六個等級（看圖→詞庫→選句→照念→自己說）。</p>' : ''}`;
   window.print();
 }
 
@@ -3515,7 +3594,7 @@ async function renderHistory() {
     </div>`;
 
   // 班級總覽（未篩選特定學生時）：每位學生一列摘要
-  const LADDER_SHORT = { 4: 'L4', 3: 'L3', 2: 'L2', 1: 'L1' };
+  const LADDER_SHORT = { 6: 'L6', 5: 'L5', 4: 'L4', 3: 'L3', 2: 'L2', 1: 'L1' };
   if (!historyStudentFilter && names.length) {
     const perStudent = {};
     records.forEach(r => { const n = r.studentName || '訪客'; (perStudent[n] = perStudent[n] || []).push(r); });
@@ -3524,10 +3603,12 @@ async function renderHistory() {
       const lvls = rs.map(r => r.minPromptLevel).filter(Boolean);
       const best = lvls.length ? LADDER_SHORT[Math.min(...lvls)] : '—';
       const last = new Date(Math.max(...rs.map(r => r.ts))).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
-      return `<tr><td>${n}</td><td>${rs.length}</td><td>${avg}⭐</td><td>${best}</td><td>${last}</td></tr>`;
+      return `<tr><td>${n}</td><td>${rs.length}</td><td>${avg}⭐</td>`
+        + (SCAFFOLD_ENABLED ? `<td>${best}</td>` : '')
+        + `<td>${last}</td></tr>`;
     }).join('');
-    overviewEl.innerHTML = `<div class="trend-title">👥 班級總覽（最佳鷹架越接近 L1 越獨立）</div>`
-      + `<table class="overview-table"><tr><th>學生</th><th>次數</th><th>平均</th><th>最佳鷹架</th><th>最近</th></tr>${rows}</table>`;
+    overviewEl.innerHTML = `<div class="trend-title">👥 班級總覽${SCAFFOLD_ENABLED ? '（最佳鷹架越接近 L1 越獨立）' : ''}</div>`
+      + `<table class="overview-table"><tr><th>學生</th><th>次數</th><th>平均</th>${SCAFFOLD_ENABLED ? '<th>最佳鷹架</th>' : ''}<th>最近</th></tr>${rows}</table>`;
   } else {
     overviewEl.innerHTML = '';
   }
@@ -3552,8 +3633,8 @@ async function renderHistory() {
         .map(r => `${r.stars || 0}⭐`).join(' → ');
       return `<div class="trend-row"><span class="trend-name">${k}</span><span class="trend-seq">${seq}</span></div>`;
     });
-  // 鷹架褪除趨勢：同情境最近 5 次的「最少提示等級」（L4→L1，越往 L1 越獨立）
-  const LVL = { 4: 'L4', 3: 'L3', 2: 'L2', 1: 'L1' };
+  // 鷹架褪除趨勢：同情境最近 5 次的「最少提示等級」（L6→L1，越往 L1 越獨立＝越能自己開口說）
+  const LVL = { 6: 'L6', 5: 'L5', 4: 'L4', 3: 'L3', 2: 'L2', 1: 'L1' };
   const ladderRows = Object.entries(groups)
     .map(([k, rs]) => {
       const seq = rs.slice().sort((a, b) => a.ts - b.ts).slice(-5)
@@ -3568,7 +3649,7 @@ async function renderHistory() {
   trendEl.innerHTML = (trendRows.length
       ? `<div class="trend-title">📈 成長趨勢（同情境最近 5 次）</div>${trendRows.join('')}`
       : '')
-    + (ladderRows.length
+    + (SCAFFOLD_ENABLED && ladderRows.length
       ? `<div class="trend-title">🪜 鷹架褪除（提示等級，越往 L1 越獨立）</div>${ladderRows.join('')}`
       : '');
 

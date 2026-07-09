@@ -10,7 +10,7 @@
     const AudioUnlocker = {
         isUnlocked: false,
         logPrefix: '[AudioUnlocker]',
-        debug: true,
+        debug: false,   // 關閉 console 偵測訊息（需除錯時改回 true）
 
         log(message, data = null) {
             if (!this.debug) return;

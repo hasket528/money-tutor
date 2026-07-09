@@ -229,6 +229,7 @@ const Adventure = {
     // ── 設定頁（含選角）────────────────────────────────────────
     showSettings() {
         AdvTimer.clearAll(); AdvSpeech.cancel();
+        { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = ''; }   // 首頁顯示導覽列
         Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null });
         this._l3Result = null;
         this._storyLog = {};
@@ -256,9 +257,8 @@ const Adventure = {
         <span class="adv-chip-title">${l.title}</span>
       </div>`).join('')}
     </div>
-    <div class="adv-btn-row">
-      <a href="../index.html" class="adv-start-btn adv-home-btn">← 返回首頁</a>
-      <button class="adv-start-btn" id="adv-start">開始冒險！🚀</button>
+    <div class="adv-btn-row" style="justify-content:center">
+      <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
     </div>
   </div>
   <div class="adv-char-modal" id="adv-char-modal" hidden role="dialog" aria-modal="true">
@@ -316,6 +316,7 @@ const Adventure = {
     },
 
     _startGame() {
+        { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = 'none'; }   // 進入練習隱藏導覽列
         this.state.level    = 1;
         this.state.score    = 0;
         this.state.mistakes = 0;

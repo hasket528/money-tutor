@@ -207,19 +207,41 @@
         }
         
         /* ── 三吉祥物改為「隱藏舞台」：主頁預設不顯示，
-               向左滑動（或右緣 ✨ 鈕）開啟聚光燈旋轉舞台 ── */
+               點右緣 ✨ 標籤開啟聚光燈旋轉舞台（已取消滑動開啟，避免誤觸其他設定）── */
         .ai-dual-intro { display: none !important; }
 
-        /* ✨ 低調觸發鈕（右緣中央） */
+        /* ✨ 右緣「隱藏角色」標籤鈕：平常只露出 ✨，滑鼠移到右緣（hover）滑出顯示文字；
+           觸控裝置無 hover，改用週期性「探頭」動畫提示存在。 */
         #stage-hint {
-            position: fixed; right: 6px; top: 50%; transform: translateY(-50%);
-            z-index: 800; background: none; border: none; cursor: pointer;
-            font-size: 1.5em; opacity: 0.45; padding: 10px 6px;
-            transition: opacity 0.2s, transform 0.2s;
-            animation: hintTwinkle 3.2s ease-in-out infinite;
+            position: fixed; right: 0; top: 50%; z-index: 800;
+            display: flex; align-items: center; gap: 7px;
+            background: linear-gradient(135deg, rgba(123,63,164,0.94), rgba(74,34,110,0.94));
+            color: #ffe9a8; border: none; cursor: pointer;
+            border-radius: 24px 0 0 24px; padding: 12px 16px 12px 17px;
+            font-size: 1.35em; line-height: 1;
+            box-shadow: -3px 4px 16px rgba(0,0,0,0.28);
+            /* 只露出左側 ✨（約 46px），其餘（文字）藏在畫面右緣外 */
+            transform: translateY(-50%) translateX(calc(100% - 46px));
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+            animation: stagePeek 5s ease-in-out infinite;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        #stage-hint:hover { opacity: 1; transform: translateY(-50%) scale(1.2); }
-        @keyframes hintTwinkle { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+        #stage-hint .sh-label {
+            font-size: 0.56em; font-weight: 800; white-space: nowrap; letter-spacing: 1px;
+        }
+        /* 滑鼠移到右緣（hover）或鍵盤聚焦 → 完整滑出，停止探頭動畫 */
+        #stage-hint:hover, #stage-hint:focus-visible {
+            transform: translateY(-50%) translateX(0);
+            animation: none; box-shadow: -4px 6px 24px rgba(0,0,0,0.42); outline: none;
+        }
+        /* 週期性探頭：桌機/手機皆可見，不依賴 hover */
+        @keyframes stagePeek {
+            0%, 86%, 100% { transform: translateY(-50%) translateX(calc(100% - 46px)); }
+            91%, 96%      { transform: translateY(-50%) translateX(calc(100% - 74px)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #stage-hint { animation: none; }
+        }
 
         /* ── 後台舞台 ── */
         #stage-overlay {
@@ -259,7 +281,7 @@
 
         .stage-char {
             position: relative; transform-style: preserve-3d; will-change: transform, opacity;
-            transition: transform 0.4s cubic-bezier(0.45,0,0.55,1), opacity 0.4s ease;
+            transition: transform 0.26s cubic-bezier(0.45,0,0.55,1), opacity 0.26s ease;
         }
         .stage-char.spin-out { transform: rotateY(80deg) scale(0.72); opacity: 0; }
         .stage-char.spin-pre { transition: none; transform: rotateY(-80deg) scale(0.72); opacity: 0; }
@@ -290,11 +312,16 @@
             width: 52px; height: 52px; border-radius: 50%;
             border: 2px solid rgba(255,233,168,0.55); background: rgba(255,255,255,0.08);
             color: #ffe9a8; font-size: 1.35em; cursor: pointer; z-index: 2;
-            transition: background 0.15s, transform 0.15s;
+            transition: background 0.15s, transform 0.1s;
+            touch-action: manipulation;                 /* 消觸控 300ms 延遲與雙擊縮放，按下即回應 */
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         @media (hover: hover) { /* 只在有滑鼠的裝置套 hover，觸控就不會「第一下變底色、第二下才切換」 */
           .stage-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.12); }
         }
+        /* 按下回饋：只變底色，不改幾何（縮放/位移會讓按鈕在游標下滑走，害頂緣點擊落空） */
+        .stage-arrow:active { transform: translateY(-50%); background: rgba(255,255,255,0.3); }
         .stage-arrow.left  { left: -6px; }
         .stage-arrow.right { right: -6px; }
 
@@ -1422,14 +1449,14 @@
         </div>
 
         <!-- ── 隱藏角色舞台（左滑或 ✨ 開啟）──────────────── -->
-        <button id="stage-hint" onclick="openStage()" title="✨ 有隱藏的朋友們……" aria-label="開啟角色舞台">✨</button>
+        <button id="stage-hint" type="button" title="✨ 有隱藏的朋友們……" aria-label="開啟隱藏角色舞台"><span aria-hidden="true">✨</span><span class="sh-label">隱藏角色</span></button>
         <div id="stage-overlay" role="dialog" aria-modal="true" aria-label="角色舞台">
             <button class="stage-close" onclick="closeStage()" title="關閉">✕</button>
             <div class="stage-inner">
                 <div class="stage-spotlight"></div>
                 <div class="stage-floor"></div>
-                <button class="stage-arrow left"  onclick="rotateStage(-1)" aria-label="上一位">◀</button>
-                <button class="stage-arrow right" onclick="rotateStage(1)"  aria-label="下一位">▶</button>
+                <button class="stage-arrow left"  type="button" aria-label="上一位">◀</button>
+                <button class="stage-arrow right" type="button" aria-label="下一位">▶</button>
                 <div class="stage-char" id="stage-char">
                     <img id="stage-img" src="" alt="">
                     <div class="stage-name">
@@ -1458,7 +1485,8 @@
                   desc: '汪！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
                   btn: '🛒 購物對話練習', act: () => { openChatDogModal(); } },
             ];
-            let idx = 0, spinning = false;
+            let idx = 0, queue = [], spinning = false;   // queue＝待切換的方向佇列（每次點擊排一筆，保證每下都切一次）
+            const SPIN_MS = 260;   // 每段旋轉時間（需與 .stage-char 的 CSS transition 時長同步）
 
             const charEl = () => document.getElementById('stage-char');
 
@@ -1477,24 +1505,37 @@
                     CHARS.map((_, i) => `<span class="${i === idx ? 'on' : ''}"></span>`).join('');
             }
 
+            // 每次點擊都排進佇列，保證「每按一下就翻一頁」；狂點時逐頁快速翻。
             window.rotateStage = function (dir) {
-                if (spinning) return;
+                queue.push(dir);
+                if (queue.length > 6) queue = queue.slice(-6);   // 防呆：按住方向鍵狂連時最多留 6 步，避免佇列爆量
+                if (!spinning) stepStage();
+            };
+
+            // 逐一消化佇列（之前的 3D 旋轉效果）：目前角色旋出 → 換人 → 新角色從反向旋入 → 播下一筆。
+            function stepStage() {
+                if (!queue.length) { spinning = false; return; }
                 spinning = true;
+                const dir = queue.shift();
                 const el = charEl();
+                el.classList.remove('spin-pre');                 // 保險：清掉上一輪殘留
                 el.classList.add('spin-out');                    // 目前角色旋出
                 setTimeout(() => {
                     idx = (idx + dir + CHARS.length) % CHARS.length;
-                    renderStage();
+                    renderStage();                                // 旋出到透明時換人
                     el.classList.remove('spin-out');
-                    el.classList.add('spin-pre');                // 下一位從幕後（反向）就位
+                    el.classList.add('spin-pre');                // 新角色從反向就位
                     void el.offsetWidth;                          // 強制 reflow
                     el.classList.remove('spin-pre');              // 旋入
-                    setTimeout(() => { spinning = false; }, 400);
-                }, 400);
-            };
+                    setTimeout(() => {
+                        el.classList.remove('spin-out', 'spin-pre');
+                        stepStage();                              // 消化下一筆排隊的點擊
+                    }, SPIN_MS);
+                }, SPIN_MS);
+            }
 
             window.openStage = function () {
-                idx = 0;
+                idx = 0; queue = []; spinning = false;
                 renderStage();
                 document.getElementById('stage-overlay').classList.add('open');
                 document.body.style.overflow = 'hidden';
@@ -1505,6 +1546,24 @@
                 document.getElementById('stage-overlay').classList.remove('open');
                 document.body.style.overflow = '';
             };
+
+            // 箭頭改用 pointerdown（按下即觸發）：不靠 click（需 down+up 同在按鈕上），
+            // 這樣即使按鈕在按下瞬間有任何位移/縮放、或在頂緣，press 一定送到切換邏輯。
+            document.querySelectorAll('.stage-arrow').forEach(btn => {
+                btn.addEventListener('pointerdown', (e) => {
+                    if (e.button && e.button !== 0) return;   // 只理會主鍵/觸控/筆
+                    e.preventDefault();                        // 阻止 focus 捲動與後續 click（免雙觸發）
+                    rotateStage(btn.classList.contains('left') ? -1 : 1);
+                });
+            });
+
+            // 「隱藏角色」開啟鈕同理：它有 stagePeek 探頭動畫＋hover 滑出，一直在移動，
+            // 用 click 容易在移動中落空 → 改 pointerdown，按下即開。
+            document.getElementById('stage-hint')?.addEventListener('pointerdown', (e) => {
+                if (e.button && e.button !== 0) return;
+                e.preventDefault();
+                openStage();
+            });
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
@@ -1522,33 +1581,8 @@
                 }
             });
 
-            // ── 左滑手勢（觸控＋滑鼠拖曳）──
-            function anyOverlayOpen() {
-                return ['stage-overlay', 'captain-modal-overlay', 'detective-modal-overlay', 'doctor-modal-overlay', 'chatdog-modal-overlay']
-                    .some(id => document.getElementById(id)?.classList.contains('open'));
-            }
-            let sx = null, sy = null;
-            document.addEventListener('touchstart', (e) => {
-                sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-            }, { passive: true });
-            document.addEventListener('touchend', (e) => {
-                if (sx == null || anyOverlayOpen()) { sx = null; return; }
-                const dx = e.changedTouches[0].clientX - sx;
-                const dy = e.changedTouches[0].clientY - sy;
-                sx = null;
-                if (dx < -80 && Math.abs(dy) < 70) openStage();
-            }, { passive: true });
-            let mx = null, my = null;
-            document.addEventListener('mousedown', (e) => { mx = e.clientX; my = e.clientY; });
-            function endDrag(e) {
-                if (mx == null || anyOverlayOpen()) { mx = null; return; }
-                const dx = e.clientX - mx, dy = e.clientY - my;
-                mx = null;
-                if (dx < -120 && Math.abs(dy) < 80) openStage();
-            }
-            document.addEventListener('mouseup', endDrag);
-            // 從連結/圖片上開始拖曳時瀏覽器走原生 drag（不發 mouseup）→ 用 dragend 補判
-            document.addEventListener('dragend', endDrag);
+            // 已取消「左滑／左拖曳開啟舞台」手勢：在主頁易誤觸其他設定。
+            // 開啟入口統一為右緣 ✨「隱藏角色」標籤鈕（見 #stage-hint），舞台內仍可用 ◀ ▶ 與方向鍵切換。
         })();
         </script>
 
@@ -2053,7 +2087,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260709b';
+            const BUILD_VERSION = '20260709c';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {

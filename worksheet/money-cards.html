@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1:1 擬真錢幣教具卡</title>
+<style>
+  :root { --ink:#1f2937; --line:#94a3b8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; color: var(--ink); background:#f1f5f9; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 1.5rem; margin: 0 0 6px; }
+  .desc { color:#475569; font-size:.92rem; line-height:1.6; }
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .btn { padding:10px 18px; border:none; border-radius:10px; background:#1d4ed8; color:#fff; font-size:1rem; font-weight:700; cursor:pointer; }
+  .btn.secondary { background:#e2e8f0; color:#1e293b; }
+
+  /* ── 校正尺規：印出後量這條，若不是 10 公分，就把印表機縮放調成 100% ── */
+  .calib { background:#fff7ed; border:2px dashed #f59e0b; border-radius:10px; padding:12px 14px; margin:10px 0 18px; }
+  .calib .ruler { position:relative; width:100mm; height:14mm; border-left:1px solid var(--ink); border-bottom:1px solid var(--ink); margin-top:8px; }
+  .calib .tick { position:absolute; bottom:0; width:0; border-left:1px solid var(--ink); height:5mm; }
+  .calib .tick.major { height:9mm; }
+  .calib .tick span { position:absolute; bottom:-6mm; left:2px; font-size:9px; color:#475569; }
+
+  .sheet { background:#fff; border-radius:12px; padding:18px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  .sheet h2 { font-size:1.05rem; margin:0 0 12px; }
+  .row { display:flex; flex-wrap:wrap; gap:8mm; align-items:flex-end; }
+
+  /* 硬幣：以真實直徑(mm)呈現，剪裁圓形，虛線剪切線 */
+  .coin { border-radius:50%; overflow:hidden; border:1px dashed var(--line); background:#fff; }
+  .coin img { width:100%; height:100%; object-fit:cover; display:block; }
+  .c1  { width:20mm; height:20mm; }
+  .c5  { width:22mm; height:22mm; }
+  .c10 { width:26mm; height:26mm; }
+  .c50 { width:28mm; height:28mm; }
+
+  /* 紙鈔：真實 W×H(mm)，虛線剪切線 */
+  .bill { border:1px dashed var(--line); border-radius:2mm; overflow:hidden; background:#fff; height:70mm; }
+  .bill img { width:100%; height:100%; object-fit:cover; display:block; }
+  .b100  { width:145mm; }
+  .b500  { width:155mm; }
+  .b1000 { width:160mm; }
+
+  .cap { text-align:center; font-size:10px; color:#64748b; margin-top:2px; }
+
+  @media print {
+    body { background:#fff; }
+    .wrap { max-width:none; padding:0; }
+    .toolbar, .no-print { display:none !important; }
+    .sheet { box-shadow:none; border-radius:0; padding:0; margin:0 0 6mm; page-break-inside:avoid; }
+    .calib { break-inside:avoid; }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    @page { size:A4; margin:10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💰 1:1 擬真錢幣教具卡</h1>
+  <p class="desc">
+    以台幣<strong>真實尺寸</strong>列印，剪下即可當實體操作教具（先摸真錢、再上機＝具體→半具體→抽象的 CRA 序列）。<br>
+    硬幣：1 元=20mm、5 元=22mm、10 元=26mm、50 元=28mm；紙鈔高度皆 70mm，寬 100 元=145mm／500 元=155mm／1000 元=160mm。
+  </p>
+
+  <div class="toolbar no-print">
+    <button class="btn" onclick="window.print()">🖨️ 列印</button>
+    <button class="btn secondary" onclick="history.length>1?history.back():location.href='index.html'">← 返回</button>
+  </div>
+
+  <div class="calib">
+    <strong>⚠️ 先校正列印比例</strong>——列印後用尺量下面這條線：
+    <span style="color:#b45309;font-weight:700">應該正好 10 公分</span>。若不是，請在列印設定把「縮放/Scale」改成 <strong>100%（實際大小）</strong>再印，才會是真正的 1:1。
+    <div class="ruler" id="ruler"></div>
+  </div>
+
+  <div class="sheet">
+    <h2>硬幣（正面）</h2>
+    <div class="row" id="coins"></div>
+  </div>
+
+  <div class="sheet">
+    <h2>紙鈔（正面）</h2>
+    <div class="row" id="bills"></div>
+  </div>
+</div>
+
+<script>
+  // 校正尺規：每 1cm 一大格、每 5mm 一小格
+  (function () {
+    const r = document.getElementById('ruler');
+    for (let mm = 0; mm <= 100; mm += 5) {
+      const t = document.createElement('div');
+      t.className = 'tick' + (mm % 10 === 0 ? ' major' : '');
+      t.style.left = mm + 'mm';
+      if (mm % 10 === 0) { const s = document.createElement('span'); s.textContent = mm / 10; t.appendChild(s); }
+      r.appendChild(t);
+    }
+  })();
+
+  const IMG = '../images/money/';
+  // 硬幣：每種印 6 枚
+  const COINS = [ [1,'c1'], [5,'c5'], [10,'c10'], [50,'c50'] ];
+  const coinsEl = document.getElementById('coins');
+  COINS.forEach(([v, cls]) => {
+    for (let i = 0; i < 6; i++) {
+      const d = document.createElement('div');
+      d.className = 'coin ' + cls;
+      d.innerHTML = `<img src="${IMG}${v}_yuan_front.png" alt="${v}元">`;
+      coinsEl.appendChild(d);
+    }
+  });
+
+  // 紙鈔：每種印 2 張
+  const BILLS = [ [100,'b100'], [500,'b500'], [1000,'b1000'] ];
+  const billsEl = document.getElementById('bills');
+  BILLS.forEach(([v, cls]) => {
+    for (let i = 0; i < 2; i++) {
+      const wrap = document.createElement('div');
+      const b = document.createElement('div');
+      b.className = 'bill ' + cls;
+      b.innerHTML = `<img src="${IMG}${v}_yuan_front.png" alt="${v}元">`;
+      wrap.appendChild(b);
+      const cap = document.createElement('div');
+      cap.className = 'cap'; cap.textContent = v + ' 元';
+      wrap.appendChild(cap);
+      billsEl.appendChild(wrap);
+    }
+  });
+</script>
+</body>
+</html>
