@@ -1112,6 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         _gpStudent = student;
         _gpRecords = await GrowthSystem.readAllRecords();
         renderGrowthPage();
+        setupPetFx();   // 綁定寵物互動特效(僅一次)
         document.getElementById('growth-overlay').classList.add('open');
         document.body.style.overflow = 'hidden';
     }
@@ -1124,6 +1125,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function gpMsg(t) { document.getElementById('gp-msg').textContent = t || ''; }
 
+    // 用金幣兌換寶石（GEM_COIN_COST 金幣 → 1 寶石）
+    window.gpBuyGem = function () {
+        const stu = _gpStudent; if (!stu) return;
+        const cost = GrowthSystem.GEM_COIN_COST;
+        if (getCoins(stu.id) < cost) { gpMsg(`金幣不夠（需 ${cost} 🪙）——到「優良表現獎勵板」把分數「🔄 轉換成金幣」！`); return; }
+        setCoins(stu.id, getCoins(stu.id) - cost);
+        GrowthSystem.addGems(stu.id, 1);
+        try { playSound('bonus'); } catch (e) {}
+        gpMsg('✨ 兌換成功！獲得 1 顆 💎 寶石');
+        renderGrowthPage();
+    };
+
+    // 捲動讓「我的存錢寵物」露出於導覽列下方（用受控 scrollTo，不會卡住無法往上滑）
+    function scrollPetIntoView() {
+        const ov = document.getElementById('growth-overlay');
+        const box = document.querySelector('.gp-pet');
+        if (!ov || !box) return;
+        const top = box.getBoundingClientRect().top - ov.getBoundingClientRect().top + ov.scrollTop - 64;
+        ov.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+
     // 收集寵物圖鑑：5 隻原創生物，用寶石解鎖，解鎖後隨主課程練習成長進化
     function renderCreatures() {
         const G = GrowthSystem, stu = _gpStudent;
@@ -1131,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nav  = document.getElementById('gp-creatures-nav');
         if (!host || !G.CREATURES) return;
         const gems = G.gemsAvailable(_gpRecords, stu.id);
-        const all  = G.CREATURES;
+        const all  = [{ __pig: true }].concat(G.CREATURES);   // 第一個放存錢寵物(神祕金蛋)
         const pageSize = window.matchMedia('(min-width: 768px)').matches ? 10 : 6;  // 桌面端 10、窄螢幕 6（依版面調整）
         const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
         if (_creaturePage >= totalPages) _creaturePage = totalPages - 1;
@@ -1140,6 +1162,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageItems = all.slice(start, start + pageSize);
         host.innerHTML = '';
         pageItems.forEach(c => {
+            if (c.__pig) {   // 存錢寵物(神祕金蛋)卡：點了在「我的存錢寵物」顯示
+                const pet = G.petData(stu.id), pstage = G.petStage(pet);
+                const pel = document.createElement('div');
+                pel.className = 'gp-crt'; pel.style.cursor = 'pointer';
+                pel.title = '存錢寵物・點我在「我的存錢寵物」顯示';
+                pel.innerHTML = `<div class="gp-crt-emoji"><img class="gp-crt-img" src="../${G.PET_STAGES[pstage].img}" alt="存錢寵物"></div>
+                    <div class="gp-crt-name">${G.PET_STAGES[pstage].name}</div>
+                    <div class="gp-crt-sub">🐷 存錢寵物</div>`;
+                pel.addEventListener('click', () => {
+                    _savePetIdx = 0; _savePetStage = null; renderGrowthPage();
+                    scrollPetIntoView();
+                });
+                host.appendChild(pel);
+                return;
+            }
             const st = G.creatureState(_gpRecords, stu.id, c.key);
             const locked = st.stage < 0;
             const el = document.createElement('div');
@@ -1160,8 +1197,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 sub = '🎉 已完全進化';
             }
             el.innerHTML = `${visual}
-                <div class="gp-crt-name">${(c.stageNames && c.stageNames[0]) || c.name}</div>
+                <div class="gp-crt-name">${(c.stageNames && c.stageNames[locked ? 0 : st.stage]) || c.name}</div>
                 <div class="gp-crt-sub">${sub}</div>${btn}`;
+            // 已擁有(已解鎖)才可點：點了就在「我的存錢寵物」顯示這隻
+            if (!locked) {
+                el.style.cursor = 'pointer';
+                el.title = '點我在「我的存錢寵物」顯示這隻';
+                el.addEventListener('click', () => {
+                    const unlocked = G.CREATURES.filter(cc => G.creatureState(_gpRecords, stu.id, cc.key).stage >= 0);
+                    const idx = unlocked.findIndex(cc => cc.key === c.key);
+                    if (idx >= 0) {
+                        _savePetIdx = idx + 1;   // pets[0]=存錢豬，其後依序為已解鎖寵物
+                        _savePetStage = null;
+                        renderGrowthPage();
+                        scrollPetIntoView();
+                    }
+                });
+            }
             host.appendChild(el);
         });
         host.querySelectorAll('.gp-crt-btn').forEach(b => {
@@ -1229,19 +1281,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 中文語音朗讀（寵物介紹詞／名稱）
+    function _pickZhVoice() {   // 高品質中文音色優先序：Google 台灣國語→其他 Google 中文→雅婷→…
+        const vs = speechSynthesis.getVoices();
+        return vs.find(v => /google/i.test(v.name) && v.lang === 'zh-TW') ||
+               vs.find(v => /google/i.test(v.name) && v.lang && v.lang.startsWith('zh')) ||
+               vs.find(v => /google/i.test(v.name) && /(國語|中文|mandarin|chinese)/i.test(v.name)) ||
+               vs.find(v => /yating/i.test(v.name)) ||
+               vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang && v.lang.startsWith('zh')) ||
+               vs.find(v => v.lang === 'zh-TW') || vs.find(v => v.lang && v.lang.startsWith('zh')) || null;
+    }
     function speakText(text) {
         if (!text || !window.speechSynthesis) return;
-        try {
-            speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'zh-TW'; u.rate = 0.95;
-            const vs = speechSynthesis.getVoices();
-            u.voice = vs.find(v => /yating/i.test(v.name)) ||
-                      vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang && v.lang.startsWith('zh')) ||
-                      vs.find(v => v.lang === 'zh-TW') || null;
-            speechSynthesis.speak(u);
-        } catch (e) {}
+        const doSpeak = () => {
+            try {
+                speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'zh-TW'; u.rate = 0.95;
+                u.voice = _pickZhVoice();
+                speechSynthesis.speak(u);
+            } catch (e) {}
+        };
+        // 音色清單可能尚未載入(此頁第一次 TTS，例如變身後唸名字)：空的就等 voiceschanged
+        // 再唸，確保同樣用到 Google 高品質音色，而非瀏覽器預設音
+        const vs = speechSynthesis.getVoices();
+        if (vs && vs.length) doSpeak();
+        else speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
     }
+    try { if (window.speechSynthesis) speechSynthesis.getVoices(); } catch (e) {}   // 提早觸發音色載入
     window.speakPetDesc = function () {   // 點介紹詞旁喇叭鈕：朗讀目前階段介紹詞
         const el = document.getElementById('gp-pet-desc');
         if (el) speakText(el.textContent);
@@ -1288,6 +1354,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1100);
     }
 
+    // 寵物互動特效：點擊彈跳＋星星＋音效、偶爾開心小動作、傾斜跟隨滑鼠/觸控（皆柔和）
+    let _petFxBound = false;
+    function petReact(withSound) {
+        const im = document.getElementById('gp-pet-img');
+        if (!im) return;
+        im.classList.remove('gp-pet-react'); void im.offsetWidth; im.classList.add('gp-pet-react');
+        setTimeout(() => im.classList.remove('gp-pet-react'), 640);
+        const main = im.closest('.gp-pet-main');
+        if (main) {
+            const g = ['✨', '⭐', '🌟'];
+            for (let i = 0; i < 6; i++) {
+                const s = document.createElement('div'); s.className = 'gp-evo-star'; s.textContent = g[i % 3];
+                const ang = (Math.PI * 2 * i) / 6 + Math.random() * 0.6, dist = 55 + Math.random() * 40;
+                s.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(0) + 'px');
+                s.style.setProperty('--dy', (Math.sin(ang) * dist - 8).toFixed(0) + 'px');
+                main.appendChild(s); void s.offsetWidth; s.classList.add('go');
+                setTimeout(() => s.remove(), 1900);
+            }
+        }
+        if (withSound) { try { const a = new Audio('../audio/reward/pet_click.mp3'); a.volume = 0.9; a.play().catch(() => {}); } catch (e) {} }
+    }
+    function setupPetFx() {
+        if (_petFxBound) return; _petFxBound = true;
+        const box = document.querySelector('.gp-pet');
+        const im = document.getElementById('gp-pet-img');
+        if (im) im.addEventListener('click', () => petReact(true));
+        if (box) {
+            const tilt = (cx, cy) => {
+                const f = document.querySelector('.gp-pet-frame'); if (!f) return;
+                const r = f.getBoundingClientRect();
+                const px = (cx - r.left) / r.width - 0.5, py = (cy - r.top) / r.height - 0.5;
+                f.style.transform = `perspective(520px) rotateY(${(px * 14).toFixed(1)}deg) rotateX(${(-py * 14).toFixed(1)}deg)`;
+            };
+            const reset = () => { const f = document.querySelector('.gp-pet-frame'); if (f) f.style.transform = ''; };
+            box.addEventListener('mousemove', e => tilt(e.clientX, e.clientY));
+            box.addEventListener('mouseleave', reset);
+            box.addEventListener('touchmove', e => { if (e.touches[0]) tilt(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+            box.addEventListener('touchend', reset);
+        }
+        setInterval(() => {
+            const ov = document.getElementById('growth-overlay');
+            if (ov && ov.classList.contains('open') && Math.random() < 0.7) petReact(false);
+        }, 6000);
+    }
+
     function renderGrowthPage() {
         const stu = _gpStudent;
         const G   = GrowthSystem;
@@ -1311,6 +1422,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const gems = G.gemsAvailable(_gpRecords, stu.id);
         document.getElementById('gp-gems').textContent = gems;
         document.getElementById('gp-practices').textContent = G.myRecords(_gpRecords, stu.id).length;
+        const buyGemBtn = document.getElementById('gp-buy-gem');
+        if (buyGemBtn) buyGemBtn.disabled = getCoins(stu.id) < G.GEM_COIN_COST;
 
         // ── 我的存錢寵物：◀▶ 切換（存錢豬 + 已解鎖收集寵物）；下方切換「已達階段」──
         const unlockedPets = (G.CREATURES || []).filter(cc => G.creatureState(_gpRecords, stu.id, cc.key).stage >= 0);
@@ -1395,15 +1508,32 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const c  = curPet.c;
             const st = G.creatureState(_gpRecords, stu.id, c.key);
-            feedBtn.hidden = true; evolveBtn.hidden = true;
+            evolveBtn.hidden = true;
             renderStageSwitch(st.stage, (vs) => `../images/pets/pet_${c.key}_s${vs}.png`, (vs) => (c.stageNames && c.stageNames[vs]) || c.name, (vs) => (c.stageDesc && c.stageDesc[vs]) || '');
             if (st.next != null) {
+                feedBtn.hidden = false;
                 bar.style.width = Math.max(6, Math.min(100, Math.round((st.grown / Math.max(1, st.next)) * 100))) + '%';
-                label.textContent = `再練 ${Math.max(0, st.next - st.grown)} 次就會進化`;
+                label.textContent = `成長 ${st.grown} / ${st.next}（練習或餵食都會長大）`;
+                feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
             } else {
+                feedBtn.hidden = true;
                 bar.style.width = '100%';
                 label.textContent = '🎉 已完全進化！';
             }
+            feedBtn.onclick = () => {
+                if (getCoins(stu.id) < G.FEED_COST) { gpMsg('金幣不夠——請到「優良表現獎勵板」把分數「🔄 轉換成金幣」！'); return; }
+                const before = G.creatureState(_gpRecords, stu.id, c.key).stage;
+                setCoins(stu.id, getCoins(stu.id) - G.FEED_COST);
+                G.feedCreature(stu.id, c.key);
+                const after = G.creatureState(_gpRecords, stu.id, c.key).stage;
+                if (after > before) {   // 餵食後跨階 → 進化動畫＋音效
+                    playEvolveEffect(() => { _savePetStage = null; gpMsg('🎉 進化了！長大到「' + ((c.stageNames && c.stageNames[after]) || c.name) + '」！'); renderGrowthPage(); });
+                } else {
+                    try { playSound('bonus'); } catch (e) {}
+                    gpMsg('🍎 好好吃！成長 +' + G.CREATURE_FEED_GAIN);
+                    renderGrowthPage();
+                }
+            };
         }
 
         // ── 收集寵物圖鑑（分頁）──
