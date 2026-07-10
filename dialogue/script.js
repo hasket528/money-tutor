@@ -2235,6 +2235,7 @@ function handleResult(text, result) {
     attempts: state.stepAttempts,
     hintUsed: state.stepHintUsed,
     promptLevel: state.frameLadder ? state.promptLevel : null,  // 作答當下的支持等級（IEP 用）
+    mode: state.inputMode,                                       // 作答當下的反應模式（語音/選項/打字/句框/詞庫）
   };
 
   // 提示褪除（精熟標準）：連續答對 MASTERY 次才降一級；答錯立即升一級並重置連對。
@@ -2406,6 +2407,10 @@ function showComplete() {
 
   // 儲存學習紀錄
   const endTs = Date.now();
+  // 本場主要反應模式＝各步驟出現最多者（每步可切換）
+  const modeCount = {};
+  state.results.forEach(r => { if (r?.mode) modeCount[r.mode] = (modeCount[r.mode] || 0) + 1; });
+  const sessionMode = Object.entries(modeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || state.inputMode || null;
   dbSave({
     studentId:    curStudent?.id ?? null,
     studentName:  curStudent?.name || '',
@@ -2414,6 +2419,7 @@ function showComplete() {
     situationId:  state.situation.id,
     situationName: state.situation.name,
     difficulty:   state.difficulty,
+    mode:         sessionMode,       // 反應模式（語音/選項/打字/句框/詞庫）
     score:        perfect,
     total,
     stars:        starCount,
@@ -2425,6 +2431,7 @@ function showComplete() {
       attempts: r?.attempts || 1,
       hintUsed: !!r?.hintUsed,
       promptLevel: r?.promptLevel ?? null,
+      mode: r?.mode ?? null,
     })),
     durationSec: Math.round((endTs - (state.startTs || endTs)) / 1000),
   }).catch(() => {});

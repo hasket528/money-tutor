@@ -527,13 +527,16 @@ async function loadData() {
   });
 
   // ─── 購物對話練習各情境（欄位比照主課程單元）──────────
+  const MODE = { voice: '🎤說話', options: '🔘選項', text: '⌨️打字', frame: '🖼️看圖', wordbank: '🧩詞庫' };
+  const fmtModes = (modes) => Object.entries(modes).filter(([, n]) => n)
+    .sort((a, b) => b[1] - a[1]).map(([k, n]) => `${MODE[k] || k}×${n}`).join('・') || '—';
   const byScenario = {};
   dlgs.forEach(r => {
     const key = r.scenarioId + '|' + r.situationId;
     if (!byScenario[key]) byScenario[key] = {
       scenarioName: r.scenarioName || r.scenarioId,
       situationName: r.situationName || r.situationId,
-      count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, list: [],
+      count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, modes: {}, list: [],
     };
     const s = byScenario[key];
     s.count++;
@@ -545,6 +548,7 @@ async function loadData() {
     s.dur += (r.durationSec || 0);
     const dk = r.difficulty || 'normal';
     s.diffs[dk] = (s.diffs[dk] || 0) + 1;
+    if (r.mode) s.modes[r.mode] = (s.modes[r.mode] || 0) + 1;
     s.list.push(r);
   });
   document.getElementById('dlg-coverage').textContent = `${Object.keys(byScenario).length} 個情境`;
@@ -555,7 +559,7 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>模式</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
       const attempts = s.correct + s.wrong;
       const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
@@ -573,6 +577,7 @@ async function loadData() {
         <td>${showMastery ? MASTERY_TAG[masteryStatus(sorted, mastery)] : '—'}</td>
         <td>${s.count}</td>
         <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
+        <td style="font-size:0.78rem">${fmtModes(s.modes)}</td>
         <td class="acc-good">${s.correct}</td>
         <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
         <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
