@@ -526,18 +526,26 @@ async function loadData() {
     host.appendChild(wrap);
   });
 
-  // ─── 購物練習各情境 ─────────────────────────────
+  // ─── 購物對話練習各情境（欄位比照主課程單元）──────────
   const byScenario = {};
   dlgs.forEach(r => {
     const key = r.scenarioId + '|' + r.situationId;
     if (!byScenario[key]) byScenario[key] = {
       scenarioName: r.scenarioName || r.scenarioId,
       situationName: r.situationName || r.situationId,
-      count: 0, totalStars: 0, bestStars: 0,
+      count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, list: [],
     };
-    byScenario[key].count++;
-    byScenario[key].totalStars += (r.stars || 0);
-    byScenario[key].bestStars = Math.max(byScenario[key].bestStars, r.stars || 0);
+    const s = byScenario[key];
+    s.count++;
+    s.correct += (r.score || 0);
+    s.wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
+    // 錯誤嘗試＝各步驟反覆作答的答錯次數（attempts−1 加總）
+    s.wrongTries += (r.steps || []).reduce((n, st) => n + Math.max(0, (st.attempts || 1) - 1), 0);
+    if ((r.total || 0) > 0 && (r.score || 0) === r.total) s.flawless++;   // 全步驟正確＝無錯通過
+    s.dur += (r.durationSec || 0);
+    const dk = r.difficulty || 'normal';
+    s.diffs[dk] = (s.diffs[dk] || 0) + 1;
+    s.list.push(r);
   });
   document.getElementById('dlg-coverage').textContent = `${Object.keys(byScenario).length} 個情境`;
 
@@ -547,20 +555,38 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th>狀況</th><th>練習次數</th><th>平均星數</th><th>最高星數</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
-      const avg = (s.totalStars / s.count).toFixed(1);
+      const attempts = s.correct + s.wrong;
+      const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
+      const sorted = [...s.list].sort((a, b) => a.ts - b.ts)
+        .map(r => ({ ...r, flawless: (r.total > 0 && r.score === r.total) }));   // 供精熟判定
+      const last = sorted[sorted.length - 1];
+      const lastPct = last.total > 0 ? Math.round(last.score / last.total * 100) : 100;
+      const prev = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+      const prevPct = prev && prev.total > 0 ? Math.round(prev.score / prev.total * 100) : null;
+      const trend = prevPct == null ? '—' : lastPct > prevPct ? '📈' : lastPct < prevPct ? '📉' : '➡️';
+      const when = new Date(last.ts).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span></td>
-        <td>${statusTag(s.bestStars)}</td>
+        <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span>${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
+        <td>${showMastery ? MASTERY_TAG[masteryStatus(sorted, mastery)] : '—'}</td>
         <td>${s.count}</td>
-        <td>${avg} ⭐</td>
-        <td>${starBar(s.bestStars)}</td>`;
+        <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
+        <td class="acc-good">${s.correct}</td>
+        <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
+        <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
+        <td class="${accClass(avgPct)}">${avgPct}%</td>
+        <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
+        <td>${last.score}/${last.total}（${when}）</td>
+        <td class="trend" title="與前一次相比">${trend}</td>`;
       tbl.appendChild(tr);
     });
     sec.innerHTML = '';
-    sec.appendChild(tbl);
+    const wrap = document.createElement('div');
+    wrap.className = 'table-scroll';
+    wrap.appendChild(tbl);
+    sec.appendChild(wrap);
   }
 
   // ─── 弱點步驟（購物練習逐步驟） ────────────────────
