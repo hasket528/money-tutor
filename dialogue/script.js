@@ -1448,8 +1448,11 @@ function renderHome() {
       ? `${scenario.situations.length} 種情境`
       : ((scenario.steps?.length ?? 0) > 0 ? `${scenario.steps.length} 個對話步驟` : '即將推出');
     const isCustom = scenario.isCustom;
+    // 商店場景圖（僅內建情境）：鋪在卡片最底層當背景，載入失敗則移除→退回 emoji 圖示
+    const sceneImg = !isCustom ? `images/scenes/${scenario.id}.webp` : null;
 
     card.innerHTML = `
+      ${sceneImg ? `<img class="card-bg-img" src="${sceneImg}" alt="" aria-hidden="true">` : ''}
       <div class="card-icon-wrap">
         <span class="card-icon">${scenario.icon || '💬'}</span>
       </div>
@@ -1459,6 +1462,11 @@ function renderHome() {
         ${isCustom ? '自訂情境 →' : scenario.available === false ? '即將推出' : '開始練習 →'}
       </span>
     `;
+    if (sceneImg) {
+      card.classList.add('has-scene');
+      const bg = card.querySelector('.card-bg-img');
+      if (bg) bg.addEventListener('error', () => { bg.remove(); card.classList.remove('has-scene'); });
+    }
     if (scenario.available !== false) {
       card.addEventListener('click', () => startScenario(scenario));
     }
