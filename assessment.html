@@ -78,44 +78,77 @@
 <script>
 // 題目階梯：由基礎往進階，答錯即為「建議起點」候選（取最早失誤的技能）
 const coin = (v) => `<span class="coin">${v}</span>`;
+// 隨機小工具
+const R = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[R(0, a.length - 1)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const CN = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+// 選項洗牌：傳入正解與誘答（值），回傳 {opts, ans}；render 可把值轉成硬幣等 HTML
+function mc(correct, distractors, render) {
+    render = render || (x => String(x));
+    const s = shuffle([{ v: correct, a: true }, ...distractors.map(v => ({ v, a: false }))]);
+    return { opts: s.map(x => render(x.v)), ans: s.findIndex(x => x.a) };
+}
+
+// 每個技能一支 gen()：每次施測隨機生成、契合該單元實際內容
 const ITEMS = [
-    { unit: 'f1', skill: '一對一對應', page: 'f1_object_correspondence',
-      text: '左邊有幾顆蘋果，哪一邊的點點一樣多？', visual: '🍎🍎🍎',
-      opts: ['● ● ●', '● ●'], ans: 0 },
-    { unit: 'f2', skill: '數量點數', page: 'f2_rote_and_rational_counting',
-      text: '數數看，總共有幾顆糖果？', visual: '🍬🍬🍬🍬',
-      opts: ['3', '4', '5'], ans: 1 },
-    { unit: 'f3', skill: '數字認讀', page: 'f3_number_recognition',
-      text: '請選出數字「七」', visual: '',
-      opts: ['4', '7', '1'], ans: 1 },
-    { unit: 'f4', skill: '數字排序', page: 'f4_number_sorting',
-      text: '哪一排的順序是正確的？', visual: '',
-      opts: ['1 → 2 → 3', '1 → 3 → 2'], ans: 0 },
-    { unit: 'f5', skill: '數量比較', page: 'f5_quantity_comparison',
-      text: '哪一邊的甜甜圈比較多？', visual: '',
-      opts: ['🍩🍩🍩🍩🍩', '🍩🍩'], ans: 0 },
-    { unit: 'f6', skill: '數的合成', page: 'f6_number_composition',
-      text: '3 和 2 合起來是多少？', visual: '●●● ＋ ●●',
-      opts: ['4', '5', '6'], ans: 1 },
-    { unit: 'c1', skill: '認識錢幣', page: 'c1_money_types',
-      text: '哪一個是 10 元硬幣？', visual: '',
-      opts: [coin(1), coin(10), coin(5)], ans: 1, html: true },
-    { unit: 'c2', skill: '點數金額', page: 'c2_money_counting',
-      text: '這些錢合起來是多少元？', visual: coin(5) + coin(5) + coin(10), visualHtml: true,
-      opts: ['15', '20', '25'], ans: 1 },
-    { unit: 'c3', skill: '面額兌換', page: 'c3_money_exchange',
-      text: '一個 10 元，可以換幾個 5 元？', visual: coin(10) + ' → ？', visualHtml: true,
-      opts: ['1 個', '2 個', '3 個'], ans: 1 },
-    { unit: 'c4', skill: '拿出正確金額', page: 'c4_correct_amount',
-      text: '餅乾 30 元，要拿哪些錢？', visual: '🍪 30 元',
-      opts: [coin(10) + coin(10) + coin(10), coin(10) + coin(5), coin(5) + coin(5)], ans: 0, html: true },
-    { unit: 'c5', skill: '夠不夠買', page: 'c5_sufficient_payment',
-      text: '你有 20 元，糖果賣 25 元，錢夠嗎？', visual: '🍬 25 元｜👛 20 元',
-      opts: ['夠', '不夠'], ans: 1 },
-    { unit: 'c6', skill: '找零', page: 'c6_making_change',
-      text: '拿 50 元買 30 元的果汁，要找回多少元？', visual: '🧃 30 元｜💵 50 元',
-      opts: ['10', '20', '30'], ans: 1 },
+    { unit: 'f1', skill: '一對一對應', page: 'f1_object_correspondence', gen: () => {
+        const n = R(2, 5), f = pick(['🍎', '🍓', '🍊']), dot = k => '● '.repeat(k).trim();
+        return { text: '哪一邊的點點，和上面的水果一樣多？', visual: f.repeat(n), ...mc(dot(n), [dot(n >= 5 ? n - 1 : n + 1)]) };
+    } },
+    { unit: 'f2', skill: '數量點數', page: 'f2_rote_and_rational_counting', gen: () => {
+        const n = R(3, 6), c = pick(['🍬', '🍭', '🍪']);
+        return { text: '數數看，總共有幾顆？', visual: c.repeat(n), ...mc(n, [n - 1, n + 1]) };
+    } },
+    { unit: 'f3', skill: '數字認讀', page: 'f3_number_recognition', gen: () => {
+        const t = R(1, 9), others = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9].filter(x => x !== t)).slice(0, 2);
+        return { text: `請選出數字「${CN[t]}」`, visual: '', ...mc(t, others) };
+    } },
+    { unit: 'f4', skill: '數字排序', page: 'f4_number_sorting', gen: () => {
+        const a = R(1, 6);
+        return { text: '哪一排是從小到大的正確順序？', visual: '', ...mc(`${a} → ${a + 1} → ${a + 2}`, [`${a} → ${a + 2} → ${a + 1}`]) };
+    } },
+    { unit: 'f5', skill: '數量比較', page: 'f5_quantity_comparison', gen: () => {
+        const c = pick(['🍩', '🍇', '⭐']), m = R(3, 6), k = R(1, m - 1);
+        return { text: '哪一邊比較多？', visual: '', ...mc(c.repeat(m), [c.repeat(k)]) };
+    } },
+    { unit: 'f6', skill: '數的合成', page: 'f6_number_composition', gen: () => {
+        const a = R(1, 5), b = R(1, 5), s = a + b;
+        return { text: `${a} 和 ${b} 合起來是多少？`, visual: `${'●'.repeat(a)} ＋ ${'●'.repeat(b)}`, ...mc(s, [s - 1, s + 1]) };
+    } },
+    { unit: 'c1', skill: '認識錢幣', page: 'c1_money_types', gen: () => {
+        const d = [1, 5, 10, 50], t = pick(d), others = shuffle(d.filter(x => x !== t)).slice(0, 2);
+        return { text: `哪一個是 ${t} 元硬幣？`, visual: '', ...mc(t, others, coin) };
+    } },
+    { unit: 'c2', skill: '點數金額', page: 'c2_money_counting', gen: () => {
+        const cs = Array.from({ length: R(2, 3) }, () => pick([1, 5, 10])), s = cs.reduce((x, y) => x + y, 0);
+        return { text: '這些錢合起來是多少元？', visual: cs.map(coin).join(''), ...mc(s, [s + 5, Math.max(1, s - 5)]) };
+    } },
+    { unit: 'c3', skill: '面額兌換', page: 'c3_money_exchange', gen: () => {
+        const [big, small, n] = pick([[10, 5, 2], [50, 10, 5], [5, 1, 5], [10, 1, 10]]);
+        return { text: `一個 ${big} 元，可以換幾個 ${small} 元？`, visual: coin(big) + ' → ？', ...mc(`${n} 個`, [`${n + 1} 個`, `${Math.max(1, n - 1)} 個`]) };
+    } },
+    { unit: 'c4', skill: '拿出正確金額', page: 'c4_correct_amount', gen: () => {
+        const v = pick([
+            { p: 30, ok: [10, 10, 10], bad: [[10, 5], [5, 5]] },
+            { p: 20, ok: [10, 10], bad: [[10, 5], [5, 1]] },
+            { p: 15, ok: [10, 5], bad: [[10, 10], [5, 5]] },
+            { p: 25, ok: [10, 10, 5], bad: [[10, 5], [10, 10]] },
+        ]);
+        const render = arr => arr.map(coin).join('');
+        return { text: `餅乾 ${v.p} 元，要拿哪些錢剛剛好？`, visual: `🍪 ${v.p} 元`, ...mc(v.ok, v.bad, render) };
+    } },
+    { unit: 'c5', skill: '夠不夠買', page: 'c5_sufficient_payment', gen: () => {
+        const p = pick([15, 20, 25, 30, 35]), have = p + pick([-10, -5, 5, 10]), ok = have >= p;
+        return { text: `你有 ${have} 元，東西賣 ${p} 元，錢夠嗎？`, visual: `🛒 ${p} 元｜👛 ${have} 元`, ...mc(ok ? '夠' : '不夠', [ok ? '不夠' : '夠']) };
+    } },
+    { unit: 'c6', skill: '找零', page: 'c6_making_change', gen: () => {
+        const p = pick([20, 30, 40, 60, 70, 80]), paid = p <= 50 ? 50 : 100, ch = paid - p;
+        return { text: `拿 ${paid} 元買 ${p} 元的東西，要找回多少元？`, visual: `🧃 ${p} 元｜💵 ${paid} 元`, ...mc(ch, [ch + 10, Math.max(0, ch - 10)]) };
+    } },
 ];
+// 施測時實例化：每支 gen() 生成一題（含隨機值）；「再測一次」reload 會重新生成
+const QUIZ = ITEMS.map(d => ({ unit: d.unit, skill: d.skill, page: d.page, ...d.gen() }));
 const UNIT_NAMES = {
     f1:'F1 數量與物品的對應', f2:'F2 數量與點數', f3:'F3 認識數字與數量', f4:'F4 數字排序',
     f5:'F5 數量大小的比較', f6:'F6 數的合成與分解', c1:'C1 金錢的種類與面額', c2:'C2 金錢的點數與加總',
@@ -146,16 +179,16 @@ function speak(text) {
 }
 
 function renderDots() {
-    document.getElementById('dots').innerHTML = ITEMS.map((_, i) =>
+    document.getElementById('dots').innerHTML = QUIZ.map((_, i) =>
         `<span class="${i < idx ? 'done' : i === idx ? 'cur' : ''}"></span>`).join('');
 }
 
 function renderItem() {
     renderDots();
-    const it = ITEMS[idx];
+    const it = QUIZ[idx];
     const card = document.getElementById('card');
     card.innerHTML = `
-        <div class="q-skill">第 ${idx + 1} / ${ITEMS.length} 題｜${it.skill}</div>
+        <div class="q-skill">第 ${idx + 1} / ${QUIZ.length} 題｜${it.skill}</div>
         <div class="q-text">${it.text} <button class="speak-btn" aria-label="朗讀題目" onclick="speak('${it.text.replace(/'/g, '')}')">🔊</button></div>
         ${it.visual ? `<div class="q-visual">${it.visual}</div>` : ''}
         <div class="opts">${it.opts.map((o, i) =>
@@ -164,7 +197,7 @@ function renderItem() {
         btn.addEventListener('click', () => {
             answers.push({ unit: it.unit, ok: parseInt(btn.dataset.i) === it.ans });
             idx++;
-            if (idx < ITEMS.length) { speak('下一題'); renderItem(); }
+            if (idx < QUIZ.length) { speak('下一題'); renderItem(); }
             else finish();
         });
     });
@@ -179,7 +212,7 @@ async function finish() {
     // 建議起點＝最早答錯的技能；全對 → 進階
     const rec = wrongs.length > 0 ? wrongs[0].unit : null;
     const recName = rec ? UNIT_NAMES[rec] : null;
-    const recPage = rec ? ITEMS.find(i => i.unit === rec).page : null;
+    const recPage = rec ? QUIZ.find(i => i.unit === rec).page : null;
 
     // 寫入學習紀錄（歷程可見；studentId 由 tracker 自動帶目前學生）
     try {
@@ -204,13 +237,13 @@ async function finish() {
     // 連續通過（自最基礎起）到哪一項技能
     let passStreak = 0;
     for (const a of answers) { if (a.ok) passStreak++; else break; }
-    const passName = passStreak > 0 ? ITEMS[passStreak - 1].skill : null;
+    const passName = passStreak > 0 ? QUIZ[passStreak - 1].skill : null;
 
     // 能力側寫地圖：F 系列一排、C 系列一排；建議起點圈出
     const segRow = (from, to) => answers.slice(from, to + 1).map((a, k) => {
-        const i = from + k, isRec = ITEMS[i].unit === rec;
+        const i = from + k, isRec = QUIZ[i].unit === rec;
         const mark = a.ok ? '✅' : (isRec ? '👈 起點' : '❌');
-        return `<span class="seg ${a.ok ? 'ok' : 'no'}${isRec ? ' rec' : ''}">${ITEMS[i].skill} <b>${mark}</b></span>`;
+        return `<span class="seg ${a.ok ? 'ok' : 'no'}${isRec ? ' rec' : ''}">${QUIZ[i].skill} <b>${mark}</b></span>`;
     }).join('');
     const skillMap = `
         <div class="skill-map" aria-label="能力側寫">
@@ -221,7 +254,7 @@ async function finish() {
         </div>`;
 
     const detail = answers.map((a, i) =>
-        `<tr><td>${ITEMS[i].skill}</td><td>${a.ok ? '✅ 通過' : '❌ 待加強'}</td></tr>`).join('');
+        `<tr><td>${QUIZ[i].skill}</td><td>${a.ok ? '✅ 通過' : '❌ 待加強'}</td></tr>`).join('');
 
     document.getElementById('card').innerHTML = `
         <div class="result-icon">${wrongs.length === 0 ? '🏆' : '🧭'}</div>
