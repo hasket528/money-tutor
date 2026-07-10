@@ -4,7 +4,7 @@
 //   ・其他同源資源（js/css/圖片/音檔）：快取優先＋背景更新（首次線上開啟後即可離線）
 //   ・SW_VERSION 換版即清掉舊的核心快取；執行期快取跨版保留以省流量
 // 註：發版時把 SW_VERSION 與根目錄 version.txt、index.html 的 BUILD_VERSION 一起遞增。
-const SW_VERSION    = '20260707i';
+const SW_VERSION    = '20260710b';
 const CACHE_CORE    = 'mt-core-' + SW_VERSION;
 const CACHE_RUNTIME = 'mt-runtime';
 

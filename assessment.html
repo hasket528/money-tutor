@@ -46,6 +46,20 @@
         .btn-sub  { background: #eaf3ff; color: #1d4ed8; }
         .detail-table { width: 100%; border-collapse: collapse; font-size: 0.82em; margin-top: 14px; }
         .detail-table td { border-top: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+        /* 能力側寫 */
+        .skill-map { margin: 14px 0 4px; text-align: left; }
+        .sm-group { font-size: 0.8em; font-weight: 800; color: #64748b; margin: 12px 0 6px; }
+        .sm-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .seg { flex: 1 1 auto; min-width: 90px; padding: 8px 9px; border-radius: 10px; font-size: 0.78em;
+               font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+               border: 2px solid transparent; }
+        .seg.ok { background: #dcfce7; color: #166534; }
+        .seg.no { background: #fee2e2; color: #991b1b; }
+        .seg.rec { border-color: #f59e0b; box-shadow: 0 0 0 3px #fde68a; background: #fff7e0; color: #b45309; }
+        .pass-note { font-size: 0.9em; color: #166534; margin: 6px 0 2px; }
+        .phase-badge { display: inline-block; background: #eaf3ff; color: #1d4ed8; font-size: 0.72em;
+                       font-weight: 800; padding: 3px 12px; border-radius: 20px; margin-top: 6px; }
+        .opt:focus-visible, .speak-btn:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
     </style>
 </head>
 <body>
@@ -54,9 +68,10 @@
         <img src="images/common/captain_gold.png" alt="金隊長">
         <h1>🧭 金隊長能力快篩</h1>
         <div class="sub">12 題小挑戰，金隊長幫你找到最適合的起點！</div>
+        <div id="phaseBadge"></div>
     </header>
     <div class="dots" id="dots"></div>
-    <div class="card" id="card"></div>
+    <div class="card" id="card" aria-live="polite" role="group" aria-label="測驗題目"></div>
 </div>
 
 <script src="js/learning-tracker.js"></script>
@@ -111,6 +126,12 @@ let idx = 0;
 const answers = [];   // { unit, ok }
 const startTs = Date.now();
 
+// 前測／後測模式（?phase=pre|post）——標記學習歷程，供前後測成效佐證
+const PHASE = new URLSearchParams(location.search).get('phase');
+const PHASE_LABEL = PHASE === 'pre' ? '前測' : PHASE === 'post' ? '後測' : '';
+if (PHASE_LABEL) document.getElementById('phaseBadge').innerHTML =
+    `<span class="phase-badge">📅 ${PHASE_LABEL}模式</span>`;
+
 function speak(text) {
     try {
         speechSynthesis.cancel();
@@ -135,7 +156,7 @@ function renderItem() {
     const card = document.getElementById('card');
     card.innerHTML = `
         <div class="q-skill">第 ${idx + 1} / ${ITEMS.length} 題｜${it.skill}</div>
-        <div class="q-text">${it.text} <button class="speak-btn" onclick="speak('${it.text.replace(/'/g, '')}')">🔊</button></div>
+        <div class="q-text">${it.text} <button class="speak-btn" aria-label="朗讀題目" onclick="speak('${it.text.replace(/'/g, '')}')">🔊</button></div>
         ${it.visual ? `<div class="q-visual">${it.visual}</div>` : ''}
         <div class="opts">${it.opts.map((o, i) =>
             `<button class="opt" data-i="${i}">${o}</button>`).join('')}</div>`;
@@ -147,6 +168,7 @@ function renderItem() {
             else finish();
         });
     });
+    card.querySelector('.opt')?.focus({ preventScroll: true });  // 鍵盤/切換掃描可用
     speak(it.text);
 }
 
@@ -162,7 +184,7 @@ async function finish() {
     // 寫入學習紀錄（歷程可見；studentId 由 tracker 自動帶目前學生）
     try {
         await window.LearningTracker?.save({
-            unit: 'assess', unitName: `🧭 起點評估（建議：${recName || '進階應用'}）`, series: 'A',
+            unit: 'assess', unitName: `🧭 起點評估${PHASE_LABEL ? '·' + PHASE_LABEL : ''}（建議：${recName || '進階應用'}）`, series: 'A',
             score: correct, total: answers.length, difficulty: 'normal',
             durationSec: Math.floor((Date.now() - startTs) / 1000),
         });
@@ -179,25 +201,45 @@ async function finish() {
         }
     } catch (e) {}
 
+    // 連續通過（自最基礎起）到哪一項技能
+    let passStreak = 0;
+    for (const a of answers) { if (a.ok) passStreak++; else break; }
+    const passName = passStreak > 0 ? ITEMS[passStreak - 1].skill : null;
+
+    // 能力側寫地圖：F 系列一排、C 系列一排；建議起點圈出
+    const segRow = (from, to) => answers.slice(from, to + 1).map((a, k) => {
+        const i = from + k, isRec = ITEMS[i].unit === rec;
+        const mark = a.ok ? '✅' : (isRec ? '👈 起點' : '❌');
+        return `<span class="seg ${a.ok ? 'ok' : 'no'}${isRec ? ' rec' : ''}">${ITEMS[i].skill} <b>${mark}</b></span>`;
+    }).join('');
+    const skillMap = `
+        <div class="skill-map" aria-label="能力側寫">
+            <div class="sm-group">🔢 數學基礎（F1–F6）</div>
+            <div class="sm-row">${segRow(0, 5)}</div>
+            <div class="sm-group">💰 貨幣認知（C1–C6）</div>
+            <div class="sm-row">${segRow(6, 11)}</div>
+        </div>`;
+
     const detail = answers.map((a, i) =>
-        `<tr><td>${ITEMS[i].skill}</td><td>${a.ok ? '✅' : '❌'}</td></tr>`).join('');
+        `<tr><td>${ITEMS[i].skill}</td><td>${a.ok ? '✅ 通過' : '❌ 待加強'}</td></tr>`).join('');
 
     document.getElementById('card').innerHTML = `
         <div class="result-icon">${wrongs.length === 0 ? '🏆' : '🧭'}</div>
         <h2 style="margin:8px 0">快篩完成！答對 ${correct} / ${answers.length} 題</h2>
-        ${stu ? `<div class="sub">已記錄到「${stu.name}」的學習歷程</div>` : '<div class="sub">（訪客模式：建議先到金隊長選擇學生再測）</div>'}
+        ${stu ? `<div class="sub">已記錄到「${stu.name}」的學習歷程${PHASE_LABEL ? '（' + PHASE_LABEL + '）' : ''}</div>` : '<div class="sub">（訪客模式：建議先到金隊長選擇學生再測）</div>'}
         <div class="rec-box">
             ${rec
-                ? `金隊長建議的學習起點：<br><b>${recName}</b><br><span style="font-size:0.85em">從這裡開始，一步一步往上爬！</span>`
-                : `基礎技能與貨幣認知都通過了！<br><b>建議直接挑戰「生活應用」或「預算規劃」單元</b> 🎉`}
+                ? `${passName ? `<div class="pass-note">✅ 已穩定通過：基礎到「${passName}」</div>` : ''}金隊長建議的學習起點：<br><b>${recName}</b><br><span style="font-size:0.85em">從這裡開始，一步一步往上爬！</span>`
+                : `基礎技能與貨幣認知都通過了！<br><b>建議直接挑戰「生活應用（A）」或「預算規劃（B）」單元</b> 🎉`}
         </div>
+        ${skillMap}
         <div class="btn-row">
-            ${rec ? `<a class="btn btn-main" href="html/${recPage}.html">▶ 前往 ${recName}</a>` : `<a class="btn btn-main" href="index.html#part4">▶ 前往進階應用</a>`}
+            ${rec ? `<a class="btn btn-main" href="html/${recPage}.html">▶ 前往 ${recName}</a>` : `<a class="btn btn-main" href="index.html">▶ 回主頁挑戰進階</a>`}
             <a class="btn btn-sub" href="index.html">回主頁</a>
             <button class="btn btn-sub" onclick="location.reload()">再測一次</button>
         </div>
-        <details style="margin-top:14px;text-align:left;">
-            <summary style="cursor:pointer;font-size:0.85em;color:#64748b;">📋 各技能結果（教師用）</summary>
+        <details style="margin-top:12px;text-align:left;">
+            <summary style="cursor:pointer;font-size:0.85em;color:#64748b;">📋 逐題明細（教師用）</summary>
             <table class="detail-table">${detail}</table>
         </details>`;
     speak(rec ? `快篩完成！建議從${recName}開始練習` : '太厲害了！基礎都通過了，可以挑戰進階單元！');
