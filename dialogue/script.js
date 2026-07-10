@@ -2139,7 +2139,9 @@ function applyDifficultyRules(result, text, step) {
 function evaluateInput(text, step) {
   // 高級＝完整語句：需說出「完整標準答案」才算對（精確比對，不看關鍵字、不寬鬆）
   if (state.difficulty === 'hard') {
-    const norm = s => (s || '').replace(/[！？。，、!?.,\s「」]/g, '');
+    // 去標點後再削句尾語助詞（嗎/喔/吧…），兩邊對稱——避免學生輸入被 normalizePronunciation
+    // 削掉尾綴「嗎」、標準答案卻因「嗎？」保留而誤判不符（例：請問有2B鉛筆嗎）
+    const norm = s => (s || '').replace(/[！？。，、!?.,\s「」]/g, '').replace(/[啊呢吧喔唷囉嗎耶欸呀哦哩]+$/, '');
     const t = norm(text);
     const ok = !!t && ((step.accepted_phrases || []).some(p => norm(p) === t)
                     || (step.options && norm(step.options[0]) === t));
