@@ -1421,18 +1421,30 @@
                 <div class="captain-current" id="captain-current-banner">目前學生：<b>訪客</b></div>
                 <div class="captain-students" id="captain-student-list"></div>
                 <div id="captain-create-block">
-                    <div class="captain-newrow">
-                        <input id="captain-new-name" type="text" maxlength="12" placeholder="🌱 輸入您的名字（必填）" autocomplete="off"
-                               onkeydown="if(event.key==='Enter'){event.preventDefault();captainCreateStudent('captain-new-name','captain-create-msg');}">
-                        <button onclick="captainCreateStudent('captain-new-name','captain-create-msg')">➕ 建立</button>
-                    </div>
-                    <div style="text-align:center; margin-top:10px;">
-                        <label style="display:inline-block; background:#e0e7ff; color:#3730a3; font-weight:700; font-size:0.85em; padding:6px 12px; border-radius:10px; cursor:pointer;">📷 加照片（選填）
+                    <div style="max-width:320px; margin:0 auto; text-align:left;">
+                        <div style="margin-bottom:14px;">
+                            <label for="captain-new-name" style="display:block; margin-bottom:6px; font-weight:800; color:#166534;">學生名稱：</label>
+                            <input id="captain-new-name" type="text" maxlength="12" placeholder="請輸入學生名稱（必填）" autocomplete="off"
+                                   style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:16px; box-sizing:border-box;"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault();captainCreateStudent('captain-new-name','captain-create-msg');}">
+                        </div>
+                        <div style="margin-bottom:10px;">
+                            <label style="display:block; margin-bottom:6px; font-weight:800; color:#166534;">照片（選填，可不放）：</label>
                             <input type="file" id="captain-new-photo" accept="image/*" style="display:none;" onchange="captainPreviewPhoto(this)">
-                        </label>
-                        <div><img id="captain-new-photo-preview" alt="" style="display:none; width:96px; height:96px; border-radius:14px; object-fit:cover; margin-top:8px; border:3px solid #f0b429;"></div>
+                            <label for="captain-new-photo" style="position:relative; width:140px; height:140px; border:2px dashed #ccc; border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin:0 auto; background:#f9f9f9; overflow:hidden;">
+                                <span id="captain-photo-placeholder" style="color:#999; text-align:center; font-size:0.9em;">點擊選擇照片<br>👆<br><small>（可略過）</small></span>
+                                <img id="captain-new-photo-preview" alt="" style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover;">
+                            </label>
+                        </div>
+                        <p style="margin:6px 0 16px; color:#888; font-size:13px; text-align:center;">姓名<b>必填</b>；照片可放可不放，不放會用預設頭像。</p>
+                        <div style="display:flex; gap:10px; justify-content:center;">
+                            <button onclick="captainCreateStudent('captain-new-name','captain-create-msg')"
+                                    style="background:linear-gradient(135deg,#22c55e,#15803d); color:#fff; border:none; border-radius:10px; padding:10px 22px; font-weight:800; font-size:1em; cursor:pointer; font-family:inherit;">✅ 確認新增</button>
+                            <button onclick="closeCaptainBase(null)"
+                                    style="background:#eef2f7; color:#475569; border:none; border-radius:10px; padding:10px 22px; font-weight:700; font-size:1em; cursor:pointer; font-family:inherit;">取消</button>
+                        </div>
+                        <div class="create-msg" id="captain-create-msg" style="text-align:center; margin-top:10px;"></div>
                     </div>
-                    <div class="create-msg" id="captain-create-msg" style="text-align:center;"></div>
                 </div>
                 <div class="captain-stats" id="captain-stats"></div>
 
@@ -2009,6 +2021,7 @@
                         _captainNewPhoto = cv.toDataURL('image/jpeg', 0.7);
                         const prev = document.getElementById('captain-new-photo-preview');
                         if (prev) { prev.src = _captainNewPhoto; prev.style.display = 'inline-block'; }
+                        const ph = document.getElementById('captain-photo-placeholder'); if (ph) ph.style.display = 'none';
                     };
                     img.src = e.target.result;
                 };
@@ -2039,6 +2052,7 @@
                 _captainNewPhoto = null;
                 const prev = document.getElementById('captain-new-photo-preview');
                 if (prev) { prev.style.display = 'none'; prev.src = ''; }
+                const ph = document.getElementById('captain-photo-placeholder'); if (ph) ph.style.display = '';
                 const pf = document.getElementById('captain-new-photo'); if (pf) pf.value = '';
                 setCurrent(stu);
                 setMsg('✅ 已建立「' + name + '」並設為目前學生');
@@ -2087,7 +2101,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260710f';
+            const BUILD_VERSION = '20260710g';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {
