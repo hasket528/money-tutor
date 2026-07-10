@@ -443,6 +443,17 @@ function bestTWVoice(prefer) {
       || prefer || A[0] || null;
 }
 
+// 心裡 OS（括號旁白）語音：固定用「曉臻 HsiaoChen」當旁白聲；退援順位＝
+// 曉臻(HsiaoChen) → 雅婷(Yating) → 其他 Online/Natural zh-TW → 一般高品質挑選。
+function bestOSVoice() {
+  const A = voiceManager.all || [];
+  const tw = v => (v.lang || '').toLowerCase().includes('tw');
+  return A.find(v => /hsiaochen|曉臻/i.test(v.name))
+      || A.find(v => /yating|雅婷/i.test(v.name))
+      || A.find(v => /online|natural/i.test(v.name) && tw(v))
+      || bestTWVoice(null);
+}
+
 const tts = {
   speak(text, rate = 0.85, onEnd) {
     if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
@@ -497,7 +508,7 @@ function speakHint(text, rate = 0.85) {
 // 不呼叫 stopAllAudio（呼叫時機為店員台詞已播完），只接續唸出 OS。
 function speakInnerOS(text) {
   if (!text || !window.speechSynthesis) return;
-  const voice = bestTWVoice(null);
+  const voice = bestOSVoice();   // 旁白固定曉臻→雅婷→…
   const u = new SpeechSynthesisUtterance(text);
   u.lang = voice?.lang || 'zh-TW';
   u.rate = 0.82;
@@ -540,6 +551,16 @@ function playShopkeeperAudio(step) {
     playCustomStepAudio(step, avatar);
     return;
   }
+  // 純旁白步驟（台詞只有括號心裡 OS、無店員話）：直接用旁白語音（曉臻→雅婷）唸 OS，
+  // 不去探測必 404 的店員預錄檔（避免延遲/卡頓，並確保 OS 會被唸出）。
+  {
+    const fp = step.shopkeeper_prompt || '';
+    if (!fp.replace(/（[^）]*）/g, '').trim()) {
+      const os = (fp.match(/（([^）]*)）/) || [])[1];
+      if (os) speakInnerOS(os.trim()); else tts.speak(fp, 0.85);
+      return;
+    }
+  }
   // 候選清單：情境專屬 → 共用版（_unknown_）；各試 mp3 與 wav。
   // mp3 優先（檔小、預錄主格式；wav 已備份移出，留 .wav 後備相容舊部署）
   const candidates = [
@@ -562,8 +583,10 @@ function playShopkeeperAudio(step) {
   const doTTS = () => {
     if (done) return;
     done = true;
-    // 無預錄檔：先唸店員台詞，唸完再接續唸心理 OS
-    tts.speak(clerkLine || fullPrompt, 0.85, speakOS);
+    // 有店員台詞：先唸台詞再接心理 OS；純旁白步驟（無台詞）：直接用旁白語音唸 OS，不唸括號
+    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
+    else if (osText) speakInnerOS(osText);
+    else tts.speak(fullPrompt, 0.85);
   };
 
   function tryNext() {
@@ -591,7 +614,11 @@ function playCustomStepAudio(step, avatar) {
   const osText     = osMatch ? osMatch[1].trim() : '';
   const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
   const speakOS    = () => { if (osText) setTimeout(() => speakInnerOS(osText), 350); };
-  const doTTS      = () => tts.speak(clerkLine || fullPrompt, 0.85, speakOS);
+  const doTTS      = () => {
+    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
+    else if (osText) speakInnerOS(osText);
+    else tts.speak(fullPrompt, 0.85);
+  };
 
   const key = `${state.scenario.id}::${step.id}::say`;
   (typeof dbAudioGet === 'function' ? dbAudioGet(key) : Promise.resolve(null))
@@ -2143,8 +2170,11 @@ function evaluateInput(text, step) {
     // 削掉尾綴「嗎」、標準答案卻因「嗎？」保留而誤判不符（例：請問有2B鉛筆嗎）
     const norm = s => (s || '').replace(/[！？。，、!?.,\s「」]/g, '').replace(/[啊呢吧喔唷囉嗎耶欸呀哦哩]+$/, '');
     const t = norm(text);
-    const ok = !!t && ((step.accepted_phrases || []).some(p => norm(p) === t)
-                    || (step.options && norm(step.options[0]) === t));
+    // 可接受答案＝accepted_phrases ＋ options[0] ＋ 回饋 failed 的示範句（「」內）。
+    // 納入示範句＝「app 叫學生怎麼說，就一定接受那個說法」，避免示範句漏列 accepted_phrases 而誤判。
+    const demo = (step.feedback?.failed || '').match(/「([^」]+)」/)?.[1];
+    const accepts = [...(step.accepted_phrases || []), step.options?.[0], demo].filter(Boolean);
+    const ok = !!t && accepts.some(p => norm(p) === t);
     return { score: ok ? 'perfect' : 'failed', detected: [] };
   }
   // 初級（音節寬鬆）/ 中級（關鍵字）：關鍵字比對 + 難度規則
