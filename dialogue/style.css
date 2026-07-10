@@ -107,6 +107,19 @@ body {
   position: relative;
   z-index: 1;
 }
+/* 副標「選擇想要練習的情境」與標語「互動練習…」同一列 */
+.home-header .home-subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  position: relative;
+  z-index: 1;
+}
+.home-header .home-subtitle-row .subtitle,
+.home-header .home-subtitle-row .header-tagline { margin-top: 0; }
 
 .scenario-grid {
   display: flex;
@@ -203,8 +216,8 @@ body {
   gap: 12px;
 }
 .clerk-modal-img {
-  width: 160px;
-  height: 160px;
+  width: clamp(150px, 44vw, 300px);   /* 桌面最大 300px；小裝置依版面彈性縮放 */
+  height: clamp(150px, 44vw, 300px);
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid white;
