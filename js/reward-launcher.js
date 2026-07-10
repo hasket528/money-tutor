@@ -207,6 +207,66 @@ const RewardLauncher = {
     }
 };
 
+// ── 單元設定頁：注入專案導覽列 ＋ 隱藏設定頁的「開啟獎勵系統」按鈕 ──
+// 集中一處涵蓋全部 24 單元（皆載入本檔、皆用 #settings-reward-link、皆渲染於 #app）。
+// 導覽列注入 #app 首位＝設定頁專屬；遊戲開始 app.innerHTML 重繪即自然移除。
+(function unitSettingsNav() {
+    if (!location.pathname.includes('/html/')) return;   // 僅作用於單元頁
+    const NAV_ID = 'unit-site-nav';
+    const LINKS = [
+        ['../index.html', '🏠 主頁'],
+        ['../reward/index.html?page=growth', '🌟 成就與寵物'],
+        ['../reward/index.html', '🏆 優良表現獎勵板'],
+        ['../dialogue/teacher.html', '📊 學習歷程總覽'],
+        ['../teacher-guide.html', '👩‍🏫 教師指南'],
+        ['../lesson-plans.html', '📚 單元教案包'],
+    ];
+    function injectStyleOnce() {
+        if (document.getElementById('unit-site-nav-style')) return;
+        const st = document.createElement('style');
+        st.id = 'unit-site-nav-style';
+        st.textContent =
+            '#' + NAV_ID + '{align-self:stretch;flex:0 0 auto;width:100%;box-sizing:border-box;' +
+            'position:sticky;top:0;z-index:10000;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;' +
+            'padding:8px 12px;margin:0 0 10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);box-shadow:0 2px 10px rgba(0,0,0,.12);}' +
+            '#' + NAV_ID + ' a{color:#fff;text-decoration:none;font-weight:700;font-size:.85rem;padding:6px 12px;' +
+            'border-radius:10px;background:rgba(255,255,255,.14);white-space:nowrap;}' +
+            '#' + NAV_ID + ' a:hover{background:rgba(255,255,255,.3);}';
+        document.head.appendChild(st);
+    }
+    function buildNav() {
+        const nav = document.createElement('nav');
+        nav.id = NAV_ID;
+        nav.setAttribute('aria-label', '網站導覽');
+        nav.innerHTML = LINKS.map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('');
+        return nav;
+    }
+    function hideRewardRow() {
+        const link = document.getElementById('settings-reward-link');
+        if (!link || link.dataset.navHidden) return;
+        let el = link.parentElement;
+        for (let i = 0; i < 5 && el; i++, el = el.parentElement) {
+            const lab = el.querySelector('label');
+            if (lab && /獎勵系統/.test(lab.textContent)) { el.style.display = 'none'; break; }
+        }
+        link.dataset.navHidden = '1';   // 註記：只隱藏一次（且 link 留在 DOM 當「設定頁」訊號）
+    }
+    function sync() {
+        if (!document.getElementById('settings-reward-link')) return;   // 設定頁訊號（遊戲畫面不含）
+        const app = document.getElementById('app');
+        if (app && !app.querySelector(':scope > #' + NAV_ID)) {
+            injectStyleOnce();
+            app.insertBefore(buildNav(), app.firstChild);
+        }
+        hideRewardRow();
+    }
+    const run = function () { try { sync(); } catch (e) {} };
+    try { new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+    run();
+    setTimeout(run, 300);
+})();
+
 // 自動初始化
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => RewardLauncher.init());

@@ -166,11 +166,12 @@ if (PHASE_LABEL) document.getElementById('phaseBadge').innerHTML =
     `<span class="phase-badge">📅 ${PHASE_LABEL}模式</span>`;
 
 // 挑選最高品質的中文語音：優先神經語音（Edge 的 Natural／Online，如曉臻/雅婷）
-let bestVoice = null;
+let bestVoice = null, voicesReady = false, pendingText = null;
 function pickVoice() {
     let vs = [];
     try { vs = speechSynthesis.getVoices(); } catch (e) { return; }
-    if (!vs.length) return;
+    if (!vs.length) return;                 // 語音清單尚未載入（非同步）→ 等 voiceschanged
+    voicesReady = true;
     const zh = vs.filter(v => /zh[-_]?(TW|Hant|Hans|CN)|zh$/i.test(v.lang) || /chinese|中文|國語|普通話/i.test(v.name));
     const pool = zh.length ? zh : vs;
     const score = v => {
@@ -183,18 +184,25 @@ function pickVoice() {
         return s;
     };
     bestVoice = pool.slice().sort((a, b) => score(b) - score(a))[0] || null;
+    if (pendingText != null) { const t = pendingText; pendingText = null; doSpeak(t); }  // 語音就緒 → 補念第一題
 }
-pickVoice();
 try { speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
+pickVoice();
+// 後備：若 voiceschanged 遲未觸發，1.2 秒後以現有語音念出待播文字（總比不念好）
+setTimeout(() => { if (pendingText != null) { pickVoice(); const t = pendingText; pendingText = null; voicesReady = true; doSpeak(t); } }, 1200);
 
+function doSpeak(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-TW'; u.rate = 0.92; u.pitch = 1.0;
+    if (bestVoice) u.voice = bestVoice;
+    speechSynthesis.speak(u);
+}
 function speak(text) {
     try {
         speechSynthesis.cancel();
-        if (!bestVoice) pickVoice();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-TW'; u.rate = 0.92; u.pitch = 1.0;
-        if (bestVoice) u.voice = bestVoice;
-        speechSynthesis.speak(u);
+        if (!voicesReady) pickVoice();
+        if (!voicesReady) { pendingText = text; return; }  // 神經語音還沒載好 → 排隊，載好再念
+        doSpeak(text);
     } catch (e) {}
 }
 
