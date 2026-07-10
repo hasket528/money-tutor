@@ -1355,13 +1355,23 @@ function playFeedbackAudio(text, score) {
 
 // ─── 首頁 ────────────────────────────────────────────
 
+// 情境分部（A 方案：依溝通難度進程）。自訂情境走 'custom' 分部。
+const SCENARIO_PART = {
+  convenience_store: 1, supermarket: 1, stationery_store: 1,   // 第一部分・基礎買賣
+  breakfast_shop: 2, fast_food: 2, night_market: 2,            // 第二部分・點餐客製
+  clothing_store: 3, pharmacy: 3, phone_reservation: 3, ask_directions: 3,  // 第三部分・生活應對
+};
+let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
+
 function renderHome() {
   recognizer.endSession();
   tts.cancel();
   const grid = document.getElementById('scenario-grid');
   grid.innerHTML = '';
 
-  getAllScenarios().forEach(scenario => {
+  getAllScenarios().filter(sc =>
+    homePart === 'custom' ? sc.isCustom : (!sc.isCustom && (SCENARIO_PART[sc.id] || 1) === Number(homePart))
+  ).forEach(scenario => {
     const clerkData = SCENARIO_CLERK_MAP[scenario.id];
     const clerkBase = clerkData ? VOICE_INFO.find(v => v.keyword === clerkData.keyword) : null;
     // 允許 SCENARIO_CLERK_MAP 以 name/role/image 覆寫語音角色的預設頭像。
@@ -1430,21 +1440,23 @@ function renderHome() {
     grid.appendChild(wrap);
   });
 
-  // 「➕ 自訂情境」入口卡：老師自編對話的第一入口（設定頁亦可管理）
-  const addWrap = document.createElement('div');
-  addWrap.className = 'scenario-card-wrap';
-  const addCard = document.createElement('button');
-  addCard.className = 'scenario-card scenario-card-add';
-  addCard.setAttribute('aria-label', '建立自訂情境');
-  addCard.innerHTML = `
-    <div class="card-icon-wrap"><span class="card-icon">➕</span></div>
-    <span class="card-name">自訂情境</span>
-    <span class="card-steps">🧑‍🏫 老師自編對話</span>
-    <span class="card-badge">建立新情境 →</span>
-  `;
-  addCard.addEventListener('click', () => { sfx.click(); openScenarioEditor(-1); });
-  addWrap.appendChild(addCard);
-  grid.appendChild(addWrap);
+  // 「➕ 自訂情境」入口卡：僅在「⭐ 自訂」分部顯示（老師自編對話入口）
+  if (homePart === 'custom') {
+    const addWrap = document.createElement('div');
+    addWrap.className = 'scenario-card-wrap';
+    const addCard = document.createElement('button');
+    addCard.className = 'scenario-card scenario-card-add';
+    addCard.setAttribute('aria-label', '建立自訂情境');
+    addCard.innerHTML = `
+      <div class="card-icon-wrap"><span class="card-icon">➕</span></div>
+      <span class="card-name">自訂情境</span>
+      <span class="card-steps">🧑‍🏫 老師自編對話</span>
+      <span class="card-badge">建立新情境 →</span>
+    `;
+    addCard.addEventListener('click', () => { sfx.click(); openScenarioEditor(-1); });
+    addWrap.appendChild(addCard);
+    grid.appendChild(addWrap);
+  }
 
   renderHomeStudentStrip();
   showScreen('screen-home');
@@ -3358,6 +3370,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 學生選擇
   renderStudentChip();
   document.getElementById('btn-student').addEventListener('click', openStudentModal);
+
+  // 情境分部 tab：同一版面過濾顯示（第一/二/三部分＋自訂）
+  document.getElementById('home-parts')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.home-part-btn');
+    if (!btn) return;
+    sfx.click();
+    homePart = btn.dataset.part;
+    document.querySelectorAll('.home-part-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderHome();
+  });
   document.getElementById('btn-home-reward')?.addEventListener('click', () => {
     if (typeof RewardLauncher !== 'undefined') RewardLauncher.open();
     else window.open('../reward/index.html', 'RewardSystem', 'width=1200,height=800');

@@ -84,6 +84,19 @@
       <div class="header-tagline" aria-hidden="true">🎮 互動練習 &nbsp;·&nbsp; 語音對話 &nbsp;·&nbsp; 即時回饋</div>
     </header>
 
+    <style>
+      .home-parts { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:0 auto 14px; padding:0 12px; max-width:760px; }
+      .home-part-btn { border:2px solid #dbe7f5; background:#fff; color:#334e68; font-weight:800; font-size:0.9rem; padding:8px 16px; border-radius:22px; cursor:pointer; font-family:inherit; transition:background .15s,border-color .15s,color .15s; white-space:nowrap; }
+      .home-part-btn:hover { border-color:#2563eb; }
+      .home-part-btn.active { background:linear-gradient(135deg,#1e3a5f,#2563eb); color:#fff; border-color:transparent; }
+    </style>
+    <div class="home-parts" id="home-parts" role="tablist" aria-label="情境分部">
+      <button class="home-part-btn active" data-part="1" role="tab">第一部分・基礎買賣</button>
+      <button class="home-part-btn" data-part="2" role="tab">第二部分・點餐客製</button>
+      <button class="home-part-btn" data-part="3" role="tab">第三部分・生活應對</button>
+      <button class="home-part-btn" data-part="custom" role="tab">⭐ 自訂</button>
+    </div>
+
     <div class="scenario-grid" id="scenario-grid">
       <!-- 由 script.js 動態產生 -->
     </div>
