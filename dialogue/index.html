@@ -73,7 +73,6 @@
     <header class="home-header">
       <button class="btn-settings-icon" id="btn-settings" aria-label="設定自訂情境">⚙️</button>
       <h1>購物練習</h1>
-      <button class="btn-settings-icon" id="btn-history" aria-label="學習歷程" style="right:auto;left:12px;">📖</button>
       <p class="subtitle">選擇想要練習的情境</p>
       <div class="home-chip-row">
         <button class="student-chip" id="btn-student" aria-label="選擇練習的學生">👤 選擇學生</button>
@@ -326,33 +325,7 @@
     </div>
   </div>
 
-  <!-- ════════════════════════════════════════
-       學習歷程頁
-  ════════════════════════════════════════ -->
-  <div id="screen-history" class="screen">
-    <header class="editor-header">
-      <button class="btn-icon" id="btn-history-back" aria-label="返回">←</button>
-      <h2 class="editor-title">學習歷程</h2>
-      <button class="btn-header-action" id="btn-history-clear">清除紀錄</button>
-    </header>
-    <div class="editor-body">
-      <div class="hist-filter-row" id="hist-filter-row" hidden>
-        <label for="hist-student-filter">👤 學生</label>
-        <select id="hist-student-filter" class="hist-filter-select"></select>
-        <button class="btn-tool" id="btn-print-student-report" hidden>🖨️ 列印學習報告</button>
-      </div>
-      <div class="history-summary" id="history-summary"></div>
-      <div class="hist-overview" id="hist-overview"></div>
-      <div class="hist-trend" id="hist-trend"></div>
-      <div class="history-list"   id="history-list"></div>
-      <div class="history-empty"  id="history-empty" hidden>
-        <div class="empty-icon">📖</div>
-        <p class="empty-title">尚無練習紀錄</p>
-        <p class="empty-msg">完成第一次練習後就會出現在這裡</p>
-      </div>
-    </div>
-  </div>
-
+  <!-- 學習歷程已統一至專案「學習歷程總覽」（dialogue/teacher.html）；主頁內嵌歷程頁已移除 -->
 
   <!-- ════════════════════════════════════════
        設定頁：自訂情境列表

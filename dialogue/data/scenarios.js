@@ -151,7 +151,7 @@ const SCENARIOS_DATA = {
             { id:"goodbye", shopkeeper_prompt:"沒關係！那你可以把餅乾放回去，下次再來喔！", task:"向店員道謝說再見",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝，下次再來！","好的，謝謝！"],
-              options:["謝謝！再見！","我再找找看","好的，掰掰！","謝謝"],
+              options:["謝謝！再見！","你好！","我要買餅乾！","廁所在哪裡？"],
               feedback:{ perfect:"說得很有禮貌！下次記得多帶一點錢喔！", partial:"有說謝謝！可以再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         },
