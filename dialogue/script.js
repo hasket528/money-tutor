@@ -516,6 +516,25 @@ function speakInnerOS(text) {
   window.speechSynthesis.speak(u);
 }
 
+// 播放心裡 OS：預錄旁白 MP3（曉臻，audio/clerk/{場景}_{情境}_{步驟}_os）優先——
+// 像店員台詞一樣可自動播放；缺檔才退回即時 TTS（bestOSVoice：曉臻→雅婷）。
+function playInnerOS(step, osText) {
+  if (!osText) return;
+  if (state.scenario?.isCustom) { speakInnerOS(osText); return; }  // 自訂情境無預錄 → 即時 TTS
+  const base  = `audio/clerk/${state.scenario.id}_${state.situation.id}_${step.id}_os`;
+  const cands = [base + '.mp3', base + '.wav'];
+  let i = 0;
+  const tryNext = () => {
+    if (i >= cands.length) { speakInnerOS(osText); return; }
+    const a = new Audio(cands[i++]);
+    _shopkeeperAudio = a;
+    a.onended = () => { if (_shopkeeperAudio === a) _shopkeeperAudio = null; };
+    a.onerror = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } };
+    a.play().catch(() => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } });
+  };
+  tryNext();
+}
+
 
 // ─── 店員語音播放（優先預錄音檔，無檔案時 fallback TTS）────────────
 // 查找順序：
@@ -557,7 +576,7 @@ function playShopkeeperAudio(step) {
     const fp = step.shopkeeper_prompt || '';
     if (!fp.replace(/（[^）]*）/g, '').trim()) {
       const os = (fp.match(/（([^）]*)）/) || [])[1];
-      if (os) speakInnerOS(os.trim()); else tts.speak(fp, 0.85);
+      if (os) playInnerOS(step, os.trim()); else tts.speak(fp, 0.85);
       return;
     }
   }
@@ -578,14 +597,14 @@ function playShopkeeperAudio(step) {
   const osMatch    = fullPrompt.match(/（([^）]*)）/);
   const osText     = osMatch ? osMatch[1].trim() : '';
   const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
-  const speakOS    = () => { if (osText) setTimeout(() => speakInnerOS(osText), 350); };
+  const speakOS    = () => { if (osText) setTimeout(() => playInnerOS(step, osText), 350); };
 
   const doTTS = () => {
     if (done) return;
     done = true;
     // 有店員台詞：先唸台詞再接心理 OS；純旁白步驟（無台詞）：直接用旁白語音唸 OS，不唸括號
     if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
-    else if (osText) speakInnerOS(osText);
+    else if (osText) playInnerOS(step, osText);
     else tts.speak(fullPrompt, 0.85);
   };
 
@@ -613,10 +632,10 @@ function playCustomStepAudio(step, avatar) {
   const osMatch    = fullPrompt.match(/（([^）]*)）/);
   const osText     = osMatch ? osMatch[1].trim() : '';
   const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
-  const speakOS    = () => { if (osText) setTimeout(() => speakInnerOS(osText), 350); };
+  const speakOS    = () => { if (osText) setTimeout(() => playInnerOS(step, osText), 350); };
   const doTTS      = () => {
     if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
-    else if (osText) speakInnerOS(osText);
+    else if (osText) playInnerOS(step, osText);
     else tts.speak(fullPrompt, 0.85);
   };
 
@@ -1616,8 +1635,8 @@ function startWithDifficulty(difficulty) {
     : LADDER.SPEAK;
   state.consecutiveCorrect = 0;   // 精熟標準：連續答對計數
   recognizer.requestPermission();
-  renderStep();
-  showScreen('screen-practice');
+  showScreen('screen-practice');   // 先切練習頁（showScreen 會 clearTimeout 店員語音計時器）
+  renderStep();                    // 再 renderStep 設自動播放計時器，否則第一步的自動播放會被 showScreen 清掉
 }
 
 
