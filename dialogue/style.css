@@ -318,15 +318,15 @@ body {
   flex-shrink: 0;
 }
 
-/* 店名＋種情境數同一列：店名水平置中、種情境數靠右對齊（絕對定位，不佔用置中計算） */
+/* 店名＋種情境數同一列：店名靠左對齊、種情境數靠右對齊（絕對定位） */
 .card-title-row {
   position: relative;
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 1.6em;
-  padding: 0 4.5rem;   /* 保留右側空間給絕對定位的種情境數，避免長店名重疊 */
+  padding: 0 4.5rem 0 0;   /* 右側保留空間給絕對定位的種情境數，避免長店名重疊 */
 }
 .card-title-row .card-steps {
   position: absolute;
@@ -337,7 +337,7 @@ body {
 }
 
 .card-icon  { font-size: 1.9rem; }
-.card-name  { font-size: 1.25rem; font-weight: 700; text-align: center; }
+.card-name  { font-size: 1.25rem; font-weight: 700; text-align: left; }
 .card-steps { font-size: 0.88rem; color: var(--gray-600); display: flex; align-items: center; gap: 4px; }
 .card-badge {
   display: inline-block;
