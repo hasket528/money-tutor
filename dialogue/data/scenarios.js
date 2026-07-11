@@ -2375,9 +2375,9 @@ const SCENARIOS_DATA = {
         },
         {
           id: "separated_from_family", name: "跟家人走散了", icon: "😰",
-          desc: "在公共場所與家人走散，向警察求助",
+          desc: "在公共場所家人走散了，向警察求助",
           steps: [
-            mkStep({ id:"greeting", say:"你好，這位同學你怎麼了嗎？", task:"說你弟弟不見了",
+            mkStep({ id:"greeting", say:"你好，這位學生你怎麼了嗎？", task:"說你弟弟不見了",
               options:["我弟弟不見了","你好！","我要買東西","謝謝再見"], kw:["走散","不見了","弟弟"],
               feedback:{ perfect:"很勇敢，說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"ask_details", say:"別擔心，我們會幫你！請問你還記得你弟弟穿什麼顏色的衣服嗎？",
