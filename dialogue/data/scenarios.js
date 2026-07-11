@@ -2256,6 +2256,180 @@ const SCENARIOS_DATA = {
           ]
         }
       ]
+    },
+
+    // ══════════════════════════════════════════
+    // 圖書館（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "library", name: "圖書館", icon: "📚", available: true,
+      theme: { color: '#155E75', bg: '#ECFEFF', accent: '#164E63' },
+      situations: [
+        {
+          id: "basic", name: "基本借書", icon: "📖",
+          desc: "出示借書證、借閱一本書的完整流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問需要幫忙嗎？", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","這本書多少錢？","廁所在哪裡？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"tell_purpose", say:"好的，請問要借什麼呢？", task:"說你要借這本書",
+              options:["我要借這本書","我要買這本書","謝謝再見","請問幾點關門？"], kw:["我要借","要借"],
+              frame_ref:"want_item", slots:{ item:{ answer:"故事書", choices:[
+                { text:"故事書", emoji:"📖" }, { text:"漫畫", emoji:"📕" },
+                { text:"雜誌", emoji:"📰" }, { text:"繪本", emoji:"🖼️" } ] } },
+              feedback:{ perfect:"很好！借閱意願說得很清楚！", partial:"說出了重點！可以說完整：「我要借這本書」" } }),
+            mkStep({ id:"show_card", say:"好的，請給我看你的借書證。", task:"出示借書證",
+              options:["這是我的借書證","我沒有借書證","我要辦一張","謝謝再見"], kw:["借書證","這是"],
+              feedback:{ perfect:"很好！配合度很高！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！借閱期限是兩週，兩週後要記得還書喔！", task:"說謝謝",
+              options:["好的，謝謝！","謝謝，我會記得的！","知道了，謝謝！","謝謝再見"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！記得準時還書喔！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "cant_find_book", name: "找不到書", icon: "🔍",
+          desc: "找不到想借的書，向館員求助並問路線",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問在找什麼嗎？", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","這本書多少錢？","可以借幾本？"], kw:"greet",
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_book", say:"請問需要幫忙嗎？", task:"詢問有沒有某本書",
+              options:["請問有這本書嗎？","我要辦借書證","謝謝再見","我要還書"], kw:["這本書","有沒有"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問有這本書嗎？」" } }),
+            mkStep({ id:"locate", say:"有的！在二樓的兒童讀物區喔！", task:"說謝謝並詢問怎麼走",
+              options:["謝謝！請問怎麼走？","好，謝謝你","我知道了","謝謝再見"], kw:["怎麼走","哪裡"],
+              feedback:{ perfect:"很好！懂得進一步詢問！", partial:"說出了重點！" } }),
+            mkStep({ id:"thanks", say:"沿著樓梯上去，右手邊就是了。", task:"道謝說再見",
+              options:["謝謝！再見！","謝謝，再見！","好的，謝謝！","掰掰！謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "overdue_book", name: "還書逾期", icon: "⏰",
+          desc: "還書時發現逾期，禮貌道歉並確認罰款",
+          steps: [
+            mkStep({ id:"return", say:"你好！請問要還書嗎？", task:"說你要還這本書",
+              options:["我要還這本書","我要借書","謝謝再見","我要辦借書證"], kw:["還書","我要還"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"overdue_notice", say:"（系統顯示這本書已經逾期 3 天）", task:"為逾期向館員道歉",
+              options:["對不起，我忘記了","這不關我的事","那我不還了","謝謝再見"],
+              kw:["對不起","抱歉","不好意思"],
+              feedback:{ perfect:"很好！懂得為疏失道歉！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_fee", say:"沒關係，逾期一天 2 元，這樣是 6 元喔。", task:"說好的並確認付款",
+              options:["好的，我付 6 元","太貴了，我不付","下次再付","謝謝再見"], kw:["好的","付"],
+              feedback:{ perfect:"很好！懂得為自己的疏忽負責！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，謝謝你！", task:"付款並道謝",
+              options:["謝謝你！","好的，謝謝！","不客氣","再見"], kw:"bye",
+              feedback:{ perfect:"很棒！有禮貌地完成了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "apply_card", name: "辦借書證", icon: "🪪",
+          desc: "第一次到圖書館，辦理借書證",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問需要辦理什麼呢？", task:"打招呼並說你要辦借書證",
+              options:["你好！我要辦借書證","你好，我要借書","請問要收費嗎？","謝謝再見"],
+              kw:["借書證","辦"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_info", say:"好的！請問你是本地居民還是學生呢？", task:"說你是學生",
+              options:["我是學生","我是居民","都不是","謝謝再見"], kw:["學生"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"好的，請幫我填一下這張表格。", task:"說好的謝謝",
+              options:["好的，謝謝！","我不會填","可以幫我填嗎？","謝謝再見"], kw:["好的","謝謝"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"辦好了！這是你的借書證，歡迎常來！", task:"道謝說再見",
+              options:["謝謝！再見！","謝謝，再見！","好的，謝謝！","掰掰！謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 警察局（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "police_station", name: "警察局", icon: "🚓", available: true,
+      theme: { color: '#1E3A8A', bg: '#EFF6FF', accent: '#1D4ED8' },
+      situations: [
+        {
+          id: "lost_item", name: "遺失物品", icon: "🎒",
+          desc: "東西不見了，向警員報案並說明遺失地點",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問需要什麼協助？", task:"跟警員打招呼並說你想報案",
+              options:["你好！我想報案","你好！","請問廁所在哪裡？","謝謝再見"], kw:["報案"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"describe", say:"好的，請問你遺失了什麼呢？", task:"說你的背包不見了",
+              options:["我的背包不見了","我要買背包","謝謝再見","我要問路"], kw:["背包","不見了","遺失"],
+              frame_ref:"want_item", slots:{ item:{ answer:"背包", choices:[
+                { text:"背包", emoji:"🎒" }, { text:"錢包", emoji:"👛" },
+                { text:"手機", emoji:"📱" }, { text:"雨傘", emoji:"☂️" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"details", say:"好的，請問是在哪裡弄丟的呢？", task:"說在公園弄丟的",
+              options:["在公園弄丟的","在學校弄丟的","我不記得了","謝謝再見"], kw:["公園"],
+              feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，我幫你登記，如果找到會通知你！", task:"道謝",
+              options:["謝謝你！","好的，謝謝！","謝謝，再見！","太好了，謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "separated_from_family", name: "跟家人走散了", icon: "😰",
+          desc: "在公共場所與家人走散，向警察求助",
+          steps: [
+            mkStep({ id:"greeting", say:"你好，小朋友，怎麼了嗎？", task:"說你跟媽媽走散了",
+              options:["我跟媽媽走散了","你好！","我要買東西","謝謝再見"], kw:["走散","不見了","媽媽"],
+              feedback:{ perfect:"很勇敢，說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_details", say:"別擔心，我們會幫你！請問你還記得媽媽穿什麼顏色的衣服嗎？",
+              task:"說出媽媽衣服的顏色",
+              options:["媽媽穿紅色的衣服","媽媽穿藍色的衣服","我不記得了","謝謝再見"], kw:["紅色","藍色","衣服"],
+              feedback:{ perfect:"很好！記得清楚細節很重要！", partial:"說出了重點！" } }),
+            mkStep({ id:"broadcast", say:"好的，我馬上幫你廣播協尋！", task:"說謝謝",
+              options:["謝謝你！","好的，謝謝！","太好了","不客氣"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"reunite", say:"太好了，找到你媽媽了！", task:"開心地道謝說再見",
+              options:["謝謝你！再見！","太好了！謝謝！","媽媽！","謝謝，掰掰！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "found_item", name: "撿到東西", icon: "💰",
+          desc: "撿到別人遺失的錢包，誠實送交警察局招領",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問有什麼事嗎？", task:"打招呼並說你撿到東西",
+              options:["你好！我撿到東西","你好！","我要報案","謝謝再見"], kw:["撿到"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hand_in", say:"好的，請問你撿到什麼呢？", task:"說你撿到一個錢包",
+              options:["我撿到一個錢包","我撿到一支手機","我撿到一把傘","謝謝再見"], kw:["錢包","撿到"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"where_found", say:"謝謝你這麼誠實！請問在哪裡撿到的？", task:"說在公車站撿到的",
+              options:["在公車站撿到的","在公園撿到的","我不記得了","謝謝再見"], kw:["公車站"],
+              feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，謝謝你的幫忙，你真是個好孩子！", task:"道謝說再見",
+              options:["謝謝！再見！","不客氣，再見！","謝謝誇獎！","掰掰！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "stranger_danger", name: "有人跟著我", icon: "🆘",
+          desc: "覺得被陌生人跟蹤，跑進警察局尋求協助",
+          steps: [
+            mkStep({ id:"approach", say:"（你覺得有陌生人一直跟著你，跑進警察局）", task:"跟警察說你需要幫助",
+              options:["請幫幫我！","你好！","我要問路","謝謝再見"], kw:["幫我","幫助","救命"],
+              feedback:{ perfect:"很勇敢，做得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"explain", say:"別緊張，你現在很安全！請問發生什麼事了？", task:"說有人跟蹤你",
+              options:["有人一直跟著我","我迷路了","我肚子餓","謝謝再見"], kw:["跟蹤","跟著我"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"reassure", say:"你做得很好，來這裡找我們是對的！請問可以打電話給你的家人嗎？",
+              task:"說可以打給媽媽",
+              options:["可以，打給我媽媽","可以，打給我爸爸","我不知道電話","謝謝再見"], kw:["打給","媽媽","爸爸"],
+              feedback:{ perfect:"很好！懂得配合警察！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，我們馬上聯絡你的家人，你先坐著休息。", task:"說謝謝",
+              options:["謝謝你！","好的，謝謝！","謝謝，我在這裡等","太好了，謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        }
+      ]
     }
 
   ]

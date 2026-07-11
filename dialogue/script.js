@@ -281,6 +281,8 @@ const VOICE_INFO = [
   { keyword: '云枫',        name: '老王', gender: 'male',                    image: 'images/clerk-lunchbox.png',   role: '便當店' },
   { keyword: '云野',        name: '阿澄', gender: 'male',                    image: 'images/clerk-coffee.png',     role: '咖啡店' },
   { keyword: '晓涵',        name: '阿珍', gender: 'female',                  image: 'images/clerk-postoffice.png', role: '郵局櫃臺' },
+  { keyword: '晓墨',        name: '靜姐', gender: 'female',                  image: 'images/clerk-library.png',    role: '圖書館' },
+  { keyword: '云泽',        name: '阿凱', gender: 'male',                    image: 'images/clerk-police.png',     role: '警察局' },
 ];
 
 const GENDER_AVATAR = { female: '👩', male: '👨', neutral: '🧑' };
@@ -303,6 +305,8 @@ const SCENARIO_CLERK_MAP = {
   lunchbox_shop:     { keyword: '云枫',   intro: '你好！我是便當店的老闆老王。在這裡你可以練習點便當、詢問今日特餐，還有等太久時怎麼有禮貌地開口問。' },
   coffee_shop:       { keyword: '云野',   intro: '你好！我是咖啡店的店員阿澄。在這裡你可以練習點咖啡、詢問座位插座，還有點錯口味時怎麼更正。' },
   post_office:       { keyword: '晓涵',   intro: '你好！我是郵局櫃檯人員阿珍。在這裡你可以練習寄包裹、買郵票，還有詢問多久會送到怎麼說。' },
+  library:           { keyword: '晓墨',   intro: '你好！我是圖書館的館員靜姐。在這裡你可以練習借書、辦借書證，還有還書逾期時怎麼禮貌地應對。' },
+  police_station:    { keyword: '云泽',   intro: '你好！我是警察局的警員阿凱。在這裡你可以練習報案、遺失物招領，還有遇到危險時怎麼向警察求助。' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
@@ -1444,7 +1448,7 @@ function playFeedbackAudio(text, score) {
 const SCENARIO_PART = {
   convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1, clothing_store: 1,   // 第一部分・基礎買賣
   breakfast_shop: 2, fast_food: 2, night_market: 2, drink_shop: 2, lunchbox_shop: 2, coffee_shop: 2,  // 第二部分・點餐客製
-  pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3,  // 第三部分・生活應對
+  pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3, library: 3, police_station: 3,  // 第三部分・生活應對
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
