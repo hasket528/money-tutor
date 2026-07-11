@@ -1701,6 +1701,561 @@ const SCENARIOS_DATA = {
           ]
         }
       ]
+    },
+
+    // ══════════════════════════════════════════
+    // 麵包店（第一部分・基礎買賣）
+    // ══════════════════════════════════════════
+    {
+      id: "bakery", name: "麵包店", icon: "🍞", available: true,
+      theme: { color: '#A16207', bg: '#FEFCE8', accent: '#854D0E' },
+      situations: [
+        {
+          id: "basic", name: "基本購買", icon: "🍞",
+          desc: "詢問麵包口味、確認價錢到結帳的完整購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨，請問要買什麼麵包呢？", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有奶油麵包？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"ask_location", say:"請問想找哪一種麵包呢？", task:"詢問菠蘿麵包在哪裡",
+              options:["請問菠蘿麵包在哪裡？","我要結帳","謝謝再見","請問多少錢？"], kw:["菠蘿"],
+              frame_ref:"ask_location", slots:{ item:{ answer:"菠蘿麵包", choices:[
+                { text:"菠蘿麵包", emoji:"🍍" }, { text:"蛋糕", emoji:"🍰" },
+                { text:"三明治", emoji:"🥪" }, { text:"貝果", emoji:"🥯" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問菠蘿麵包在哪裡？」" } }),
+            mkStep({ id:"ask_price", say:"菠蘿麵包在你左手邊那一排喔！", task:"詢問這個多少錢",
+              options:["請問這個多少錢？","好的謝謝","我要買兩個","謝謝再見"], kw:"price",
+              frame_ref:"ask_price", slots:{ item:{ answer:"菠蘿麵包", choices:[
+                { text:"菠蘿麵包", emoji:"🍍" }, { text:"吐司", emoji:"🍞" },
+                { text:"貝果", emoji:"🥯" }, { text:"蛋糕", emoji:"🍰" } ] } },
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
+            mkStep({ id:"purchase", say:"這個菠蘿麵包 25 元，請問還需要別的嗎？", task:"告訴老闆你要買這個",
+              options:["我要買這個","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
+              frame_ref:"want_item", slots:{ item:{ answer:"菠蘿麵包", choices:[
+                { text:"菠蘿麵包", emoji:"🍍" }, { text:"吐司", emoji:"🍞" },
+                { text:"貝果", emoji:"🥯" }, { text:"蛋糕", emoji:"🍰" } ] } },
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「我要買這個！」" } }),
+            mkStep({ id:"checkout", say:"好的！25 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "買吐司時發現錢不夠，改買便宜的替代品",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問想要買什麼？", task:"告訴老闆你要買一條吐司",
+              options:["我要買一條吐司","我要買蛋糕","謝謝再見","我再看看"], kw:["吐司"],
+              frame_ref:"want_item", slots:{ item:{ answer:"吐司", choices:[
+                { text:"吐司", emoji:"🍞" }, { text:"蛋糕", emoji:"🍰" }, { text:"貝果", emoji:"🥯" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！這條吐司 45 元。", task:"告訴老闆你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你打開錢包，發現只有 30 元，不夠 45 元）", task:"告訴老闆你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不買了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換小一點的餐包，一個只要 15 元？", task:"說你要改買餐包",
+              options:["好，我要餐包","我還是要吐司","兩個都不要了","讓我想一想"], kw:["餐包","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "cant_find_item", name: "找不到想要的口味", icon: "🔍",
+          desc: "紅豆麵包賣完了，接受店員建議改買其他口味",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問在找什麼呢？", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"], kw:"greet",
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_redbean", say:"請問需要幫忙嗎？", task:"詢問有沒有紅豆麵包",
+              options:["請問有沒有紅豆麵包？","我要吐司","謝謝再見","我要蛋糕"], kw:["紅豆"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問有沒有紅豆麵包？」" } }),
+            mkStep({ id:"sold_out", say:"不好意思，紅豆麵包剛好賣完了！但我們有奶酥口味的喔。", task:"說你要試試看奶酥麵包",
+              options:["好，我要試試看奶酥的","那我不買了","我要吐司好了","謝謝再見"], kw:["奶酥","試試"],
+              feedback:{ perfect:"很好！願意嘗試新口味！", partial:"說出了重點！" } }),
+            mkStep({ id:"decide", say:"奶酥麵包很多人喜歡喔！", task:"說你要買兩個奶酥麵包",
+              options:["我要買兩個","我只要一個","那我不要了","謝謝再見"], kw:["兩個"],
+              feedback:{ perfect:"很好！清楚說明數量！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩個奶酥麵包共 50 元，謝謝！", task:"付款並道謝說再見",
+              options:["謝謝！再見！","謝謝，再見！","好的，謝謝！","掰掰！謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "ask_fresh", name: "詢問新不新鮮", icon: "⏰",
+          desc: "詢問麵包是不是剛出爐的，再決定要買什麼",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問需要幫忙嗎？", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","營業到幾點？"], kw:"greet",
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_fresh", say:"請問需要幫忙嗎？", task:"詢問麵包是不是剛出爐的",
+              options:["請問這是剛出爐的嗎？","我要結帳","謝謝再見","有沒有折扣？"], kw:["剛出爐","新鮮","出爐"],
+              feedback:{ perfect:"問得很好！懂得關心新鮮度！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"是的！這批是半小時前剛出爐的，還熱熱的喔！", task:"說你要買兩個奶油餐包",
+              options:["我要買兩個奶油餐包","我要一個就好","那我不買了","謝謝再見"], kw:["奶油餐包","兩個"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩個奶油餐包共 30 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 美妝雜貨店（第一部分・基礎買賣）
+    // ══════════════════════════════════════════
+    {
+      id: "beauty_store", name: "美妝雜貨店", icon: "💄", available: true,
+      theme: { color: '#C026D3', bg: '#FAE8FF', accent: '#A21CAF' },
+      situations: [
+        {
+          id: "basic", name: "基本購買", icon: "🧴",
+          desc: "詢問乳液位置、確認價錢到結帳的完整購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨，請問需要什麼呢？", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有試用包？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"ask_location", say:"請問想找哪一種商品呢？", task:"詢問乳液在哪裡",
+              options:["請問乳液在哪裡？","我要結帳","謝謝再見","請問多少錢？"], kw:["乳液"],
+              frame_ref:"ask_location", slots:{ item:{ answer:"乳液", choices:[
+                { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
+                { text:"香皂", emoji:"🧽" }, { text:"洗髮精", emoji:"🧴" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問乳液在哪裡？」" } }),
+            mkStep({ id:"ask_price", say:"乳液在這一排喔，請問還需要什麼嗎？", task:"詢問這罐多少錢",
+              options:["請問這罐多少錢？","好的謝謝","我要買兩罐","謝謝再見"], kw:"price",
+              frame_ref:"ask_price", slots:{ item:{ answer:"乳液", choices:[
+                { text:"乳液", emoji:"🧴" }, { text:"防曬乳", emoji:"🧴" },
+                { text:"洗面乳", emoji:"🧼" }, { text:"香皂", emoji:"🧽" } ] } },
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
+            mkStep({ id:"purchase", say:"這罐乳液 120 元，請問還需要別的嗎？", task:"告訴店員你要買這罐",
+              options:["我要買這罐","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
+              frame_ref:"want_item", slots:{ item:{ answer:"乳液", choices:[
+                { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
+                { text:"香皂", emoji:"🧽" }, { text:"洗髮精", emoji:"🧴" } ] } },
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「我要買這罐！」" } }),
+            mkStep({ id:"checkout", say:"好的！120 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "ask_recommendation", name: "詢問推薦商品", icon: "🧴",
+          desc: "詢問店員推薦的防曬乳，並完成購買",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問需要幫忙嗎？", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"], kw:"greet",
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_rec", say:"請問需要幫忙嗎？", task:"詢問有沒有推薦的防曬乳",
+              options:["請問有推薦的防曬乳嗎？","我要買洗髮精","謝謝再見","我要買香皂"], kw:["防曬","推薦"],
+              feedback:{ perfect:"問得很好！懂得請人推薦！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"這款防曬乳很多人買，清爽不黏膩喔！", task:"說你要買這罐",
+              options:["好，我要這罐","那我再想想","我不需要了","謝謝再見"], kw:["我要買","要買","這罐"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！這罐防曬乳 150 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "買洗面乳時發現錢不夠，改買便宜的香皂",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問想要買什麼？", task:"告訴店員你要買洗面乳",
+              options:["我要買洗面乳","我要買乳液","謝謝再見","我再看看"], kw:["洗面乳"],
+              frame_ref:"want_item", slots:{ item:{ answer:"洗面乳", choices:[
+                { text:"洗面乳", emoji:"🧼" }, { text:"乳液", emoji:"🧴" }, { text:"香皂", emoji:"🧽" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！這罐洗面乳 90 元。", task:"告訴店員你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你打開錢包，發現只有 50 元，不夠 90 元）", task:"告訴店員你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不買了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換一塊香皂，只要 35 元？", task:"說你要改買香皂",
+              options:["好，我要香皂","我還是要洗面乳","兩個都不要了","讓我想一想"], kw:["香皂","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "ask_sale", name: "詢問特價活動", icon: "🏷️",
+          desc: "詢問洗髮精買一送一的活動並完成購買",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問需要幫忙嗎？", task:"打招呼並詢問有沒有特價活動",
+              options:["你好！請問有特價活動嗎？","你好，有沒有折扣？","請問有優惠嗎？","謝謝再見"], kw:["特價","折扣","優惠"],
+              feedback:{ perfect:"問得很好！懂得找優惠！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"有的！這款洗髮精本週買一送一喔！", task:"說你要買這款洗髮精",
+              options:["好，我要買這款","那我再想想","我不需要了","謝謝再見"], kw:["我要買","要買","洗髮精"],
+              feedback:{ perfect:"很好！懂得利用優惠！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"好的！請問要哪一種香味？有花香、果香跟無香可以選！", task:"說你要花香的",
+              options:["我要花香的！","我要果香的！","我要無香的！","三種各一瓶！"], kw:["花香"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！買一送一共 199 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！有利用到優惠！", partial:"有說謝謝！" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 手搖飲料店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "drink_shop", name: "手搖飲料店", icon: "🧋", available: true,
+      theme: { color: '#0D9488', bg: '#CCFBF1', accent: '#0F766E' },
+      situations: [
+        {
+          id: "basic", name: "基本點飲料", icon: "🧋",
+          desc: "點飲料並說出甜度、冰塊的完整點餐流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨，請問要喝什麼呢？", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"order", say:"好的，請問要點什麼飲料呢？", task:"告訴店員你要一杯珍珠奶茶",
+              options:["我要一杯珍珠奶茶","我要結帳","謝謝再見","有什麼推薦？"], kw:["珍珠奶茶"],
+              frame_ref:"want_item", slots:{ item:{ answer:"珍珠奶茶", choices:[
+                { text:"珍珠奶茶", emoji:"🧋" }, { text:"綠茶", emoji:"🍵" },
+                { text:"紅茶拿鐵", emoji:"🥤" }, { text:"檸檬水", emoji:"🍋" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要一杯珍珠奶茶」" } }),
+            mkStep({ id:"ask_sweet", say:"好的！請問甜度要幾分呢？", task:"說你要半糖",
+              options:["半糖","全糖","無糖","微糖"], kw:["半糖"],
+              feedback:{ perfect:"說得很清楚！懂得選擇甜度！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_ice", say:"好的，半糖！請問冰塊要正常還是少冰呢？", task:"說你要少冰",
+              options:["少冰","正常冰","去冰","溫的"], kw:["少冰"],
+              feedback:{ perfect:"說得很清楚！懂得選擇冰塊！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！半糖少冰的珍珠奶茶 55 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "wrong_order", name: "點錯了要改", icon: "🔄",
+          desc: "店員複誦飲料弄錯了，禮貌地更正",
+          steps: [
+            mkStep({ id:"order", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯綠茶",
+              options:["我要一杯綠茶","我要珍珠奶茶","謝謝再見","有什麼推薦？"], kw:["綠茶"],
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"clerk_mistake", say:"好的，一杯紅茶對嗎？", task:"告訴店員你點的是綠茶不是紅茶",
+              options:["不是喔，我要綠茶","對，紅茶就好","謝謝再見","我要換飲料"], kw:["綠茶","不是"],
+              feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯綠茶。", task:"說謝謝店員的更正",
+              options:["謝謝你！","沒關係！","再確認一次","謝謝再見"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！綠茶一杯 40 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "點大杯飲料時發現錢不夠，改點小杯",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯大杯奶茶",
+              options:["我要一杯大杯奶茶","我要小杯就好","謝謝再見","我再看看"], kw:["大杯","奶茶"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！大杯奶茶 50 元。", task:"告訴店員你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你翻了翻口袋，發現只有 35 元，不夠 50 元）", task:"告訴店員你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不買了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要改點中杯，只要 35 元？", task:"說你要改成中杯",
+              options:["好，我要中杯","我還是要大杯","兩個都不要了","讓我想一想"], kw:["中杯","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "ask_size", name: "詢問大小杯價錢", icon: "📏",
+          desc: "詢問飲料大小杯的價差，再決定要點什麼",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問要喝什麼呢？", task:"打招呼並詢問大杯多少錢",
+              options:["你好！請問大杯多少錢？","你好，有什麼優惠？","請問有折扣嗎？","謝謝再見"], kw:["大杯","多少錢"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"大杯 50 元，中杯 40 元喔！", task:"說你要一杯大杯的紅茶",
+              options:["我要一杯大杯紅茶","我要中杯就好","那我再想想","謝謝再見"], kw:["大杯","紅茶"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_sweet", say:"好的！請問甜度要幾分呢？", task:"說你要微糖",
+              options:["微糖","全糖","無糖","半糖"], kw:["微糖"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！大杯微糖紅茶 50 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 便當店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "lunchbox_shop", name: "便當店", icon: "🍱", available: true,
+      theme: { color: '#9A3412', bg: '#FFEDD5', accent: '#7C2D12' },
+      situations: [
+        {
+          id: "basic", name: "基本點餐", icon: "🍱",
+          desc: "選擇主菜與飯量的完整便當購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問要吃什麼呢？", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","今天有什麼菜？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"choose_meat", say:"好的，請問要哪一種主菜呢？", task:"告訴老闆你要雞腿便當",
+              options:["我要雞腿便當","我要結帳","謝謝再見","有什麼推薦？"], kw:["雞腿"],
+              frame_ref:"want_item", slots:{ item:{ answer:"雞腿便當", choices:[
+                { text:"雞腿便當", emoji:"🍗" }, { text:"排骨便當", emoji:"🥩" },
+                { text:"魚排便當", emoji:"🐟" }, { text:"滷蛋便當", emoji:"🥚" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要雞腿便當」" } }),
+            mkStep({ id:"ask_rice", say:"好的！請問飯要正常還是少一點呢？", task:"說你要飯少一點",
+              options:["飯少一點","正常飯量","飯多一點","不要飯"], kw:["少一點","飯少"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！雞腿便當飯少一點，共 80 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "點雞腿便當時發現錢不夠，改點便宜的滷蛋便當",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問要吃什麼呢？", task:"告訴老闆你要雞腿便當",
+              options:["我要雞腿便當","我要滷蛋便當","謝謝再見","我再看看"], kw:["雞腿"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！雞腿便當 90 元。", task:"告訴老闆你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你數了數錢包裡的錢，只有 60 元，不夠 90 元）", task:"告訴老闆你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不買了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換滷蛋便當，只要 55 元？", task:"說你要改買滷蛋便當",
+              options:["好，我要滷蛋便當","我還是要雞腿便當","兩個都不要了","讓我想一想"], kw:["滷蛋","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "ask_special", name: "詢問今日特餐", icon: "🌟",
+          desc: "詢問今天有什麼特餐，再決定要買什麼",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問要吃什麼呢？", task:"打招呼並詢問今日特餐是什麼",
+              options:["你好！請問今天有什麼特餐？","你好，有推薦的嗎？","請問最便宜的是什麼？","謝謝再見"],
+              kw:["特餐","推薦"],
+              feedback:{ perfect:"問得很好！懂得詢問特餐！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"今天特餐是排骨便當，只要 70 元喔！", task:"說你要一個特餐",
+              options:["好，我要一個特餐","那我再想想","我要別的","謝謝再見"], kw:["特餐","我要"],
+              feedback:{ perfect:"很好！懂得利用特餐！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_rice", say:"好的！請問飯要正常還是多一點呢？", task:"說你要正常飯量",
+              options:["正常飯量","飯多一點","飯少一點","不要飯"], kw:["正常"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！特餐一份 70 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！有利用到特餐！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "wait_too_long", name: "等太久了", icon: "⏰",
+          desc: "排隊等便當等太久，禮貌地詢問還要多久",
+          steps: [
+            mkStep({ id:"wait", say:"（你已經在便當店等了好一陣子，便當還沒好）", task:"禮貌地詢問還要等多久",
+              options:["請問還要等多久呢？","算了，我不要了","我要換別的","你好"],
+              kw:["還要","多久","等"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"不好意思，再兩分鐘就好囉！", task:"說好，你願意再等一下",
+              options:["好的，我再等一下","那我不要了","可以快一點嗎？","謝謝再見"], kw:["再等","好的"],
+              feedback:{ perfect:"很有耐心！", partial:"說出了重點！" } }),
+            mkStep({ id:"receive", say:"久等了！這是你的雞腿便當，80 元。", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","終於好了！"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！" } }),
+            mkStep({ id:"thanks", say:"謝謝你的耐心等待！", task:"跟老闆道謝說再見",
+              options:["謝謝！再見！","謝謝，再見！","好的，謝謝！","掰掰！謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 咖啡店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "coffee_shop", name: "咖啡店", icon: "☕", available: true,
+      theme: { color: '#78350F', bg: '#FDF6EC', accent: '#451A03' },
+      situations: [
+        {
+          id: "basic", name: "基本點咖啡", icon: "☕",
+          desc: "點咖啡並說出冰熱、大小的完整點餐流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨，請問要喝什麼呢？", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"order", say:"好的，請問要點什麼咖啡呢？", task:"告訴店員你要一杯拿鐵",
+              options:["我要一杯拿鐵","我要結帳","謝謝再見","有什麼推薦？"], kw:["拿鐵"],
+              frame_ref:"want_item", slots:{ item:{ answer:"拿鐵", choices:[
+                { text:"拿鐵", emoji:"☕" }, { text:"美式咖啡", emoji:"☕" },
+                { text:"卡布奇諾", emoji:"☕" }, { text:"熱可可", emoji:"🍫" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要一杯拿鐵」" } }),
+            mkStep({ id:"ask_hot_or_iced", say:"好的！請問要熱的還是冰的呢？", task:"說你要冰的",
+              options:["冰的","熱的","溫的","都可以"], kw:["冰的"],
+              feedback:{ perfect:"說得很清楚！懂得選擇冰熱！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！冰拿鐵一杯 65 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "點拿鐵時發現錢不夠，改點便宜的美式咖啡",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯拿鐵",
+              options:["我要一杯拿鐵","我要美式咖啡","謝謝再見","我再看看"], kw:["拿鐵"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！拿鐵一杯 65 元。", task:"告訴店員你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你打開錢包，發現只有 45 元，不夠 65 元）", task:"告訴店員你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不買了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換美式咖啡，只要 45 元？", task:"說你要改點美式咖啡",
+              options:["好，我要美式咖啡","我還是要拿鐵","兩個都不要了","讓我想一想"], kw:["美式","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "ask_seat", name: "詢問座位與插座", icon: "🔌",
+          desc: "詢問店裡有沒有空位和插座可以使用",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問要喝什麼呢？", task:"打招呼並詢問有沒有插座的位子",
+              options:["你好！請問有插座的位子嗎？","你好，有位子嗎？","請問可以坐多久？","謝謝再見"],
+              kw:["插座","位子"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"有的！靠窗那一區都有插座喔！", task:"說謝謝店員的說明",
+              options:["謝謝你！","好的，我知道了","太好了！","謝謝再見"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"order", say:"請問要點什麼飲料呢？", task:"說你要一杯熱美式",
+              options:["我要一杯熱美式","我要拿鐵","謝謝再見","我再看看"], kw:["美式"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！熱美式一杯 50 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "wrong_order", name: "點錯口味了", icon: "🔄",
+          desc: "店員複誦口味弄錯了，禮貌地更正",
+          steps: [
+            mkStep({ id:"order", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯焦糖拿鐵",
+              options:["我要一杯焦糖拿鐵","我要美式咖啡","謝謝再見","有什麼推薦？"], kw:["焦糖"],
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"clerk_mistake", say:"好的，一杯香草拿鐵對嗎？", task:"告訴店員你點的是焦糖不是香草",
+              options:["不是喔，我要焦糖的","對，香草就好","謝謝再見","我要換飲料"], kw:["焦糖","不是"],
+              feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯焦糖拿鐵。", task:"說謝謝店員的更正",
+              options:["謝謝你！","沒關係！","再確認一次","謝謝再見"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！焦糖拿鐵一杯 70 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        }
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 郵局櫃臺（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "post_office", name: "郵局櫃臺", icon: "📮", available: true,
+      theme: { color: '#1D4ED8', bg: '#DBEAFE', accent: '#1E40AF' },
+      situations: [
+        {
+          id: "basic", name: "寄送包裹", icon: "📦",
+          desc: "告訴櫃檯人員要寄包裹，確認費用並付款",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！請問需要辦理什麼業務呢？", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","多少錢？","請問怎麼寄信？"], kw:"greet",
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"tell_purpose", say:"好的，請問要辦理什麼呢？", task:"告訴櫃檯人員你要寄包裹",
+              options:["我要寄包裹","我要買郵票","謝謝再見","我要領錢"], kw:["寄包裹","包裹"],
+              frame_ref:"want_item", slots:{ item:{ answer:"包裹", choices:[
+                { text:"包裹", emoji:"📦" }, { text:"信件", emoji:"✉️" },
+                { text:"郵票", emoji:"📮" }, { text:"明信片", emoji:"📬" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！試著說完整：「我要寄包裹」" } }),
+            mkStep({ id:"weigh", say:"好的，請把包裹放上來給我秤重喔！", task:"告訴櫃檯人員好的",
+              options:["好的，謝謝！","不用了","等一下","我改變主意了"], kw:["好的"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_price", say:"這個包裹重 1 公斤，請問還需要什麼嗎？", task:"詢問這樣要多少錢",
+              options:["請問這樣要多少錢？","好的謝謝","我要寄兩個","謝謝再見"], kw:"price",
+              frame_ref:"ask_price", slots:{ item:{ answer:"包裹", choices:[
+                { text:"包裹", emoji:"📦" }, { text:"信件", emoji:"✉️" } ] } },
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
+            mkStep({ id:"checkout", say:"好的！運費 90 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+          ]
+        },
+        {
+          id: "buy_stamp", name: "購買郵票", icon: "✉️",
+          desc: "詢問並購買寄信要用的郵票",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問需要辦理什麼業務呢？", task:"打招呼並詢問郵票怎麼賣",
+              options:["你好！請問郵票怎麼賣？","你好，我要買郵票","請問多少錢一張？","謝謝再見"],
+              kw:["郵票"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"國內信郵票一張 5 元喔！請問要幾張呢？", task:"說你要買兩張",
+              options:["我要兩張","我要一張","我要十張","謝謝再見"], kw:["兩張"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"好的，兩張郵票，請問還需要什麼嗎？", task:"說不用了，謝謝",
+              options:["不用了，謝謝","我還要買包裹箱","再給我一張","謝謝再見"], kw:["不用","謝謝"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩張郵票共 10 元，謝謝！", task:"付款並道謝",
+              options:["好的，謝謝！","謝謝，我付現金！","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "寄包裹時發現錢不夠，改用比較便宜的寄送方式",
+          steps: [
+            mkStep({ id:"select", say:"你好！請問要辦理什麼呢？", task:"告訴櫃檯人員你要寄包裹",
+              options:["我要寄包裹","我要買郵票","謝謝再見","我再想想"], kw:["包裹"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hear_total", say:"好的！這個包裹用宅配寄送要 150 元。", task:"告訴櫃檯人員你要付現金",
+              options:["我付現金","刷卡","用悠遊卡","稍等一下"], kw:"pay",
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"（你數了數皮夾裡的錢，只有 100 元，不夠 150 元）", task:"告訴櫃檯人員你的錢不夠",
+              options:["不好意思，我的錢不夠","我下次再來","可以先欠著嗎？","那我不寄了"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差","少"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要改用普通包裹寄送，只要 90 元？", task:"說好，你要改用普通包裹",
+              options:["好，我要普通包裹","我還是要宅配","兩個都不要了","讓我想一想"], kw:["普通包裹","改"],
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } })
+          ]
+        },
+        {
+          id: "ask_time", name: "詢問多久會到", icon: "🕐",
+          desc: "詢問寄出的包裹大約幾天會送達",
+          steps: [
+            mkStep({ id:"greet_ask", say:"你好！請問需要辦理什麼呢？", task:"打招呼並詢問包裹多久會到",
+              options:["你好！請問包裹多久會到？","你好，我要寄包裹","請問幾天會到？","謝謝再見"],
+              kw:["多久","幾天"],
+              feedback:{ perfect:"問得很好！懂得確認時間！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"一般大約 2 到 3 天會送到喔！", task:"說好的，你要寄這個包裹",
+              options:["好的，那我要寄這個","那我要用比較快的","謝謝再見","我再考慮一下"],
+              kw:["好的","我要寄"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"weigh", say:"好的，運費是 90 元，請問怎麼付款？", task:"付款並道謝",
+              options:["我付現金，謝謝！","刷卡，謝謝","悠遊卡，謝謝","我沒帶錢"], kw:"pay",
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！" } }),
+            mkStep({ id:"thanks", say:"好的，謝謝你的耐心等候！", task:"跟櫃檯人員道謝說再見",
+              options:["謝謝！再見！","謝謝，再見！","好的，謝謝！","掰掰！謝謝！"], kw:"bye",
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        }
+      ]
     }
 
   ]

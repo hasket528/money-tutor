@@ -275,6 +275,12 @@ const VOICE_INFO = [
   { keyword: '云健',        name: '阿祥', gender: 'male',                    image: 'images/clerk-yunjian.jpg',    role: '超市' }, // 專屬「超市收銀員」圖待生成（見 clerk-avatar-prompts.md #9）；未生成前語音選擇器退回 emoji
   { keyword: '晓伊',        name: '淑惠', gender: 'female',                  image: 'images/clerk-xiaoyi.jpg',     role: '藥局' },
   { keyword: '云扬',        name: '阿義', gender: 'male',                    image: 'images/clerk-yunyang.jpg',    role: '早餐店' },
+  { keyword: '晓辰',        name: '阿柔', gender: 'female',                  image: 'images/clerk-bakery.png',     role: '麵包店' },
+  { keyword: '晓梦',        name: '萱萱', gender: 'female',                  image: 'images/clerk-beauty.png',     role: '美妝雜貨店' },
+  { keyword: '晓睿',        name: '小茜', gender: 'female',                  image: 'images/clerk-drink.png',      role: '手搖飲料店' },
+  { keyword: '云枫',        name: '老王', gender: 'male',                    image: 'images/clerk-lunchbox.png',   role: '便當店' },
+  { keyword: '云野',        name: '阿澄', gender: 'male',                    image: 'images/clerk-coffee.png',     role: '咖啡店' },
+  { keyword: '晓涵',        name: '阿珍', gender: 'female',                  image: 'images/clerk-postoffice.png', role: '郵局櫃臺' },
 ];
 
 const GENDER_AVATAR = { female: '👩', male: '👨', neutral: '🧑' };
@@ -291,6 +297,12 @@ const SCENARIO_CLERK_MAP = {
   stationery_store:  { keyword: '雲哲',   intro: '你好！我是文具店的店員阿宏。在這裡你可以練習找文具、詢問特賣活動，還有遇到找零問題時怎麼說。' },
   phone_reservation: { keyword: 'Yating', name: '小晴', role: '電話客服', image: 'images/clerk-phone.png',      intro: '你好！在這裡你可以練習打電話預約——包括診所掛號、髮廊剪髮和餐廳訂位。說話要清楚，讓對方聽得懂喔！' },
   ask_directions:    { keyword: 'Yating', name: '小芸', role: '熱心路人', image: 'images/clerk-directions.png', intro: '你好！在這裡你可以練習在外面問路——問捷運站、公車站，還有迷路時怎麼跟路人求助。「不好意思」要先說！' },
+  bakery:            { keyword: '晓辰',   intro: '你好！我是麵包店的老闆阿柔。在這裡你可以練習詢問麵包口味、購買點心，還有麵包賣完時怎麼辦。剛出爐的麵包最香囉！' },
+  beauty_store:      { keyword: '晓梦',   intro: '你好！我是美妝雜貨店的店員萱萱。在這裡你可以練習找保養品、請店員推薦商品，還有詢問特價活動怎麼說。' },
+  drink_shop:        { keyword: '晓睿',   intro: '你好！我是手搖飲料店的店員小茜。在這裡你可以練習點飲料、說出甜度冰塊，還有點錯了要怎麼禮貌地更正。' },
+  lunchbox_shop:     { keyword: '云枫',   intro: '你好！我是便當店的老闆老王。在這裡你可以練習點便當、詢問今日特餐，還有等太久時怎麼有禮貌地開口問。' },
+  coffee_shop:       { keyword: '云野',   intro: '你好！我是咖啡店的店員阿澄。在這裡你可以練習點咖啡、詢問座位插座，還有點錯口味時怎麼更正。' },
+  post_office:       { keyword: '晓涵',   intro: '你好！我是郵局櫃檯人員阿珍。在這裡你可以練習寄包裹、買郵票，還有詢問多久會送到怎麼說。' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
@@ -1403,9 +1415,9 @@ function playFeedbackAudio(text, score) {
 
 // 情境分部（A 方案：依溝通難度進程）。自訂情境走 'custom' 分部。
 const SCENARIO_PART = {
-  convenience_store: 1, supermarket: 1, stationery_store: 1,   // 第一部分・基礎買賣
-  breakfast_shop: 2, fast_food: 2, night_market: 2,            // 第二部分・點餐客製
-  clothing_store: 3, pharmacy: 3, phone_reservation: 3, ask_directions: 3,  // 第三部分・生活應對
+  convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1,   // 第一部分・基礎買賣
+  breakfast_shop: 2, fast_food: 2, night_market: 2, drink_shop: 2, lunchbox_shop: 2, coffee_shop: 2,  // 第二部分・點餐客製
+  clothing_store: 3, pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3,  // 第三部分・生活應對
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
@@ -1453,14 +1465,16 @@ function renderHome() {
 
     card.innerHTML = `
       ${sceneImg ? `<img class="card-bg-img" src="${sceneImg}" alt="" aria-hidden="true">` : ''}
-      <div class="card-icon-wrap">
-        <span class="card-icon">${scenario.icon || '💬'}</span>
+      <div class="card-content">
+        <div class="card-icon-wrap">
+          <span class="card-icon">${scenario.icon || '💬'}</span>
+        </div>
+        <span class="card-name">${scenario.name}</span>
+        <span class="card-steps">📝 ${stepLabel}</span>
+        <span class="card-badge ${scenario.available === false ? 'coming-soon' : ''}">
+          ${isCustom ? '自訂情境 →' : scenario.available === false ? '即將推出' : '開始練習 →'}
+        </span>
       </div>
-      <span class="card-name">${scenario.name}</span>
-      <span class="card-steps">📝 ${stepLabel}</span>
-      <span class="card-badge ${scenario.available === false ? 'coming-soon' : ''}">
-        ${isCustom ? '自訂情境 →' : scenario.available === false ? '即將推出' : '開始練習 →'}
-      </span>
     `;
     if (sceneImg) {
       card.classList.add('has-scene');
