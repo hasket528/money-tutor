@@ -1495,8 +1495,10 @@ function renderHome() {
         <div class="card-icon-wrap">
           <span class="card-icon">${scenario.icon || '💬'}</span>
         </div>
-        <span class="card-name">${scenario.name}</span>
-        <span class="card-steps">📝 ${stepLabel}</span>
+        <div class="card-title-row">
+          <span class="card-name">${scenario.name}</span>
+          <span class="card-steps">📝 ${stepLabel}</span>
+        </div>
         <span class="card-badge ${scenario.available === false ? 'coming-soon' : ''}">
           ${isCustom ? '自訂情境 →' : scenario.available === false ? '即將推出' : '開始練習 →'}
         </span>
