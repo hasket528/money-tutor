@@ -1058,7 +1058,8 @@ function renderStudentChip() {
   const btn = document.getElementById('btn-student');
   if (!btn) return;
   const cur = getCurrentStudent();
-  btn.textContent = cur ? `👤 ${cur.name || '(未命名)'}` : '👤 選擇學生';
+  const label = cur ? (cur.name || '(未命名)') : '選擇學生';
+  btn.innerHTML = `<span class="icon-badge">👤</span> ${label}`;
   btn.classList.toggle('student-chip--set', !!cur);
 }
 
@@ -1092,7 +1093,7 @@ function openStudentModal() {
 
   document.getElementById('student-modal-hint').textContent = roster.length
     ? '名冊與獎勵系統共用；要新增學生請到獎勵系統。'
-    : '尚未建立學生名冊——請先到「獎勵系統」新增學生，或先以訪客身分練習。';
+    : '尚未建立學生名冊——請先到主頁，找金婆婆新增學生，或先以訪客身分練習。';
   document.getElementById('student-modal').hidden = false;
 }
 

@@ -2617,6 +2617,20 @@ body.aac-mode .practice-footer::before {
 
 /* ─── 學生選擇（與獎勵系統共用名冊）────────────────── */
 
+/* 👤／🗣️ 圖示底色：emoji 原生色偏深藍紫，疊在紫色標題列上幾乎看不見；
+   加一個暖金色圓底墊底，與紫色形成互補、清楚不混色（呼應金隊長主題色） */
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: #FDE68A;
+  font-size: 0.85em;
+  vertical-align: -0.35em;
+}
+
 .student-chip {
   margin-top: 10px;
   background: rgba(255, 255, 255, 0.18);
