@@ -186,7 +186,7 @@ body {
   cursor: pointer;
   background: var(--gray-100);
   overflow: hidden;
-  z-index: 2;
+  z-index: 5;   /* 需高於 .scenario-card::before（z-index:3）的頂部彩色裝飾條，避免頭像下緣被裝飾條蓋住 */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .clerk-intro-btn:hover {
