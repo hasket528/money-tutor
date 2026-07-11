@@ -2377,18 +2377,18 @@ const SCENARIOS_DATA = {
           id: "separated_from_family", name: "跟家人走散了", icon: "😰",
           desc: "在公共場所與家人走散，向警察求助",
           steps: [
-            mkStep({ id:"greeting", say:"你好，小朋友，怎麼了嗎？", task:"說你跟媽媽走散了",
-              options:["我跟媽媽走散了","你好！","我要買東西","謝謝再見"], kw:["走散","不見了","媽媽"],
+            mkStep({ id:"greeting", say:"你好，這位同學你怎麼了嗎？", task:"說你弟弟不見了",
+              options:["我弟弟不見了","你好！","我要買東西","謝謝再見"], kw:["走散","不見了","弟弟"],
               feedback:{ perfect:"很勇敢，說得很清楚！", partial:"說出了重點！" } }),
-            mkStep({ id:"ask_details", say:"別擔心，我們會幫你！請問你還記得媽媽穿什麼顏色的衣服嗎？",
-              task:"說出媽媽衣服的顏色",
-              options:["媽媽穿紅色的衣服","媽媽穿藍色的衣服","我不記得了","謝謝再見"], kw:["紅色","藍色","衣服"],
+            mkStep({ id:"ask_details", say:"別擔心，我們會幫你！請問你還記得你弟弟穿什麼顏色的衣服嗎？",
+              task:"說出弟弟衣服的顏色",
+              options:["弟弟穿紅色的衣服","弟弟穿藍色的衣服","我不記得了","謝謝再見"], kw:["紅色","藍色","衣服"],
               feedback:{ perfect:"很好！記得清楚細節很重要！", partial:"說出了重點！" } }),
             mkStep({ id:"broadcast", say:"好的，我馬上幫你廣播協尋！", task:"說謝謝",
               options:["謝謝你！","好的，謝謝！","太好了","不客氣"], kw:["謝謝"],
               feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
-            mkStep({ id:"reunite", say:"太好了，找到你媽媽了！", task:"開心地道謝說再見",
-              options:["謝謝你！再見！","太好了！謝謝！","媽媽！","謝謝，掰掰！"], kw:"bye",
+            mkStep({ id:"reunite", say:"太好了，找到你弟弟了！", task:"開心地道謝說再見",
+              options:["謝謝你！再見！","太好了！謝謝！","弟弟！","謝謝，掰掰！"], kw:"bye",
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]
         },
@@ -2405,7 +2405,7 @@ const SCENARIOS_DATA = {
             mkStep({ id:"where_found", say:"謝謝你這麼誠實！請問在哪裡撿到的？", task:"說在公車站撿到的",
               options:["在公車站撿到的","在公園撿到的","我不記得了","謝謝再見"], kw:["公車站"],
               feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
-            mkStep({ id:"checkout", say:"好的，謝謝你的幫忙，你真是個好孩子！", task:"道謝說再見",
+            mkStep({ id:"checkout", say:"好的，謝謝你的幫忙，你真是個好學生！", task:"道謝說再見",
               options:["謝謝！再見！","不客氣，再見！","謝謝誇獎！","掰掰！"], kw:"bye",
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]
