@@ -308,12 +308,13 @@ const SCENARIO_CLERK_MAP = {
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
 const STUDENT_PROFILES = [
   // voiceKeyword：瀏覽器 Web Speech 用（Edge 內建、免安裝，發佈給他人也能用）。
-  // edgeVoice（可選）：填了才會優先走本機 edge-tts 伺服器；不填＝純瀏覽器語音。目前都用內建，故不填。
+  // fileKey：對應 audio/student/stu_{fileKey}_{hash}.wav 預錄檔（見 voicegen/_gen_student_lines.js
+  //   ＋ data/student_audio_map.js 查表）；選項喇叭優先播預錄檔，缺檔才退回即時瀏覽器 TTS。
   // 阿傑（智威/雲哲）停用：智威系統音不自然、雲哲已給小明用。目前 4 個學生。
-  { name: '小明', emoji: '👦', color: '#DBEAFE', voiceKeyword: '雲哲',    gender: 'male',    image: 'images/xiaoming.png' },
-  { name: '小玲', emoji: '👧', color: '#FCE7F3', voiceKeyword: 'Yating',  gender: 'female',  image: 'images/xiaoling.png' },
-  { name: '小婷', emoji: '👩', color: '#EDE9FE', voiceKeyword: '曉臻',    gender: 'female',  image: 'images/xiaoting.png' },
-  { name: '小恩', emoji: '🧑', color: '#FEF3C7', voiceKeyword: '曉雨',    gender: 'neutral', image: 'images/xiaoen.png' },
+  { name: '小明', emoji: '👦', color: '#DBEAFE', voiceKeyword: '雲哲',    gender: 'male',    image: 'images/xiaoming.png', fileKey: 'xiaoming' },
+  { name: '小玲', emoji: '👧', color: '#FCE7F3', voiceKeyword: 'Yating',  gender: 'female',  image: 'images/xiaoling.png', fileKey: 'xiaoling' },
+  { name: '小婷', emoji: '👩', color: '#EDE9FE', voiceKeyword: '曉臻',    gender: 'female',  image: 'images/xiaoting.png', fileKey: 'xiaoting' },
+  { name: '小恩', emoji: '🧑', color: '#FEF3C7', voiceKeyword: '曉雨',    gender: 'neutral', image: 'images/xiaoen.png',   fileKey: 'xiaoen' },
 ];
 
 const voiceManager = {
@@ -670,10 +671,35 @@ function playCustomStepAudio(step, avatar) {
 }
 
 // 以學生語音朗讀（選項喇叭用）。onEnd：唸完（或無法唸）後的回呼，供「播完再出彈窗」使用。
-// 學生示範語音：優先用本機 edge-tts 伺服器（音色最準，與 voice-preview 相同）；
-// 伺服器沒開/失敗時自動退回瀏覽器即時 TTS（可離線，但音色受瀏覽器限制）。
+// 播放優先序：① 預錄音檔 audio/student/stu_{fileKey}_{hash}.wav（見 data/student_audio_map.js
+//   查表＋ voicegen/_gen_student_lines.js；免 Edge 瀏覽器也能聽到一致的神經語音）
+//   → ② 本機 edge-tts 伺服器（未預錄時的次選，需自行開啟伺服器）
+//   → ③ 瀏覽器即時 TTS（最後備援，音色受瀏覽器/系統限制）。
 function speakAsUser(text, onEnd) {
   stopAllAudio();
+  const student = STUDENT_PROFILES[userVoiceManager.selectedStudentIdx];
+  const hash = window.STUDENT_AUDIO_MAP && window.STUDENT_AUDIO_MAP[text];
+  if (hash && student?.fileKey) {
+    const base = `audio/student/stu_${student.fileKey}_${hash}`;
+    const candidates = [`${base}.wav`, `${base}.mp3`];
+    let idx = 0;
+    const tryNext = () => {
+      if (idx >= candidates.length) { speakAsUserLive(text, onEnd); return; }
+      const audio = new Audio(candidates[idx++]);
+      _userAudio = audio;
+      audio.onended = () => { if (_userAudio === audio) _userAudio = null; if (onEnd) onEnd(); };
+      audio.onerror = () => { if (_userAudio === audio) { _userAudio = null; tryNext(); } };
+      audio.play().catch(() => { if (_userAudio === audio) { _userAudio = null; tryNext(); } });
+    };
+    tryNext();
+    return;
+  }
+  speakAsUserLive(text, onEnd);
+}
+
+// 學生示範語音（次選＋後備）：優先用本機 edge-tts 伺服器（音色最準，與 voice-preview 相同）；
+// 伺服器沒開/失敗時自動退回瀏覽器即時 TTS（可離線，但音色受瀏覽器限制）。
+function speakAsUserLive(text, onEnd) {
   const student   = STUDENT_PROFILES[userVoiceManager.selectedStudentIdx];
   const edgeVoice = student?.edgeVoice;
   if (edgeVoice && !_voiceServerDown) {
@@ -1415,9 +1441,9 @@ function playFeedbackAudio(text, score) {
 
 // 情境分部（A 方案：依溝通難度進程）。自訂情境走 'custom' 分部。
 const SCENARIO_PART = {
-  convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1,   // 第一部分・基礎買賣
+  convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1, clothing_store: 1,   // 第一部分・基礎買賣
   breakfast_shop: 2, fast_food: 2, night_market: 2, drink_shop: 2, lunchbox_shop: 2, coffee_shop: 2,  // 第二部分・點餐客製
-  clothing_store: 3, pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3,  // 第三部分・生活應對
+  pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3,  // 第三部分・生活應對
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
