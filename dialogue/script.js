@@ -816,10 +816,23 @@ const a11y = {
     localStorage.setItem('sp_aac', on ? '1' : '');
   },
 
+  // 店員迎接彈窗：進入練習時店員放大登場並說第一句台詞（sp_clerkgreet，預設開）
+  clerkGreet: true,
+  applyClerkGreet(on) {
+    this.clerkGreet = on;
+    const btn = document.getElementById('btn-clerk-greet');
+    if (btn) btn.setAttribute('aria-checked', String(on));
+  },
+  toggleClerkGreet() {
+    this.applyClerkGreet(!this.clerkGreet);
+    localStorage.setItem('sp_clerkgreet', this.clerkGreet ? '1' : '0');
+  },
+
   init() {
     this.applyContrast(localStorage.getItem('sp_contrast') === '1');
     this.applyFontSize(localStorage.getItem('sp_fontsize') || 'normal');
     this.applyAAC(localStorage.getItem('sp_aac') === '1');
+    this.applyClerkGreet(localStorage.getItem('sp_clerkgreet') !== '0');
   },
 };
 
@@ -1199,6 +1212,7 @@ const recognizer = new SpeechRecognizer();
 // ─── 畫面切換 ────────────────────────────────────────
 
 let _shopkeeperTimer = null;   // renderStep 排的「延遲播放店員語音」timer；換頁時要清掉以免在別頁觸發
+let _lastGreetKey = null;      // 店員迎接彈窗的去重鍵（場所|情境|步驟）：同步驟重繪（重試/切模式）不重複跳窗
 
 function showScreen(id) {
   stopAllAudio();
@@ -1376,12 +1390,15 @@ function showClerkPopup(scenario, clerkInfo) {
   const img  = document.getElementById('clerk-modal-img');
   img.src = clerkInfo.image;
   img.alt = clerkInfo.name;
+  img.hidden = false;
   document.getElementById('clerk-modal-name').textContent = clerkInfo.name;
   document.getElementById('clerk-modal-role').textContent = clerkInfo.role || '';
+  document.getElementById('clerk-modal-text').textContent = SCENARIO_CLERK_MAP[scenario.id]?.intro || '';
   const modal = document.getElementById('clerk-modal');
   modal.hidden = false;
   // 記住目前彈窗對應的場所，供「再聽一次」使用
   modal._scenario = scenario;
+  modal._practiceStep = null;
   playClerkIntro(scenario);
 }
 
@@ -1390,6 +1407,36 @@ function hideClerkPopup() {
   const modal = document.getElementById('clerk-modal');
   modal.hidden = true;
   modal._scenario = null;
+  modal._practiceStep = null;
+}
+
+// ─── 練習頁店員彈窗（點頭像／進入練習自動迎接）─────────
+// 共用 clerk-modal（桌面端店員圖 300px）：放大目前步驟的店員，並播放這一步的台詞。
+function showPracticeClerkPopup() {
+  const step = state.situation?.steps?.[state.stepIndex];
+  if (!step) return;
+  const scMap     = SCENARIO_CLERK_MAP[state.scenario?.id];
+  const voiceInfo = voiceManager.selectedInfo
+                 || (voiceManager.selected ? voiceManager.getInfo(voiceManager.selected) : null);
+  // 圖片以練習頁頭像當下顯示者為準（含教師自訂場景照片），再退回場景/語音推斷
+  const curImg = document.querySelector('#shopkeeper-avatar img')?.getAttribute('src') || '';
+  const img  = curImg || step.clerkImage || state.situation.clerkImage || scMap?.image || voiceInfo?.image || '';
+  const name = step.clerkName  || state.situation.clerkName  || scMap?.name  || voiceInfo?.name  || '店員';
+  const imgEl = document.getElementById('clerk-modal-img');
+  imgEl.src = img;
+  imgEl.alt = name;
+  imgEl.hidden = !img;
+  imgEl.onerror = () => { imgEl.hidden = true; };
+  document.getElementById('clerk-modal-name').textContent = name;
+  document.getElementById('clerk-modal-role').textContent =
+    state.situation.clerkName ? '' : (scMap?.role || voiceInfo?.role || '');
+  // 彈窗下方顯示正在播放的台詞文字（與語音同步呈現，多元表徵）
+  document.getElementById('clerk-modal-text').textContent = step.shopkeeper_prompt || '';
+  const modal = document.getElementById('clerk-modal');
+  modal.hidden = false;
+  modal._scenario = null;
+  modal._practiceStep = step;   // 「再聽一次」重播本步驟台詞
+  playShopkeeperAudio(step);
 }
 
 
@@ -1690,6 +1737,7 @@ function startWithDifficulty(difficulty) {
     : LADDER.SPEAK;
   state.consecutiveCorrect = 0;   // 精熟標準：連續答對計數
   recognizer.requestPermission();
+  _lastGreetKey = null;            // 新一輪練習：迎接彈窗去重鍵歸零（每一步都會由店員登場唸台詞）
   showScreen('screen-practice');   // 先切練習頁（showScreen 會 clearTimeout 店員語音計時器）
   renderStep();                    // 再 renderStep 設自動播放計時器，否則第一步的自動播放會被 showScreen 清掉
 }
@@ -1811,10 +1859,16 @@ function renderStep() {
   }
 
   // 播放店員語音（優先音檔，fallback TTS）
+  // 店員迎接彈窗開啟時：每個新步驟改由彈窗放大店員唸台詞（彈窗內含播放）；
+  // 同步驟重繪（重試/切輸入模式）只重播語音、不再跳窗
   clearTimeout(_shopkeeperTimer);
+  const greetKey = `${state.scenario?.id}|${state.situation?.id}|${state.stepIndex}`;
+  const doGreet  = a11y.clerkGreet && greetKey !== _lastGreetKey;
+  if (doGreet) _lastGreetKey = greetKey;
   _shopkeeperTimer = setTimeout(() => {
     // 只在仍停留於練習頁時才播（防呼叫後又離開頁面／快速換頁殘留）
-    if (document.getElementById('screen-practice').classList.contains('active')) playShopkeeperAudio(step);
+    if (!document.getElementById('screen-practice').classList.contains('active')) return;
+    if (doGreet) showPracticeClerkPopup(); else playShopkeeperAudio(step);
   }, 400);
 
   // 除錯面板更新
@@ -3416,6 +3470,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   a11y.init();
   document.getElementById('btn-high-contrast').addEventListener('click', () => a11y.toggleContrast());
   document.getElementById('btn-aac-mode').addEventListener('click', () => a11y.toggleAAC());
+  document.getElementById('btn-clerk-greet').addEventListener('click', () => a11y.toggleClerkGreet());
   document.querySelectorAll('.font-size-btn').forEach(btn => {
     btn.addEventListener('click', () => a11y.setFontSize(btn.dataset.size));
   });
@@ -3499,7 +3554,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-clerk-close').addEventListener('click', () => { sfx.click(); hideClerkPopup(); });
   document.getElementById('btn-clerk-replay').addEventListener('click', () => {
     const modal = document.getElementById('clerk-modal');
-    if (modal._scenario) playClerkIntro(modal._scenario);
+    if (modal._practiceStep) playShopkeeperAudio(modal._practiceStep);
+    else if (modal._scenario) playClerkIntro(modal._scenario);
+  });
+
+  // 練習頁店員頭像：點擊放大並重播這一步的台詞（鍵盤 Enter/空白鍵同）
+  const shopAvatar = document.getElementById('shopkeeper-avatar');
+  shopAvatar.addEventListener('click', () => { sfx.click(); showPracticeClerkPopup(); });
+  shopAvatar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sfx.click(); showPracticeClerkPopup(); }
   });
 
   // 學生語音彈窗

@@ -231,7 +231,8 @@
 
       <!-- 店員對話 -->
       <div class="shopkeeper-row">
-        <div class="shopkeeper-avatar" id="shopkeeper-avatar" aria-hidden="true">🧑‍💼</div>
+        <div class="shopkeeper-avatar" id="shopkeeper-avatar" role="button" tabindex="0"
+             aria-label="放大店員，再聽一次這句話" title="點我放大店員、再聽一次">🧑‍💼</div>
         <div class="shopkeeper-speech-wrap">
           <div class="speech-bubble" id="shopkeeper-speech" aria-live="polite"><button class="btn-speak-clerk" id="btn-replay-clerk" aria-label="再聽一次店員說的話">🔊</button><span id="shopkeeper-speech-text"></span></div>
         </div>
@@ -400,6 +401,17 @@
           </div>
           <button class="toggle-switch" id="btn-aac-mode"
                   role="switch" aria-checked="false" aria-label="AAC 溝通板模式">
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-label">店員迎接彈窗</span>
+            <span class="settings-row-desc">每一句對話都由店員放大登場說出（含台詞文字）；練習中點店員頭像也會出現</span>
+          </div>
+          <button class="toggle-switch" id="btn-clerk-greet"
+                  role="switch" aria-checked="true" aria-label="店員迎接彈窗">
             <span class="toggle-thumb"></span>
           </button>
         </div>
@@ -716,6 +728,7 @@
       <img id="clerk-modal-img" class="clerk-modal-img" src="" alt="">
       <div class="clerk-modal-name" id="clerk-modal-name"></div>
       <div class="clerk-modal-role" id="clerk-modal-role"></div>
+      <p class="clerk-modal-text" id="clerk-modal-text" aria-live="polite"></p>
       <div class="clerk-modal-actions">
         <button class="btn-secondary" id="btn-clerk-replay">🔊 再聽一次</button>
         <button class="btn-primary" id="btn-clerk-close">知道了</button>

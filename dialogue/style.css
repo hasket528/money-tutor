@@ -235,6 +235,18 @@ body {
   color: var(--gray-600);
   margin-top: -4px;
 }
+.clerk-modal-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--gray-800, #1F2937);
+  background: var(--gray-100, #F3F4F6);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 2px 0 0;
+  max-width: 100%;
+}
+.clerk-modal-text:empty { display: none; }
 .clerk-modal-actions {
   display: flex;
   gap: 10px;
@@ -665,6 +677,11 @@ body {
   object-position: top center;
   display: block;
 }
+
+/* 練習頁頭像可點擊（放大店員＋重播台詞）：只改陰影/亮度，不改幾何（見 CLAUDE.md 踩雷定則） */
+.shopkeeper-avatar { cursor: pointer; touch-action: manipulation; }
+.shopkeeper-avatar:hover { box-shadow: 0 4px 18px color-mix(in srgb, var(--scene-color) 45%, transparent); filter: brightness(1.05); }
+.shopkeeper-avatar:focus-visible { outline: 3px solid var(--scene-accent, #1D4ED8); outline-offset: 3px; }
 
 .shopkeeper-avatar.speaking {
   animation: avatarBob 0.6s ease-in-out infinite alternate;
