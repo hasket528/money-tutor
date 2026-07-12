@@ -307,6 +307,8 @@ const SCENARIO_CLERK_MAP = {
   post_office:       { keyword: '晓涵',   intro: '你好！我是郵局櫃檯人員阿珍。在這裡你可以練習寄包裹、買郵票，還有詢問多久會送到怎麼說。' },
   library:           { keyword: '晓墨',   intro: '你好！我是圖書館的館員靜姐。在這裡你可以練習借書、辦借書證，還有還書逾期時怎麼禮貌地應對。' },
   police_station:    { keyword: '云泽',   intro: '你好！我是警察局的警員阿凱。在這裡你可以練習報案、遺失物招領，還有遇到危險時怎麼向警察求助。' },
+  anti_scam:         { keyword: '云希', name: '陌生來電', role: '不明來電', image: 'images/clerk-scamcall.png', intro: '這裡練習「接到詐騙電話怎麼保護自己」——中獎詐騙、假客服、借提款卡、買點數。記住四步：不給錢、不給資料、掛電話、告訴大人！' },
+  classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、怎麼記帳約時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
@@ -1496,6 +1498,7 @@ const SCENARIO_PART = {
   convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1, clothing_store: 1,   // 第一部分・基礎買賣
   breakfast_shop: 2, fast_food: 2, night_market: 2, drink_shop: 2, lunchbox_shop: 2, coffee_shop: 2,  // 第二部分・點餐客製
   pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3, library: 3, police_station: 3,  // 第三部分・生活應對
+  anti_scam: 4, classmate_borrow: 4,  // 第四部分・金錢安全
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
