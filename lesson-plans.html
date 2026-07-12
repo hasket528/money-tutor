@@ -243,6 +243,52 @@ const PLANS = [
   iep:'能購買指定起訖站車票並說出票面資訊，提示不超過 2 次。' },
 ];
 
+// ── 官方附表三之1 課綱代碼對照（依 108 課綱〈生活管理〉初階sP/進階sA 及數學領域第一學習階段）──
+// 來源：doc/第九屆/_課綱代碼參考_生活管理.md。核心素養特生-[P/A]-面向；學習表現特生[1自我照顧/2家庭/3社區/4自我決策]；
+// 學習內容特生[Ⅴ財物/Ⅸ自我保護/Ⅹ交通/Ⅺ社區生活/Ⅻ獨立自主]；數學 數-E-A2 / n-I-* / N-1-*。
+const CODES = {
+  F1:{ stage:'數學領域（第一學習階段）', core:'數-E-A2　具備基本算術操作，於日常情境用數學表述與解題', perf:'n-I-1　理解數的計數（一一對應前備）', content:'N-1-1　一百以內的數（數概念起點）', issues:'☑生涯規劃教育（獨立生活數學前備）' },
+  F2:{ stage:'數學領域（第一學習階段）', core:'數-E-A2', perf:'n-I-1　理解計數（點一物念一數・基數概念）', content:'N-1-1　一百以內的數', issues:'☑生涯規劃教育' },
+  F3:{ stage:'數學領域（第一學習階段）', core:'數-E-A2', perf:'n-I-1　數字認讀與數量連結', content:'N-1-1　一百以內的數', issues:'☑生涯規劃教育' },
+  F4:{ stage:'數學領域（第一學習階段）', core:'數-E-A2', perf:'n-I-1　數序與序數', content:'N-1-1　一百以內的數', issues:'☑生涯規劃教育' },
+  F5:{ stage:'數學領域（第一學習階段）', core:'數-E-A2', perf:'n-I-1　數量多少的比較', content:'N-1-1　一百以內的數', issues:'☑生涯規劃教育' },
+  F6:{ stage:'數學領域（第一學習階段）', core:'數-E-A2', perf:'n-I-2　理解加減意義並流暢計算', content:'N-1-1、N-1-2　加法與減法（含合成分解意義）', issues:'☑生涯規劃教育（銜接金錢組合）' },
+  C1:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1　具備個人基本生活管理，對自身事務展現選擇與決定', perf:'特生2-P-5　記錄日常收支、購物前衡量｜（數學）n-I-1', content:'特生Ⅴ-P-2　金錢的概念｜（數學）N-1-4　1/5/10元解題', issues:'☑生涯規劃教育（獨立消費）' },
+  C2:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1', perf:'特生2-P-5｜（數學）n-I-1　計數加總', content:'特生Ⅴ-P-2　金錢的概念｜N-1-4　金錢解題', issues:'☑生涯規劃教育' },
+  C3:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1', perf:'特生2-P-5｜（數學）n-I-2　加減（等值兌換）', content:'特生Ⅴ-P-2　金錢的概念｜N-1-2　合成分解', issues:'☑生涯規劃教育' },
+  C4:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1／-P-A2', perf:'特生3-P-4　認識消費場所並完成消費（取幣付款）｜n-I-1', content:'特生Ⅴ-P-2、特生Ⅺ-P-5　購物流程｜N-1-4', issues:'☑生涯規劃教育（獨立付款）' },
+  C5:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A2　面對生活事務具問題解決能力', perf:'特生2-P-5　購物前衡量（足額判斷）', content:'特生Ⅴ-P-2　金錢的概念｜N-1-4', issues:'☑生涯規劃教育（購買決策）' },
+  C6:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1／-P-A2', perf:'特生3-P-4　完成消費行為（交易核對）｜（數學）n-I-2　減法', content:'特生Ⅴ-P-2/-P-4、特生Ⅺ-P-5｜N-1-2/N-1-4　找零計算', issues:'☑生涯規劃教育　☑安全教育（避免被找錯錢的自我核對）' },
+  B1:{ stage:'生活管理・進階(sA)｜融入數學領域', core:'特生-A-A1　具備家庭與社區生活管理能力', perf:'特生2-P-5　記錄收支、行前衡量', content:'特生Ⅴ-A-3　個人預算收支管理、特生Ⅴ-A-8　預算的概念｜N-1-4', issues:'☑生涯規劃教育　☑家庭教育（外出用度）' },
+  B2:{ stage:'生活管理・初階／進階｜融入數學領域', core:'特生-A-A1', perf:'特生2-P-5　記錄日常收支並計算結餘', content:'特生Ⅴ-P-6　記帳的技能、特生Ⅴ-A-3　收支管理', issues:'☑生涯規劃教育　☑家庭教育（零用錢管理）' },
+  B3:{ stage:'生活管理・初階(sP)｜融入數學領域', core:'特生-P-A1／-P-A2', perf:'特生2-P-2　建立簡單儲蓄行為、特生2-P-5', content:'特生Ⅴ-P-4　消費與儲蓄、特生Ⅴ-P-2、特生Ⅴ-A-3', issues:'☑生涯規劃教育　☑家庭教育（儲蓄與延宕滿足）' },
+  B4:{ stage:'生活管理・進階(sA)｜融入數學領域', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　完成消費、特生2-P-5', content:'特生Ⅺ-A-2　消費者權益的認識、特生Ⅴ-P-2/-A-3（比價）', issues:'☑生涯規劃教育（聰明消費）' },
+  B5:{ stage:'生活管理・進階(sA)｜融入數學領域', core:'特生-A-A1／-A-A2', perf:'特生2-P-5、特生3-P-4', content:'特生Ⅴ-A-3/-A-8　預算執行、特生Ⅺ-P-5　購物', issues:'☑生涯規劃教育　☑家庭教育（活動採購）' },
+  B6:{ stage:'生活管理・進階(sA)｜融入數學領域', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　完成消費、特生2-P-5', content:'特生Ⅺ-P-5　購物流程（多攤）、特生Ⅴ-P-2', issues:'☑生涯規劃教育　☑家庭教育（家庭採買）' },
+  A1:{ stage:'生活管理・進階(sA)', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　認識消費場所並完成消費（自助設備）', content:'特生Ⅺ-P-5　購物流程、特生Ⅺ-A-9　各種消費方式、特生Ⅴ-P-2', issues:'☑生涯規劃教育（自助設備獨立使用）' },
+  A2:{ stage:'生活管理・進階(sA)', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　完成服務消費', content:'特生Ⅺ-P-5、特生Ⅺ-A-8　消費場所、特生Ⅴ-P-2', issues:'☑生涯規劃教育（服務消費獨立）' },
+  A3:{ stage:'生活管理・進階(sA)', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　完成自助點餐消費', content:'特生Ⅺ-P-5、特生Ⅺ-A-7　購物/消費｜（社會技巧）公共禮儀', issues:'☑生涯規劃教育（外食獨立）' },
+  A4:{ stage:'生活管理・初階／進階｜融入數學領域', core:'特生-P-A1／-P-A2', perf:'特生3-P-4　完成消費、特生2-P-5', content:'特生Ⅺ-P-5　購物流程、特生Ⅴ-P-2/-4｜N-1-4', issues:'☑生涯規劃教育　☑家庭教育（清單採購）' },
+  A5:{ stage:'生活管理・進階(sA)', core:'特生-A-A1／-A-A2', perf:'特生2-A-1　使用塑膠貨幣/行動支付、特生2-P-1　妥善保管財物、特生3-A-3　辨識詐騙避免受騙', content:'特生Ⅴ-A-2　金融機構的運用、特生Ⅴ-P-7　金融機構認識、特生Ⅴ-A-5　金融詐騙防範', issues:'☑生涯規劃教育　☑安全教育（密碼與金融安全）' },
+  A6:{ stage:'生活管理・進階(sA)｜融入數學領域', core:'特生-A-A1／-A-A2', perf:'特生3-P-4　完成消費、特生3-P-7　遵守大眾運輸禮儀', content:'特生Ⅹ-P-3　交通工具資訊辨識與使用（售票機/票面）、特生Ⅹ-P-1、特生Ⅴ-P-2｜N-1-4', issues:'☑生涯規劃教育　☑安全教育（交通安全）' },
+};
+
+// 學習功能缺損程度（全單元共用，系統以難度分級與四級鷹架支援多層次）
+const FUNC = '☑輕微缺損　☑嚴重缺損（系統以難度分級與四級鷹架 L6→L1 支援多層次教學）';
+
+// 學習調整策略（官方 4 向度 × 勾選，全站 UDL 設計一致，逐格對應系統實作——評分重點）
+const ADJUST = `
+  <table style="width:100%;border-collapse:collapse;font-size:0.9em;">
+    <tr><th style="width:60px;background:#fff7e0;color:#b45309;">內容</th>
+        <td>☑<b>簡化</b>（簡單模式）　☑<b>分解</b>（步驟拆解／工作分析）　☑<b>減量</b>（題數可調）　☑<b>替代</b>（語音／圖像／選項作答替代文字）</td></tr>
+    <tr><th style="width:60px;background:#fff7e0;color:#b45309;">歷程</th>
+        <td>☑<b>提示線索</b>（延遲提示與褪除）　☑<b>多元感官</b>（語音＋圖像＋文字）　☑<b>工作分析</b>（A 系列動作序列）　☑<b>多層次教學</b>（難度分級／四級鷹架）</td></tr>
+    <tr><th style="width:60px;background:#fff7e0;color:#b45309;">評量</th>
+        <td>☑<b>作答方式調整</b>（打字／選項／語音三選一）　☑<b>試題調整</b>（難度模式）　☑<b>輔具</b>（TTS 朗讀、輔助點擊）</td></tr>
+    <tr><th style="width:60px;background:#fff7e0;color:#b45309;">環境</th>
+        <td>☑教室布置／學習區（列印擬真錢幣卡・情境教室）　☑無障礙空間（字級調整、高對比）</td></tr>
+  </table>`;
+
 const toc = document.getElementById('toc');
 const host = document.getElementById('plans');
 PLANS.forEach(p => {
@@ -254,22 +300,33 @@ PLANS.forEach(p => {
     const div = document.createElement('div');
     div.className = 'plan';
     div.id = 'plan-' + p.code;
+    const c = CODES[p.code] || {};
     div.innerHTML = `
-        <div class="series-tag">${p.series}</div>
+        <div class="series-tag">${p.series}　｜　附表三之1（特殊教育教學活動設計）欄位對應</div>
         <h2>${p.code}　${p.name}</h2>
         <table>
             <tr><th>🎯 教學目標</th><td>${p.goal}</td></tr>
             <tr><th>🧩 先備能力</th><td>${p.prereq}</td></tr>
+            <tr><th>🏷️ 領域／分階</th><td>${c.stage || p.curriculum}</td></tr>
+            <tr><th>🎓 核心素養</th><td>${c.core || '—'}</td></tr>
+            <tr><th>📊 學習表現</th><td>${c.perf || '—'}</td></tr>
+            <tr><th>📚 學習內容</th><td>${c.content || '—'}</td></tr>
+            <tr><th>🧭 議題融入</th><td>${c.issues || '☑生涯規劃教育'}</td></tr>
+            <tr><th>♿ 學習功能</th><td>${FUNC}</td></tr>
+            <tr><th>🛠️ 學習調整</th><td>${ADJUST}</td></tr>
             <tr><th>🪜 教學流程</th><td><ol>${p.flow.map(s => `<li>${s}</li>`).join('')}</ol></td></tr>
             <tr><th>📏 評量方式</th><td>${p.assess}（可於「學習歷程總覽」檢視正確率、錯誤嘗試與 🎯 精熟標記）</td></tr>
-            <tr><th>📖 課綱對應＊</th><td>${p.curriculum}</td></tr>
             <tr><th>📝 IEP 目標例句</th><td>${p.iep}</td></tr>
             <tr><th>🔗 單元連結</th><td><a href="html/${p.page}.html">html/${p.page}.html</a>｜作業單：單元設定頁內開啟</td></tr>
         </table>`;
     host.appendChild(div);
 });
 document.getElementById('plans').insertAdjacentHTML('beforeend',
-    '<p style="font-size:0.8em;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 12px;">＊課綱對應為建議層級（十二年國教特殊需求領域課程「生活管理」「社會技巧」及數學領域調整應用），請依校本課程計畫與學生 IEP 微調具體學習表現代碼。</p>');
+    '<div style="font-size:0.82em;color:#334e68;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;line-height:1.8;">'
+  + '<b>📌 課綱代碼說明</b><br>'
+  + '本頁核心素養／學習表現／學習內容代碼，係依《十二年國教—身心障礙相關之特殊需求領域課程綱要（108 年 7 月）》〈生活管理〉（初階 sP／進階 sA）與數學領域（第一學習階段）填列；金錢解題對應數學 <b>N-1-4</b>（1/5/10 元）。〈生活管理〉依<b>能力分階</b>而非年級，適用國中／高中職功能性課程，亦可下延國小高年級。<br>'
+  + '「學習調整」四向度勾選為全站一致的 UDL 設計，逐格對應系統實作（簡化＝簡單模式、分解＝步驟拆解、減量＝題數可調、替代＝多模式作答…）。<br>'
+  + '完整<b>附表三之1</b>（含學生能力描述、調整後學習表現/內容、教學活動設計逐步課程調整）另備紙本教案；請依校本課程計畫與學生 IEP 微調具體代碼與能力描述。購物對話練習屬〈社會技巧〉領域，代碼另計。</div>');
 </script>
 </body>
 </html>
