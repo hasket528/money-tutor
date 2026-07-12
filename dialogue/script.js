@@ -308,7 +308,7 @@ const SCENARIO_CLERK_MAP = {
   library:           { keyword: '晓墨',   intro: '你好！我是圖書館的館員靜姐。在這裡你可以練習借書、辦借書證，還有還書逾期時怎麼禮貌地應對。' },
   police_station:    { keyword: '云泽',   intro: '你好！我是警察局的警員阿凱。在這裡你可以練習報案、遺失物招領，還有遇到危險時怎麼向警察求助。' },
   anti_scam:         { keyword: '云希', name: '陌生來電', role: '不明來電', image: 'images/clerk-scamcall.png', intro: '這裡練習「接到詐騙電話怎麼保護自己」——中獎詐騙、假客服、借提款卡、買點數。記住四步：不給錢、不給資料、掛電話、告訴大人！' },
-  classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、怎麼記帳約時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
+  classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、借了怎麼記下來、約好還錢時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
