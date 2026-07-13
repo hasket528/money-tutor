@@ -1142,6 +1142,7 @@ ${storesHTML}`;
                 if (idx === correctI) {
                     this._storyLog.l5Item  = d.name;
                     this._storyLog.l5Store = cheapest.name;
+                    this.state.score++;   // 比價 Phase1（選對最便宜的店）計 1 分；與 MAX_SCORE=7 及最高徽章門檻對齊
                     this._lock();
                     btn.classList.add('adv-ok');
                     const fb = document.getElementById('adv-fb');
