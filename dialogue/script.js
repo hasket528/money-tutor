@@ -311,6 +311,20 @@ const SCENARIO_CLERK_MAP = {
   classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、借了怎麼記下來、約好還錢時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
   online_scam:       { keyword: '云枫', name: '陌生網友', role: '網路陌生人', image: 'images/clerk-scamcall.png', intro: '這裡練習在網路上遇到陌生人要你花錢時怎麼保護自己——假網拍叫你先匯款、中獎簡訊叫你點連結。記住：不先匯款、不點陌生連結、不給帳號密碼！' },
   self_protect:      { keyword: '云泽', name: '安全小老師', role: '金錢安全', image: 'images/clerk-police.png', intro: '我是安全小老師！這裡練習怎麼主動保護自己的錢——被人勒索要錢怎麼辦、錢和密碼怎麼保管好、撿到別人的錢怎麼處理。' },
+  job_scam:          { keyword: '云枫', name: '可疑老闆', role: '打工應徵', image: 'images/clerk-scamcall.png', intro: '這裡練習找打工時怎麼保護自己——要你先繳保證金、押證件、太好賺的工作。記住三不：不先繳錢、不押證件、不借帳戶！' },
+  privacy_protect:   { keyword: '云希', name: '資安小老師', role: '個資保護', image: 'images/clerk-police.png', intro: '這裡練習保護個人資料——驗證碼不唸給別人、問卷個資不亂填、帳號密碼不外借。記住：個資就像家裡的鑰匙，不能隨便交出去！' },
+  take_bus:          { keyword: '云扬', name: '公車司機', role: '公車', image: 'images/clerk-bus.png', intro: '你好！我是公車司機。這裡練習搭公車——先確認路線、上車刷卡或投現，零錢不夠、坐過站的時候怎麼開口求助。' },
+  mrt_station:       { keyword: '云健', name: '捷運站務員', role: '捷運站', image: 'images/clerk-mrt.png', intro: '你好！我是捷運站務員。這裡練習搭捷運——不會買票請人教、卡片刷不過去要加值、搭錯方向怎麼問。有問題找站務員就對了！' },
+  train_ticket:      { keyword: '晓涵', name: '售票員', role: '火車站售票口', image: 'images/clerk-postoffice.png', intro: '你好！我是火車站售票員。這裡練習到售票口買票——說清楚目的地和車種、付錢確認找零、問月台，還有趕不上車、車票不見時怎麼辦。' },
+  taxi:              { keyword: '雲哲', name: '計程車司機', role: '計程車', image: 'images/clerk-bus.png', intro: '你好！我是計程車司機。這裡練習搭計程車——上車前先問價錢確認預算、說清楚目的地、下車付錢確認找零，不舒服也要開口說。' },
+  easycard_service:  { keyword: '晓梦', name: '服務台人員', role: '悠遊卡服務台', image: 'images/clerk-phone.png', intro: '你好！這裡是悠遊卡服務台。練習加值後確認餘額、卡片掉了趕快掛失、辦學生卡要帶什麼——卡片裡的錢也要好好保護喔！' },
+  ride_manner:       { keyword: '曉雨', name: '車上的人', role: '車廂禮儀', image: 'images/clerk-lost.png', intro: '這裡練習車廂裡的禮儀與求助——讓座給需要的人、有禮貌請人幫忙，還有陌生人跟你要錢時怎麼拒絕、找站務員。' },
+  cinema:            { keyword: '晓辰', name: '電影院店員', role: '電影院', image: 'images/clerk-salon.png', intro: '你好！我是電影院店員。這裡練習買電影票——選場次、用學生證買優惠票、加購前想想預算，遲到了也知道怎麼辦。' },
+  ktv:               { keyword: '晓睿', name: 'KTV店員', role: 'KTV', image: 'images/clerk-beauty.png', intro: '歡迎來 KTV！這裡練習問清楚計費、算總價大家分攤、時間到照預算收手，點歌機不會用就請人教。' },
+  swimming_pool:     { keyword: '晓晓', name: '游泳池店員', role: '游泳池', image: 'images/clerk-clinic.png', intro: '你好！我是游泳池的服務人員。這裡練習買學生票、租置物櫃認識「押金」、東西不見了到服務台找回來。' },
+  amusement_park:    { keyword: '晓伊', name: '遊樂園工作人員', role: '遊樂園', image: 'images/clerk-directions.png', intro: '歡迎來遊樂園！這裡練習算一算哪種票划算、問設施安全限制，還有和朋友走散時找工作人員、在原地等。' },
+  arcade:            { keyword: '曉臻', name: '遊樂場店員', role: '電子遊樂場', image: 'images/clerk-drink.png', intro: '歡迎光臨！這裡練習換代幣控制預算、夾娃娃先設上限說到做到，機台吃錢不拍不踢找店員——玩得開心也要守住錢包！' },
+  comic_store:       { keyword: '云野', name: '漫畫店店員', role: '漫畫店', image: 'images/clerk-library.png', intro: '歡迎光臨漫畫店！這裡練習租書認識押金和逾期費、遲還了誠實道歉，還有分辨辦會員留哪些資料合理、哪些絕對不能給。' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
@@ -1500,7 +1514,9 @@ const SCENARIO_PART = {
   convenience_store: 1, supermarket: 1, stationery_store: 1, bakery: 1, beauty_store: 1, clothing_store: 1,   // 第一部分・基礎買賣
   breakfast_shop: 2, fast_food: 2, night_market: 2, drink_shop: 2, lunchbox_shop: 2, coffee_shop: 2,  // 第二部分・點餐客製
   pharmacy: 3, phone_reservation: 3, ask_directions: 3, post_office: 3, library: 3, police_station: 3,  // 第三部分・生活應對
-  anti_scam: 4, classmate_borrow: 4, online_scam: 4, self_protect: 4,  // 第四部分・金錢安全
+  anti_scam: 4, classmate_borrow: 4, online_scam: 4, self_protect: 4, job_scam: 4, privacy_protect: 4,  // 第四部分・金錢安全
+  take_bus: 5, mrt_station: 5, train_ticket: 5, taxi: 5, easycard_service: 5, ride_manner: 5,  // 第五部分・交通出行
+  cinema: 6, ktv: 6, swimming_pool: 6, amusement_park: 6, arcade: 6, comic_store: 6,  // 第六部分・休閒娛樂
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
