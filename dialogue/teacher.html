@@ -269,12 +269,14 @@ const SERIES = [
   { key: 'C', icon: '🪙', label: '第二部分：核心課程' },
   { key: 'B', icon: '📒', label: '第三部分：預算規劃' },
   { key: 'A', icon: '🏪', label: '第四部分：進階應用' },
+  { key: 'ADV', icon: '🗺️', label: '一日金錢冒險（統整應用）' },
 ];
 const UNITS = {
   F: [['f1','F1 數量與物品的對應'],['f2','F2 數量與點數'],['f3','F3 認識數字與數量'],['f4','F4 數字排序'],['f5','F5 數量大小的比較'],['f6','F6 數的合成與分解']],
   C: [['c1','C1 金錢的種類與面額'],['c2','C2 金錢的點數與加總'],['c3','C3 金錢面額的兌換'],['c4','C4 正確的金額'],['c5','C5 足額付款'],['c6','C6 找零與計算']],
   B: [['b1','B1 今天帶多少錢'],['b2','B2 零用錢日記'],['b3','B3 存錢計畫'],['b4','B4 特賣比一比'],['b5','B5 派對活動採購'],['b6','B6 菜市場買菜']],
-  A: [['a1','A1 自動飲料販賣機'],['a2','A2 理髮店售票機'],['a3','A3 美式速食自助點餐'],['a4','A4 模擬購物'],['a5','A5 ATM提款機'],['a6','A6 火車購票'],['adventure','🗺️ 一日金錢冒險']],
+  A: [['a1','A1 自動飲料販賣機'],['a2','A2 理髮店售票機'],['a3','A3 美式速食自助點餐'],['a4','A4 模擬購物'],['a5','A5 ATM提款機'],['a6','A6 火車購票']],
+  ADV: [['adventure','六關闖關紀錄']],
 };
 const UNIT_PAGE = {
   f1:'f1_object_correspondence', f2:'f2_rote_and_rational_counting', f3:'f3_number_recognition',
@@ -299,6 +301,7 @@ function populateAssignControls() {
     : '<option value="">（尚無學生，請先到主頁「金婆婆」建立）</option>';
   if (!unitSel.options.length) {
     unitSel.innerHTML = Object.values(UNITS).flat()
+      .filter(([u]) => u !== 'adventure')   // 冒險為統整闖關，不列入單元指派下拉
       .map(([u, name]) => `<option value="${u}">${name}</option>`).join('');
   }
 }
