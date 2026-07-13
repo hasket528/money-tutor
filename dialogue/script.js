@@ -325,6 +325,12 @@ const SCENARIO_CLERK_MAP = {
   amusement_park:    { keyword: '晓伊', name: '遊樂園工作人員', role: '遊樂園', image: 'images/clerk-directions.png', intro: '歡迎來遊樂園！這裡練習算一算哪種票划算、問設施安全限制，還有和朋友走散時找工作人員、在原地等。' },
   arcade:            { keyword: '曉臻', name: '遊樂場店員', role: '電子遊樂場', image: 'images/clerk-drink.png', intro: '歡迎光臨！這裡練習換代幣控制預算、夾娃娃先設上限說到做到，機台吃錢不拍不踢找店員——玩得開心也要守住錢包！' },
   comic_store:       { keyword: '云野', name: '漫畫店店員', role: '漫畫店', image: 'images/clerk-library.png', intro: '歡迎光臨漫畫店！這裡練習租書認識押金和逾期費、遲還了誠實道歉，還有分辨辦會員留哪些資料合理、哪些絕對不能給。' },
+  job_interview:     { keyword: '云泽', name: '店長', role: '打工面試', image: 'images/clerk-lunchbox.png', intro: '你好！我是店長。這裡練習打工面試——自我介紹、誠實回答問題，還有問清楚時薪和發薪日；遇到要先繳錢的，記得先回家問大人！' },
+  first_day:         { keyword: 'Zhiwei', name: '前輩同事', role: '第一天上班', image: 'images/clerk-classmate.jpg', intro: '嗨，我是帶你的前輩！這裡練習第一天報到——主動打招呼、聽工作說明複誦重點、問清楚制服和置物，好的開始是成功的一半！' },
+  ask_at_work:       { keyword: '云健', name: '資深同事', role: '工作中求助', image: 'images/clerk-bakery.png', intro: '這裡練習工作中最重要的能力——聽不懂就問、做錯了主動承認、不會操作請人示範。不裝懂的人進步最快！' },
+  call_leave:        { keyword: 'Yating', name: '店長', role: '電話請假', image: 'images/clerk-phone.png', intro: '這裡練習打電話請假——生病提早說、臨時有事誠心道歉配合補班、要遲到先通知。負責任的態度大家都看得到！' },
+  get_paid:          { keyword: '晓涵', name: '會計阿姨', role: '領薪水', image: 'images/clerk-postoffice.png', intro: '你好！這裡練習領薪水——時薪乘時數自己算一次、當面點清楚、發現算錯有禮貌反映，最後別忘了先存一部分，這是理財的開始！' },
+  serve_customer:    { keyword: '曉雨', name: '客人', role: '接待客人', image: 'images/clerk-lost.png', intro: '這次換你當店員囉！練習歡迎光臨和謝謝光臨、被客人問倒了找懂的人、客人不高興先道歉再請主管——把學過的對話換邊用用看！' },
 };
 
 // 固定 5 個學生角色（頭像用 emoji + 色圓）
@@ -1517,6 +1523,7 @@ const SCENARIO_PART = {
   anti_scam: 4, classmate_borrow: 4, online_scam: 4, self_protect: 4, job_scam: 4, privacy_protect: 4,  // 第四部分・金錢安全
   take_bus: 5, mrt_station: 5, train_ticket: 5, taxi: 5, easycard_service: 5, ride_manner: 5,  // 第五部分・交通出行
   cinema: 6, ktv: 6, swimming_pool: 6, amusement_park: 6, arcade: 6, comic_store: 6,  // 第六部分・休閒娛樂
+  job_interview: 7, first_day: 7, ask_at_work: 7, call_leave: 7, get_paid: 7, serve_customer: 7,  // 第七部分・職場初體驗
 };
 let homePart = '1';   // 目前選中的分部（'1'|'2'|'3'|'custom'）
 
