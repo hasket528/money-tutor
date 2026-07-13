@@ -461,6 +461,34 @@
         /* 選這位角色：改為置中的自適應寬度按鈕（.adv-cm-card 為 text-align:center；用 id 選擇器才會生效） */
         #adv-cm-select { display: inline-flex; flex: none; padding: 12px 30px; }
 
+        /* ── 目前學生列（決定學習歷程記給誰）───────────────── */
+        .adv-student-bar {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: rgba(255,255,255,0.7); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 8px 14px; margin: 0 0 18px; width: 100%;
+            font-size: 0.9rem; color: var(--loc-deep); font-weight: 700; cursor: pointer;
+        }
+        .adv-student-bar.guest { border-color: #ef4444; color: #991b1b; background: #fef2f2; }
+        .adv-student-bar:hover { border-color: var(--loc-main); }
+        .adv-stu-change {
+            font-size: 0.78rem; color: #fff; background: var(--loc-main);
+            border: none; border-radius: 8px; padding: 3px 10px; font-weight: 700; cursor: pointer;
+        }
+        .adv-stu-item {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            background: rgba(255,255,255,0.9); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 8px 12px; cursor: pointer;
+            text-align: left; font-size: 0.98rem; font-weight: 700; color: var(--loc-deep);
+        }
+        .adv-stu-item:hover { background: #fef3c7; border-color: var(--loc-main); }
+        .adv-stu-item.current { border-color: var(--loc-main); box-shadow: 0 0 0 2px rgba(217,119,6,0.25); }
+        .adv-stu-avatar {
+            width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+            background: #fef3c7; border: 2px solid var(--loc-border); overflow: hidden;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .adv-stu-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
         /* ── 旅程地圖（遊戲標題列內）────────────────────── */
         .adv-topbar {
             display: flex; align-items: center; gap: 6px;

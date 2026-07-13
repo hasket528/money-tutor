@@ -85,6 +85,49 @@ const Adventure = {
         r.setProperty('--loc-bg2',    t.g2);
     },
 
+    // ── 目前學生（決定學習歷程記給誰；與 reward / dialogue / 金隊長基地共用 sp_currentStudent）──
+    _loadRoster()  { try { return JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch { return []; } },
+    _getCurStudent() { try { return JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch { return null; } },
+    _setCurStudent(stu) {
+        if (stu) localStorage.setItem('sp_currentStudent', JSON.stringify({ id: stu.id, name: stu.name }));
+        else localStorage.removeItem('sp_currentStudent');
+        this._renderStudentBar();
+    },
+    _renderStudentBar() {
+        const bar = document.getElementById('adv-student-bar');
+        if (!bar) return;
+        const cur = this._getCurStudent();
+        bar.classList.toggle('guest', !cur);
+        bar.innerHTML = cur
+            ? `📋 學習記錄給：<span style="color:var(--loc-main)">${cur.name}</span> <button class="adv-stu-change" id="adv-stu-change">更換</button>`
+            : `⚠️ 未選學生（記為訪客，老師看不到）<button class="adv-stu-change" id="adv-stu-change">選擇</button>`;
+        bar.onclick = () => this._openStudentPicker();
+    },
+    _openStudentPicker() {
+        const modal = document.getElementById('adv-stu-modal');
+        const list  = document.getElementById('adv-stu-list');
+        if (!modal || !list) return;
+        const roster = this._loadRoster();
+        const cur    = this._getCurStudent();
+        if (!roster.length) {
+            list.innerHTML = `<p style="color:#78350f;font-size:0.9rem;text-align:center">名冊是空的，<br>請先到獎勵系統新增學生。</p>`;
+        } else {
+            list.innerHTML = roster.map(s => `
+              <button class="adv-stu-item ${cur && String(cur.id)===String(s.id) ? 'current' : ''}" data-id="${s.id}">
+                <span class="adv-stu-avatar">${s.photo ? `<img src="${s.photo}" alt="">` : '🧑'}</span>
+                <span>${s.name}</span>
+              </button>`).join('')
+              + `<button class="adv-stu-item" data-id="__guest__"><span class="adv-stu-avatar">👤</span><span style="color:#78350f">訪客（不記錄）</span></button>`;
+            list.querySelectorAll('.adv-stu-item').forEach(el => el.addEventListener('click', () => {
+                const id = el.dataset.id;
+                if (id === '__guest__') this._setCurStudent(null);
+                else { const s = roster.find(x => String(x.id) === String(id)); if (s) this._setCurStudent(s); }
+                modal.hidden = true;
+            }));
+        }
+        modal.hidden = false;
+    },
+
     // ── 關卡（scene 為接受角色名的函數）────────────────────────
     LEVELS: [
         { id:1, title:'數一數零用錢',   skill:'C2', icon:'💰', mapLabel:'數錢',
@@ -267,6 +310,7 @@ const Adventure = {
     <div class="adv-logo">🗺️</div>
     <h1 class="adv-title">一日金錢冒險</h1>
     <p class="adv-sub">選擇喜歡的角色 體驗有趣的金錢故事！</p>
+    <div class="adv-student-bar" id="adv-student-bar"></div>
     <div class="adv-section-lbl">選擇角色</div>
     <div class="adv-char-grid">${charGrid}</div>
     <div class="adv-section-lbl">今天的冒險</div>
@@ -292,7 +336,24 @@ const Adventure = {
       <button class="adv-start-btn" id="adv-cm-select">選這位角色</button>
     </div>
   </div>
+  <div class="adv-char-modal" id="adv-stu-modal" hidden role="dialog" aria-modal="true">
+    <div class="adv-cm-backdrop" id="adv-stu-backdrop"></div>
+    <div class="adv-cm-card" style="max-width:340px;text-align:left">
+      <button class="adv-cm-close" id="adv-stu-close" aria-label="關閉">✕</button>
+      <div class="adv-cm-name" style="text-align:center;margin-bottom:14px">選擇學生（記錄學習歷程）</div>
+      <div id="adv-stu-list" style="display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto"></div>
+      <p style="font-size:0.74rem;color:#78350f;margin:12px 0 0;text-align:center">名冊與獎勵系統共用；要新增學生請到獎勵系統。</p>
+    </div>
+  </div>
 </div>`;
+
+        this._renderStudentBar();
+        {
+            const stuModal = document.getElementById('adv-stu-modal');
+            const hide = () => { stuModal.hidden = true; };
+            document.getElementById('adv-stu-close').addEventListener('click', hide);
+            document.getElementById('adv-stu-backdrop').addEventListener('click', hide);
+        }
 
         // 點角色圓圈 → 出現詳情彈窗；彈窗「選這位」才套用選取
         const self = this;
