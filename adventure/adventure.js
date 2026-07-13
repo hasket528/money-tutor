@@ -262,7 +262,8 @@ const Adventure = {
 
     _l3Result: null,
     _storyLog: {},
-    state: { level:0, score:0, mistakes:0, startTime:null, char:null },
+    state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false },
+    _easyMode: false,   // 設定頁選的難度（開始遊戲時複製到 state.easy）
 
     // ── init ────────────────────────────────────────────────────
     init() {
@@ -321,6 +322,11 @@ const Adventure = {
         <span class="adv-chip-icon">${l.icon}</span>
         <span class="adv-chip-title">${l.title}</span>
       </div>`).join('')}
+    </div>
+    <div class="adv-section-lbl">難度</div>
+    <div class="adv-diff-row" id="adv-diff-row">
+      <button class="adv-diff-btn ${this._easyMode ? '' : 'active'}" data-easy="0">😊 普通</button>
+      <button class="adv-diff-btn ${this._easyMode ? 'active' : ''}" data-easy="1">🌱 簡單（計算機常開）</button>
     </div>
     <div class="adv-btn-row" style="justify-content:center">
       <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
@@ -387,6 +393,14 @@ const Adventure = {
             window.gameAudio?.play('game-btn-click');
         });
 
+        // 難度切換：普通／簡單（簡單＝計算機預設展開，並記錄 difficulty 給教師歷程）
+        document.querySelectorAll('.adv-diff-btn').forEach(btn => btn.addEventListener('click', () => {
+            this._easyMode = btn.dataset.easy === '1';
+            document.querySelectorAll('.adv-diff-btn').forEach(b =>
+                b.classList.toggle('active', b === btn));
+            window.gameAudio?.play('game-btn-click');
+        }));
+
         document.getElementById('adv-start').addEventListener('click', () => {
             const sel = document.querySelector('.adv-char-opt.selected');
             const charId = sel?.dataset.id || 'boy';
@@ -402,6 +416,7 @@ const Adventure = {
         this.state.level    = 1;
         this.state.score    = 0;
         this.state.mistakes = 0;
+        this.state.easy     = !!this._easyMode;   // 簡單模式：計算機常開＋歷程記 difficulty=easy
         this.state.startTime = Date.now();
         this._renderLevel();
     },
@@ -681,7 +696,7 @@ const Adventure = {
     // ── 計算機 HTML ───────────────────────────────────────────
     _advCalcHTML() {
         return `
-            <div class="adv-calc" id="adv-calc" style="display:none;">
+            <div class="adv-calc" id="adv-calc" style="display:${this.state.easy ? 'block' : 'none'};">
                 <div class="adv-calc-expr" id="adv-calc-expr"></div>
                 <div class="adv-calc-disp" id="adv-calc-disp">0</div>
                 <div class="adv-calc-grid">
@@ -1331,7 +1346,7 @@ ${storesHTML}`;
         try {
             window.LearningTracker?.save({
                 unit: 'adventure', unitName: '🗺️ 一日金錢冒險（六關統整應用）', series: 'A',
-                score: this.state.score, total: MAX_SCORE, difficulty: 'normal',
+                score: this.state.score, total: MAX_SCORE, difficulty: this.state.easy ? 'easy' : 'normal',
                 durationSec: elapsed,
             });
         } catch (e) {}

@@ -489,6 +489,19 @@
         }
         .adv-stu-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
+        /* ── 難度切換（普通／簡單）───────────────────────── */
+        .adv-diff-row { display: flex; gap: 8px; width: 100%; margin-bottom: 18px; }
+        .adv-diff-btn {
+            flex: 1; background: rgba(255,255,255,0.85); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 9px 8px; font-size: 0.92rem; font-weight: 700;
+            color: var(--loc-deep); cursor: pointer; transition: all 0.15s; font-family: inherit;
+        }
+        .adv-diff-btn:hover { border-color: var(--loc-main); }
+        .adv-diff-btn.active {
+            background: var(--loc-main); color: #fff; border-color: var(--loc-main);
+            box-shadow: 0 2px 8px rgba(217,119,6,0.3);
+        }
+
         /* ── 旅程地圖（遊戲標題列內）────────────────────── */
         .adv-topbar {
             display: flex; align-items: center; gap: 6px;
