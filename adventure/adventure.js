@@ -65,6 +65,26 @@ const Adventure = {
             : c.emoji;
     },
 
+    // ── 各地點主色（依關卡切換，讓「一路走過六個地點」有換場景的視覺感）──
+    // m=主accent d=深色標題 b=邊框 g1/g2=背景漸層。第 1 關＝預設暖黃（同 :root）。
+    LOC_THEME: {
+        1: { m:'#d97706', d:'#92400e', b:'#fbbf24', g1:'#fef3c7', g2:'#fcd34d' }, // 🌅 早晨・暖黃
+        2: { m:'#0284c7', d:'#075985', b:'#38bdf8', g1:'#e0f2fe', g2:'#7dd3fc' }, // 🏧 ATM・科技藍
+        3: { m:'#0d9488', d:'#0f766e', b:'#5eead4', g1:'#ccfbf1', g2:'#99f6e4' }, // 🍱 超商・清新青
+        4: { m:'#7c3aed', d:'#5b21b6', b:'#a78bfa', g1:'#ede9fe', g2:'#ddd6fe' }, // 💸 找零・紫
+        5: { m:'#ea580c', d:'#9a3412', b:'#fb923c', g1:'#ffedd5', g2:'#fed7aa' }, // 🏷️ 比價・橘
+        6: { m:'#db2777', d:'#9d174d', b:'#f472b6', g1:'#fce7f3', g2:'#fbcfe8' }, // 🐷 存錢・粉
+    },
+    _applyTheme(levelId) {
+        const t = this.LOC_THEME[levelId] || this.LOC_THEME[1];
+        const r = document.documentElement.style;
+        r.setProperty('--loc-main',   t.m);
+        r.setProperty('--loc-deep',   t.d);
+        r.setProperty('--loc-border', t.b);
+        r.setProperty('--loc-bg1',    t.g1);
+        r.setProperty('--loc-bg2',    t.g2);
+    },
+
     // ── 關卡（scene 為接受角色名的函數）────────────────────────
     LEVELS: [
         { id:1, title:'數一數零用錢',   skill:'C2', icon:'💰', mapLabel:'數錢',
@@ -229,6 +249,7 @@ const Adventure = {
     // ── 設定頁（含選角）────────────────────────────────────────
     showSettings() {
         AdvTimer.clearAll(); AdvSpeech.cancel();
+        this._applyTheme(1);   // 設定頁回到預設暖黃
         { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = ''; }   // 首頁顯示導覽列
         Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null });
         this._l3Result = null;
@@ -354,6 +375,7 @@ const Adventure = {
     _renderLevel() {
         AdvTimer.clearAll(); AdvSpeech.cancel();
         const n = this.state.level;
+        this._applyTheme(n);   // 過場與本關共用該地點主色
         const t = this.TRANSITIONS[n];
         if (t) {
             this._showTransition(t, () => this._doRenderLevel(n));
@@ -1234,6 +1256,7 @@ ${storesHTML}`;
     // ── 勝利畫面 ────────────────────────────────────────────────
     _victory() {
         AdvTimer.clearAll();
+        this._applyTheme(1);   // 慶祝畫面回到暖黃
         const elapsed  = Math.floor((Date.now() - this.state.startTime) / 1000);
         const mins     = Math.floor(elapsed / 60), secs = elapsed % 60;
         const perfect  = this.state.mistakes === 0;
@@ -1242,6 +1265,15 @@ ${storesHTML}`;
         const perf     = this._getPerf(this.state.score, elapsed);
         const timeStr  = (mins > 0 ? mins + '分' : '') + secs + '秒';
         const recapHTML = this._buildRecap(char);
+
+        // 寫入學習歷程（教師「學習歷程總覽」可見；studentId 由 tracker 自動帶目前學生）＝IEP／成效佐證
+        try {
+            window.LearningTracker?.save({
+                unit: 'adventure', unitName: '🗺️ 一日金錢冒險（六關統整應用）', series: 'A',
+                score: this.state.score, total: MAX_SCORE, difficulty: 'normal',
+                durationSec: elapsed,
+            });
+        } catch (e) {}
 
         document.getElementById('app').innerHTML = `
 <div class="adv-victory">
