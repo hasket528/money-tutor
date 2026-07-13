@@ -73,7 +73,8 @@ const Adventure = {
         3: { m:'#0d9488', d:'#0f766e', b:'#5eead4', g1:'#ccfbf1', g2:'#99f6e4' }, // 🍱 超商・清新青
         4: { m:'#7c3aed', d:'#5b21b6', b:'#a78bfa', g1:'#ede9fe', g2:'#ddd6fe' }, // 💸 找零・紫
         5: { m:'#ea580c', d:'#9a3412', b:'#fb923c', g1:'#ffedd5', g2:'#fed7aa' }, // 🏷️ 比價・橘
-        6: { m:'#db2777', d:'#9d174d', b:'#f472b6', g1:'#fce7f3', g2:'#fbcfe8' }, // 🐷 存錢・粉
+        6: { m:'#4f46e5', d:'#3730a3', b:'#a5b4fc', g1:'#e0e7ff', g2:'#c7d2fe' }, // 🛡️ 安全・靛藍
+        7: { m:'#db2777', d:'#9d174d', b:'#f472b6', g1:'#fce7f3', g2:'#fbcfe8' }, // 🐷 存錢・粉
     },
     _applyTheme(levelId) {
         const t = this.LOC_THEME[levelId] || this.LOC_THEME[1];
@@ -140,7 +141,9 @@ const Adventure = {
           scene: n => `${n}拿出鈔票去付帳。` },
         { id:5, title:'路邊比一比',     skill:'B4', icon:'🏷️', mapLabel:'比價',
           scene: n => `${n}走在路上，看到四家店賣同樣的東西！` },
-        { id:6, title:'存錢買物品',     skill:'B3', icon:'🐷', mapLabel:'存錢',
+        { id:6, title:'回家路上要小心', skill:'安全', icon:'🛡️', mapLabel:'安全',
+          scene: n => `${n}走在回家的路上，遇到了一些狀況⋯` },
+        { id:7, title:'存錢買物品',     skill:'B3', icon:'🐷', mapLabel:'存錢',
           scene: n => `${n}看上了一個物品，決定每天存錢！` },
     ],
 
@@ -151,7 +154,8 @@ const Adventure = {
         3: { icon:'✅', text: (c, log)  => `提款成功！加上原本的 ${log.l1Amount} 元，${c.name}口袋裡現在共有 ${(log.l1Amount||0)+(log.l2Amount||0)} 元！走著走著，肚子咕嚕叫了起來，走進了一家便利商店⋯` },
         4: { icon:'🛒', text: (c, log)  => `${c.name}選了${log.l3Items}，共花 ${log.l3Spent} 元！拿著商品走向收銀台，付了錢之後，看看能找回多少零錢⋯` },
         5: { icon:'💸', text: (c, log)  => `找回了 ${log.l4Change} 元零錢，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！` },
-        6: { icon:'🏷️', text: (c, log) => `原來在${log.l5Store}買${log.l5Item}最便宜！${c.name}把這個秘訣記在心裡。傍晚回家路上，看到了一樣超想買的東西，決定開始存錢⋯` },
+        6: { icon:'🏷️', text: (c, log) => `原來在${log.l5Store}買${log.l5Item}最便宜！${c.name}把這個秘訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
+        7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，決定開始存錢⋯` },
     },
 
     // ── 便利商店餐點（L3）────────────────────────────────────
@@ -257,6 +261,49 @@ const Adventure = {
             { daily:35, goal:140, item:'計算機', img:'../images/c6/icon-c6-calculator.png',   icon:'🧮', answer:4  },
             { daily:20, goal:100, item:'鉛筆盒', img:'../images/b4/icon-b4-pencil-case.png',  icon:'✏️', answer:5  },
             { daily:40, goal:160, item:'保溫瓶', img:'../images/b4/icon-b4-thermos.png',      icon:'🫙', answer:4  },
+        ],
+        // 關卡 6：金錢安全情境（回家路上）。options 標 safe，正解＝safe:true；每題三選一，隨機出題。
+        SAFETY: [
+            { icon:'🔑', tag:'保護密碼', hint:'密碼要保密', safeSpeak:'密碼絕對不能告訴別人！',
+              scene: n => `一個陌生人靠近${n}，說「告訴我你的提款卡密碼，我幫你去領錢」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不可以，密碼不能告訴別人，快步離開', safe:true,  fb:'密碼只有自己知道' },
+                { text:'把密碼告訴他',                     safe:false, fb:'密碼給別人，錢會被領走' },
+                { text:'帶他一起去 ATM',                   safe:false, fb:'不要和陌生人去 ATM' },
+              ] },
+            { icon:'📱', tag:'不點可疑連結', hint:'中獎訊息是假的', safeSpeak:'不明的中獎訊息不要點！',
+              scene: n => `${n}的手機收到簡訊：「恭喜中獎十萬元！快點連結領獎」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不點連結，拿給爸媽或老師看', safe:true,  fb:'可疑訊息先問大人' },
+                { text:'馬上點連結、填自己的資料',   safe:false, fb:'點了會被騙個資和錢' },
+                { text:'回撥電話給那個號碼',         safe:false, fb:'不要聯絡陌生號碼' },
+              ] },
+            { icon:'👛', tag:'拾金不昧', hint:'撿到錢要送警察', safeSpeak:'撿到錢要交給警察招領！',
+              scene: n => `${n}在路邊撿到一個錢包，裡面有不少錢。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'交給警察或附近商店招領', safe:true,  fb:'拾金不昧是好品德' },
+                { text:'把錢拿走自己用',         safe:false, fb:'撿到的錢不是自己的' },
+                { text:'丟在原地不管它',         safe:false, fb:'應該幫忙送還失主' },
+              ] },
+            { icon:'📞', tag:'退費是詐騙', hint:'退費不用去 ATM', safeSpeak:'叫你去 ATM 退費的都是詐騙！',
+              scene: n => `${n}接到電話：「你的網購訂單有問題要退費，請去 ATM 照我說的按」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'掛掉電話，問家人或打官方客服電話', safe:true,  fb:'真的退費不會叫你去 ATM' },
+                { text:'照對方說的去 ATM 操作',           safe:false, fb:'這樣會把錢轉給詐騙集團' },
+                { text:'把銀行帳號和密碼告訴他',           safe:false, fb:'帳號密碼不能給別人' },
+              ] },
+            { icon:'🏧', tag:'ATM 自保', hint:'不讓陌生人靠近', safeSpeak:'在 ATM 不要讓陌生人靠近！',
+              scene: n => `${n}正要用路邊的 ATM，一個陌生人說「我來教你領錢」，想靠得很近。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'婉拒他，請他離開或找店員幫忙', safe:true,  fb:'操作 ATM 要保持距離' },
+                { text:'讓他靠過來幫忙操作',           safe:false, fb:'陌生人可能偷看或偷卡' },
+                { text:'把提款卡交給他',               safe:false, fb:'卡片不能交給別人' },
+              ] },
         ],
     },
 
@@ -466,7 +513,8 @@ const Adventure = {
         else if (n === 3) this._level3();
         else if (n === 4) this._level4();
         else if (n === 5) this._level5();
-        else if (n === 6) this._level6();
+        else if (n === 6) this._levelSafety();
+        else if (n === 7) this._level6();
         else              this._victory();
     },
 
@@ -605,11 +653,11 @@ const Adventure = {
     },
 
     _getPerf(score, elapsed) {
-        const fast = elapsed <= 180;
-        if (score >= 7 && fast) return { icon:'🌟', label:'金錢天才' };
-        if (score >= 7)         return { icon:'🏆', label:'完美通關' };
-        if (score >= 5 && fast) return { icon:'⚡', label:'快手玩家' };
-        if (score >= 5)         return { icon:'⭐', label:'認真完成' };
+        const fast = elapsed <= 240;
+        if (score >= 8 && fast) return { icon:'🌟', label:'金錢天才' };
+        if (score >= 8)         return { icon:'🏆', label:'完美通關' };
+        if (score >= 6 && fast) return { icon:'⚡', label:'快手玩家' };
+        if (score >= 6)         return { icon:'⭐', label:'認真完成' };
         return { icon:'💪', label:'繼續練習' };
     },
 
@@ -634,6 +682,9 @@ const Adventure = {
         }
         if (log.l5Store) {
             items.push({ icon:'🏷️', html:`發現在 <strong>${log.l5Store}</strong> 買${log.l5Item}最便宜！`, plain:`發現在${log.l5Store}買${log.l5Item}最便宜` });
+        }
+        if (log.lSafeTag) {
+            items.push({ icon:'🛡️', html:`回家路上遇到狀況，做出安全的選擇（<strong>${log.lSafeTag}</strong>）`, plain:`回家路上遇到狀況，做出安全的選擇，${log.lSafeTag}` });
         }
         if (log.l6Item) {
             items.push({ icon:'🐷', html:`決定每天存錢，再 <strong>${log.l6Days}</strong> 天就能買到${log.l6Item}！`, plain:`決定每天存錢，再${log.l6Days}天就能買到${log.l6Item}` });
@@ -1238,7 +1289,51 @@ ${storesHTML}`;
         AdvSpeech.speak(`在${cheapest.name}買，總共便宜了多少錢？`);
     },
 
-    // ── 關卡 6：存錢 ────────────────────────────────────────────
+    // ── 關卡 6：回家路上・金錢安全（情境判斷）──────────────────
+    _levelSafety() {
+        const d    = this.DATA.SAFETY[Math.floor(Math.random() * this.DATA.SAFETY.length)];
+        const char = this.state.char || this.CHARACTERS[0];
+
+        // 選項洗牌（正解＝safe:true，位置隨機）
+        const opts = [...d.options]
+            .sort(() => Math.random() - 0.5)
+            .map(o => ({ label: o.text, safe: o.safe, fb: o.fb }));
+
+        const content = `
+<div class="adv-cmp-center">
+  <div style="font-size:56px;line-height:1;margin-bottom:8px;">${d.icon}</div>
+  <div style="font-size:0.98rem;color:var(--loc-deep);line-height:1.7;text-align:center;max-width:460px;font-weight:600;">${d.scene(char.name)}</div>
+</div>`;
+
+        this._frame(content, d.question, opts);
+        // 安全題選項文字較長，改單欄呈現
+        const choicesEl = document.getElementById('adv-choices');
+        if (choicesEl) choicesEl.style.gridTemplateColumns = '1fr';
+
+        this._onChoice = (c, idx, all, btn) => {
+            if (c.safe) {
+                this._storyLog.lSafeTag = d.tag;
+                this._lock();
+                btn.classList.add('adv-ok');
+                const fb = document.getElementById('adv-fb');
+                if (fb) { fb.innerHTML = `✅ 做得好！${c.fb ? `<span class="adv-hint"> ${c.fb}</span>` : ''}`; fb.className = 'adv-feedback adv-fb-ok'; }
+                this.state.score++;
+                document.getElementById('correct-sound')?.play();
+                if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                AdvSpeech.speak(`做得好！${d.safeSpeak}`, () =>
+                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 700));
+            } else {
+                const safeIdx = all.findIndex(o => o.safe);
+                this._wrong(btn, safeIdx >= 0 ? this._btn(safeIdx) : null, '再想想，這樣安全嗎？', c.fb || d.hint);
+            }
+        };
+
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(`${d.scene(char.name)} ${d.question}`));
+        AdvTimer.set(() => AdvSpeech.speak(`${d.scene(char.name)} ${d.question}`), 300);
+    },
+
+    // ── 關卡 7：存錢 ────────────────────────────────────────────
     _level6() {
         const d    = this.DATA.L6[Math.floor(Math.random() * this.DATA.L6.length)];
         const lv   = this.LEVELS[5];
@@ -1337,7 +1432,7 @@ ${storesHTML}`;
         const elapsed  = Math.floor((Date.now() - this.state.startTime) / 1000);
         const mins     = Math.floor(elapsed / 60), secs = elapsed % 60;
         const perfect  = this.state.mistakes === 0;
-        const MAX_SCORE = 7;
+        const MAX_SCORE = 8;
         const char     = this.state.char || this.CHARACTERS[0];
         const perf     = this._getPerf(this.state.score, elapsed);
         const timeStr  = (mins > 0 ? mins + '分' : '') + secs + '秒';
