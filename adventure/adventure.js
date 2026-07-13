@@ -110,7 +110,7 @@ const Adventure = {
         const roster = this._loadRoster();
         const cur    = this._getCurStudent();
         if (!roster.length) {
-            list.innerHTML = `<p style="color:#78350f;font-size:0.9rem;text-align:center">名冊是空的，<br>請先到獎勵系統新增學生。</p>`;
+            list.innerHTML = `<p style="color:#78350f;font-size:0.92rem;text-align:center;line-height:1.7">尚未建立學生名冊——<br>請先到主頁，找金婆婆新增學生，<br>或先以訪客身分練習。</p>`;
         } else {
             list.innerHTML = roster.map(s => `
               <button class="adv-stu-item ${cur && String(cur.id)===String(s.id) ? 'current' : ''}" data-id="${s.id}">
@@ -342,7 +342,7 @@ const Adventure = {
       <button class="adv-cm-close" id="adv-stu-close" aria-label="關閉">✕</button>
       <div class="adv-cm-name" style="text-align:center;margin-bottom:14px">選擇學生（記錄學習歷程）</div>
       <div id="adv-stu-list" style="display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto"></div>
-      <p style="font-size:0.74rem;color:#78350f;margin:12px 0 0;text-align:center">名冊與獎勵系統共用；要新增學生請到獎勵系統。</p>
+      <p style="font-size:0.74rem;color:#78350f;margin:12px 0 0;text-align:center">新增學生，請至主頁，找金婆婆。</p>
     </div>
   </div>
 </div>`;
