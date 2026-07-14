@@ -309,7 +309,7 @@ const Adventure = {
 
     _l3Result: null,
     _storyLog: {},
-    state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false },
+    state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false, levelMiss:{} },
     _easyMode: false,   // 設定頁選的難度（開始遊戲時複製到 state.easy）
 
     // ── init ────────────────────────────────────────────────────
@@ -342,7 +342,7 @@ const Adventure = {
         AdvTimer.clearAll(); AdvSpeech.cancel();
         this._applyTheme(1);   // 設定頁回到預設暖黃
         { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = ''; }   // 首頁顯示導覽列
-        Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null });
+        Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null, levelMiss:{} });
         this._l3Result = null;
         this._storyLog = {};
 
@@ -463,6 +463,7 @@ const Adventure = {
         this.state.level    = 1;
         this.state.score    = 0;
         this.state.mistakes = 0;
+        this.state.levelMiss = {};   // 每關錯誤數（供結算「統整診斷」）
         this.state.easy     = !!this._easyMode;   // 簡單模式：計算機常開＋歷程記 difficulty=easy
         this.state.startTime = Date.now();
         this._renderLevel();
@@ -607,7 +608,7 @@ const Adventure = {
         this._lock();
         btn.classList.add('adv-ng');
         if (correctBtn) correctBtn.classList.add('adv-ok');
-        this.state.mistakes++;
+        this._miss();
         document.getElementById('error-sound')?.play();
         const fb = document.getElementById('adv-fb');
         if (fb) {
@@ -650,6 +651,13 @@ const Adventure = {
             }
         }
         return result;
+    },
+
+    // 記一次答錯：累加全域 mistakes 與「當前關」錯誤數（供結算的統整診斷用）
+    _miss() {
+        this.state.mistakes++;
+        const L = this.state.level;
+        this.state.levelMiss[L] = (this.state.levelMiss[L] || 0) + 1;
     },
 
     _getPerf(score, elapsed) {
@@ -874,7 +882,7 @@ const Adventure = {
                     this._renderLevel();
                 }, 500));
             } else {
-                this.state.mistakes++;
+                this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = '❌ 再算算！<span class="adv-hint"> 把每一枚硬幣加起來</span>'; fb.className = 'adv-feedback adv-fb-ng'; }
@@ -945,6 +953,7 @@ const Adventure = {
                 startTime: this.state.startTime,
                 charId:    char.id,
                 storyLog:  this._storyLog,
+                levelMiss: this.state.levelMiss,
                 atmTarget: atmTarget,
             }));
         });
@@ -1142,7 +1151,7 @@ const Adventure = {
                 AdvSpeech.speak(`答對了！${paid}減${price}，找回${change}元！`, () =>
                     AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
             } else {
-                this.state.mistakes++;
+                this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${paid} − ${price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
@@ -1256,7 +1265,7 @@ ${storesHTML}`;
                     if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
                     this._correct(confirmBtn, `答對了！便宜了${diff}元！`);
                 } else {
-                    this.state.mistakes++;
+                    this._miss();
                     document.getElementById('error-sound')?.play();
                     display.classList.add('adv-input-ng');
                     if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${expensive.price} − ${cheapest.price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
@@ -1404,7 +1413,7 @@ ${storesHTML}`;
                 AdvSpeech.speak(`答對了！每天存${d.daily}元，${d.answer}天就能存到${d.goal}元！`, () =>
                     AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
             } else {
-                this.state.mistakes++;
+                this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${d.goal} ÷ ${d.daily} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
@@ -1426,6 +1435,36 @@ ${storesHTML}`;
     },
 
     // ── 勝利畫面 ────────────────────────────────────────────────
+    // 統整診斷：把七關對錯攤成「七項金錢技能」檢核，弱項（該關答錯過）給出練習對應單元的連結。
+    _buildDiagnosis() {
+        const SKILL_UNIT = {
+            'C2':   { name:'數錢',     url:'../html/c2_money_counting.html' },
+            'A5':   { name:'ATM 提款', url:'../html/a5_atm_simulator.html' },
+            'C5':   { name:'算夠不夠', url:'../html/c5_sufficient_payment.html' },
+            'C6':   { name:'找零',     url:'../html/c6_making_change.html' },
+            'B4':   { name:'比價',     url:'../html/b4_sale_comparison.html' },
+            '安全': { name:'金錢安全', url:'../dialogue/index.html' },
+            'B3':   { name:'存錢',     url:'../html/b3_savings_plan.html' },
+        };
+        const diag = this.LEVELS.map(lv => {
+            const miss = this.state.levelMiss[lv.id] || 0;
+            return { icon: lv.icon, label: lv.mapLabel, skill: lv.skill, miss, ok: miss === 0 };
+        });
+        const weak = diag.filter(d => !d.ok);
+        const cells = diag.map(d => `
+            <div class="adv-diag-cell ${d.ok ? 'ok' : 'weak'}">
+              <span class="adv-diag-ic">${d.icon}</span>
+              <span class="adv-diag-nm">${d.label}</span>
+              <span class="adv-diag-mk">${d.ok ? '✅' : '🔶'}</span>
+            </div>`).join('');
+        const weakHTML = weak.length
+            ? `<div class="adv-diag-weak"><div class="adv-diag-wt">💪 這幾項再練一下會更棒：</div>${
+                weak.map(d => { const u = SKILL_UNIT[d.skill]; return `<a class="adv-diag-link" href="${u.url}">${d.icon} 去練「${u.name}」　→</a>`; }).join('')
+              }</div>`
+            : `<div class="adv-diag-allok">🌟 七項金錢技能全部一次過關，太厲害了！</div>`;
+        return `<div class="adv-diag"><div class="adv-diag-title">🎯 今天的七項金錢技能</div><div class="adv-diag-grid">${cells}</div>${weakHTML}</div>`;
+    },
+
     _victory() {
         AdvTimer.clearAll();
         this._applyTheme(1);   // 慶祝畫面回到暖黃
@@ -1437,6 +1476,7 @@ ${storesHTML}`;
         const perf     = this._getPerf(this.state.score, elapsed);
         const timeStr  = (mins > 0 ? mins + '分' : '') + secs + '秒';
         const recapHTML = this._buildRecap(char);
+        const diagHTML  = this._buildDiagnosis();
 
         // 寫入學習歷程（教師「學習歷程總覽」可見；studentId 由 tracker 自動帶目前學生）＝IEP／成效佐證
         try {
@@ -1461,6 +1501,7 @@ ${storesHTML}`;
       <div class="adv-v-td"><div class="adv-v-ico">⏱️</div><div class="adv-v-val">${timeStr}</div></div>
       <div class="adv-v-td"><div class="adv-v-ico">${perf.icon}</div><div class="adv-v-val">${perf.label}</div></div>
     </div>
+    ${diagHTML}
     ${recapHTML}
     <button class="adv-v-btn adv-v-reward" id="adv-reward" style="width:100%;margin-bottom:10px">🎁 開啟獎勵</button>
     <div class="adv-btn-row">

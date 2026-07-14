@@ -289,6 +289,26 @@
         }
         .adv-v-reward { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; }
 
+        /* ── 結算：統整診斷（七項金錢技能檢核＋弱項導引） ──────── */
+        .adv-diag { width: 100%; background: rgba(255,255,255,0.78); border: 2px solid var(--loc-border);
+            border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 16px; }
+        .adv-diag-title { font-size: 0.95rem; font-weight: 900; color: var(--loc-deep);
+            text-align: center; margin-bottom: 11px; }
+        .adv-diag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 11px; }
+        .adv-diag-cell { display: flex; flex-direction: column; align-items: center; gap: 2px;
+            background: #d1fae5; border: 1.5px solid #34d399; border-radius: 11px; padding: 7px 3px; }
+        .adv-diag-cell.weak { background: #fef3c7; border-color: #fbbf24; }
+        .adv-diag-ic { font-size: 1.35rem; line-height: 1; }
+        .adv-diag-nm { font-size: 0.7rem; font-weight: 700; color: #374151; text-align: center; line-height: 1.15; }
+        .adv-diag-mk { font-size: 0.85rem; line-height: 1; }
+        .adv-diag-weak { background: rgba(251,191,36,0.16); border-radius: 11px; padding: 11px 11px 7px; }
+        .adv-diag-wt { font-size: 0.85rem; font-weight: 800; color: #92400e; margin-bottom: 8px; }
+        .adv-diag-link { display: block; background: #fff; border: 1.5px solid #fbbf24; border-radius: 9px;
+            padding: 9px 11px; margin-bottom: 6px; font-size: 0.9rem; font-weight: 700;
+            color: #b45309; text-decoration: none; }
+        .adv-diag-link:active { background: #fef3c7; }
+        .adv-diag-allok { text-align: center; font-size: 0.92rem; font-weight: 800; color: #065f46; padding: 4px 0 2px; }
+
         /* ── 公式輸入列 + 計算機 ──────────────────────────── */
         .adv-formula-row {
             display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
