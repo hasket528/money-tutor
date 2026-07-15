@@ -1505,6 +1505,7 @@ ${storesHTML}`;
         const d    = this.DATA.L6[Math.floor(Math.random() * this.DATA.L6.length)];
         const lv   = this.LEVELS[6];   // 第 7 關＝存錢（LEVELS[6]）；先前誤用 [5] 會顯示安全關標題
         const char = this.state.char || this.CHARACTERS[0];
+        const sceneText = `${char.name}看上了一個${d.item}，決定每天存錢把它買下來！`;   // 講物品名、不含金額 → 可預錄
         let entered = '', submitted = false;
 
         document.getElementById('app').innerHTML = `
@@ -1515,7 +1516,7 @@ ${storesHTML}`;
       <span class="adv-card-icon">${lv.icon}</span>
       <div class="adv-card-info">
         <div class="adv-card-title">${lv.title}</div>
-        <div class="adv-card-scene">${lv.scene(char.name)}</div>
+        <div class="adv-card-scene">${sceneText}</div>
       </div>
       <button class="adv-replay-btn" id="adv-replay">🔊</button>
     </div>
@@ -1589,8 +1590,9 @@ ${storesHTML}`;
             if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
         });
         document.getElementById('adv-replay')?.addEventListener('click', () =>
-            AdvSpeech.speak(`每天存${d.daily}元，${d.goal}元要幾天？`));
-        AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}每天存${d.daily}元，${d.goal}元的${d.item}要幾天才能存到？`), 300);
+            AdvSpeech.speak(sceneText, () => AdvSpeech.speak(`每天存${d.daily}元，存到${d.goal}元要幾天？`)));
+        // 情境（含物品名、無金額）先預錄自動播，再接算式題目（含數字、即時）
+        AdvTimer.set(() => AdvSpeech.speak(sceneText, () => AdvSpeech.speak(`每天存${d.daily}元，存到${d.goal}元要幾天？`)), 300);
     },
 
     // ── 勝利畫面 ────────────────────────────────────────────────
