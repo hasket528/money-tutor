@@ -30,6 +30,20 @@
 
             this.log('🔓 嘗試解鎖音頻播放權限...');
 
+            // [2026-07] 喚醒 speechSynthesis：行動瀏覽器會擋「非手勢當下觸發」的即時語音（TTS），
+            // 在首次手勢當下講一句靜音話即可解鎖——之後單元裡自動/延遲觸發的即時 TTS 才播得出來。
+            // 就算單元隨後 speechSynthesis.cancel() 也不影響解鎖效果（在手勢內呼叫過 speak 即算數）。
+            try {
+                if (window.speechSynthesis && 'SpeechSynthesisUtterance' in window) {
+                    const u = new SpeechSynthesisUtterance('。');
+                    u.volume = 0;
+                    window.speechSynthesis.speak(u);
+                    this.log('🗣️ speechSynthesis 已喚醒');
+                }
+            } catch (e) {
+                this.log('⚠️ speechSynthesis 喚醒失敗（不影響音訊解鎖）', e);
+            }
+
             // 創建一個統一的 AudioContext
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
