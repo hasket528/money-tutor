@@ -10,16 +10,16 @@
 (function () {
     'use strict';
 
-    // 各系列標題列「右側容器」錨點（依專案現況）：
-    //  .title-bar-right      A1/A2/A4/A6、C1~C6、F1~F6
-    //  .atm-title-bar-right  A5
-    //  .b-header-right       B1~B6
-    //  .mcdonalds-title-bar > div:last-child   A3（右側容器無 class）
+    // 各系列標題列「標題文字欄位」（圓框插在欄位內、緊鄰標題文字右邊）：
+    //  .title-bar-center                        A1/A2/A4/A6、C1~C6、F1~F6
+    //  .atm-title-bar-center                    A5（步驟標題，textContent 更新會清掉徽章→observer 自動補回）
+    //  .b-header-center                         B1~B6
+    //  .mcdonalds-title-bar > div:nth-child(2)  A3（中欄步驟文字，無 class）
     const ANCHORS = [
-        '.title-bar-right',
-        '.atm-title-bar-right',
-        '.b-header-right',
-        '.mcdonalds-title-bar > div:last-child',
+        '.title-bar-center',
+        '.atm-title-bar-center',
+        '.b-header-center',
+        '.mcdonalds-title-bar > div:nth-child(2)',
     ];
 
     function getStudent() {
@@ -42,6 +42,13 @@
                 overflow: hidden; margin-left: 8px; background: #fff7ed;
                 display: inline-flex; align-items: center; justify-content: center;
                 vertical-align: middle; user-select: none;
+            }
+            /* 有徽章時，標題文字欄位轉 flex 置中 → 圓框緊鄰標題文字右邊（不改動無徽章時的版面） */
+            .title-bar-center:has(> .student-badge),
+            .atm-title-bar-center:has(> .student-badge),
+            .b-header-center:has(> .student-badge),
+            .mcdonalds-title-bar > div:nth-child(2):has(> .student-badge) {
+                display: flex; align-items: center; justify-content: center; gap: 2px;
             }
             .student-badge img { width: 100%; height: 100%; object-fit: cover; display: block; }
             .student-badge.no-photo {
