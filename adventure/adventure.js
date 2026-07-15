@@ -685,7 +685,7 @@ const Adventure = {
         };
         document.getElementById('adv-trans-next').addEventListener('click', proceed);
         this._sfx('adv-sfx-warp');
-        AdvSpeech.speak(textStr, () => AdvTimer.set(proceed, 800));
+        AdvSpeech.speak(textStr);   // 只自動播語音、停在本頁；前進交給「繼續」按鈕，不自動跳頁
     },
 
     // ── 共用框架（多選題關卡用）────────────────────────────────
