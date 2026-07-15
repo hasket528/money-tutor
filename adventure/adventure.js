@@ -113,20 +113,26 @@ const AdvSpeech = (() => {
         const prof = PROFILES[who] || PROFILES.narrator;
         let done = false;
         const fire = () => { if (done) return; done = true; _clearFb(); if (cb) cb(); };
+        // 只用中文語音：手機沒有微軟神經語音時，若挑到英文等系統語音去唸中文，會變成「不知名語言」。
+        // 挑不到中文語音就靜音（寧可不唸，也不亂唸）——流程仍靠兜底計時器往下走。
+        let v = _voiceFor(who);
+        const zh = x => x && x.lang && x.lang.toLowerCase().startsWith('zh');
+        if (!zh(v)) v = _voices.find(zh) || null;
         try {
-            speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            const v = _voiceFor(who);   // _voices 可能還是空，v=null 就用瀏覽器預設聲
-            u.lang  = v?.lang || 'zh-TW';
-            u.rate  = prof.rate;
-            u.pitch = prof.pitch;
-            if (v) u.voice = v;
-            u.onend = fire;
-            u.onerror = fire;
-            speechSynthesis.speak(u);
+            if (v) {
+                speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang  = v.lang;
+                u.rate  = prof.rate;
+                u.pitch = prof.pitch;
+                u.voice = v;
+                u.onend = fire;
+                u.onerror = fire;
+                speechSynthesis.speak(u);
+            }
         } catch (e) { /* 發聲失敗也要推進 */ }
         _clearFb();
-        _fbTimer = setTimeout(fire, 1200 + (text ? String(text).length * 180 : 0));
+        _fbTimer = setTimeout(fire, v ? 1200 + (text ? String(text).length * 180 : 0) : 300);
     };
 
     return {
