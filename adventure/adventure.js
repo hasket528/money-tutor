@@ -141,7 +141,8 @@ const AdvSpeech = (() => {
             if (!window.speechSynthesis) { cb?.(); return; }
             who = who || 'narrator';
             // 預錄檔名：先查內建固定句表，再查外部自動產生的第二期表（含角色名的題目/安全關 × 4 角色）
-            const key = ADV_AUDIO_MAP[text] || (window.ADV_AUDIO_MAP2 && window.ADV_AUDIO_MAP2[text]);
+            const key = ADV_AUDIO_MAP[text]
+                || (window.ADV_AUDIO_MAP2 && (window.ADV_AUDIO_MAP2[who + '|' + text] || window.ADV_AUDIO_MAP2[text]));
             if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗/沒觸發事件都退回即時 TTS 或推進
                 this.cancel();
                 const a = new Audio('audio/adv/' + key + '.mp3');
