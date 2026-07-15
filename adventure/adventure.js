@@ -1,20 +1,80 @@
 'use strict';
 
+// ── 預錄語音對照（最終文字 → audio/adv/{檔名}.mp3）───────────────
+// 只放「固定不變」的句子；命中就播預錄好音質（Edge 神經語音），缺檔/失敗自動退回即時 TTS。
+// 含隨機數字的句子不放這裡、一律即時。mp3 由 voicegen 產生後即自動生效，程式不必再改。
+const ADV_HELLO = {   // 選角時的第一人稱自我介紹（各角色用自己的聲音）
+    boy:  '我是小翔！我最喜歡冒險了！',
+    girl: '我是小花！我喜歡逛文具店。',
+    kid:  '我是小睿，我會小心用錢。',
+    teen: '我是小凱！今天想吃點好料的！',
+};
+const ADV_YAY = {   // 答對時的角色歡呼（各角色聲；接在數字報讀前，取代原本的「答對了！」開頭）
+    boy:  '我做到了！',
+    girl: '答對了，太好了！',
+    kid:  '嗯，算對了！',
+    teen: '耶，我算對了！',
+};
+const ADV_AUDIO_MAP = {
+    // 開場・答錯鼓勵（旁白 曉臻）
+    '一日金錢冒險！選好角色，和我一起學習用錢吧！': 'adv_intro',
+    '開始冒險！':              'adv_start',
+    '不對喔，再數一次！':       'adv_retry_count',
+    '再算算！':                'adv_retry_calc',
+    '再看看！':                'adv_retry_look',
+    '再想想，這樣安全嗎？':     'adv_retry_safe',
+    // 角色自我介紹（各角色聲）
+    [ADV_HELLO.boy]:  'adv_hello_boy',
+    [ADV_HELLO.girl]: 'adv_hello_girl',
+    [ADV_HELLO.kid]:  'adv_hello_kid',
+    [ADV_HELLO.teen]: 'adv_hello_teen',
+    // 答對歡呼（各角色聲）
+    [ADV_YAY.boy]:  'adv_yay_boy',
+    [ADV_YAY.girl]: 'adv_yay_girl',
+    [ADV_YAY.kid]:  'adv_yay_kid',
+    [ADV_YAY.teen]: 'adv_yay_teen',
+};
+
 // ── 語音 ──────────────────────────────────────────────────────
 const AdvSpeech = (() => {
-    let _voice = null;
-    let _ready = false;
-    let _pending = null;
+    let _voices   = [];      // 目前可用的所有語音
+    let _fallback = null;    // 主後備語音（挑一把最好的中文；沒有專屬語音時用它）
+    let _ready    = false;
+    let _pending  = null;
+
+    // 各說話者偏好的語音（名稱關鍵字，中英皆列）。Edge 瀏覽器＋聯網時 speechSynthesis 會列出
+    // 「Microsoft XXX Online (Natural)」這批神經語音＝與對話練習學生同款，可即時合成、隨機數字照唸；
+    // 匹配得到就給角色綁「真的不同人聲」，匹配不到才退回下方 PROFILES 的音高/語速變調。
+    const VOICE_PREFS = {
+        narrator: ['Xiaoxiao', '晓晓', 'Yunjian', '云健', 'HsiaoChen', '曉臻', '晓臻'],  // 旁白：沉穩
+        retry:    ['Xiaoxiao', '晓晓', 'Yunjian', '云健', 'HsiaoChen', '曉臻', '晓臻'],  // 鼓勵：同旁白，語氣柔
+        boy:      ['Yunxi', '云希', 'Yunyang', '云扬', 'YunJhe', '雲哲', '云哲'],        // 小翔：年輕男
+        teen:     ['YunJhe', '雲哲', '云哲', 'Yunjian', '云健', 'Yunxi', '云希'],        // 小凱：成熟男
+        girl:     ['HsiaoChen', '曉臻', '晓臻', 'Xiaoyi', '晓伊', 'Xiaoxiao', '晓晓'],   // 小花：清亮女
+        kid:      ['HsiaoYu', '曉雨', '晓雨', 'Xiaoyi', '晓伊', 'HsiaoChen', '晓臻'],     // 小睿：溫和女
+    };
+    // 音高/語速：主要靠上面不同語音做出真人聲差異；只有單一語音的裝置，靠這裡的變調保底區分角色。
+    const PROFILES = {
+        narrator: { pitch: 1.0,  rate: 0.9  },  // 旁白・題目：沉穩說故事
+        retry:    { pitch: 1.05, rate: 0.95 },  // 答錯鼓勵：溫和不責備
+        boy:      { pitch: 0.95, rate: 1.0  },  // 小翔・活潑少年
+        teen:     { pitch: 0.8,  rate: 1.0  },  // 小凱・低沉大男孩
+        girl:     { pitch: 1.3,  rate: 1.05 },  // 小花・清亮女生
+        kid:      { pitch: 1.15, rate: 0.95 },  // 小睿・細心稍高
+    };
+
     const _load = () => {
         const vs = window.speechSynthesis?.getVoices() || [];
         if (!vs.length) return;
-        _voice = vs.find(v => v.name.startsWith('Microsoft Yating')) ||
-                 vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) ||
-                 vs.find(v => /google/i.test(v.name) && v.lang.startsWith('zh')) ||
-                 vs.find(v => v.name.startsWith('Microsoft Hanhan')) ||
-                 vs.find(v => v.name === 'Google 國語（臺灣）') ||
-                 vs.find(v => v.lang === 'zh-TW') ||
-                 null;
+        _voices = vs;
+        _fallback = vs.find(v => v.name.startsWith('Microsoft Yating')) ||
+                    vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) ||
+                    vs.find(v => /google/i.test(v.name) && v.lang.startsWith('zh')) ||
+                    vs.find(v => v.name.startsWith('Microsoft Hanhan')) ||
+                    vs.find(v => v.name === 'Google 國語（臺灣）') ||
+                    vs.find(v => v.lang === 'zh-TW') ||
+                    vs.find(v => v.lang && v.lang.startsWith('zh')) ||
+                    null;
         _ready = true;
         if (_pending) { const p = _pending; _pending = null; p(); }
     };
@@ -22,22 +82,73 @@ const AdvSpeech = (() => {
         _load();
         speechSynthesis.addEventListener('voiceschanged', _load);
     }
+
+    // 依說話者挑專屬語音：先找偏好清單裡實際存在的語音，找不到用主後備語音。
+    const _voiceFor = (who) => {
+        const prefs = VOICE_PREFS[who];
+        if (prefs) {
+            for (const kw of prefs) {
+                const v = _voices.find(x => x.name.includes(kw));
+                if (v) return v;
+            }
+        }
+        return _fallback;
+    };
+
+    let _audio = null;   // 目前播放中的預錄音檔（供 cancel 停止）
+
+    // 即時 TTS（缺預錄檔時的後備＋所有含數字的句子）
+    const _tts = (text, cb, who) => {
+        const prof = PROFILES[who] || PROFILES.narrator;
+        const run = () => {
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            const v = _voiceFor(who);
+            u.lang  = v?.lang || 'zh-TW';
+            u.rate  = prof.rate;
+            u.pitch = prof.pitch;
+            if (v) u.voice = v;
+            if (cb) u.onend = cb;
+            speechSynthesis.speak(u);
+        };
+        if (_ready) { run(); } else { _pending = run; }
+    };
+
     return {
-        speak(text, cb) {
+        // who：'narrator'（預設，旁白/題目）｜'retry'（答錯鼓勵）｜角色 id（boy/girl/kid/teen）。
+        speak(text, cb, who) {
             if (!window.speechSynthesis) { cb?.(); return; }
-            const _do = () => {
-                speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'zh-TW'; u.rate = 0.9;
-                if (_voice) u.voice = _voice;
-                if (cb) u.onend = cb;
-                speechSynthesis.speak(u);
-            };
-            if (_ready) { _do(); } else { _pending = _do; }
+            who = who || 'narrator';
+            // 預錄檔名：先查內建固定句表，再查外部自動產生的第二期表（含角色名的題目/安全關 × 4 角色）
+            const key = ADV_AUDIO_MAP[text] || (window.ADV_AUDIO_MAP2 && window.ADV_AUDIO_MAP2[text]);
+            if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗自動退回即時 TTS
+                this.cancel();
+                const a = new Audio('audio/adv/' + key + '.mp3');
+                _audio = a;
+                let done = false;
+                const fall = () => { if (done) return; done = true; if (_audio === a) _audio = null; _tts(text, cb, who); };
+                a.onended = () => { if (done) return; done = true; if (_audio === a) _audio = null; if (cb) cb(); };
+                a.onerror = fall;
+                a.play().catch(fall);
+                return;
+            }
+            _tts(text, cb, who);
         },
-        cancel() { window.speechSynthesis?.cancel(); _pending = null; }
+        cancel() {
+            if (_audio) { _audio.onended = _audio.onerror = null; try { _audio.pause(); } catch {} _audio = null; }
+            window.speechSynthesis?.cancel();
+            _pending = null;
+        }
     };
 })();
+
+// 角色化過場短語：讓四位主角在同一段故事裡有不同反應（純文字，不影響任何數值/計分）
+const ADV_QUIRK = {
+    start:   { boy:'一拿到錢就迫不及待想出門，', girl:'開心地把錢收進最喜歡的錢包，',   kid:'把錢仔細數了一遍才收好，',     teen:'腦中已經開始盤算要吃什麼，' },
+    shop:    { boy:'期待著裡面有新奇的零食，', girl:'想著順便看看有沒有可愛的文具，',     kid:'提醒自己要看清楚每樣的價格，', teen:'滿腦子都是最想吃的那一排，' },
+    compare: { boy:'覺得找便宜的很像尋寶，',       girl:'細心地一家一家看過去，',         kid:'最愛比價，馬上認真算了起來，', teen:'想著省下的錢可以多買點吃的，' },
+    save:    { boy:'越看越喜歡它',       girl:'還在筆記本上把它畫了下來',   kid:'認真想了想要花多少錢',       teen:'心裡盤算了一下價格' },
+};
 
 // ── 計時器 ────────────────────────────────────────────────────
 const AdvTimer = {
@@ -84,6 +195,18 @@ const Adventure = {
         r.setProperty('--loc-border', t.b);
         r.setProperty('--loc-bg1',    t.g1);
         r.setProperty('--loc-bg2',    t.g2);
+    },
+
+    // ── 情境音效（沉浸換場＋各地點特色音；缺檔/被瀏覽器擋則靜默，不影響流程）──
+    _sfx(id) {
+        const el = document.getElementById(id);
+        if (el) { try { el.currentTime = 0; el.play().catch(() => {}); } catch {} }
+    },
+
+    // 答對：先播角色歡呼（預錄好音質、各角色聲），接著念數字報讀（即時，因含隨機數字）
+    _cheer(char, tail, cb) {
+        const id = (char || this.CHARACTERS[0]).id;
+        AdvSpeech.speak(ADV_YAY[id], () => AdvSpeech.speak(tail, cb, id), id);
     },
 
     // ── 目前學生（決定學習歷程記給誰；與 reward / dialogue / 金隊長基地共用 sp_currentStudent）──
@@ -149,13 +272,13 @@ const Adventure = {
 
     // ── 過場文字（text 接受 char 與 storyLog）─────────────────
     TRANSITIONS: {
-        1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！先來數數看有多少錢吧！` },
+        1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
         2: { icon:'💰', text: (c, log)  => `${c.name}數好了，共有 ${log.l1Amount} 元零錢。不過想去外面玩，好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
-        3: { icon:'✅', text: (c, log)  => `提款成功！加上原本的 ${log.l1Amount} 元，${c.name}口袋裡現在共有 ${(log.l1Amount||0)+(log.l2Amount||0)} 元！走著走著，肚子咕嚕叫了起來，走進了一家便利商店⋯` },
+        3: { icon:'✅', text: (c, log)  => `提款成功！加上原本的 ${log.l1Amount} 元，${c.name}口袋裡現在共有 ${(log.l1Amount||0)+(log.l2Amount||0)} 元！走著走著，肚子咕嚕叫了起來，${ADV_QUIRK.shop[c.id] || ''}走進了一家便利商店⋯` },
         4: { icon:'🛒', text: (c, log)  => `${c.name}選了${log.l3Items}，共花 ${log.l3Spent} 元！拿著商品走向收銀台，付了錢之後，看看能找回多少零錢⋯` },
-        5: { icon:'💸', text: (c, log)  => `找回了 ${log.l4Change} 元零錢，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！` },
+        5: { icon:'💸', text: (c, log)  => `找回了 ${log.l4Change} 元零錢，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
         6: { icon:'🏷️', text: (c, log) => `原來在${log.l5Store}買${log.l5Item}最便宜！${c.name}把這個秘訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
-        7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，決定開始存錢⋯` },
+        7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，${c.name}${ADV_QUIRK.save[c.id] || ''}，決定開始存錢⋯` },
     },
 
     // ── 便利商店餐點（L3）────────────────────────────────────
@@ -418,7 +541,7 @@ const Adventure = {
             document.getElementById('adv-cm-name').textContent = c.name;
             document.getElementById('adv-cm-desc').textContent = c.desc;
             charModal.hidden = false;
-            AdvSpeech.speak(`${c.name}，${c.desc}`);
+            AdvSpeech.speak(ADV_HELLO[c.id] || `${c.name}，${c.desc}`, null, c.id);
         };
         const closeCharModal = () => { charModal.hidden = true; _popupId = null; };
         document.querySelectorAll('.adv-char-opt').forEach(el => {
@@ -544,6 +667,7 @@ const Adventure = {
             cb();
         };
         document.getElementById('adv-trans-next').addEventListener('click', proceed);
+        this._sfx('adv-sfx-warp');
         AdvSpeech.speak(textStr, () => AdvTimer.set(proceed, 800));
     },
 
@@ -601,7 +725,7 @@ const Adventure = {
         AdvSpeech.speak(speech, () => AdvTimer.set(() => {
             this.state.level++;
             this._renderLevel();
-        }, 500));
+        }, 500), (this.state.char || this.CHARACTERS[0]).id);
     },
 
     _wrong(btn, correctBtn, speech, hint) {
@@ -621,7 +745,7 @@ const Adventure = {
                 b.classList.remove('adv-ok', 'adv-ng');
             });
             if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-        }, 800));
+        }, 800), 'retry');
     },
 
     _makeChoices(answer, dists) {
@@ -877,7 +1001,7 @@ const Adventure = {
                 this.state.score++;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                AdvSpeech.speak(`答對了！共有${d.answer}元！`, () => AdvTimer.set(() => {
+                this._cheer(char, `共有${d.answer}元！`, () => AdvTimer.set(() => {
                     this.state.level++;
                     this._renderLevel();
                 }, 500));
@@ -892,7 +1016,7 @@ const Adventure = {
                     display.classList.remove('adv-input-ok', 'adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800));
+                }, 800), 'retry');
             }
         });
 
@@ -901,6 +1025,7 @@ const Adventure = {
         });
         document.getElementById('adv-replay')?.addEventListener('click', () =>
             AdvSpeech.speak('這些零錢加起來是多少元？'));
+        this._sfx('adv-sfx-coin');
         AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}這些零錢加起來是多少元？`), 300);
     },
 
@@ -959,6 +1084,7 @@ const Adventure = {
         });
         document.getElementById('adv-replay')?.addEventListener('click', () =>
             AdvSpeech.speak(lv.scene(char.name)));
+        this._sfx('adv-sfx-keypad');
         AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}請完成提款任務！`), 300);
     },
 
@@ -1025,7 +1151,7 @@ const Adventure = {
             el.addEventListener('click', e => {
                 if (e.target.closest('.adv-l3-toggle')) return;
                 const i = parseInt(el.dataset.i);
-                AdvSpeech.speak(`${items[i].name}，${items[i].price}元`);
+                AdvSpeech.speak(`${items[i].name}，${items[i].price}元`, null, char.id);
             });
         });
 
@@ -1035,7 +1161,7 @@ const Adventure = {
                 const spent = selected.reduce((s, j) => s + items[j].price, 0);
                 if (selected.includes(i)) {
                     selected = selected.filter(j => j !== i);
-                    AdvSpeech.speak(`移除${items[i].name}`);
+                    AdvSpeech.speak(`移除${items[i].name}`, null, char.id);
                 } else {
                     if (spent + items[i].price > budget) {
                         const fb = document.getElementById('adv-fb');
@@ -1044,7 +1170,8 @@ const Adventure = {
                         return;
                     }
                     selected.push(i);
-                    AdvSpeech.speak(`選擇${items[i].name}，${items[i].price}元`);
+                    this._sfx('adv-sfx-select');
+                    AdvSpeech.speak(`選擇${items[i].name}，${items[i].price}元`, null, char.id);
                 }
                 renderItems();
             });
@@ -1071,7 +1198,8 @@ const Adventure = {
                 fb.innerHTML = `✅ 共花 <strong>${spent}</strong> 元<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px;">${coinsHTML}</div>`;
                 fb.className = 'adv-feedback adv-fb-ok';
             }
-            AdvSpeech.speak(`太棒了！${char.name}選了${itemNames}，共花${spent}元！`, () =>
+            this._sfx('adv-sfx-cash');
+            this._cheer(char, `${char.name}選了${itemNames}，共花${spent}元！`, () =>
                 AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
         });
 
@@ -1148,7 +1276,8 @@ const Adventure = {
                 this.state.score++;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                AdvSpeech.speak(`答對了！${paid}減${price}，找回${change}元！`, () =>
+                this._sfx('adv-sfx-cash');
+                this._cheer(char, `${paid}減${price}，找回${change}元！`, () =>
                     AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
             } else {
                 this._miss();
@@ -1160,7 +1289,7 @@ const Adventure = {
                     display.classList.remove('adv-input-ok','adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800));
+                }, 800), 'retry');
             }
         });
         this._advCalcBind();
@@ -1209,7 +1338,7 @@ ${storesHTML}`;
                     if (fb) { fb.textContent = `✅ 對！${cheapest.name}最便宜！`; fb.className = 'adv-feedback adv-fb-ok'; }
                     document.getElementById('correct-sound')?.play();
                     if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                    AdvSpeech.speak(`答對了！${cheapest.name}只要${cheapest.price}元！`, () =>
+                    this._cheer(char, `${cheapest.name}只要${cheapest.price}元！`, () =>
                         AdvTimer.set(() => this._level5Phase2(d, stores, cheapest, diff), 600));
                 } else {
                     this._wrong(btn, null, '再看看！', '比比看哪個數字比較小');
@@ -1274,7 +1403,7 @@ ${storesHTML}`;
                         display.classList.remove('adv-input-ok','adv-input-ng');
                         confirmBtn.disabled = true;
                         if (fb) { fb.textContent=''; fb.className='adv-feedback'; }
-                    }, 800));
+                    }, 800), 'retry');
                 }
             });
         }
@@ -1330,7 +1459,7 @@ ${storesHTML}`;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
                 AdvSpeech.speak(`做得好！${d.safeSpeak}`, () =>
-                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 700));
+                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 700), char.id);
             } else {
                 const safeIdx = all.findIndex(o => o.safe);
                 this._wrong(btn, safeIdx >= 0 ? this._btn(safeIdx) : null, '再想想，這樣安全嗎？', c.fb || d.hint);
@@ -1410,7 +1539,8 @@ ${storesHTML}`;
                 this.state.score++;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                AdvSpeech.speak(`答對了！每天存${d.daily}元，${d.answer}天就能存到${d.goal}元！`, () =>
+                this._sfx('adv-sfx-drop');
+                this._cheer(char, `每天存${d.daily}元，${d.answer}天就能存到${d.goal}元！`, () =>
                     AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
             } else {
                 this._miss();
@@ -1422,7 +1552,7 @@ ${storesHTML}`;
                     display.classList.remove('adv-input-ok','adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800));
+                }, 800), 'retry');
             }
         });
         this._advCalcBind();
@@ -1529,7 +1659,7 @@ ${storesHTML}`;
         AdvSpeech.speak(perf.label === '金錢天才' ? `哇！${char.name}是金錢天才！超厲害！` :
                         perf.label === '完美通關' ? `太棒了！${char.name}完美通關！` :
                         perf.label === '快手玩家' ? `${char.name}答得又快又好！` :
-                        `冒險完成！${char.name}真棒！`);
+                        `冒險完成！${char.name}真棒！`, null, char.id);
     },
 };
 
