@@ -1503,7 +1503,7 @@ ${storesHTML}`;
     // ── 關卡 7：存錢 ────────────────────────────────────────────
     _level6() {
         const d    = this.DATA.L6[Math.floor(Math.random() * this.DATA.L6.length)];
-        const lv   = this.LEVELS[5];
+        const lv   = this.LEVELS[6];   // 第 7 關＝存錢（LEVELS[6]）；先前誤用 [5] 會顯示安全關標題
         const char = this.state.char || this.CHARACTERS[0];
         let entered = '', submitted = false;
 
