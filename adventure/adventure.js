@@ -81,6 +81,13 @@ const AdvSpeech = (() => {
     if (window.speechSynthesis) {
         _load();
         speechSynthesis.addEventListener('voiceschanged', _load);
+        // 手機解鎖：首次使用者手勢時用一句靜音語音喚醒 speechSynthesis，
+        // 否則之後「過場自動播」等非手勢時機的即時旁白會被行動瀏覽器 autoplay 擋掉、不發聲。
+        const _unlock = () => {
+            try { const u = new SpeechSynthesisUtterance('。'); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+            document.removeEventListener('pointerdown', _unlock, true);
+        };
+        document.addEventListener('pointerdown', _unlock, true);
     }
 
     // 依說話者挑專屬語音：先找偏好清單裡實際存在的語音，找不到用主後備語音。
