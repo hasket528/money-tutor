@@ -297,11 +297,11 @@ const Adventure = {
     // ── 過場文字（text 接受 char 與 storyLog）─────────────────
     TRANSITIONS: {
         1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
-        2: { icon:'💰', text: (c, log)  => `${c.name}數好了，共有 ${log.l1Amount} 元零錢。不過想去外面玩，好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
-        3: { icon:'✅', text: (c, log)  => `提款成功！加上原本的 ${log.l1Amount} 元，${c.name}口袋裡現在共有 ${(log.l1Amount||0)+(log.l2Amount||0)} 元！走著走著，肚子咕嚕叫了起來，${ADV_QUIRK.shop[c.id] || ''}走進了一家便利商店⋯` },
-        4: { icon:'🛒', text: (c, log)  => `${c.name}選了${log.l3Items}，共花 ${log.l3Spent} 元！拿著商品走向收銀台，付了錢之後，看看能找回多少零錢⋯` },
-        5: { icon:'💸', text: (c, log)  => `找回了 ${log.l4Change} 元零錢，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
-        6: { icon:'🏷️', text: (c, log) => `原來在${log.l5Store}買${log.l5Item}最便宜！${c.name}把這個秘訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
+        2: { icon:'💰', text: (c, log)  => `${c.name}把零用錢數好了！想去外面玩，這些錢好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
+        3: { icon:'✅', text: (c, log)  => `提款成功！${c.name}口袋裡的錢變多了！走著走著，肚子咕嚕叫了起來，${ADV_QUIRK.shop[c.id] || ''}走進了一家便利商店⋯` },
+        4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！拿著商品走向收銀台，付了錢之後，來看看能找回多少零錢⋯` },
+        5: { icon:'💸', text: (c, log)  => `找回零錢了，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
+        6: { icon:'🏷️', text: (c, log) => `找到最便宜的那一家了！${c.name}把「多比較不吃虧」這個祕訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
         7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，${c.name}${ADV_QUIRK.save[c.id] || ''}，決定開始存錢⋯` },
     },
 
