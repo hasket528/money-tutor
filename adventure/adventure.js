@@ -6,11 +6,11 @@
 const ADV_HELLO = {   // 選角時的第一人稱自我介紹（各角色用自己的聲音）
     boy:  '我是小翔！我最喜歡冒險了！',
     girl: '我是小花！我喜歡逛文具店。',
-    kid:  '我是小睿，我會小心用錢。',
+    kid:  '我是小芮，我會小心用錢。',
     teen: '我是小凱！今天想吃點好料的！',
 };
 const ADV_YAY = {   // 答對時的角色歡呼（各角色聲；接在數字報讀前，取代原本的「答對了！」開頭）
-    boy:  '我做到了！',
+    boy:  '太好了！我算對了！',
     girl: '答對了，太好了！',
     kid:  '嗯，算對了！',
     teen: '耶，我算對了！',
@@ -195,7 +195,7 @@ const Adventure = {
     CHARACTERS: [
         { id:'boy',  emoji:'👦', img:'images/adv-xiaoxiang.png', name:'小翔', desc:'喜歡冒險的青少年',   budgetRange:[100,150,200], quirk:'一看到新東西就躍躍欲試' },
         { id:'girl', emoji:'👧', img:'images/adv-xiaohua.png',   name:'小花', desc:'愛買文具的認真女生', budgetRange:[150,200],     quirk:'邊逛邊看有沒有喜歡的文具' },
-        { id:'kid',  emoji:'🧒', img:'images/adv-xiaorui.png',   name:'小睿', desc:'節儉又細心的青少年', budgetRange:[80,100],      quirk:'仔細比了每樣的價格再決定' },
+        { id:'kid',  emoji:'👧', img:'images/adv-xiaorui.png',   name:'小芮', desc:'節儉又細心的女生',   budgetRange:[80,100],      quirk:'仔細比了每樣的價格再決定' },
         { id:'teen', emoji:'🧑', img:'images/adv-xiaokai.png',   name:'小凱', desc:'愛吃美食的大男孩',   budgetRange:[200,250],     quirk:'眼睛直接飄向最貴那排' },
     ],
 
