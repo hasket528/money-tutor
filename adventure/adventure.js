@@ -296,7 +296,7 @@ const Adventure = {
 
     // ── 過場文字（text 接受 char 與 storyLog）─────────────────
     TRANSITIONS: {
-        1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
+        1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${c.name}${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
         2: { icon:'💰', text: (c, log)  => `${c.name}把零用錢數好了！想去外面玩，這些錢好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
         3: { icon:'✅', text: (c, log)  => `提款成功！${c.name}口袋裡的錢變多了！走著走著，肚子咕嚕叫了起來，${ADV_QUIRK.shop[c.id] || ''}走進了一家便利商店⋯` },
         4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！拿著商品走向收銀台，付了錢之後，來看看能找回多少零錢⋯` },
