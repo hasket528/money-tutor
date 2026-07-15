@@ -95,23 +95,31 @@ const AdvSpeech = (() => {
         return _fallback;
     };
 
-    let _audio = null;   // 目前播放中的預錄音檔（供 cancel 停止）
+    let _audio   = null;   // 目前播放中的預錄音檔（供 cancel 停止）
+    let _fbTimer = null;   // 兜底計時器：部分瀏覽器 onend/onended 不穩，靠它保證流程一定往下走
+    const _clearFb = () => { if (_fbTimer) { clearTimeout(_fbTimer); _fbTimer = null; } };
 
-    // 即時 TTS（缺預錄檔時的後備＋所有含數字的句子）
+    // 即時 TTS（缺預錄檔時的後備＋所有含數字的句子）。
+    // 不等 voices 載入就先發聲（沒載好就用瀏覽器預設聲），並加兜底計時器確保 cb 一定被呼叫——
+    // 否則 voiceschanged 沒觸發時會整個卡住（即時語音不播、推進關卡的回呼也不觸發）。
     const _tts = (text, cb, who) => {
         const prof = PROFILES[who] || PROFILES.narrator;
-        const run = () => {
+        let done = false;
+        const fire = () => { if (done) return; done = true; _clearFb(); if (cb) cb(); };
+        try {
             speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
-            const v = _voiceFor(who);
+            const v = _voiceFor(who);   // _voices 可能還是空，v=null 就用瀏覽器預設聲
             u.lang  = v?.lang || 'zh-TW';
             u.rate  = prof.rate;
             u.pitch = prof.pitch;
             if (v) u.voice = v;
-            if (cb) u.onend = cb;
+            u.onend = fire;
+            u.onerror = fire;
             speechSynthesis.speak(u);
-        };
-        if (_ready) { run(); } else { _pending = run; }
+        } catch (e) { /* 發聲失敗也要推進 */ }
+        _clearFb();
+        _fbTimer = setTimeout(fire, 1200 + (text ? String(text).length * 180 : 0));
     };
 
     return {
@@ -121,20 +129,29 @@ const AdvSpeech = (() => {
             who = who || 'narrator';
             // 預錄檔名：先查內建固定句表，再查外部自動產生的第二期表（含角色名的題目/安全關 × 4 角色）
             const key = ADV_AUDIO_MAP[text] || (window.ADV_AUDIO_MAP2 && window.ADV_AUDIO_MAP2[text]);
-            if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗自動退回即時 TTS
+            if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗/沒觸發事件都退回即時 TTS 或推進
                 this.cancel();
                 const a = new Audio('audio/adv/' + key + '.mp3');
                 _audio = a;
                 let done = false;
-                const fall = () => { if (done) return; done = true; if (_audio === a) _audio = null; _tts(text, cb, who); };
-                a.onended = () => { if (done) return; done = true; if (_audio === a) _audio = null; if (cb) cb(); };
-                a.onerror = fall;
-                a.play().catch(fall);
+                const finish = (needTts) => {
+                    if (done) return; done = true;
+                    _clearFb();
+                    if (_audio === a) _audio = null;
+                    if (needTts) _tts(text, cb, who);   // 缺檔/播放失敗 → 即時補念並推進
+                    else if (cb) cb();
+                };
+                a.onended = () => finish(false);
+                a.onerror = () => finish(true);
+                a.play().catch(() => finish(true));
+                _clearFb();
+                _fbTimer = setTimeout(() => finish(false), 8000);   // 兜底：事件都沒來也推進
                 return;
             }
             _tts(text, cb, who);
         },
         cancel() {
+            _clearFb();
             if (_audio) { _audio.onended = _audio.onerror = null; try { _audio.pause(); } catch {} _audio = null; }
             window.speechSynthesis?.cancel();
             _pending = null;
@@ -1025,7 +1042,6 @@ const Adventure = {
         });
         document.getElementById('adv-replay')?.addEventListener('click', () =>
             AdvSpeech.speak('這些零錢加起來是多少元？'));
-        this._sfx('adv-sfx-coin');
         AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}這些零錢加起來是多少元？`), 300);
     },
 
