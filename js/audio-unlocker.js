@@ -106,3 +106,41 @@
     // 自動初始化
     AudioUnlocker.init();
 })();
+
+// =================================================================
+// TTS 中文語音守門（2026-07-15）：統一全站「即時語音」優先序。
+// 全站語音順序＝ ①預錄音檔（各模組自行播放，不經過這裡）
+//              → ②微軟 曉臻 HsiaoChen → ③Google 國語（臺灣）
+//              → ④任何 zh-TW → ⑤任何中文語音 → ⑥都沒有則 lang=zh-TW 交系統挑。
+// 攔截 speechSynthesis.speak：凡「含中文」的語句一律按上述順序指派語音，
+// 蓋過各單元自選的語音 → 保證中文絕不會被英文等非中文語音唸成「不知名語言」。
+// =================================================================
+(function () {
+    if (!window.speechSynthesis || !('SpeechSynthesisUtterance' in window)) return;
+    const synth = window.speechSynthesis;
+    const hasCJK = (s) => /[㐀-鿿豈-﫿]/.test(s || '');
+    const isZh   = (v) => !!(v && v.lang && /^zh/i.test(String(v.lang).replace('_', '-')));
+
+    function pickZhVoice() {
+        const vs = synth.getVoices() || [];
+        return vs.find(v => /HsiaoChen/i.test(v.name)) ||                                  // ② 微軟曉臻（Edge Online）
+               vs.find(v => /曉臻|晓臻/.test(v.name)) ||
+               vs.find(v => /google/i.test(v.name) && /^zh[-_]TW/i.test(v.lang || '')) ||  // ③ Google 台灣
+               vs.find(v => v.name === 'Google 國語（臺灣）') ||
+               vs.find(v => /^zh[-_]TW/i.test(v.lang || '')) ||                            // ④ 任何 zh-TW
+               vs.find(isZh) ||                                                            // ⑤ 任何中文
+               null;
+    }
+
+    const origSpeak = synth.speak.bind(synth);
+    synth.speak = function (u) {
+        try {
+            if (u && hasCJK(u.text)) {
+                const v = pickZhVoice();
+                if (v) { u.voice = v; u.lang = v.lang; }
+                else if (!isZh(u.voice)) { u.voice = null; u.lang = 'zh-TW'; }   // ⑥ 交系統挑中文
+            }
+        } catch (e) { /* 守門失敗不影響發聲 */ }
+        return origSpeak(u);
+    };
+})();
