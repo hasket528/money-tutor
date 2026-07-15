@@ -48,8 +48,61 @@
                 background: linear-gradient(135deg, #fbbf24, #f59e0b);
                 color: #7c2d12; font-weight: 900; line-height: 1; text-align: center;
             }
+            .student-badge { cursor: pointer; }
+            /* 點徽章 → 學生資訊彈窗（z-index 高於全站遮罩 10100） */
+            .sbm-overlay {
+                position: fixed; inset: 0; z-index: 10200;
+                background: rgba(0,0,0,0.55);
+                display: flex; align-items: center; justify-content: center;
+            }
+            .sbm-card {
+                background: #fff; border-radius: 20px; padding: 22px 22px 18px;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+                display: flex; flex-direction: column; align-items: center; gap: 14px;
+                max-width: 88vw;
+            }
+            .sbm-photo {
+                width: 300px; height: 300px; max-width: 72vw; max-height: 72vw;
+                border-radius: 18px; overflow: hidden; background: #fff7ed;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .sbm-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+            .sbm-avatar {
+                width: 100%; height: 100%;
+                background: linear-gradient(135deg, #fde68a, #f59e0b);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 130px; line-height: 1;
+            }
+            .sbm-name {
+                font-size: 1.5rem; font-weight: 900; color: #7c2d12;
+                text-align: center; line-height: 1.3; word-break: break-all;
+            }
         `;
         document.head.appendChild(st);
+    }
+
+    // 學生資訊彈窗：有照片→300×300 照片＋名字；沒照片→虛擬頭像佔位＋名字。點任意處關閉。
+    function showModal() {
+        const stu = getStudent();   // 開啟當下重新讀，確保是最新資料
+        if (!stu) return;
+        injectStyle();
+        document.querySelector('.sbm-overlay')?.remove();
+        const overlay = document.createElement('div');
+        overlay.className = 'sbm-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-label', '學生資訊：' + stu.name);
+        const photoHTML = stu.photo
+            ? '<img alt="">'
+            : '<div class="sbm-avatar">👤</div>';
+        overlay.innerHTML = `
+            <div class="sbm-card">
+              <div class="sbm-photo">${photoHTML}</div>
+              <div class="sbm-name"></div>
+            </div>`;
+        if (stu.photo) overlay.querySelector('img').src = stu.photo;
+        overlay.querySelector('.sbm-name').textContent = stu.name;
+        overlay.addEventListener('click', () => overlay.remove());
+        document.body.appendChild(overlay);
     }
 
     function makeBadge(stu) {
@@ -67,6 +120,7 @@
             el.textContent = stu.name;
             el.style.fontSize = stu.name.length <= 2 ? '15px' : (stu.name.length === 3 ? '12px' : '10px');
         }
+        el.addEventListener('click', (e) => { e.stopPropagation(); showModal(); });
         return el;
     }
 
