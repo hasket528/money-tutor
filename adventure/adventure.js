@@ -113,26 +113,25 @@ const AdvSpeech = (() => {
         const prof = PROFILES[who] || PROFILES.narrator;
         let done = false;
         const fire = () => { if (done) return; done = true; _clearFb(); if (cb) cb(); };
-        // 只用中文語音：手機沒有微軟神經語音時，若挑到英文等系統語音去唸中文，會變成「不知名語言」。
-        // 挑不到中文語音就靜音（寧可不唸，也不亂唸）——流程仍靠兜底計時器往下走。
+        // 優先挑中文語音；挑不到就「不指定語音、只設 lang=zh-TW」讓系統自己選中文。
+        // 一律發聲（不靜音，否則手機語音清單還沒載入完時會整個不唸）；但絕不主動指定非中文語音，
+        // 避免用英文腔把中文唸成「不知名語言」——那才是真正成因。
         let v = _voiceFor(who);
         const zh = x => x && x.lang && x.lang.toLowerCase().startsWith('zh');
         if (!zh(v)) v = _voices.find(zh) || null;
         try {
-            if (v) {
-                speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang  = v.lang;
-                u.rate  = prof.rate;
-                u.pitch = prof.pitch;
-                u.voice = v;
-                u.onend = fire;
-                u.onerror = fire;
-                speechSynthesis.speak(u);
-            }
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang  = 'zh-TW';
+            u.rate  = prof.rate;
+            u.pitch = prof.pitch;
+            if (v) u.voice = v;   // 只有確定是中文語音才指定；否則靠 lang 讓系統挑中文
+            u.onend = fire;
+            u.onerror = fire;
+            speechSynthesis.speak(u);
         } catch (e) { /* 發聲失敗也要推進 */ }
         _clearFb();
-        _fbTimer = setTimeout(fire, v ? 1200 + (text ? String(text).length * 180 : 0) : 300);
+        _fbTimer = setTimeout(fire, 1200 + (text ? String(text).length * 180 : 0));
     };
 
     return {
@@ -176,7 +175,7 @@ const AdvSpeech = (() => {
 // 角色化過場短語：讓四位主角在同一段故事裡有不同反應（純文字，不影響任何數值/計分）
 const ADV_QUIRK = {
     start:   { boy:'一拿到錢就迫不及待想出門，', girl:'開心地把錢收進最喜歡的錢包，',   kid:'把錢仔細數了一遍才收好，',     teen:'腦中已經開始盤算要吃什麼，' },
-    shop:    { boy:'期待著裡面有新奇的零食，', girl:'想著順便看看有沒有可愛的文具，',     kid:'提醒自己要看清楚每樣的價格，', teen:'滿腦子都是最想吃的那一排，' },
+    shop:    { boy:'期待著裡面有新奇的零食，', girl:'順便看看有沒有可愛的文具，',     kid:'提醒自己要看清楚每樣的價格，', teen:'滿腦子都是最想吃的那一排，' },
     compare: { boy:'覺得找便宜的很像尋寶，',       girl:'細心地一家一家看過去，',         kid:'最愛比價，馬上認真算了起來，', teen:'想著省下的錢可以多買點吃的，' },
     save:    { boy:'越看越喜歡它',       girl:'還在筆記本上把它畫了下來',   kid:'認真想了想要花多少錢',       teen:'心裡盤算了一下價格' },
 };
@@ -305,7 +304,7 @@ const Adventure = {
     TRANSITIONS: {
         1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${c.name}${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
         2: { icon:'💰', text: (c, log)  => `${c.name}把零用錢數好了！想去外面玩，${c.name}覺得這些錢好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
-        3: { icon:'✅', text: (c, log)  => `提款成功！${c.name}口袋裡的錢變多了！走著走著，肚子咕嚕叫了起來，${ADV_QUIRK.shop[c.id] || ''}走進了一家便利商店⋯` },
+        3: { icon:'✅', text: (c, log)  => `提款成功！${c.name}口袋裡的錢變多了！走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯` },
         4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！拿著商品走向收銀台，付了錢之後，來看看能找回多少零錢⋯` },
         5: { icon:'💸', text: (c, log)  => `找回零錢了，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
         6: { icon:'🏷️', text: (c, log) => `找到最便宜的那一家了！${c.name}把「多比較不吃虧」這個祕訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
