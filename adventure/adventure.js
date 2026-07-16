@@ -158,7 +158,11 @@ const AdvSpeech = (() => {
                 };
                 a.onended = () => finish(false);
                 a.onerror = () => finish(true);
-                a.play().catch(() => finish(true));
+                // play() 的 Promise 無法像 onended/onerror 那樣被 cancel() 解除；若在 mp3 還沒
+                // 播起來時被 cancel（pause），它會以 AbortError reject，若直接 finish(true) 就會
+                // 用即時 TTS 把同一句「復活」重念——正是「按了繼續，上一張卡片的語音還在唸」。
+                // cancel() 會把 _audio 設為 null，故以 _audio === a 判斷「這次播放是否仍有效」。
+                a.play().catch(() => { if (_audio === a) finish(true); });
                 _clearFb();
                 _fbTimer = setTimeout(() => finish(false), 8000);   // 兜底：事件都沒來也推進
                 return;
@@ -543,6 +547,10 @@ const Adventure = {
     // 機械音（其他過場都在遊戲中途、早有手勢，所以只有這張不一樣）。先擋一道閘門：
     // 點下去即產生 user activation，順帶觸發 AdvSpeech 的 _unlock，之後整趟語音都正常。
     // 識字量低的學生靠旁白理解劇情，這是無障礙需求，不是體驗微調。
+    //
+    // ⚠️ 本頁刻意「不放敘述文字」：閘門本身就是「尚未解鎖」的狀態，此時任何語音都會被
+    //    瀏覽器擋掉；擺一段唸不出來的文字，對不識字的學生反而是看不懂的障礙。故只留
+    //    角色頭像＋🏧＋明確的按鈕，劇情一律等點下去之後由「提款成功」過場完整唸出。
     _renderResumeGate() {
         const char = this.state.char || this.CHARACTERS[0];
         document.getElementById('app').innerHTML = `
@@ -551,8 +559,8 @@ const Adventure = {
     <div class="adv-trans-body">
       <div class="adv-trans-char">${this._charFace(char)}</div>
       <div class="adv-trans-info">
-        <div class="adv-trans-icon">🏧</div>
-        <p class="adv-trans-text">${char.name}領好錢了！<br>接下來會發生什麼事呢？</p>
+        <div class="adv-trans-icon" style="font-size:60px;line-height:1.1;">🏧✅</div>
+        <div style="font-size:34px;letter-spacing:6px;margin-top:6px;" aria-label="領到錢了">💵💵💵</div>
       </div>
     </div>
     <button class="adv-trans-btn" id="adv-resume-go">▶ 繼續冒險</button>
