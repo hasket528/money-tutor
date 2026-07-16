@@ -136,7 +136,10 @@ const AdvSpeech = (() => {
 
     return {
         // who：'narrator'（預設，旁白/題目）｜'retry'（答錯鼓勵）｜角色 id（boy/girl/kid/teen）。
-        speak(text, cb, who) {
+        // onBlocked：預錄語音被瀏覽器的自動播放政策擋掉時呼叫（頁面尚無使用者手勢，
+        //   例如從 ATM 頁面自動跳回的當下）。傳了就交由呼叫端處理（例如把按鈕暫時改成
+        //   「🔊 聽故事」），不退回即時 TTS 的機械音；沒傳則維持原本退 TTS 的行為。
+        speak(text, cb, who, onBlocked) {
             if (!window.speechSynthesis) { cb?.(); return; }
             // 一律先停掉正在播的（預錄 mp3 ＋ 即時 TTS）再開口：舊版只在命中預錄時才 cancel，
             // 走即時 TTS 那條只 speechSynthesis.cancel()、停不掉 mp3 → 兩個聲音會疊著唸。
@@ -162,7 +165,15 @@ const AdvSpeech = (() => {
                 // 播起來時被 cancel（pause），它會以 AbortError reject，若直接 finish(true) 就會
                 // 用即時 TTS 把同一句「復活」重念——正是「按了繼續，上一張卡片的語音還在唸」。
                 // cancel() 會把 _audio 設為 null，故以 _audio === a 判斷「這次播放是否仍有效」。
-                a.play().catch(() => { if (_audio === a) finish(true); });
+                a.play().catch(err => {
+                    if (_audio !== a) return;                       // 已被 cancel／已被新語音取代
+                    if (onBlocked && err && err.name === 'NotAllowedError') {
+                        done = true; _clearFb(); _audio = null;     // 自動播放被擋 → 別退機械音，交給呼叫端
+                        onBlocked();
+                        return;
+                    }
+                    finish(true);
+                });
                 _clearFb();
                 _fbTimer = setTimeout(() => finish(false), 8000);   // 兜底：事件都沒來也推進
                 return;
@@ -536,37 +547,10 @@ const Adventure = {
             this.state.level = resume;
             sessionStorage.removeItem('adv_state');
             history.replaceState(null, '', location.pathname);
-            this._renderResumeGate();
+            this._renderLevel();
         } else {
             this.showSettings();
         }
-    },
-
-    // ATM 是用 location.href 自動跳回來的 → 新頁面沒有任何使用者手勢，瀏覽器會用
-    // NotAllowedError 擋掉自動播放，「提款成功」過場的預錄旁白因此退成即時 TTS 的
-    // 機械音（其他過場都在遊戲中途、早有手勢，所以只有這張不一樣）。先擋一道閘門：
-    // 點下去即產生 user activation，順帶觸發 AdvSpeech 的 _unlock，之後整趟語音都正常。
-    // 識字量低的學生靠旁白理解劇情，這是無障礙需求，不是體驗微調。
-    //
-    // ⚠️ 本頁刻意「不放敘述文字」：閘門本身就是「尚未解鎖」的狀態，此時任何語音都會被
-    //    瀏覽器擋掉；擺一段唸不出來的文字，對不識字的學生反而是看不懂的障礙。故只留
-    //    角色頭像＋🏧＋明確的按鈕，劇情一律等點下去之後由「提款成功」過場完整唸出。
-    _renderResumeGate() {
-        const char = this.state.char || this.CHARACTERS[0];
-        document.getElementById('app').innerHTML = `
-<div class="adv-transition">
-  <div class="adv-trans-card">
-    <div class="adv-trans-body">
-      <div class="adv-trans-char">${this._charFace(char)}</div>
-      <div class="adv-trans-info">
-        <div class="adv-trans-icon" style="font-size:60px;line-height:1.1;">🏧✅</div>
-        <div style="font-size:34px;letter-spacing:6px;margin-top:6px;" aria-label="領到錢了">💵💵💵</div>
-      </div>
-    </div>
-    <button class="adv-trans-btn" id="adv-resume-go">▶ 繼續冒險</button>
-  </div>
-</div>`;
-        document.getElementById('adv-resume-go').addEventListener('click', () => this._renderLevel());
     },
 
     // ── 設定頁（含選角）────────────────────────────────────────
@@ -775,9 +759,25 @@ const Adventure = {
             AdvSpeech.cancel();
             cb();
         };
-        document.getElementById('adv-trans-next').addEventListener('click', proceed);
+        const btn = document.getElementById('adv-trans-next');
+        btn.addEventListener('click', proceed);
         this._sfx('adv-sfx-warp');
-        AdvSpeech.speak(textStr);   // 只自動播語音、停在本頁；前進交給「繼續」按鈕，不自動跳頁
+        // 只自動播語音、停在本頁；前進交給「繼續」按鈕，不自動跳頁。
+        // 若自動播放被瀏覽器擋掉（唯一會發生的時機＝ATM 用 location.href 自動跳回、
+        // 頁面尚無使用者手勢），不要退成即時 TTS 的機械音，而是把按鈕暫時換成
+        // 「🔊 聽故事」：學生點一下即產生手勢，就能用預錄語音聽完整劇情，聽完
+        // 按鈕再變回「繼續 →」。如此不必為了騙一次點擊而多插一張空白的閘門頁。
+        AdvSpeech.speak(textStr, null, null, () => {
+            btn.removeEventListener('click', proceed);
+            btn.textContent = '🔊 聽故事';
+            const listen = () => {
+                btn.removeEventListener('click', listen);
+                AdvSpeech.speak(textStr);            // 手勢當下播 → 不會再被擋
+                btn.textContent = '繼續 →';
+                btn.addEventListener('click', proceed);
+            };
+            btn.addEventListener('click', listen);
+        });
     },
 
     // ── 共用框架（多選題關卡用）────────────────────────────────
