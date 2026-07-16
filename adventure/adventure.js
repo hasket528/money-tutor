@@ -751,7 +751,6 @@ const Adventure = {
     _l3Result: null,
     _storyLog: {},
     state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false, levelMiss:{} },
-    _easyMode: false,   // 設定頁選的難度（開始遊戲時複製到 state.easy）
 
     // ── init ────────────────────────────────────────────────────
     init() {
@@ -810,11 +809,6 @@ const Adventure = {
         <span class="adv-chip-icon">${l.icon}</span>
         <span class="adv-chip-title">${l.title}</span>
       </div>`).join('')}
-    </div>
-    <div class="adv-section-lbl">難度</div>
-    <div class="adv-diff-row" id="adv-diff-row">
-      <button class="adv-diff-btn ${this._easyMode ? '' : 'active'}" data-easy="0">😊 普通</button>
-      <button class="adv-diff-btn ${this._easyMode ? 'active' : ''}" data-easy="1">🌱 簡單（計算機常開）</button>
     </div>
     <div class="adv-btn-row" style="justify-content:center">
       <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
@@ -881,14 +875,6 @@ const Adventure = {
             window.gameAudio?.play('game-btn-click');
         });
 
-        // 難度切換：普通／簡單（簡單＝計算機預設展開，並記錄 difficulty 給教師歷程）
-        document.querySelectorAll('.adv-diff-btn').forEach(btn => btn.addEventListener('click', () => {
-            this._easyMode = btn.dataset.easy === '1';
-            document.querySelectorAll('.adv-diff-btn').forEach(b =>
-                b.classList.toggle('active', b === btn));
-            window.gameAudio?.play('game-btn-click');
-        }));
-
         document.getElementById('adv-start').addEventListener('click', () => {
             const sel = document.querySelector('.adv-char-opt.selected');
             const charId = sel?.dataset.id || 'boy';
@@ -905,7 +891,9 @@ const Adventure = {
         this.state.score    = 0;
         this.state.mistakes = 0;
         this.state.levelMiss = {};   // 每關錯誤數（供結算「統整診斷」）
-        this.state.easy     = !!this._easyMode;   // 簡單模式：計算機常開＋歷程記 difficulty=easy
+        // 冒險是熟悉 24 單元後的進階統整活動，不設難度分級（2026-07-16 取消）：
+        // 固定普通模式，計算機預設收合、學生仍可用 🧮 鈕自行開啟。
+        this.state.easy     = false;
         this.state.startTime = Date.now();
         this._renderLevel();
     },
@@ -1994,10 +1982,16 @@ ${storesHTML}`;
             AdvTimer.set(() => confetti({ particleCount:50, angle:60,  spread:55, origin:{x:0}, zIndex:9999 }), 400);
             AdvTimer.set(() => confetti({ particleCount:50, angle:120, spread:55, origin:{x:1}, zIndex:9999 }), 700);
         }
-        AdvSpeech.speak(perf.label === '金錢天才' ? `哇！${char.name}是金錢天才！超厲害！` :
-                        perf.label === '完美通關' ? `太棒了！${char.name}完美通關！` :
-                        perf.label === '快手玩家' ? `${char.name}答得又快又好！` :
-                        `冒險完成！${char.name}真棒！`, null, char.id);
+        AdvSpeech.speak(this._victorySpeech(perf.label, char.name), null, char.id);
+    },
+
+    // 勝利結語（含角色名 → 屬第二期預錄 ADV_AUDIO_MAP2，由 voicegen/_gen_adv_list2.js 枚舉；
+    // 缺檔自動退即時 TTS）。改字時務必同步該腳本並重生 adv_win_* 語音。
+    _victorySpeech(label, name) {
+        if (label === '金錢天才') return `哇！${name}是金錢天才！超厲害！`;
+        if (label === '完美通關') return `太棒了！${name}完美通關！`;
+        if (label === '快手玩家') return `${name}答得又快又好！`;
+        return `冒險完成！${name}真棒！`;
     },
 };
 
