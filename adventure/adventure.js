@@ -138,12 +138,14 @@ const AdvSpeech = (() => {
         // who：'narrator'（預設，旁白/題目）｜'retry'（答錯鼓勵）｜角色 id（boy/girl/kid/teen）。
         speak(text, cb, who) {
             if (!window.speechSynthesis) { cb?.(); return; }
+            // 一律先停掉正在播的（預錄 mp3 ＋ 即時 TTS）再開口：舊版只在命中預錄時才 cancel，
+            // 走即時 TTS 那條只 speechSynthesis.cancel()、停不掉 mp3 → 兩個聲音會疊著唸。
+            this.cancel();
             who = who || 'narrator';
             // 預錄檔名：先查內建固定句表，再查外部自動產生的第二期表（含角色名的題目/安全關 × 4 角色）
             const key = ADV_AUDIO_MAP[text]
                 || (window.ADV_AUDIO_MAP2 && (window.ADV_AUDIO_MAP2[who + '|' + text] || window.ADV_AUDIO_MAP2[text]));
             if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗/沒觸發事件都退回即時 TTS 或推進
-                this.cancel();
                 const a = new Audio('audio/adv/' + key + '.mp3');
                 _audio = a;
                 let done = false;
@@ -873,6 +875,7 @@ const Adventure = {
 
     // ── 數字鍵盤彈窗 ──────────────────────────────────────────
     _advNumpadOpen(currentVal, onConfirm) {
+        AdvSpeech.cancel();   // 叫出鍵盤＝學生要開始作答了，停掉還在唸的情境／題目語音（要重聽按 🔊）
         document.getElementById('adv-np-overlay')?.remove();
         const ov = document.createElement('div');
         ov.id = 'adv-np-overlay';
