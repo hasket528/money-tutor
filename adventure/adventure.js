@@ -401,21 +401,27 @@ const Adventure = {
             { name:'筆記本', img:'../images/b4/icon-b4-notebook.png', icon:'📔',
               stores:[{name:'書店',price:65},{name:'文具店',price:55},{name:'便利商店',price:72},{name:'量販店',price:48}] },
         ],
+        // 存錢目標物：適用國中／高職，金額貼近真實行情（教材不宜給錯的價格概念）。
+        // ⚠️ 改動本陣列＝索引位移 → 必須刪掉 audio/adv/adv_l7_* 後重跑
+        //    node voicegen/_gen_adv_list2.js ＋ 生成語音，否則會播到別的物品。
         L6: [
-            { daily:15, goal:60,  item:'橡皮擦', img:'../images/c6/icon-c6-cute-eraser.png', icon:'🍬', answer:4  },
-            { daily:25, goal:100, item:'鉛筆',   img:'../images/c6/icon-c6-pencil.png',       icon:'✏️', answer:4  },
-            { daily:30, goal:150, item:'漫畫書', img:'../images/c6/icon-c6-comic-book.png',   icon:'📚', answer:5  },
-            { daily:15, goal:90,  item:'日記本', img:'../images/c6/icon-c6-diary.png',        icon:'📔', answer:6  },
-            { daily:25, goal:75,  item:'色鉛筆', img:'../images/c6/icon-c6-colored-pen.png',  icon:'🖍️', answer:3  },
-            { daily:30, goal:120, item:'尺',     img:'../images/c6/icon-c6-ruler.png',        icon:'📏', answer:4  },
-            { daily:15, goal:75,  item:'玩具車', img:'../images/c6/icon-c6-toy-car.png',      icon:'🚗', answer:5  },
-            { daily:20, goal:80,  item:'筆記本', img:'../images/c6/icon-c6-notebook.png',     icon:'📓', answer:4  },
-            { daily:25, goal:125, item:'積木',   img:'../images/c6/icon-c6-blocks.png',       icon:'🧱', answer:5  },
-            { daily:30, goal:90,  item:'故事書', img:'../images/c6/icon-c6-story-book.png',   icon:'📖', answer:3  },
-            { daily:20, goal:120, item:'遙控車', img:'../images/c6/icon-c6-rc-car.png',       icon:'🚙', answer:6  },
-            { daily:35, goal:140, item:'計算機', img:'../images/c6/icon-c6-calculator.png',   icon:'🧮', answer:4  },
-            { daily:20, goal:100, item:'鉛筆盒', img:'../images/b4/icon-b4-pencil-case.png',  icon:'✏️', answer:5  },
-            { daily:40, goal:160, item:'保溫瓶', img:'../images/b4/icon-b4-thermos.png',      icon:'🫙', answer:4  },
+            { daily:15, goal:60,  item:'橡皮擦',   img:'../images/c6/icon-c6-cute-eraser.png',      icon:'🍬', answer:4 },
+            { daily:25, goal:100, item:'鉛筆',     img:'../images/c6/icon-c6-pencil.png',           icon:'✏️', answer:4 },
+            { daily:30, goal:150, item:'漫畫書',   img:'../images/c6/icon-c6-comic-book.png',       icon:'📚', answer:5 },
+            { daily:15, goal:90,  item:'日記本',   img:'../images/c6/icon-c6-diary.png',            icon:'📔', answer:6 },
+            { daily:25, goal:75,  item:'色鉛筆',   img:'../images/c6/icon-c6-colored-pen.png',      icon:'🖍️', answer:3 },
+            { daily:30, goal:120, item:'尺',       img:'../images/c6/icon-c6-ruler.png',            icon:'📏', answer:4 },
+            { daily:20, goal:80,  item:'筆記本',   img:'../images/c6/icon-c6-notebook.png',         icon:'📓', answer:4 },
+            { daily:30, goal:90,  item:'故事書',   img:'../images/c6/icon-c6-story-book.png',       icon:'📖', answer:3 },
+            { daily:35, goal:140, item:'計算機',   img:'../images/c6/icon-c6-calculator.png',       icon:'🧮', answer:4 },
+            { daily:20, goal:100, item:'鉛筆盒',   img:'../images/b4/icon-b4-pencil-case.png',      icon:'✏️', answer:5 },
+            { daily:40, goal:160, item:'保溫瓶',   img:'../images/b4/icon-b4-thermos.png',          icon:'🫙', answer:4 },
+            { daily:30, goal:180, item:'耳機',     img:'../images/c6/icon-c6-headphones.png',       icon:'🎧', answer:6 },
+            { daily:40, goal:240, item:'籃球',     img:'../images/a4/icon-a4-basketball-shop.png',  icon:'🏀', answer:6 },
+            { daily:35, goal:210, item:'羽球拍',   img:'../images/a4/icon-a4-badminton-racket-shop.png', icon:'🏸', answer:6 },
+            { daily:30, goal:150, item:'充電器',   img:'../images/a4/icon-a4-charger-shop.png',     icon:'🔌', answer:5 },
+            { daily:40, goal:200, item:'字典',     img:'../images/a4/icon-a4-dictionary-shop.png',  icon:'📕', answer:5 },
+            { daily:40, goal:200, item:'啞鈴',     img:'../images/a4/icon-a4-dumbbell-shop.png',    icon:'🏋️', answer:5 },
         ],
         // 關卡 6：金錢安全情境（回家路上）。options 標 safe，正解＝safe:true；每題三選一，隨機出題。
         SAFETY: [
@@ -459,6 +465,46 @@ const Adventure = {
                 { text:'讓他靠過來幫忙操作',           safe:false, fb:'陌生人可能偷看或偷卡' },
                 { text:'把提款卡交給他',               safe:false, fb:'卡片不能交給別人' },
               ] },
+            { icon:'🎮', tag:'代儲是陷阱', hint:'帳號密碼不外流', safeSpeak:'不要讓別人幫你代儲，帳號密碼不能給！',
+              scene: n => `網友跟${n}說：「把遊戲帳號密碼給我，我幫你代儲點數，比官方便宜一半！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不給帳密，要儲值就自己去官方買', safe:true,  fb:'代儲很多是騙帳號的' },
+                { text:'把帳號密碼給他，等他儲好',       safe:false, fb:'帳號會被偷走賣掉' },
+                { text:'先把錢轉給他',                   safe:false, fb:'錢給了對方就消失了' },
+              ] },
+            { icon:'📦', tag:'不明包裹', hint:'沒訂過就拒收', safeSpeak:'沒有訂過的貨到付款，一律拒收！',
+              scene: n => `宅配送來一個${n}沒有訂過的包裹，說要貨到付款一千兩百元。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'沒訂過就拒收，先問家人',   safe:true,  fb:'不明包裹拒收就對了' },
+                { text:'先付錢收下再打開看看',     safe:false, fb:'付了錢很難拿回來' },
+                { text:'簽收後再想辦法退',         safe:false, fb:'簽收後就算完成交易' },
+              ] },
+            { icon:'💝', tag:'募款留個資', hint:'捐款不用留個資', safeSpeak:'捐款不需要留身分證字號！',
+              scene: n => `路上有人拿著愛心箱請${n}捐款，還要${n}留下身分證字號和電話。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'婉拒，捐款不需要留個人資料', safe:true,  fb:'真的募款不會要身分證字號' },
+                { text:'把身分證字號寫給他',         safe:false, fb:'個資會被拿去辦壞事' },
+                { text:'把身分證拿給他拍照',         safe:false, fb:'證件絕對不能給別人拍' },
+              ] },
+            { icon:'🧾', tag:'找錯錢要說', hint:'當場核對找零', safeSpeak:'找錯錢要有禮貌地當場說出來！',
+              scene: n => `${n}買了六十五元的東西，拿一百元給店員，店員卻只找了二十五元。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'有禮貌地說「應該找三十五元喔」', safe:true,  fb:'當場核對，客氣說出來' },
+                { text:'算了，收下就走',                 safe:false, fb:'自己的錢要顧好' },
+                { text:'大聲罵店員騙人',                 safe:false, fb:'先別生氣，好好說就好' },
+              ] },
+            { icon:'💳', tag:'不借錢買東西', hint:'想買就存錢', safeSpeak:'不要借錢買東西，想買就慢慢存！',
+              scene: n => `同學跟${n}說：「我認識人可以借你錢買新手機，每個月還一點點就好！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不借，想買就自己存錢慢慢買', safe:true,  fb:'借錢買東西會越欠越多' },
+                { text:'先借來買，之後再想辦法還',   safe:false, fb:'利息會讓你還不完' },
+                { text:'把身分證給他幫忙辦',         safe:false, fb:'證件借人會背上債務' },
+              ] },
         ],
     },
 
@@ -486,10 +532,33 @@ const Adventure = {
             this.state.level = resume;
             sessionStorage.removeItem('adv_state');
             history.replaceState(null, '', location.pathname);
-            this._renderLevel();
+            this._renderResumeGate();
         } else {
             this.showSettings();
         }
+    },
+
+    // ATM 是用 location.href 自動跳回來的 → 新頁面沒有任何使用者手勢，瀏覽器會用
+    // NotAllowedError 擋掉自動播放，「提款成功」過場的預錄旁白因此退成即時 TTS 的
+    // 機械音（其他過場都在遊戲中途、早有手勢，所以只有這張不一樣）。先擋一道閘門：
+    // 點下去即產生 user activation，順帶觸發 AdvSpeech 的 _unlock，之後整趟語音都正常。
+    // 識字量低的學生靠旁白理解劇情，這是無障礙需求，不是體驗微調。
+    _renderResumeGate() {
+        const char = this.state.char || this.CHARACTERS[0];
+        document.getElementById('app').innerHTML = `
+<div class="adv-transition">
+  <div class="adv-trans-card">
+    <div class="adv-trans-body">
+      <div class="adv-trans-char">${this._charFace(char)}</div>
+      <div class="adv-trans-info">
+        <div class="adv-trans-icon">🏧</div>
+        <p class="adv-trans-text">${char.name}領好錢了！<br>接下來會發生什麼事呢？</p>
+      </div>
+    </div>
+    <button class="adv-trans-btn" id="adv-resume-go">▶ 繼續冒險</button>
+  </div>
+</div>`;
+        document.getElementById('adv-resume-go').addEventListener('click', () => this._renderLevel());
     },
 
     // ── 設定頁（含選角）────────────────────────────────────────
