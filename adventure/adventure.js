@@ -961,7 +961,10 @@ const Adventure = {
         <p class="adv-trans-text">${textStr}</p>
       </div>
     </div>
-    <button class="adv-trans-btn" id="adv-trans-next">繼續 →</button>
+    <div class="adv-trans-btns">
+      <button class="adv-trans-replay" id="adv-trans-replay" aria-label="聽故事" title="聽故事">🔊</button>
+      <button class="adv-trans-btn" id="adv-trans-next">繼續 →</button>
+    </div>
   </div>
 </div>`;
         let gone = false;
@@ -972,24 +975,21 @@ const Adventure = {
             AdvSpeech.cancel();
             cb();
         };
-        const btn = document.getElementById('adv-trans-next');
+        const btn    = document.getElementById('adv-trans-next');
+        const replay = document.getElementById('adv-trans-replay');
         btn.addEventListener('click', proceed);
+        // 🔊 重聽：點擊當下播放＝一定有使用者手勢，故絕不會被擋（也是被擋時的解鎖途徑）
+        replay.addEventListener('click', () => {
+            replay.classList.remove('hint');
+            AdvSpeech.speak(textStr);
+        });
         this._sfx('adv-sfx-warp');
-        // 只自動播語音、停在本頁；前進交給「繼續」按鈕，不自動跳頁。
-        // 若自動播放被瀏覽器擋掉（唯一會發生的時機＝ATM 用 location.href 自動跳回、
-        // 頁面尚無使用者手勢），不要退成即時 TTS 的機械音，而是把按鈕暫時換成
-        // 「🔊 聽故事」：學生點一下即產生手勢，就能用預錄語音聽完整劇情，聽完
-        // 按鈕再變回「繼續 →」。如此不必為了騙一次點擊而多插一張空白的閘門頁。
+        // 載入即自動播語音。若被瀏覽器自動播放政策擋掉（唯一時機＝ATM 用 location.href
+        // 自動跳回、新頁面尚無手勢，手機／iPad 尤其），**不劫持「繼續」按鈕**——繼續隨時
+        // 可直接按往下（不強迫先聽）；只讓 🔊 鈕閃爍提示「想聽故事點我」。這樣識字量低的
+        // 學生點 🔊 補聽劇情，想快的直接繼續，不再被強制「先聽故事再繼續」兩次點擊。
         AdvSpeech.speak(textStr, null, null, () => {
-            btn.removeEventListener('click', proceed);
-            btn.textContent = '🔊 聽故事';
-            const listen = () => {
-                btn.removeEventListener('click', listen);
-                AdvSpeech.speak(textStr);            // 手勢當下播 → 不會再被擋
-                btn.textContent = '繼續 →';
-                btn.addEventListener('click', proceed);
-            };
-            btn.addEventListener('click', listen);
+            replay.classList.add('hint');
         });
     },
 
