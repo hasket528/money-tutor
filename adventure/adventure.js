@@ -305,8 +305,8 @@ const Adventure = {
           scene: n => `媽媽出門前，給了${n}一些零錢。` },
         { id:2, title:'去 ATM 領錢',    skill:'A5', icon:'🏧', isAtm:true, mapLabel:'ATM',
           scene: n => `${n}零錢不太夠用，決定去附近的 ATM 領錢。` },
-        { id:3, title:'便利商店買餐點',  skill:'C5', icon:'🍱', mapLabel:'選餐',
-          scene: n => `${n}肚子餓了，走進便利商店。` },
+        { id:3, title:'出門買東西',      skill:'C5', icon:'🍱', mapLabel:'選購',
+          scene: n => `${n}出門去買想要的東西。` },
         { id:4, title:'結帳找零錢',     skill:'C6', icon:'💸', mapLabel:'找零',
           scene: n => `${n}拿出鈔票去付帳。` },
         { id:5, title:'路邊比一比',     skill:'B4', icon:'🏷️', mapLabel:'比價',
@@ -321,16 +321,20 @@ const Adventure = {
     TRANSITIONS: {
         1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${c.name}${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
         2: { icon:'💰', text: (c, log)  => `${c.name}把零用錢數好了！想去外面玩，${c.name}覺得這些錢好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
-        3: { icon:'✅', text: (c, log)  => `提款成功！${c.name}口袋裡的錢變多了！走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯` },
-        4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！拿著商品走向收銀台，付了錢之後，來看看能找回多少零錢⋯` },
+        3: { icon:'✅', text: (c)       => Adventure._t3Text(c, Adventure._mealPick || Adventure.MEAL_TYPES[0]) },
+        4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！走到櫃檯結帳，付了錢之後，來看看能找回多少零錢⋯` },
         5: { icon:'💸', text: (c, log)  => `找回零錢了，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
         6: { icon:'🏷️', text: (c, log) => `找到最便宜的那一家了！${c.name}把「多比較不吃虧」這個祕訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
         7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，${c.name}${ADV_QUIRK.save[c.id] || ''}，決定開始存錢⋯` },
     },
 
-    // ── 便利商店餐點（L3）────────────────────────────────────
+    // ── 選購關（L3）場景池：venue＝店家、t3＝過場敘事（含角色名→預錄，改字要重生語音）──
+    // 每次冒險隨機抽一種場景（_renderLevel 於進 L3 前抽定，過場與關卡共用）。
+    // 夜市因故事時間線（中午前後）不合理，以「小吃攤」承載同樣的攤販情境。
     MEAL_TYPES: [
         {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
             label:'早餐', scene: n => `${n}肚子餓了，走進便利商店買早餐。`,
             items:[
                 { name:'三明治', price:35, img:'../images/c6/icon-c6-club-sandwich.png', icon:'🥪' },
@@ -344,6 +348,8 @@ const Adventure = {
             ]
         },
         {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
             label:'午餐', scene: n => `到了中午，${n}走進便利商店挑午餐。`,
             items:[
                 { name:'牛肉麵', price:65, img:'../images/c6/icon-c6-beef-noodle.png',   icon:'🍜' },
@@ -357,6 +363,8 @@ const Adventure = {
             ]
         },
         {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
             label:'晚餐', scene: n => `傍晚了，${n}走進便利商店選晚餐。`,
             items:[
                 { name:'牛肉麵', price:65, img:'../images/c6/icon-c6-beef-noodle.png',   icon:'🍜' },
@@ -367,6 +375,81 @@ const Adventure = {
                 { name:'飲料',   price:25, img:'../images/c6/icon-c6-drink.png',         icon:'🥤' },
                 { name:'薯片',   price:30, img:'../images/c6/icon-c6-chips.png',         icon:'🥔' },
                 { name:'堅果',   price:40, img:'../images/c6/icon-c6-nuts.png',          icon:'🥜' },
+            ]
+        },
+        {
+            venue:'小吃攤',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，路邊剛好有一排香噴噴的小吃攤，於是${c.name}走了過去⋯`,
+            label:'小吃', scene: n => `${n}來到香噴噴的小吃攤，想買點小吃。`,
+            items:[
+                { name:'蘿蔔糕',   price:35, img:'../images/a4/icon-a4-radish-cake-shop.png', icon:'🍘' },
+                { name:'蛋餅',     price:30, img:'../images/a4/icon-a4-egg-pancake-shop.png', icon:'🥞' },
+                { name:'煎餃',     price:50, img:'../images/b4/icon-b4-dumpling.png',         icon:'🥟' },
+                { name:'牛肉麵',   price:65, img:'../images/c6/icon-c6-beef-noodle.png',      icon:'🍜' },
+                { name:'烤玉米杯', price:30, img:'../images/a3/icon-a3-corn-cup.png',         icon:'🌽' },
+                { name:'可麗餅',   price:45, img:'../images/a3/icon-a3-crepe.png',            icon:'🥮' },
+                { name:'吉拿棒',   price:40, img:'../images/a3/icon-a3-churros.png',          icon:'🥖' },
+                { name:'珍珠奶茶', price:50, img:'../images/a3/icon-a3-bubble-tea.png',       icon:'🧋' },
+            ]
+        },
+        {
+            venue:'飲料攤',
+            t3: c => `走著走著，${c.name}覺得有點口渴，前面剛好有一攤飲料店，於是走了過去⋯`,
+            label:'飲料', scene: n => `${n}來到飲料攤，想買杯好喝的。`,
+            items:[
+                { name:'珍珠奶茶', price:55, img:'../images/a4/icon-a4-milk-tea-shop.png', icon:'🧋' },
+                { name:'紅茶',     price:25, img:'../images/a4/icon-a4-black-tea-shop.png', icon:'🍵' },
+                { name:'果汁',     price:40, img:'../images/a4/icon-a4-juice-shop.png',    icon:'🧃' },
+                { name:'可樂',     price:30, img:'../images/a4/icon-a4-cola-shop.png',     icon:'🥤' },
+                { name:'豆漿',     price:20, img:'../images/a4/icon-a4-soy-milk-shop.png', icon:'🥛' },
+                { name:'鮮奶',     price:35, img:'../images/a4/icon-a4-milk-shop.png',     icon:'🥛' },
+                { name:'汽水',     price:25, img:'../images/c6/icon-c6-drink.png',         icon:'🫧' },
+                { name:'冰淇淋',   price:35, img:'../images/a4/icon-a4-ice-cream-shop.png', icon:'🍦' },
+            ]
+        },
+        {
+            venue:'速食店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，聞到前面速食店飄來的香味，${c.name}忍不住走了進去⋯`,
+            label:'餐點', scene: n => `${n}走進速食店，想點些好吃的。`,
+            items:[
+                { name:'起司漢堡', price:60, img:'../images/a3/icon-a3-cheese-burger.png',        icon:'🍔' },
+                { name:'薯條',     price:45, img:'../images/a4/icon-a4-french-fries-shop.png',    icon:'🍟' },
+                { name:'雞塊',     price:55, img:'../images/a4/icon-a4-chicken-nuggets-shop.png', icon:'🍗' },
+                { name:'雞翅',     price:65, img:'../images/a3/icon-a3-chicken-wings.png',        icon:'🍗' },
+                { name:'可樂',     price:35, img:'../images/a3/icon-a3-coke-medium.png',          icon:'🥤' },
+                { name:'蘋果派',   price:25, img:'../images/a3/icon-a3-apple-pie.png',            icon:'🥧' },
+                { name:'巧克力聖代', price:30, img:'../images/a4/icon-a4-chocolate-sundae-shop.png', icon:'🍨' },
+                { name:'甜甜圈',   price:35, img:'../images/a3/icon-a3-donut.png',                icon:'🍩' },
+            ]
+        },
+        {
+            venue:'柑仔店',
+            t3: c => `走著走著，肚子有點餓，巷口剛好有一間古早味的柑仔店，${c.name}想進去買點零食⋯`,
+            label:'零食', scene: n => `${n}走進柑仔店，想買點零食。`,
+            items:[
+                { name:'糖果',   price:20, img:'../images/b4/icon-b4-candy.png',        icon:'🍬' },
+                { name:'棒棒糖', price:15, img:'../images/c6/icon-c6-lollipop.png',     icon:'🍭' },
+                { name:'口香糖', price:10, img:'../images/c6/icon-c6-gum.png',          icon:'🫧' },
+                { name:'米果',   price:25, img:'../images/c6/icon-c6-crackers.png',     icon:'🍘' },
+                { name:'果凍',   price:20, img:'../images/b4/icon-b4-jelly-cup.png',    icon:'🍮' },
+                { name:'洋芋片', price:35, img:'../images/b4/icon-b4-potato-chips.png', icon:'🥔' },
+                { name:'巧克力', price:40, img:'../images/c6/icon-c6-chocolate.png',    icon:'🍫' },
+                { name:'餅乾',   price:30, img:'../images/c6/icon-c6-cookie.png',       icon:'🍪' },
+            ]
+        },
+        {
+            venue:'禮品店',
+            t3: c => `走著走著，${c.name}看到一間擺滿可愛小東西的禮品店，想進去挑一個紀念品⋯`,
+            label:'紀念品', scene: n => `${n}走進禮品店，想挑個紀念品。`,
+            items:[
+                { name:'星星貼紙',   price:20, img:'../images/c6/icon-c6-star-sticker.png',  icon:'✨' },
+                { name:'愛心貼紙',   price:15, img:'../images/c6/icon-c6-heart-sticker.png', icon:'💖' },
+                { name:'小熊玩偶',   price:60, img:'../images/c6/icon-c6-teddy-bear.png',    icon:'🧸' },
+                { name:'玩具車',     price:50, img:'../images/c6/icon-c6-toy-car.png',       icon:'🚗' },
+                { name:'小機器人',   price:75, img:'../images/c6/icon-c6-robot.png',         icon:'🤖' },
+                { name:'神秘禮物盒', price:65, img:'../images/c6/icon-c6-mystery-gift.png',  icon:'🎁' },
+                { name:'麥克筆',     price:30, img:'../images/c6/icon-c6-marker.png',        icon:'🖊️' },
+                { name:'日記本',     price:45, img:'../images/c6/icon-c6-diary.png',         icon:'📔' },
             ]
         },
     ],
@@ -750,7 +833,14 @@ const Adventure = {
 
     _l3Result: null,
     _storyLog: {},
+    _mealPick: null,   // L3 這一趟抽到的選購場景（進 L3 的過場前抽定，過場敘事與關卡共用）
     state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false, levelMiss:{} },
+
+    // T3 過場全文＝固定前綴＋場景專屬敘事（含角色名 → 預錄於 ADV_AUDIO_MAP2，
+    // 由 voicegen/_gen_adv_list2.js 對「每種場景×4角色」枚舉；改字務必重生 adv_trans_3v*）
+    _t3Text(c, meal) {
+        return `提款成功！${c.name}口袋裡的錢變多了！${meal.t3(c)}`;
+    },
 
     // ── init ────────────────────────────────────────────────────
     init() {
@@ -785,6 +875,7 @@ const Adventure = {
         Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null, levelMiss:{} });
         this._l3Result = null;
         this._storyLog = {};
+        this._mealPick = null;
 
         const charGrid = this.CHARACTERS.map((c, i) => `
             <div class="adv-char-opt ${i===0?'selected':''}" data-id="${c.id}" tabindex="0" role="button" aria-label="${c.name}">
@@ -891,6 +982,7 @@ const Adventure = {
         this.state.score    = 0;
         this.state.mistakes = 0;
         this.state.levelMiss = {};   // 每關錯誤數（供結算「統整診斷」）
+        this._mealPick = null;       // 每趟重抽選購場景
         // 冒險是熟悉 24 單元後的進階統整活動，不設難度分級（2026-07-16 取消）：
         // 固定普通模式，計算機預設收合、學生仍可用 🧮 鈕自行開啟。
         this.state.easy     = false;
@@ -928,6 +1020,10 @@ const Adventure = {
     _renderLevel() {
         AdvTimer.clearAll(); AdvSpeech.cancel();
         const n = this.state.level;
+        // 進 L3 前抽定選購場景（T3 過場敘事與關卡內容要一致，所以在過場前抽）
+        if (n === 3 && !this._mealPick) {
+            this._mealPick = this.MEAL_TYPES[Math.floor(Math.random() * this.MEAL_TYPES.length)];
+        }
         this._applyTheme(n);   // 過場與本關共用該地點主色
         const t = this.TRANSITIONS[n];
         if (t) {
@@ -1127,7 +1223,8 @@ const Adventure = {
             items.push({ icon:'🏧', html:`去 ATM 領了 <strong>${log.l2Amount}</strong> 元，口袋共有 <strong>${pocket}</strong> 元`, plain:`去ATM領了${log.l2Amount}元，口袋共有${pocket}元` });
         }
         if (log.l3Items) {
-            items.push({ icon:'🍱', html:`走進便利商店買了${log.l3Items}，共花 <strong>${log.l3Spent}</strong> 元`, plain:`走進便利商店買了${log.l3Items}，共花${log.l3Spent}元` });
+            const v = log.l3Venue || '便利商店';
+            items.push({ icon:'🍱', html:`來到${v}買了${log.l3Items}，共花 <strong>${log.l3Spent}</strong> 元`, plain:`來到${v}買了${log.l3Items}，共花${log.l3Spent}元` });
         }
         if (log.l4Change !== undefined) {
             items.push(log.l4Change > 0
@@ -1417,7 +1514,9 @@ const Adventure = {
         const char  = this.state.char || this.CHARACTERS[0];
         const budgetRange = char.budgetRange;
         const budget = budgetRange[Math.floor(Math.random() * budgetRange.length)];
-        const meal   = this.MEAL_TYPES[Math.floor(Math.random() * this.MEAL_TYPES.length)];
+        // 場景已於 _renderLevel 進 L3 前抽定（與 T3 過場敘事一致）；防禦性補抽
+        const meal   = this._mealPick
+            || (this._mealPick = this.MEAL_TYPES[Math.floor(Math.random() * this.MEAL_TYPES.length)]);
         const items  = meal.items;
         this._l3Result = null;
         let selected = [];
@@ -1441,7 +1540,7 @@ const Adventure = {
     <div class="adv-card-hdr">
       <span class="adv-card-icon">${lv.icon}</span>
       <div class="adv-card-info">
-        <div class="adv-card-title">便利商店買${meal.label}</div>
+        <div class="adv-card-title">${meal.venue}買${meal.label}</div>
         <div class="adv-card-scene">${meal.scene(char.name)}${char.quirk ? `（${char.quirk}）` : ''}</div>
       </div>
       <button class="adv-replay-btn" id="adv-replay">🔊</button>
@@ -1511,6 +1610,7 @@ const Adventure = {
             this._storyLog.l3Items = itemNames;
             this._storyLog.l3Spent = spent;
             this._storyLog.l3Meal  = meal.label;
+            this._storyLog.l3Venue = meal.venue;
             this.state.score++;
             document.getElementById('correct-sound')?.play();
             if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
@@ -1937,7 +2037,7 @@ ${storesHTML}`;
         // 寫入學習歷程（教師「學習歷程總覽」可見；studentId 由 tracker 自動帶目前學生）＝IEP／成效佐證
         try {
             window.LearningTracker?.save({
-                unit: 'adventure', unitName: '🗺️ 一日金錢冒險（六關統整應用）', series: 'A',
+                unit: 'adventure', unitName: '🗺️ 一日金錢冒險（七關統整應用）', series: 'A',
                 score: this.state.score, total: MAX_SCORE, difficulty: this.state.easy ? 'easy' : 'normal',
                 durationSec: elapsed,
             });
