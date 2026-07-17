@@ -1710,6 +1710,20 @@ html:has(.game-complete) {
     20%, 40%, 60%, 80% { transform: translateX(3px); }
 }
 
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-18）——桌面（>900px）零影響
+   問題實測：排序 10 格時 .answer-container 是 flex nowrap + overflow hidden，
+   ≤768 首尾插槽被裁切（前段 ≤768 區塊誤寫 grid-template-columns，
+   對 flex 容器無效）。改為換行排列。
+   ═════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+    .answer-container {
+        flex-wrap: wrap;
+        overflow: visible;
+        gap: 6px;
+    }
+}
+
 .shake-animation {
     animation: shakeReturn 0.8s ease-in-out;
     background: linear-gradient(135deg, #ff6b6b, #ffa500);
