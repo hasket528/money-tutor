@@ -2837,3 +2837,17 @@ body.aac-mode .practice-footer::before {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 手機頂列修正（2026-07-17）——練習頁 app-header 在 ≤600px 溢出視窗
+   實測 390px：ah-right 三顆 40px 圓鈕(132px)＋左側「← 上一頁」＋場所名
+   擠不下，🏠 返回主頁被切出畫面（right=419 > 390）。全部只縮尺寸，
+   桌面/平板（>600px）零影響。
+   ═════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .app-header { padding: 8px 8px; gap: 4px; }
+  .ah-left, .ah-right { gap: 4px; }
+  .app-header .btn-icon { width: 36px; height: 36px; font-size: 0.95rem; }
+  .btn-back-text { padding: 6px 8px; font-size: 0.82rem; }
+  .app-header .ah-title { font-size: 0.9rem; }
+}
