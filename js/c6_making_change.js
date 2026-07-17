@@ -7357,69 +7357,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showNumberPad(input, confirmBtn, correctAnswer) {
             // 創建數字輸入器
+            // 排列統一為 C 系列標準（底列＝清除／0／確認，與 showNumberInput 及 C1~C5 一致）：
+            // 移除退格與獨立的取消／確認列，改用右上角 × 取消；配色沿用 C2（淺色數字、黃色清除、綠色確認）。
             const existingPad = document.getElementById('number-pad-overlay');
             if (existingPad) existingPad.remove();
+
+            let currentValue = String(input.value || '');
 
             const numberPad = document.createElement('div');
             numberPad.id = 'number-pad-overlay';
             numberPad.innerHTML = `
-                <div class="number-pad">
-                    <div class="number-pad-display">${input.value || ''}</div>
-                    <div class="number-pad-buttons">
-                        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(num => `
-                            <button class="num-btn" data-value="${num}">${num}</button>
-                        `).join('')}
-                        <button class="num-btn backspace-btn" data-action="backspace">←</button>
-                        <button class="num-btn clear-btn" data-action="clear">清除</button>
-                    </div>
-                    <div class="number-pad-footer">
-                        <button class="num-cancel-btn">取消</button>
-                        <button class="num-confirm-btn">確認</button>
-                    </div>
+                <div class="number-pad" style="position:relative;">
+                    <button class="num-close-btn" data-action="close" style="position:absolute; top:10px; right:12px; background:#ff4757; color:white; border:none; border-radius:50%; width:30px; height:30px; font-size:1.2em; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(255,71,87,0.3);">×</button>
+                    <div class="number-pad-display">${currentValue}</div>
+                    <div class="number-pad-buttons"></div>
                 </div>
             `;
 
             document.body.appendChild(numberPad);
 
             const display = numberPad.querySelector('.number-pad-display');
-            const numBtns = numberPad.querySelectorAll('.num-btn[data-value]');
-            const backspaceBtn = numberPad.querySelector('[data-action="backspace"]');
-            const clearBtn = numberPad.querySelector('[data-action="clear"]');
-            const cancelPadBtn = numberPad.querySelector('.num-cancel-btn');
-            const confirmPadBtn = numberPad.querySelector('.num-confirm-btn');
+            const pad = numberPad.querySelector('.number-pad-buttons');
 
-            let currentValue = input.value || '';
-
-            // 數字按鈕
-            numBtns.forEach(btn => {
-                Game.EventManager.on(btn, 'click', () => {
-                    const value = btn.dataset.value;
-                    currentValue += value;
-                    display.textContent = currentValue;
-                }, {}, 'gameUI');
-            });
-
-            // 退格按鈕
-            Game.EventManager.on(backspaceBtn, 'click', () => {
-                currentValue = currentValue.slice(0, -1);
-                display.textContent = currentValue || '0';
-            }, {}, 'gameUI');
-
-            // 清除按鈕
-            Game.EventManager.on(clearBtn, 'click', () => {
-                currentValue = '';
-                display.textContent = '0';
-            }, {}, 'gameUI');
-
-            // 取消按鈕
-            Game.EventManager.on(cancelPadBtn, 'click', () => {
-                numberPad.remove();
-            }, {}, 'gameUI');
-
-            // 確認按鈕
-            Game.EventManager.on(confirmPadBtn, 'click', () => {
+            const commit = () => {
                 input.value = currentValue;
                 confirmBtn.disabled = !currentValue;
+                numberPad.remove();
+            };
+
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清除', '0', '確認'].forEach(key => {
+                const btn = document.createElement('button');
+                btn.textContent = key;
+                let s = 'padding:15px; font-size:1.2em; border:2px solid #ddd; border-radius:8px; cursor:pointer; transition:all 0.2s ease;';
+                if (key === '確認')      s += 'background:#28a745; color:white; font-weight:bold;';
+                else if (key === '清除') s += 'background:#ffc107; color:#333; font-weight:bold;';
+                else                     s += 'background:#f8f9fa; color:#333;';
+                btn.style.cssText = s;
+                Game.EventManager.on(btn, 'click', () => {
+                    if (key === '清除') {
+                        currentValue = '';
+                        display.textContent = '';
+                    } else if (key === '確認') {
+                        if (currentValue) commit();
+                    } else {
+                        if (currentValue.length < 5) {
+                            currentValue += key;
+                            display.textContent = currentValue;
+                        }
+                    }
+                }, {}, 'gameUI');
+                pad.appendChild(btn);
+            });
+
+            // 右上角 × 取消（不寫回、不改變原輸入框）
+            Game.EventManager.on(numberPad.querySelector('[data-action="close"]'), 'click', () => {
                 numberPad.remove();
             }, {}, 'gameUI');
         },
