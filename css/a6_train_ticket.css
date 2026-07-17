@@ -2544,3 +2544,29 @@ a.selection-btn {
     from { transform: translateX(-50%) translateY(0); }
     to   { transform: translateX(-50%) translateY(-4px); }
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——桌面（>600px）零影響
+   問題實測（五視窗截圖）：既有響應式已完整（車站格 2 欄、櫃檯直排、
+   付款單欄皆可用）；唯一問題＝手機標題「第X步：…」用絕對定位置中，
+   被左側火車圖示＋吉祥物（z-index 1）壓在下層，文字被遮。
+   ═════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+    .title-bar-center {
+        position: static;
+        transform: none;
+        max-width: none;
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+    }
+    .title-bar-center h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 北部 12 站的桌面 6 欄規則（屬性選擇器權重高於 ≤768 的 2 欄）在手機
+       會把站名擠成一字直排——改 3 欄 */
+    .station-grid[data-region-content="north"] {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: none;
+    }
+    .station-btn { padding: 14px 6px; font-size: 15px; white-space: nowrap; }
+}

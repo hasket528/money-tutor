@@ -4205,3 +4205,37 @@ body.click-mode-active *:focus-visible {
     from { transform: translateX(-50%) translateY(0); }
     to   { transform: translateX(-50%) translateY(-4px); }
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——全部寫在 media query 內，桌面（>900px）零影響
+   問題實測（五視窗截圖）：單欄流式本身可用；標題列 ≤768 被前段 @media 堆成
+   三行高 196px（64px 商店圖示＋按鈕文字斷行）；商品格 ≤768 被鎖單欄，
+   手機/平板直式一頁只見一件商品。
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── 601–900（iPad 直式）：標題列壓回一行；商品格回自動多欄 ── */
+@media (min-width: 601px) and (max-width: 900px) {
+    .title-bar { flex-direction: row; gap: 8px; padding: 10px 12px; }
+    .title-bar-center { white-space: nowrap; font-size: 16px; }
+    .title-bar-right { gap: 8px; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .title-bar .back-to-menu-btn { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+    .store-icon-large { font-size: 40px; }
+
+    .products-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+/* ── ≤600（手機）：標題列緊湊三行（圖示縮小/按鈕不斷行）；商品 2 欄 ── */
+@media (max-width: 600px) {
+    .title-bar { gap: 4px; padding: 8px 10px; }
+    .title-bar-left { gap: 8px; }
+    .title-bar-center { font-size: 15px; }
+    .title-bar-right { gap: 8px; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .title-bar .back-to-menu-btn { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+    .store-icon-large { font-size: 34px; }
+
+    .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .products-grid.horizontal-layout { gap: 10px; }
+    .products-grid.horizontal-layout .product-item { width: 150px; height: auto; min-height: 150px; }
+}

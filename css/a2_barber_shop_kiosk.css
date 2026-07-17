@@ -3535,3 +3535,54 @@ a.selection-btn {
     transform: translateY(-4px) scale(1.02);
     box-shadow: 0 0 22px rgba(255,200,0,0.85) !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——全部寫在 media query 內，桌面（>900px）零影響
+   問題實測（五視窗截圖）：
+   ・標題列 ≤768 被前段 @media 堆成三行（手機 161px／平板 169px 高）
+   ・手機 .service-selection-screen 在 flex 容器內縮成內容寬（200px），
+     服務單欄小卡置中、兩側留白，頁高近 2000px
+   （kiosk-body 堆疊、金錢入口上移等既有 ≤768 規則已可用，不重做）
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── ≤900：機台螢幕改自動增高——前段固定高度（450px/340px）會讓服務格
+      溢出被「票券出口」面板蓋住 ── */
+@media (max-width: 900px) {
+    .kiosk-screen { height: auto; min-height: 0; }
+}
+
+/* ── 601–900（iPad 直式）：標題列壓回一行（蓋掉前段 column 規則） ── */
+@media (min-width: 601px) and (max-width: 900px) {
+    .kiosk-title-bar { flex-direction: row; gap: 8px; padding: 10px 12px; }
+    .title-bar-left, .title-bar-center, .title-bar-right { width: auto; }
+    .title-bar-left { font-size: 15px; justify-content: flex-start; }
+    .title-bar-center { font-size: 16px; white-space: nowrap; }
+    .title-bar-right { gap: 8px; justify-content: flex-end; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .kiosk-title-bar .back-to-menu-btn,
+    .kiosk-title-bar .hint-btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+}
+
+/* ── ≤600（手機）：標題列兩行制；服務選單改 2 欄滿寬 ── */
+@media (max-width: 600px) {
+    .kiosk-title-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        row-gap: 4px;
+        padding: 8px 10px;
+    }
+    .title-bar-left, .title-bar-center { width: auto; }
+    .title-bar-left { font-size: 14px; }
+    .title-bar-center { font-size: 15px; white-space: nowrap; flex: 0 1 auto; }
+    .title-bar-right { width: 100%; justify-content: center; gap: 8px; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .kiosk-title-bar .back-to-menu-btn,
+    .kiosk-title-bar .hint-btn { padding: 6px 10px; font-size: 12px; }
+
+    /* 服務選單滿寬 2 欄（前段 ≤600 規則是 1fr 單欄＋窄父層） */
+    .service-selection-screen { width: 100%; }
+    .service-grid { grid-template-columns: repeat(2, 1fr); width: 100%; gap: 8px; height: auto; }
+    .service-item { min-height: 0; padding: 12px; }
+}
