@@ -443,12 +443,12 @@ const Adventure = {
             label:'紀念品', scene: n => `${n}走進禮品店，想挑個紀念品。`,
             items:[
                 { name:'星星貼紙',   price:20, img:'../images/c6/icon-c6-star-sticker.png',  icon:'✨' },
-                { name:'愛心貼紙',   price:15, img:'../images/c6/icon-c6-heart-sticker.png', icon:'💖' },
+                { name:'愛心貼紙',   price:15, img:'../images/adv-items/adv-heart-sticker.png', icon:'💖' },
                 { name:'小熊玩偶',   price:60, img:'../images/c6/icon-c6-teddy-bear.png',    icon:'🧸' },
                 { name:'玩具車',     price:50, img:'../images/c6/icon-c6-toy-car.png',       icon:'🚗' },
                 { name:'小機器人',   price:75, img:'../images/c6/icon-c6-robot.png',         icon:'🤖' },
                 { name:'神秘禮物盒', price:65, img:'../images/c6/icon-c6-mystery-gift.png',  icon:'🎁' },
-                { name:'麥克筆',     price:30, img:'../images/c6/icon-c6-marker.png',        icon:'🖊️' },
+                { name:'麥克筆',     price:30, img:'../images/adv-items/adv-marker.png',     icon:'🖊️' },
                 { name:'日記本',     price:45, img:'../images/c6/icon-c6-diary.png',         icon:'📔' },
             ]
         },

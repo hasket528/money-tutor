@@ -249,8 +249,10 @@
         .adv-l3-name  { font-size: 0.82rem; font-weight: 700; color: #78350f; margin-bottom: 2px; }
         .adv-l3-price { font-size: 0.88rem; font-weight: 700; color: var(--loc-main); margin-bottom: 6px; }
         .adv-l3-toggle {
-            background: var(--loc-main); color: #fff; border: none; border-radius: 8px;
-            padding: 4px 10px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+            background: var(--loc-main); color: #fff; border: none; border-radius: 10px;
+            padding: 10px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+            min-height: 44px; min-width: 76px;   /* 無障礙觸控目標 ≥44px（精細動作弱的學生防誤觸）*/
+            touch-action: manipulation;
         }
         .adv-l3-selected .adv-l3-toggle { background: #059669; }
 
@@ -570,6 +572,19 @@
         .adv-char-badge {
             flex: 0 0 auto; font-size: 1.6rem; line-height: 1;
             margin-top: 2px;
+        }
+        /* 手機：旅程地圖 9 節點在窄幅會被 overflow:hidden 裁掉尾端（存錢/完成消失）。
+           改為只留圖示、縮小點徑，唯「目前關卡」放大並顯示名稱——全部節點放得下，
+           進度感不中斷（特教生依賴這條地圖理解「我走到哪了」）。 */
+        @media (max-width: 560px) {
+            .adv-topbar   { gap: 4px; }
+            .adv-back-btn { font-size: 0.78rem; padding: 6px 8px; }
+            .adv-jm-dot   { width: 22px; height: 22px; font-size: 11px; }
+            .adv-jm-node.done .adv-jm-dot { font-size: 10px; }
+            .adv-jm-lbl   { display: none; }
+            .adv-jm-node.current .adv-jm-lbl { display: block; font-size: 10px; }
+            .adv-jm-node.current .adv-jm-dot { width: 26px; height: 26px; font-size: 13px; }
+            .adv-jm-line  { margin-top: 10px; }
         }
 
         /* ── 過場：角色大圖 ──────────────────────────────── */
