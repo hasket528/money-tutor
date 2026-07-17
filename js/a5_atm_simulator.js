@@ -2774,6 +2774,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // setTimeout(() => {
             //     this.debugLayoutHeights(screenType);
             // }, 100);
+
+            // 📱 行動裝置（≤900px）：每次換畫面把捲動拉回頂部——指示螢幕以 sticky 置頂
+            // （CSS @media ≤600），互動區緊隨其後，學生從「螢幕說什麼」開始看。
+            // matchMedia 守門：桌面（>900px）此段完全不執行，行為零變化。
+            if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+                const sc = document.querySelector('.atm-container');
+                if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         },
         
         
