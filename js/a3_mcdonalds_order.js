@@ -255,6 +255,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     context.Debug.log('flow', `🚀 [場景管理] 初始化場景: ${newScene}`);
                     newConfig.onEnter.call(context, context);
                 }
+
+                // 📱 行動裝置：換場景把捲動拉回頂部（matchMedia 守門，桌面不執行）
+                McDonald._mobileScrollReset();
+            }
+        },
+
+        // 📱 行動裝置（≤900px）換頁捲回頂部：堆疊版面下前一頁的捲動位置會殘留，
+        // 學生會從頁面中段開始看。matchMedia 守門：桌面（>900px）此函數不做任何事。
+        _mobileScrollReset() {
+            if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+                const app = document.getElementById('app');
+                if (app) app.scrollTop = 0;
+                window.scrollTo(0, 0);
             }
         },
 
@@ -5119,18 +5132,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- 標題列 -->
                     ${this.HTMLTemplates.titleBar(3, '櫃檯付款')}
 
-                    <!-- 主要內容區 - 左右兩欄式佈局 -->
-                    <div style="flex: 1; display: flex; gap: 20px; background: linear-gradient(135deg, #ffcc02, #ff8f00); padding: 20px; overflow-y: auto;">
+                    <!-- 主要內容區 - 左右兩欄式佈局（a3-pay-* class 供 ≤700px media query 堆疊用，桌面無對應規則） -->
+                    <div class="a3-pay-main" style="flex: 1; display: flex; gap: 20px; background: linear-gradient(135deg, #ffcc02, #ff8f00); padding: 20px; overflow-y: auto;">
 
                         <!-- 左側區域 - 付款區(上) + 我的錢包(下) -->
-                        <div style="flex: 2.5; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+                        <div class="a3-pay-left" style="flex: 2.5; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
 
                             <!-- 上方 - 付款區 -->
-                            <div style="flex: 1; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+                            <div class="a3-pay-card" style="flex: 1; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; position: relative;">
-                                    <div style="width: 100px;"></div>
+                                    <div class="a3-pay-headspacer" style="width: 100px;"></div>
                                     <h2 style="text-align: center; color: #c62d42; margin: 0; font-size: 1.6em; flex: 1;">💰 付款區</h2>
-                                    <div style="width: 100px; display: flex; justify-content: flex-end;">${paymentHintButton}</div>
+                                    <div class="a3-pay-headspacer" style="width: 100px; display: flex; justify-content: flex-end;">${paymentHintButton}</div>
                                 </div>
                                 <div style="text-align: center; font-size: 1.1em; font-weight: 700; margin-bottom: 15px; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; align-items: center;">
                                     <span style="color: #c62d42;">應付金額：NT$ ${targetAmount}元</span>
@@ -5149,7 +5162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
 
                             <!-- 下方 - 我的錢包 -->
-                            <div style="flex: 1; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
+                            <div class="a3-pay-card" style="flex: 1; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
                                 <div class="wallet-total-header" style="text-align: center; color: #c62d42; margin: 0 0 15px 0; font-size: 1.6em; font-weight: bold;">我的錢包 總計：${walletMoney.reduce((s, m) => s + m.value, 0)}元</div>
                                 <div id="wallet-area" style="flex: 1; display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; overflow-y: auto; background: #f8f9fa; border-radius: 15px; border: 2px solid #ffcc02; align-content: flex-start; justify-content: center;">
                                     ${this.generateWalletMoneyForPayment(walletMoney)}
@@ -5158,7 +5171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
 
                         <!-- 右側 - 訂單內容 -->
-                        <div style="width: 340px; min-width: 340px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="a3-pay-order a3-pay-card" style="width: 340px; min-width: 340px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
                             <h2 style="text-align: center; color: #c62d42; margin: 0 0 15px 0; font-size: 1.6em;">📋 訂單內容</h2>
                             <div style="flex: 1; background: #f8f9fa; padding: 15px; border-radius: 15px; border: 2px solid #ffcc02; overflow-y: auto;">
                                 ${this.generateOrderSummary(this.state.gameState.cart)}
@@ -5171,6 +5184,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+
+            // 📱 行動裝置：捲回頂部（桌面不執行）
+            this._mobileScrollReset();
 
             // 初始化拖曳功能
             this.TimerManager.setTimeout(() => this.initializeDragAndDrop(), 100, 'uiAnimation');
@@ -7540,6 +7556,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const app = document.getElementById('app');
             if (!app) return;
+
+            // 📱 行動裝置：捲回頂部（桌面不執行）
+            this._mobileScrollReset();
 
             const isNormalMode = this.state.settings.difficulty === 'normal';
             const isHardMode = this.state.settings.difficulty === 'hard';
@@ -10062,6 +10081,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const app = document.getElementById('app');
             if (!app) return;
+
+            // 📱 行動裝置：捲回頂部（桌面不執行）
+            this._mobileScrollReset();
 
             // 🆕 允許頁面滾動（A4 架構：只操作 #app）
             app.style.overflowY = 'auto';

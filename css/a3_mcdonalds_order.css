@@ -2197,3 +2197,113 @@ body.click-mode-enabled .fade-in {
     from { transform: translateX(-50%) translateY(0); }
     to   { transform: translateX(-50%) translateY(-4px); }
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——全部寫在 media query 內，桌面（>1200px）零影響
+   問題實測（五視窗截圖）：
+   ・標題列 ≤500 三組 flex 子元素被壓成一字直排，佔 1/3 螢幕（步驟1~5 共用）
+   ・點餐 ≤700 右欄 min-width 280px 把菜單壓到 ~110px，餐點完全看不到
+   ・點餐 901–1200（iPad 橫式）100vh 鎖高＋overflow visible → 卡片壓扁、圖片溢出卡外
+   ・付款 ≤700 訂單欄固定 340px，付款區/錢包被壓成零寬，無法付款
+   （計算場景 JS 內建 @media ≤1000 已可用；歡迎/設定/取餐/總結本來就置中卡片，不需處理）
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── ≤1200（含 iPad 橫式）：點餐頁改「頁面自然增高、#app 滾動」，停止卡片壓扁。
+      桌面的 100vh 鎖高＋面板內部滾動只保留在 >1200。 ── */
+@media (max-width: 1200px) {
+    .mcdonalds-body {
+        height: auto;
+        min-height: calc(100vh - 80px);
+        overflow: visible;
+    }
+    .mcdonalds-left-panel,
+    .mcdonalds-right-panel,
+    .main-content,
+    .menu-container { overflow: visible; }
+    .item-grid { max-height: none; }
+    .sidebar { max-height: none; }
+    .cart { height: auto; overflow: visible; }
+    .cart-items { max-height: none; overflow: visible; }
+}
+
+/* ── ≤900（iPad 直式/大手機）：單欄堆疊——菜單在上（3欄卡片），購物車在下；
+      標題列隱藏系統名稱防斷字；結帳列 sticky 貼底。 ── */
+@media (max-width: 900px) {
+    .mcdonalds-title-bar { padding: 10px 12px !important; }
+    .mcdonalds-title-bar .title-bar-left { gap: 6px !important; }
+    .mcdonalds-title-bar .title-bar-left > span:nth-of-type(2) { display: none; } /* 系統名稱 */
+    .mcdonalds-title-bar > div:nth-child(2) { font-size: 1.15em !important; white-space: nowrap; }
+    .mcdonalds-title-bar > div:nth-child(3) { gap: 8px !important; }
+    .mcdonalds-title-bar > div:nth-child(3) > span { font-size: 0.9em !important; white-space: nowrap; }
+    .mcdonalds-title-bar .back-to-menu-btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+
+    .mcdonalds-body { flex-direction: column; }
+    .mcdonalds-left-panel { flex: none; border-right: none; }
+    .mcdonalds-right-panel {
+        flex: none;
+        min-width: 0;
+        border-left: none;
+        border-top: 3px solid #ff8f00;
+    }
+    .sidebar { min-width: 0; border-left: none; }
+
+    .item-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px; padding: 12px; }
+    .menu-item { min-height: 0; padding: 12px; }
+    .item-image { width: 100px; height: 100px; }
+
+    /* 結帳列（總計＋前往結帳）滑到購物車段落時常駐視窗底部 */
+    .cart-summary {
+        position: sticky;
+        bottom: 0;
+        z-index: 40;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    /* 付款頁頭列的 100px 佔位在平板寬度會把「付款區」標題擠斷行，改自動寬 */
+    .a3-pay-headspacer { width: auto !important; min-width: 0 !important; }
+}
+
+/* ── ≤700：付款頁（步驟3）左右欄改上下堆疊——付款區→錢包→訂單內容。
+      （768 實測左右欄還放得下，700 以下訂單欄 340px 會把付款區壓扁） ── */
+@media (max-width: 700px) {
+    .a3-pay-main { flex-direction: column !important; padding: 12px !important; gap: 12px !important; }
+    .a3-pay-left { flex: none !important; overflow: visible !important; }
+    .a3-pay-card { padding: 14px !important; }
+    .a3-pay-order { width: auto !important; min-width: 0 !important; }
+}
+
+/* ── ≤600（手機）：標題列兩行制、菜單 2 欄緊湊卡片、分類鈕 2×2 橫向換行、
+      購物車項目維持橫排省空間。 ── */
+@media (max-width: 600px) {
+    .mcdonalds-title-bar {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        padding: 8px 10px !important;
+        row-gap: 4px;
+    }
+    .mcdonalds-title-bar .title-bar-left { order: 0; }
+    .mcdonalds-title-bar > div:nth-child(2) { order: 1; font-size: 1.05em !important; }
+    .mcdonalds-title-bar > div:nth-child(3) { order: 2; flex: 1 1 100%; justify-content: center; }
+
+    .item-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; padding: 10px; }
+    .menu-item { padding: 10px; min-height: 0; }
+    .item-image { width: 88px; height: 88px; font-size: 2em; }
+    .item-info h3 { font-size: 1em; }
+    .item-price { font-size: 1.15em; }
+    .add-to-cart-btn { font-size: 14px; padding: 10px 6px; min-height: 46px; }
+
+    /* 分類鈕列：覆蓋前段「直向堆疊、每顆全寬」規則，改 2×2 橫向換行 */
+    .category-nav { flex-direction: row !important; flex-wrap: wrap !important; gap: 8px; padding: 10px; }
+    .category-btn { width: auto !important; flex: 1 1 42%; font-size: 15px; padding: 10px 6px; min-height: 48px; }
+    /* 提示/我的錢包鈕（inline margin-left:auto 會把它擠出畫面）：改整行置中 */
+    .category-nav > div { margin-left: 0 !important; flex: 1 1 100%; justify-content: center; }
+    .category-nav > .hint-btn { margin-left: 0 !important; flex: 1 1 100%; justify-content: center; }
+
+    /* 購物車項目維持橫排（覆蓋前段直向堆疊），刪除/加減鈕不佔整行 */
+    .cart-item { flex-direction: row; text-align: left; padding: 12px; gap: 8px; }
+    .cart-item-controls { justify-content: flex-end; gap: 10px; }
+
+    /* 困難模式找零：錢包左右分欄改上下 */
+    .a3c-wallet-split { flex-direction: column; }
+    .a3c-info-card { flex-wrap: wrap; }
+}
