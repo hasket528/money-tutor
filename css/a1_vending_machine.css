@@ -1034,3 +1034,64 @@ a.selection-btn {
 @media (max-width: 600px) {
     .results-mascot-img { width: 44px; height: 44px; }
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——全部寫在 media query 內，桌面（>900px）零影響
+   問題實測（五視窗截圖）：
+   ・測驗畫面 .main-content-wrapper 無響應式，≤600 販賣機/操作面板並排成
+     164px/186px 兩條細長欄、頁高近 3000px，飲料單欄小圖無限捲
+   ・768 操作面板僅 200px，「請投幣」等文字被擠成直排；標題列被 JS 注入的
+     @media 堆成三行（161px 高）
+   注意：標題列與 .main-content-wrapper 樣式由 showShoppingScreen() 以 <style>
+   注入（晚於本檔），同名屬性必須 !important 才蓋得過。
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── 601–900（iPad 直式）：保留左右欄，操作面板固定 300px 防壓扁；標題列壓回一行 ── */
+@media (min-width: 601px) and (max-width: 900px) {
+    .title-bar { flex-direction: row !important; gap: 8px !important; padding: 10px 12px !important; }
+    .title-bar-left > span:nth-of-type(2) { display: none; } /* 系統名稱 */
+    .title-bar-center { font-size: 16px !important; white-space: nowrap; }
+    .title-bar-right { gap: 8px !important; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .back-to-menu-btn { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
+
+    .control-panel { flex: 0 0 300px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .product-item img { width: 96px; height: 96px; }
+}
+
+/* ── ≤600（手機）：直向堆疊——飲料窗在上（3欄），操作面板全寬在下；
+      標題列兩行制（第一行＝🥤＋任務名，第二行＝題數＋按鈕） ── */
+@media (max-width: 600px) {
+    .title-bar {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        row-gap: 4px !important;
+        padding: 8px 10px !important;
+    }
+    .title-bar-left { flex: 0 0 auto !important; }
+    .title-bar-left > span:nth-of-type(2) { display: none; } /* 系統名稱 */
+    .title-bar-center { flex: 0 1 auto !important; font-size: 15px !important; white-space: nowrap; }
+    .title-bar-right { flex: 1 1 100% !important; justify-content: center; gap: 8px !important; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .back-to-menu-btn { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
+
+    .main-content-wrapper { flex-direction: column !important; gap: 10px !important; }
+    .machine-front { flex: none; }
+    .control-panel { flex: none; }
+
+    .product-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px; }
+    .product-item img { width: 84px; height: 84px; }
+    .product-name { font-size: 0.85rem; }
+    .product-price { font-size: 1rem; }
+
+    .retrieval-bin { height: 150px; }
+    .vended-product img { width: 96px; height: 96px; }
+
+    /* 操作面板內部緊湊（指示螢幕商品圖 128px 為 inline style，需 !important） */
+    .screen-content { min-height: 150px; }
+    #screenProductImage { height: 100px; }
+    .display-screen img { width: 96px !important; height: 96px !important; }
+}

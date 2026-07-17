@@ -1752,6 +1752,23 @@
         },
 
         // 開始遊戲
+        // 📱 行動裝置（≤600px 直向堆疊時）：把指定區塊帶進視野——選完飲料捲到操作面板、
+        // 出貨後捲到取物口。matchMedia 守門：桌面與平板橫式不執行，行為零變化。
+        _mobileScrollTo(selector) {
+            if (!(window.matchMedia && window.matchMedia('(max-width: 600px)').matches)) return;
+            const el = document.querySelector(selector);
+            if (!el) return;
+            const top = el.getBoundingClientRect().top + window.scrollY - 90; // 預留 sticky 標題列
+            window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+        },
+
+        // 📱 行動裝置（≤900px）：換題重新渲染時捲回頂部（桌面不執行）
+        _mobileScrollReset() {
+            if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+                window.scrollTo(0, 0);
+            }
+        },
+
         startGame() {
             // 檢查必要設定是否完成
             if (!this.state.settings.difficulty) {
@@ -3114,6 +3131,9 @@
                 </div>
             `;
 
+            // 📱 行動裝置：換題重新渲染後捲回頂部（桌面不執行）
+            this._mobileScrollReset();
+
             // coinFirst 模式：初始化飲料鎖定狀態與提示
             if (this.isCoinFirstMode()) {
                 if (this.state.settings.taskType === 'coinFirstAssigned') {
@@ -3328,6 +3348,7 @@
             this.highlightProduct(productId);
             this.updateAmounts();
             if (window.TutorContext) TutorContext.update({ phase: 'payment' });
+            this._mobileScrollTo('.control-panel'); // 📱 手機：下一步（投幣）在下方面板
 
             // 調試日志：記錄最終選擇的商品信息
             VendingMachine.Debug.log('product', ' 最終選擇的商品:', product.name, '價格:', product.price);
@@ -5628,6 +5649,8 @@
                          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22150%22%3E%3Crect width=%22100%22 height=%22150%22 fill=%22%23ddd%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2214%22 text-anchor=%22middle%22 fill=%22%23999%22%3E${product.name}%3C/text%3E%3C/svg%3E'">
                 </div>
             `;
+
+            this._mobileScrollTo('.retrieval-bin'); // 📱 手機：取物口在上方飲料窗底部
 
             // 簡單模式：更新流程步驟並添加黃色發光提示動畫到取物口的飲料
             if (this.state.settings.difficulty === 'easy') {
