@@ -91,6 +91,13 @@
       .home-part-btn { border:2px solid #dbe7f5; background:#fff; color:#334e68; font-weight:800; font-size:0.9rem; padding:8px 16px; border-radius:22px; cursor:pointer; font-family:inherit; transition:background .15s,border-color .15s,color .15s; white-space:nowrap; }
       .home-part-btn:hover { border-color:#2563eb; }
       .home-part-btn.active { background:linear-gradient(135deg,#1e3a5f,#2563eb); color:#fff; border-color:transparent; }
+      /* 手機：分頁改左對齊兩欄格線，第一～六部分上下成欄對齊；第七部分與自訂各自獨佔一列、左緣與左欄對齊 */
+      @media (max-width:480px) {
+        .home-parts { display:grid; grid-template-columns:1fr 1fr; justify-items:start; }
+        .home-part-btn { white-space:normal; }
+        .home-part-btn[data-part="7"],
+        .home-part-btn[data-part="custom"] { grid-column:1 / -1; }
+      }
     </style>
     <div class="home-parts" id="home-parts" role="tablist" aria-label="情境分部">
       <button class="home-part-btn active" data-part="1" role="tab">第一部分・基礎買賣</button>
