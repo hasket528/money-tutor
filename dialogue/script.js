@@ -310,7 +310,7 @@ const SCENARIO_CLERK_MAP = {
   anti_scam:         { keyword: '云希', name: '陌生來電', role: '不明來電', image: 'images/clerk-scamcall.png', intro: '這裡練習「接到詐騙電話怎麼保護自己」——中獎詐騙、假客服、借提款卡、買點數。記住四步：不給錢、不給資料、掛電話、告訴大人！' },
   classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、借了怎麼記下來、約好還錢時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
   online_scam:       { keyword: '云枫', name: '陌生網友', role: '網路陌生人', image: 'images/clerk-scamcall.png', intro: '這裡練習在網路上遇到陌生人要你花錢時怎麼保護自己——假網拍叫你先匯款、中獎簡訊叫你點連結。記住：不先匯款、不點陌生連結、不給帳號密碼！' },
-  self_protect:      { keyword: '云泽', name: '安全小老師', role: '金錢安全', image: 'images/clerk-police.png', intro: '我是安全小老師！這裡練習怎麼主動保護自己的錢——被人勒索要錢怎麼辦、錢和密碼怎麼保管好、撿到別人的錢怎麼處理。' },
+  self_protect:      { keyword: '云泽', name: '安全小老師', role: '金錢安全', image: 'images/clerk-selfprotect.jpg', intro: '我是安全小老師！這裡練習怎麼主動保護自己的錢——被人勒索要錢怎麼辦、錢和密碼怎麼保管好、撿到別人的錢怎麼處理。' },
   job_scam:          { keyword: '云枫', name: '防詐小老師阿全', role: '打工應徵', image: 'images/clerk-jobscam.jpg', intro: '你好！我是防詐小老師阿全。在這裡你可以練習找打工時怎麼保護自己，像是有人要你先繳保證金、押證件，或說有太好賺的工作。記住三不：不先繳錢、不押證件、不借帳戶！' },
   privacy_protect:   { keyword: '云希', name: '資安小老師', role: '個資保護', image: 'images/clerk-privacy.jpg', intro: '你好，我是資訊安小老師，在這裡你可以練習保護個人資料——像是驗證碼不唸給別人、問卷個資不亂填、帳號密碼不外借。記住：個資就像家裡的鑰匙，不能隨便交出去！' },
   take_bus:          { keyword: '云扬', name: '阿原', role: '公車', image: 'images/clerk-takebus.jpg', intro: '你好！我是公車司機阿原，在這裡你可以練習搭公車——包括先確認路線、上車刷卡或投現，還有零錢不夠、坐過站的時候怎麼開口求助。' },
