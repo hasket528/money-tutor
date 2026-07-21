@@ -3818,13 +3818,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-student-voice-close').addEventListener('click', () => { sfx.click(); hideStudentVoicePopup(); });
   document.getElementById('btn-student-voice-replay').addEventListener('click', () => speakAsUser('你好！我要點餐！'));
 
-  // 瀏覽器不支援語音輸入：把「🎤 說話」換成「🗣️ 跟讀」（同一顆鈕，手機切換列不會變擠）。
-  // 學生一樣要開口念，只是改由自評，不再是一條灰掉的死路。
+  // 瀏覽器不支援語音輸入：藏起「🎤 說話」即可——「🗣️ 跟讀」是常駐模式，
+  // 學生照樣能開口念、聽自己的錄音，切換列也不會多出一顆用不了的鈕。
   if (!recognizer.supported) {
     const voiceBtn = document.querySelector('.mode-btn[data-mode="voice"]');
-    voiceBtn.dataset.mode = 'echo';
-    voiceBtn.textContent  = '🗣️ 跟讀';
-    voiceBtn.title = voiceUnsupportedReason();
+    voiceBtn.hidden = true;
+    document.querySelector('.mode-btn[data-mode="echo"]').title = voiceUnsupportedReason();
   }
 
   // 跟讀模式：聽示範 ＋ 錄音回放 ＋ 三級自評

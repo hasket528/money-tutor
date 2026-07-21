@@ -342,8 +342,9 @@
 
       <!-- 輸入模式切換 -->
       <div class="mode-switcher" role="group" aria-label="輸入方式">
-        <!-- 沒有語音辨識的瀏覽器：這顆會被 script.js 換成「🗣️ 跟讀」（data-mode 一併改成 echo） -->
+        <!-- 沒有語音辨識的瀏覽器：script.js 會把這顆藏起來（跟讀鈕仍在，學生照樣能開口練） -->
         <button class="mode-btn active" data-mode="voice" aria-pressed="true">🎤 說話</button>
+        <button class="mode-btn"        data-mode="echo">🗣️ 跟讀</button>
         <button class="mode-btn"        data-mode="options">🔘 選擇對話</button>
         <button class="mode-btn"        data-mode="wordbank" hidden>🧱 詞庫排序</button>
         <button class="mode-btn"        data-mode="text">⌨️ 打字</button>

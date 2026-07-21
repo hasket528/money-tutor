@@ -1301,13 +1301,16 @@ body {
 /* 模式切換 */
 .mode-switcher {
   display: flex;
+  flex-wrap: wrap;          /* 跟讀鈕常駐後最多會有 5 顆（含詞庫排序），窄螢幕換行不擠爆 */
   background: var(--gray-200);
   border-radius: 12px;
   padding: 4px;
   gap: 4px;
 }
 .mode-btn {
-  flex: 1;
+  flex: 1 1 30%;            /* 一列最多三顆，超出自動換行 */
+  min-height: 44px;         /* 觸控命中區 */
+  white-space: nowrap;
   background: none;
   border: none;
   border-radius: 8px;
