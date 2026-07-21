@@ -2335,7 +2335,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'wallet':
                     if (value === 'custom') {
                         this.state.settings.walletAmount = 'custom';
-                        // TODO: 顯示自訂金額輸入框
                         this.showCustomWalletModal();
                     } else {
                         this.state.settings.walletAmount = parseInt(value);

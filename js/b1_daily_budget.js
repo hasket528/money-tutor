@@ -26,7 +26,7 @@ const B1_SCENARIOS = {
         { icon:'🎮', label:'電玩體驗',  cat:'entertainment', imageFile:'icon-b1-easy-arcade-game.png',               items:[{ name:'遊戲費',   min:30,  max:60  }, { name:'零食費',  min:10, max:20 }] },
         { icon:'🌸', label:'賞花展',    cat:'outdoor',       imageFile:'icon-b1-easy-flower-show.png',               items:[{ name:'門票費',   min:50,  max:100 }, { name:'零食費',  min:10, max:20 }] },
         // ── 國高中生常見場景 ──
-        { icon:'🧋', label:'買手搖飲',  cat:'food',          imageFile:'icon-b1-easy-buy-bubble-tea.png',            items:[{ name:'飲料費',   min:40,  max:70  }, { name:'零食費',  min:15, max:30 }] }, // TODO: 圖片待新增（目前 onerror 自動顯示 🧋 emoji）
+        { icon:'🧋', label:'買手搖飲',  cat:'food',          imageFile:'icon-b1-easy-buy-bubble-tea.png',            items:[{ name:'飲料費',   min:40,  max:70  }, { name:'零食費',  min:15, max:30 }] }, // 未提供圖片檔時，由 onerror 自動改以 🧋 emoji 顯示
         { icon:'📓', label:'買筆記本',  cat:'shopping',      imageFile:'icon-b1-easy-buy-stationery.png',            items:[{ name:'筆記本費', min:25,  max:45  }, { name:'鉛筆費',  min:10, max:20 }] },
         { icon:'🍳', label:'早餐店',    cat:'food',          imageFile:'icon-b1-easy-buy-breakfast.png',             items:[{ name:'早餐費',   min:35,  max:60  }, { name:'公車票',  min:15, max:30 }] },
         { icon:'🎮', label:'買遊戲點數', cat:'entertainment', imageFile:'icon-b1-easy-arcade-game.png',              items:[{ name:'點數費',   min:50,  max:100 }, { name:'零食費',  min:10, max:20 }] },

@@ -2501,7 +2501,7 @@ class QuantityComparisonGame {
             return;
         }
 
-        // 配置驅動的 UI 生成 (按照 CLAUDE.md 原則)
+        // 配置驅動的 UI 生成
         // 配置驅動的設定選項生成（配合活動狀態）
         const setActiveState = (options, currentValue) => {
             return options.map(option => ({
@@ -2693,7 +2693,7 @@ class QuantityComparisonGame {
             });
         }
         
-        // 配置驅動的音效播放 (按照 CLAUDE.md 原則)
+        // 配置驅動的音效播放
         this.playSound('select');
         
         // UI 狀態更新
@@ -3115,7 +3115,7 @@ class QuantityComparisonGame {
         this.playSound('click');
         this.gameState = 'playing';
         
-        // 獲取遊戲配置 (按照 CLAUDE.md 配置驅動原則)
+        // 獲取遊戲配置（配置驅動）
         const gameConfig = this.config.getGameConfig(this.gameSettings);
         GameDebug.logConfig('🎮 遊戲配置生成完成', {
             difficulty: gameConfig.difficulty.label,
@@ -3963,7 +3963,7 @@ class QuantityComparisonGame {
         }
         this.state.isAnswering = true;
 
-        // 配置驅動的重複答題檢查 (按照 CLAUDE.md 原則)
+        // 配置驅動的重複答題檢查
         const gameConfig = this.config.getGameConfig(this.gameSettings);
         const testMode = gameConfig.testMode;
         
@@ -4132,7 +4132,7 @@ class QuantityComparisonGame {
         
         this.updateGameInfo();
         
-        // 配置驅動的音效和語音 (按照 CLAUDE.md 原則)
+        // 配置驅動的音效和語音
         this.playSound('correct');
         this.startFireworksAnimation();
         
@@ -5962,7 +5962,7 @@ class QuantityComparisonGame {
                     timerInfo.textContent = `時間: ${this.formatTime(this.timeRemaining)}`;
                 }
 
-                // 配置驅動的時間警告 (按照 CLAUDE.md 原則)
+                // 配置驅動的時間警告
                 const gameConfig = this.config.getGameConfig(this.gameSettings);
                 if (this.timeRemaining === gameConfig.timeLimit.warningTime) {
                     GameDebug.logTimer('⚠️ 時間警告觸發', { warningTime: gameConfig.timeLimit.warningTime });
