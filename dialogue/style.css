@@ -2851,6 +2851,14 @@ body.aac-mode .practice-footer::before {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* 語音輸入不可用：看起來停用，但仍可點（點了會說明原因） */
+.mode-btn-unavailable { opacity: 0.5; }
+/* 說明文字被點出來時閃一下，免得在畫面下方沒被注意到 */
+.voice-unsupported-note.flash { animation: noteFlash 1.2s ease-out; }
+@keyframes noteFlash {
+  0%, 100% { background: var(--orange-lt); }
+  25%, 75% { background: #FFD9A0; }
+}
 
 /* ═════════════════════════════════════════════════════════════════
    📱 手機頂列修正（2026-07-17）——練習頁 app-header 在 ≤600px 溢出視窗

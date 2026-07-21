@@ -1971,6 +1971,42 @@ function applyScaffoldMode(ladderMode, step) {
   }
 }
 
+// ─── 語音輸入不可用時的說明 ──────────────────────────
+// 只把按鈕 disabled 會讓使用者完全不知道原因（手機看不到 title）。這裡依實際環境給具體說法，
+// 最常見的是 iPhone「加到主畫面」的 App 版本：Safari 分頁有語音辨識，standalone 模式沒有。
+function voiceEnvInfo() {
+  const ua  = navigator.userAgent || '';
+  const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                  || navigator.standalone === true;
+  const inApp = /Line\/|FBAN|FBAV|Instagram/i.test(ua);
+  return { ios, standalone, inApp, android: /Android/.test(ua) };
+}
+
+function voiceUnsupportedReason() {
+  const e = voiceEnvInfo();
+  const where = `（偵測到：${e.ios ? 'iPhone／iPad' : e.android ? 'Android' : '電腦'}${e.standalone ? '・已安裝為 App' : ''}${e.inApp ? '・App 內建瀏覽器' : ''}）`;
+  if (e.ios && e.standalone)
+    return `「加到主畫面」的 App 版本沒有語音輸入，這是 iPhone 系統的限制。想練「說話」請改用 Safari 開啟本站；在這裡可以先用「🔘 選擇對話」或「⌨️ 打字」。${where}`;
+  if (e.inApp)
+    return `從 LINE／FB 內建瀏覽器開啟時沒有語音輸入。請用右上角選單的「用瀏覽器開啟」，或先用「🔘 選擇對話」。${where}`;
+  if (e.standalone)
+    return `安裝成 App 的版本在這台裝置拿不到語音輸入。請改用瀏覽器開啟本站，或先用「🔘 選擇對話」。${where}`;
+  return `此瀏覽器不支援語音輸入，已自動改用「🔘 選擇對話」模式。建議改用 Chrome 或 Safari。${where}`;
+}
+
+// 點了灰掉的「🎤 說話」→ 把原因顯示出來並捲進視野（而不是毫無反應）
+function showVoiceUnsupportedNote() {
+  const note = document.getElementById('voice-unsupported-note');
+  if (!note) return;
+  note.textContent = voiceUnsupportedReason();
+  note.hidden = false;
+  note.classList.remove('flash');
+  void note.offsetWidth;            // 重排以重新觸發動畫
+  note.classList.add('flash');
+  note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 // ─── 輸入模式切換 ────────────────────────────────────
 
 function setInputMode(mode) {
@@ -1999,7 +2035,9 @@ function setInputMode(mode) {
   // AAC 模式 / 鷹架模式時隱藏模式切換列（鷹架模式由系統主導輸入模式）
   const aacOn = document.body.classList.contains('aac-mode');
   document.querySelector('.mode-switcher').hidden = aacOn || state.scaffoldMode;
-  document.getElementById('voice-unsupported-note').hidden = recognizer.supported || aacOn;
+  const vNote = document.getElementById('voice-unsupported-note');
+  vNote.hidden = recognizer.supported || aacOn;
+  if (!vNote.hidden) vNote.textContent = voiceUnsupportedReason();
 
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -3402,6 +3440,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!state.scenario) return;
+      // 語音輸入不可用：不要無聲吞掉這次點擊，把原因說出來（按鈕不再 disabled）
+      if (btn.dataset.mode === 'voice' && !recognizer.supported) { showVoiceUnsupportedNote(); return; }
       hideFeedback();
       hideActionRow();
       setInputMode(btn.dataset.mode);
@@ -3641,11 +3681,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-student-voice-close').addEventListener('click', () => { sfx.click(); hideStudentVoicePopup(); });
   document.getElementById('btn-student-voice-replay').addEventListener('click', () => speakAsUser('你好！我要點餐！'));
 
-  // 瀏覽器不支援語音輸入：停用「說話」切換鈕
+  // 瀏覽器不支援語音輸入：把「說話」鈕標成不可用，但**保持可點**——點下去要說明原因，
+  // 否則手機上只看到一顆灰掉的鈕、毫無解釋（title 在觸控裝置不會顯示）
   if (!recognizer.supported) {
     const voiceBtn = document.querySelector('.mode-btn[data-mode="voice"]');
-    voiceBtn.disabled = true;
-    voiceBtn.title = '此瀏覽器不支援語音輸入';
+    voiceBtn.classList.add('mode-btn-unavailable');
+    voiceBtn.setAttribute('aria-disabled', 'true');
+    voiceBtn.title = voiceUnsupportedReason();
   }
 
   // 學習歷程已移至專案「學習歷程總覽」（teacher.html）；主頁內嵌歷程頁與其事件綁定已移除
