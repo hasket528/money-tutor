@@ -813,6 +813,9 @@
   <script src="data/student_audio_map.js"></script>
   <script src="db.js"></script>
   <script src="../js/nav-auth.js"></script>
+  <!-- 行動瀏覽器：首次觸控時喚醒 speechSynthesis（否則非手勢當下觸發的即時 TTS 在手機不出聲），
+       並統一把中文語句導到最佳中文語音。預錄音檔不經此層。 -->
+  <script src="../js/audio-unlocker.js"></script>
   <script src="script.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

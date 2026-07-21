@@ -970,15 +970,29 @@ body {
   flex-shrink: 0;
   font-size: 1.15rem;
   opacity: 0.85;
+  /* 觸控命中區至少 44×44（Apple HIG／WCAG 2.5.5）：原本只有約 39×26，手指容易點空，
+     點空就會落到外層 .option-btn＝直接作答，對學生是「想聽卻誤答」 */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 4px 7px;
   border-radius: 8px;
   background: rgba(0,0,0,0.05);
   cursor: pointer;
+  touch-action: manipulation;   /* 消 300ms 點擊延遲 */
   transition: opacity 0.15s, background 0.15s, transform 0.1s;
   line-height: 1;
   user-select: none;
 }
-.btn-speak-option:hover, .btn-speak-option:focus-visible { opacity: 1; background: rgba(0,0,0,0.1); transform: scale(1.08); outline: none; }
+/* 放大效果只給真的有游標的裝置：觸控裝置的 sticky hover 會在按下瞬間改變命中區，
+   讓 mousedown/mouseup 落在不同位置＝click 不觸發（見 CLAUDE.md「按下會位移」踩雷） */
+@media (hover: hover) {
+  .btn-speak-option:hover { opacity: 1; background: rgba(0,0,0,0.1); transform: scale(1.08); }
+}
+.btn-speak-option:focus-visible { opacity: 1; background: rgba(0,0,0,0.1); outline: none; }
+.btn-speak-option:active { opacity: 1; background: rgba(0,0,0,0.14); }   /* 按下回饋只改顏色，不改幾何 */
 .option-btn:hover,
 .option-btn:focus-visible {
   border-color: var(--scene-color);

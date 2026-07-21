@@ -603,7 +603,10 @@ let _userAudio       = null;   // 學生示範音檔（本機 edge-tts 伺服器
 // 本機 edge-tts 語音伺服器（voicegen/voice_server.py）：學生語音優先走它，音色最準；
 // 連不到就退回瀏覽器即時 TTS。_voiceServerDown 記住本次 session 是否連過失敗，避免重複卡頓。
 const VOICE_SERVER   = 'http://localhost:5678';
-let _voiceServerDown = false;
+// 只有本機開發時才可能有這台伺服器。線上（GitHub Pages）與手機一律直接視為「不可用」，
+// 否則每次都要先打一個必然失敗的請求，等失敗才退回 TTS——延遲之外還會脫離使用者手勢脈絡，
+// 行動瀏覽器會擋掉之後的播放。
+let _voiceServerDown = !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 // 播放世代序號：每次 stopAllAudio 就 +1。跨越「等待」的接續播放（句首旁白唸完 → 接店員台詞、
 // 台詞播完 → 接句尾旁白）在真正開播前比對世代，避免使用者已關彈窗/已作答後語音才冒出來。
@@ -746,7 +749,10 @@ function speakAsUser(text, onEnd) {
   const hash = window.STUDENT_AUDIO_MAP && window.STUDENT_AUDIO_MAP[text];
   if (hash && student?.fileKey) {
     const base = `audio/student/stu_${student.fileKey}_${hash}`;
-    const candidates = [`${base}.wav`, `${base}.mp3`];
+    // ⚠️ mp3 必須排第一（與店員台詞鏈一致）：deploy 只上傳 mp3（robocopy 排除 wav），
+    // 若 wav 在前，線上必定先 404、要到 onerror 回呼才播 mp3——那時已脫離使用者手勢的同步脈絡，
+    // 行動瀏覽器（iOS 最嚴）會擋掉該次 play()，症狀就是「手機點喇叭沒聲音、電腦正常」。
+    const candidates = [`${base}.mp3`, `${base}.wav`];
     let idx = 0;
     const tryNext = () => {
       if (idx >= candidates.length) { speakAsUserLive(text, onEnd); return; }
