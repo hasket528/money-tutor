@@ -1980,12 +1980,24 @@ function voiceEnvInfo() {
   const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
                   || navigator.standalone === true;
   const inApp = /Line\/|FBAN|FBAV|Instagram/i.test(ua);
-  return { ios, standalone, inApp, android: /Android/.test(ua) };
+  // 瀏覽器判斷順序有講究：Samsung Internet／Edge／Opera 的 UA 都含 "Chrome"，必須先比對它們
+  const samsung = /SamsungBrowser/i.test(ua);
+  const browser = samsung                    ? '三星瀏覽器'
+                : /EdgA?\//.test(ua)         ? 'Edge'
+                : /OPR\/|Opera/i.test(ua)    ? 'Opera'
+                : /Firefox\/|FxiOS/i.test(ua)? 'Firefox'
+                : /Chrome\//.test(ua)        ? 'Chrome'
+                : /Safari\//.test(ua)        ? 'Safari'
+                : '其他瀏覽器';
+  return { ios, standalone, inApp, samsung, browser, android: /Android/.test(ua) };
 }
 
 function voiceUnsupportedReason() {
   const e = voiceEnvInfo();
-  const where = `（偵測到：${e.ios ? 'iPhone／iPad' : e.android ? 'Android' : '電腦'}${e.standalone ? '・已安裝為 App' : ''}${e.inApp ? '・App 內建瀏覽器' : ''}）`;
+  const where = `（偵測到：${e.ios ? 'iPhone／iPad' : e.android ? 'Android' : '電腦'}・${e.browser}${e.standalone ? '・已安裝為 App' : ''}${e.inApp ? '・App 內建瀏覽器' : ''}）`;
+  // 三星瀏覽器（Samsung Internet）基於 Chromium 但沒有實作語音辨識 API，換 Chrome 即可
+  if (e.samsung)
+    return `三星瀏覽器沒有語音輸入功能，換成 Chrome 就可以用。做法：用 Chrome 開啟本站，再從 Chrome 的選單「加到主畫面」重新安裝一次。在這裡可以先用「🔘 選擇對話」或「⌨️ 打字」。${where}`;
   if (e.ios && e.standalone)
     return `「加到主畫面」的 App 版本沒有語音輸入，這是 iPhone 系統的限制。想練「說話」請改用 Safari 開啟本站；在這裡可以先用「🔘 選擇對話」或「⌨️ 打字」。${where}`;
   if (e.inApp)
