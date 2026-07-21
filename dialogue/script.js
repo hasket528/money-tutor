@@ -618,6 +618,11 @@ function stopAllAudio() {
   if (_shopkeeperAudio) { _shopkeeperAudio.pause(); _shopkeeperAudio = null; }
   if (_feedbackAudio)   { _feedbackAudio.pause();   _feedbackAudio   = null; }
   if (_userAudio)       { _userAudio.pause();       _userAudio       = null; }
+  // 跟讀的自己錄音回放（echoRecorder 於後方定義，執行期才會用到）
+  if (typeof echoRecorder !== 'undefined' && echoRecorder._audio) {
+    try { echoRecorder._audio.pause(); } catch {}
+    echoRecorder._audio = null;
+  }
   tts.cancel();
 }
 
@@ -1981,10 +1986,91 @@ function echoModelSentence(step) {
   return (step?.accepted_phrases && step.accepted_phrases[0]) || step?.options?.[0] || '';
 }
 
+// 跟讀錄音：念完可以播回自己的聲音，自評才有依據（純憑印象容易隨手按「很清楚」）。
+// 刻意**只留在記憶體**，換步驟就丟：不寫 IndexedDB → 不佔空間、學生的聲音不會留在裝置上。
+// 錄音（MediaRecorder）與語音辨識是兩回事，三星瀏覽器／iOS 主畫面 App 都有錄音。
+const echoRecorder = {
+  _rec: null, _stream: null, _chunks: [], _url: null, _audio: null,
+
+  get supported() { return !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder); },
+  get recording() { return this._rec?.state === 'recording'; },
+  get hasClip()   { return !!this._url; },
+
+  async start() {
+    stopAllAudio();
+    this.discard();
+    try {
+      this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      echoSetStatus('沒辦法使用麥克風，請允許錄音權限；也可以不錄音直接自評。');
+      return;
+    }
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+               : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    this._chunks = [];
+    this._rec = mime ? new MediaRecorder(this._stream, { mimeType: mime }) : new MediaRecorder(this._stream);
+    this._rec.ondataavailable = e => { if (e.data?.size) this._chunks.push(e.data); };
+    this._rec.onstop = () => {
+      this._releaseStream();
+      const blob = new Blob(this._chunks, { type: this._rec?.mimeType || 'audio/webm' });
+      if (blob.size >= 200) this._url = URL.createObjectURL(blob);
+      echoSetStatus(this._url ? '錄好了！按「▶ 聽我念的」聽聽看，再評分。' : '錄音太短，再念一次試試。');
+      updateEchoRecUI();
+    };
+    this._rec.start();
+    echoSetStatus('🔴 錄音中……請念出上面的句子，念完按「⏹ 停止」。');
+    updateEchoRecUI();
+  },
+
+  stop() { if (this.recording) { try { this._rec.stop(); } catch {} } },
+
+  play() {
+    if (!this._url) return;
+    stopAllAudio();
+    this._audio = new Audio(this._url);
+    this._audio.play().catch(() => echoSetStatus('播不出來，請再錄一次。'));
+  },
+
+  // 換步驟／離開跟讀模式：丟掉錄音並確實關掉麥克風（否則指示燈會一直亮著）
+  discard() {
+    this.stop();
+    this._releaseStream();
+    if (this._audio) { try { this._audio.pause(); } catch {} this._audio = null; }
+    if (this._url) { URL.revokeObjectURL(this._url); this._url = null; }
+    this._chunks = [];
+  },
+
+  _releaseStream() {
+    this._stream?.getTracks().forEach(t => t.stop());
+    this._stream = null;
+  },
+};
+
+function echoSetStatus(msg) {
+  const el = document.getElementById('echo-status');
+  if (el) { el.textContent = msg || ''; el.hidden = !msg; }
+}
+
+function updateEchoRecUI() {
+  const recBtn  = document.getElementById('btn-echo-rec');
+  const playBtn = document.getElementById('btn-echo-play');
+  if (!recBtn || !playBtn) return;
+  if (!echoRecorder.supported) { recBtn.hidden = true; playBtn.hidden = true; return; }
+  recBtn.hidden = false;
+  recBtn.textContent = echoRecorder.recording ? '⏹ 停止'
+                     : echoRecorder.hasClip   ? '🔄 重新錄音'
+                     : '🎤 錄下我念的';
+  recBtn.classList.toggle('recording', echoRecorder.recording);
+  playBtn.hidden = !echoRecorder.hasClip || echoRecorder.recording;
+}
+
 function renderEchoRow() {
   const step = state.situation?.steps[state.stepIndex];
   if (!step) return;
   document.getElementById('echo-model-text').textContent = `「${echoModelSentence(step)}」`;
+  echoRecorder.discard();          // 每一步重新錄，不會播到上一句
+  echoSetStatus(echoRecorder.supported ? '' : '這個瀏覽器不能錄音，念完直接自評即可。');
+  updateEchoRecUI();
 }
 
 // 自評 → 走與其他模式相同的結果流程（handleResult），只是 score 來自學生／老師的判斷
@@ -2061,6 +2147,8 @@ function setInputMode(mode) {
   document.getElementById('text-input-row').hidden = (mode !== 'text');
   document.getElementById('voice-row').hidden      = (mode !== 'voice');
   document.getElementById('echo-row').hidden       = (mode !== 'echo');
+  // 離開跟讀模式一定要收掉錄音，否則麥克風會一直開著
+  if (mode !== 'echo' && typeof echoRecorder !== 'undefined') echoRecorder.discard();
 
   // AAC 模式 / 鷹架模式時隱藏模式切換列（鷹架模式由系統主導輸入模式）
   const aacOn = document.body.classList.contains('aac-mode');
@@ -3722,11 +3810,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     voiceBtn.title = voiceUnsupportedReason();
   }
 
-  // 跟讀模式：聽示範 ＋ 三級自評
+  // 跟讀模式：聽示範 ＋ 錄音回放 ＋ 三級自評
   document.getElementById('btn-echo-listen').addEventListener('click', () => {
     const step = state.situation?.steps[state.stepIndex];
     if (step) speakAsUser(echoModelSentence(step));
   });
+  document.getElementById('btn-echo-rec').addEventListener('click', () => {
+    sfx.click();
+    if (echoRecorder.recording) echoRecorder.stop(); else echoRecorder.start();
+  });
+  document.getElementById('btn-echo-play').addEventListener('click', () => { sfx.click(); echoRecorder.play(); });
   document.querySelectorAll('.btn-echo-rate').forEach(btn => {
     btn.addEventListener('click', () => { sfx.click(); handleEchoSelfRate(btn.dataset.rate); });
   });

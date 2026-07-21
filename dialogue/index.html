@@ -313,7 +313,12 @@
       <div class="echo-row" id="echo-row" hidden>
         <p class="echo-label">🗣️ 照著念一次</p>
         <p class="echo-model" id="echo-model-text"></p>
-        <button class="btn-tool btn-echo-listen" id="btn-echo-listen">🔊 聽示範</button>
+        <div class="echo-tools">
+          <button class="btn-tool btn-echo-listen" id="btn-echo-listen">🔊 聽示範</button>
+          <button class="btn-tool btn-echo-rec"  id="btn-echo-rec">🎤 錄下我念的</button>
+          <button class="btn-tool btn-echo-play" id="btn-echo-play" hidden>▶ 聽我念的</button>
+        </div>
+        <p class="echo-status" id="echo-status" hidden aria-live="polite"></p>
         <p class="echo-ask">念得怎麼樣？</p>
         <div class="echo-rate" role="group" aria-label="自己評分">
           <button class="btn-echo-rate rate-perfect" data-rate="perfect">😀 很清楚</button>

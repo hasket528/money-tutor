@@ -2869,6 +2869,21 @@ body.aac-mode .practice-footer::before {
   text-align: center;
   line-height: 1.5;
 }
+.echo-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.echo-tools .btn-tool { min-height: 44px; touch-action: manipulation; }
+/* 錄音中：只換顏色與文字，不改尺寸（改幾何會讓觸控 click 落空） */
+.btn-echo-rec.recording {
+  background: var(--red-lt, #FEE2E2);
+  border-color: var(--red, #DC2626);
+  color: var(--red, #DC2626);
+  font-weight: 700;
+}
+.echo-status {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  text-align: center;
+  line-height: 1.5;
+}
 .echo-ask { font-size: 0.9rem; color: var(--gray-600); margin-top: 4px; }
 .echo-rate { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .btn-echo-rate {
