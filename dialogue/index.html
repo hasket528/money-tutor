@@ -36,7 +36,7 @@
     if (!isEdge && !dismissed) {
       if (isTablet) {
         document.getElementById('edge-banner-text').innerHTML =
-          '🔊 平板裝置建議使用 <strong>Chrome</strong> 或 <strong>Edge</strong> App 開啟以使用語音功能；無法使用語音時，可改用「🔘 選擇對話」模式。';
+          '🔊 手機／平板建議用 <strong>Chrome</strong> 或 <strong>Edge</strong> 開啟才有語音辨識（三星瀏覽器沒有）；沒有語音辨識時會自動改用「🗣️ 跟讀」——一樣開口念，念完自己評分。';
         document.getElementById('edge-banner-link').style.display = 'none';
       }
       document.getElementById('edge-banner').style.display = 'block';
@@ -308,6 +308,20 @@
         <button class="btn-send" id="btn-text-submit">送出</button>
       </div>
 
+      <!-- 跟讀模式：沒有語音辨識的瀏覽器（如三星瀏覽器、iOS 主畫面 App）也能練開口。
+           不辨識、不評分，唸完由學生／老師自評，紀錄會標明是自評。 -->
+      <div class="echo-row" id="echo-row" hidden>
+        <p class="echo-label">🗣️ 照著念一次</p>
+        <p class="echo-model" id="echo-model-text"></p>
+        <button class="btn-tool btn-echo-listen" id="btn-echo-listen">🔊 聽示範</button>
+        <p class="echo-ask">念得怎麼樣？</p>
+        <div class="echo-rate" role="group" aria-label="自己評分">
+          <button class="btn-echo-rate rate-perfect" data-rate="perfect">😀 很清楚</button>
+          <button class="btn-echo-rate rate-partial" data-rate="partial">🙂 還可以</button>
+          <button class="btn-echo-rate rate-failed"  data-rate="failed">🔁 再練一次</button>
+        </div>
+      </div>
+
       <!-- 語音控制 -->
       <div class="voice-row" id="voice-row">
         <button class="btn-tool" id="btn-hint-trigger">💡 提示</button>
@@ -319,6 +333,7 @@
 
       <!-- 輸入模式切換 -->
       <div class="mode-switcher" role="group" aria-label="輸入方式">
+        <!-- 沒有語音辨識的瀏覽器：這顆會被 script.js 換成「🗣️ 跟讀」（data-mode 一併改成 echo） -->
         <button class="mode-btn active" data-mode="voice" aria-pressed="true">🎤 說話</button>
         <button class="mode-btn"        data-mode="options">🔘 選擇對話</button>
         <button class="mode-btn"        data-mode="wordbank" hidden>🧱 詞庫排序</button>

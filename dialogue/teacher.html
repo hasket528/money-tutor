@@ -530,7 +530,8 @@ async function loadData() {
   });
 
   // ─── 購物對話練習各情境（欄位比照主課程單元）──────────
-  const MODE = { voice: '🎤說話', options: '🔘選項', text: '⌨️打字', frame: '🖼️看圖', wordbank: '🧩詞庫' };
+  // echo＝跟讀（無語音辨識的瀏覽器用），成績來自學生自評而非系統評分，標籤標明「自評」以免與辨識結果混淆
+  const MODE = { voice: '🎤說話', options: '🔘選項', text: '⌨️打字', frame: '🖼️看圖', wordbank: '🧩詞庫', echo: '🗣️跟讀(自評)' };
   const fmtModes = (modes) => Object.entries(modes).filter(([, n]) => n)
     .sort((a, b) => b[1] - a[1]).map(([k, n]) => `${MODE[k] || k}×${n}`).join('・') || '—';
   const byScenario = {};

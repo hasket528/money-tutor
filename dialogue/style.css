@@ -2851,13 +2851,43 @@ body.aac-mode .practice-footer::before {
   opacity: 0.4;
   cursor: not-allowed;
 }
-/* 語音輸入不可用：看起來停用，但仍可點（點了會說明原因） */
-.mode-btn-unavailable { opacity: 0.5; }
-/* 說明文字被點出來時閃一下，免得在畫面下方沒被注意到 */
-.voice-unsupported-note.flash { animation: noteFlash 1.2s ease-out; }
-@keyframes noteFlash {
-  0%, 100% { background: var(--orange-lt); }
-  25%, 75% { background: #FFD9A0; }
+/* ── 跟讀模式（無語音辨識的瀏覽器）────────────────────── */
+.echo-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--scene-lt, #F1F5F9);
+  border-radius: 12px;
+}
+.echo-label { font-size: 0.9rem; color: var(--gray-600); font-weight: 700; }
+.echo-model {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--scene-color, #0F172A);
+  text-align: center;
+  line-height: 1.5;
+}
+.echo-ask { font-size: 0.9rem; color: var(--gray-600); margin-top: 4px; }
+.echo-rate { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.btn-echo-rate {
+  min-height: 44px;              /* 觸控命中區 */
+  padding: 8px 14px;
+  border: 2px solid var(--gray-300, #CBD5E1);
+  border-radius: 10px;
+  background: var(--white, #fff);
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-echo-rate:active { background: var(--gray-200, #E2E8F0); }   /* 按下只變色，不改幾何 */
+.btn-echo-rate.rate-perfect { border-color: var(--green, #16A34A); }
+.btn-echo-rate.rate-partial { border-color: var(--orange, #F59E0B); }
+@media (hover: hover) {
+  .btn-echo-rate:hover { background: var(--gray-100, #F1F5F9); }
 }
 
 /* ═════════════════════════════════════════════════════════════════

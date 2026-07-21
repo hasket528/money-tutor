@@ -1963,12 +1963,40 @@ function applyScaffoldMode(ladderMode, step) {
       // 自己說：不給範句
       modelBox.hidden = true;
     }
-    setInputMode('voice');
+    // 沒有語音辨識的瀏覽器：階梯的「開口說」兩級都導到跟讀（自評），
+    // 否則 setInputMode('voice') 會被轉走、鷹架路徑在這些裝置上直接斷掉
+    setInputMode(recognizer.supported ? 'voice' : 'echo');
   } else {
     if (label) label.textContent = '💡 你可以這樣說';
     modelBox.hidden = true;
     setInputMode(ladderMode);
   }
+}
+
+// ─── 跟讀模式（不需語音辨識）──────────────────────────
+// 用於沒有 SpeechRecognition 的瀏覽器（三星瀏覽器、iOS 主畫面 App…）：
+// 給範句 → 學生照念 → 自評三級。不辨識、不比對，成績照記但標 selfRated，
+// 報表上與「系統評分」分開呈現，才不會混淆 IEP 資料的來源。
+function echoModelSentence(step) {
+  return (step?.accepted_phrases && step.accepted_phrases[0]) || step?.options?.[0] || '';
+}
+
+function renderEchoRow() {
+  const step = state.situation?.steps[state.stepIndex];
+  if (!step) return;
+  document.getElementById('echo-model-text').textContent = `「${echoModelSentence(step)}」`;
+}
+
+// 自評 → 走與其他模式相同的結果流程（handleResult），只是 score 來自學生／老師的判斷
+function handleEchoSelfRate(rate) {
+  const step = state.situation?.steps[state.stepIndex];
+  if (!step) return;
+  const sentence = echoModelSentence(step);
+  if (rate === 'failed') {                    // 「再練一次」＝不記分，只重播示範讓學生再試
+    speakAsUser(sentence);
+    return;
+  }
+  handleResult(sentence, { score: rate, detected: [], selfRated: true });
 }
 
 // ─── 語音輸入不可用時的說明 ──────────────────────────
@@ -1995,28 +2023,17 @@ function voiceEnvInfo() {
 function voiceUnsupportedReason() {
   const e = voiceEnvInfo();
   const where = `（偵測到：${e.ios ? 'iPhone／iPad' : e.android ? 'Android' : '電腦'}・${e.browser}${e.standalone ? '・已安裝為 App' : ''}${e.inApp ? '・App 內建瀏覽器' : ''}）`;
+  const fallback = '這裡改用「🗣️ 跟讀」：一樣開口念，念完自己評分（紀錄會標明是自評）。';
   // 三星瀏覽器（Samsung Internet）基於 Chromium 但沒有實作語音辨識 API，換 Chrome 即可
   if (e.samsung)
-    return `三星瀏覽器沒有語音輸入功能，換成 Chrome 就可以用。做法：用 Chrome 開啟本站，再從 Chrome 的選單「加到主畫面」重新安裝一次。在這裡可以先用「🔘 選擇對話」或「⌨️ 打字」。${where}`;
+    return `三星瀏覽器沒有語音辨識功能。要用「說話」請改用 Chrome 開啟本站，再從 Chrome 選單「加到主畫面」重新安裝。${fallback}${where}`;
   if (e.ios && e.standalone)
-    return `「加到主畫面」的 App 版本沒有語音輸入，這是 iPhone 系統的限制。想練「說話」請改用 Safari 開啟本站；在這裡可以先用「🔘 選擇對話」或「⌨️ 打字」。${where}`;
+    return `「加到主畫面」的 App 版本沒有語音辨識，這是 iPhone 系統的限制。要用「說話」請改用 Safari 開啟本站。${fallback}${where}`;
   if (e.inApp)
-    return `從 LINE／FB 內建瀏覽器開啟時沒有語音輸入。請用右上角選單的「用瀏覽器開啟」，或先用「🔘 選擇對話」。${where}`;
+    return `從 LINE／FB 內建瀏覽器開啟時沒有語音辨識。請用選單的「用瀏覽器開啟」。${fallback}${where}`;
   if (e.standalone)
-    return `安裝成 App 的版本在這台裝置拿不到語音輸入。請改用瀏覽器開啟本站，或先用「🔘 選擇對話」。${where}`;
-  return `此瀏覽器不支援語音輸入，已自動改用「🔘 選擇對話」模式。建議改用 Chrome 或 Safari。${where}`;
-}
-
-// 點了灰掉的「🎤 說話」→ 把原因顯示出來並捲進視野（而不是毫無反應）
-function showVoiceUnsupportedNote() {
-  const note = document.getElementById('voice-unsupported-note');
-  if (!note) return;
-  note.textContent = voiceUnsupportedReason();
-  note.hidden = false;
-  note.classList.remove('flash');
-  void note.offsetWidth;            // 重排以重新觸發動畫
-  note.classList.add('flash');
-  note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    return `安裝成 App 的版本在這台裝置拿不到語音辨識。請改用瀏覽器開啟本站。${fallback}${where}`;
+  return `此瀏覽器沒有語音辨識，建議改用 Chrome 或 Safari。${fallback}${where}`;
 }
 
 // ─── 輸入模式切換 ────────────────────────────────────
@@ -2031,8 +2048,8 @@ function setInputMode(mode) {
 
   // AAC 模式強制使用選項，不允許切換
   if (document.body.classList.contains('aac-mode')) mode = 'options';
-  // 不支援語音輸入的瀏覽器不進語音模式
-  if (mode === 'voice' && !recognizer.supported) mode = 'options';
+  // 不支援語音輸入的瀏覽器：改走「跟讀」（一樣要開口，只是改自評），不再直接退回選項
+  if (mode === 'voice' && !recognizer.supported) mode = 'echo';
   // 本步驟沒有句框卻停在 frame/wordbank 模式 → 退回選項，確保向後相容
   if ((mode === 'frame' || mode === 'wordbank') && !hasFrame) mode = 'options';
   if (mode === 'wordbank' && !buildWordBank(getStepFrame(step))) mode = 'options';
@@ -2043,6 +2060,7 @@ function setInputMode(mode) {
   document.getElementById('word-bank').hidden      = (mode !== 'wordbank');
   document.getElementById('text-input-row').hidden = (mode !== 'text');
   document.getElementById('voice-row').hidden      = (mode !== 'voice');
+  document.getElementById('echo-row').hidden       = (mode !== 'echo');
 
   // AAC 模式 / 鷹架模式時隱藏模式切換列（鷹架模式由系統主導輸入模式）
   const aacOn = document.body.classList.contains('aac-mode');
@@ -2058,6 +2076,7 @@ function setInputMode(mode) {
   if (mode === 'options')  renderOptions();
   if (mode === 'frame')    renderFrameSlot();
   if (mode === 'wordbank') renderWordBank();
+  if (mode === 'echo')     renderEchoRow();
   if (mode === 'text') {
     document.getElementById('text-input').value = '';
     document.getElementById('text-input').focus();
@@ -2468,8 +2487,9 @@ function handleResult(text, result) {
   const isSelection = (state.inputMode !== 'voice' && state.inputMode !== 'text');
   const heardLabel = document.getElementById('feedback-heard-label');
   if (heardLabel) {
-    heardLabel.textContent = isSelection
-      ? (result.score === 'perfect' ? '回答正確' : '回答錯誤')
+    // 跟讀是學生自己判斷念得好不好，沒有辨識結果可秀，講「回答正確」也不精確
+    heardLabel.textContent = result.selfRated ? '你念的句子'
+      : isSelection ? (result.score === 'perfect' ? '回答正確' : '回答錯誤')
       : '偵測到你說的';
   }
   document.getElementById('heard-text').textContent =
@@ -2528,7 +2548,8 @@ function handleResult(text, result) {
     attempts: state.stepAttempts,
     hintUsed: state.stepHintUsed,
     promptLevel: state.frameLadder ? state.promptLevel : null,  // 作答當下的支持等級（IEP 用）
-    mode: state.inputMode,                                       // 作答當下的反應模式（語音/選項/打字/句框/詞庫）
+    mode: state.inputMode,                                       // 作答當下的反應模式（語音/選項/打字/句框/詞庫/跟讀）
+    selfRated: !!result.selfRated,                               // 跟讀＝學生自評，非系統評分（報表需分開看）
   };
 
   // 提示褪除（精熟標準）：連續答對 MASTERY 次才降一級；答錯立即升一級並重置連對。
@@ -2725,6 +2746,7 @@ function showComplete() {
       hintUsed: !!r?.hintUsed,
       promptLevel: r?.promptLevel ?? null,
       mode: r?.mode ?? null,
+      selfRated: !!r?.selfRated,      // 跟讀自評（非系統評分）
     })),
     durationSec: Math.round((endTs - (state.startTs || endTs)) / 1000),
   }).catch(() => {});
@@ -3452,8 +3474,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!state.scenario) return;
-      // 語音輸入不可用：不要無聲吞掉這次點擊，把原因說出來（按鈕不再 disabled）
-      if (btn.dataset.mode === 'voice' && !recognizer.supported) { showVoiceUnsupportedNote(); return; }
       hideFeedback();
       hideActionRow();
       setInputMode(btn.dataset.mode);
@@ -3693,14 +3713,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-student-voice-close').addEventListener('click', () => { sfx.click(); hideStudentVoicePopup(); });
   document.getElementById('btn-student-voice-replay').addEventListener('click', () => speakAsUser('你好！我要點餐！'));
 
-  // 瀏覽器不支援語音輸入：把「說話」鈕標成不可用，但**保持可點**——點下去要說明原因，
-  // 否則手機上只看到一顆灰掉的鈕、毫無解釋（title 在觸控裝置不會顯示）
+  // 瀏覽器不支援語音輸入：把「🎤 說話」換成「🗣️ 跟讀」（同一顆鈕，手機切換列不會變擠）。
+  // 學生一樣要開口念，只是改由自評，不再是一條灰掉的死路。
   if (!recognizer.supported) {
     const voiceBtn = document.querySelector('.mode-btn[data-mode="voice"]');
-    voiceBtn.classList.add('mode-btn-unavailable');
-    voiceBtn.setAttribute('aria-disabled', 'true');
+    voiceBtn.dataset.mode = 'echo';
+    voiceBtn.textContent  = '🗣️ 跟讀';
     voiceBtn.title = voiceUnsupportedReason();
   }
+
+  // 跟讀模式：聽示範 ＋ 三級自評
+  document.getElementById('btn-echo-listen').addEventListener('click', () => {
+    const step = state.situation?.steps[state.stepIndex];
+    if (step) speakAsUser(echoModelSentence(step));
+  });
+  document.querySelectorAll('.btn-echo-rate').forEach(btn => {
+    btn.addEventListener('click', () => { sfx.click(); handleEchoSelfRate(btn.dataset.rate); });
+  });
 
   // 學習歷程已移至專案「學習歷程總覽」（teacher.html）；主頁內嵌歷程頁與其事件綁定已移除
 
