@@ -495,11 +495,22 @@ function bestOSVoice() {
       || bestTWVoice(null);
 }
 
+// 電話號碼要「逐字唸」：165 是反詐騙專線，TTS 預設會唸成「一百六十五」。
+// 只轉換整段剛好等於 165 的數字——其他三位數在本 App 幾乎都是金額（如「總共 113 元」），
+// 逐字唸反而錯。顯示文字維持阿拉伯數字不變，只有唸出來的那一份被替換。
+// ⚠️ 預錄音檔（學生選項/回饋語）走的是 voicegen 的生成清單，那邊有各自的同名轉換，改規則要兩邊一起改。
+function toSpeechText(text) {
+  const s = String(text ?? '');
+  // 後面接「元」的一律當金額（「165 元」唸一百六十五元），其餘的 165 才是專線號碼
+  return s.replace(/\d+/g, (n, i) =>
+    (n === '165' && !/^\s*元/.test(s.slice(i + n.length))) ? '一六五' : n);
+}
+
 const tts = {
   speak(text, rate = 0.85, onEnd) {
     if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(toSpeechText(text));
     // 後備瀏覽器 TTS 也用高品質即時語音：店員聲音若已是 Online/Natural 就沿用，
     // 否則升級為最佳 Online zh-TW（與提示/任務朗讀同一支高品質聲音）
     const voice = bestTWVoice(voiceManager.selected);
@@ -536,7 +547,7 @@ function speakHint(text, rate = 0.85) {
 
   const voice = bestTWVoice(null);
 
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(toSpeechText(text));
   u.lang  = voice?.lang || 'zh-TW';
   u.rate  = rate;
   if (voice) u.voice = voice;
@@ -547,29 +558,32 @@ function speakHint(text, rate = 0.85) {
 // 語音生成器會剝除括號 → OS 無預錄檔，一律用瀏覽器即時 TTS 唸出。
 // 語速略慢、不觸發店員頭像動畫（這是旁白/內心話，不是店員在說話）。
 // 不呼叫 stopAllAudio（呼叫時機為店員台詞已播完），只接續唸出 OS。
-function speakInnerOS(text) {
-  if (!text || !window.speechSynthesis) return;
+function speakInnerOS(text, onEnd) {
+  if (!text || !window.speechSynthesis) { onEnd?.(); return; }
   const voice = bestOSVoice();   // 旁白固定曉臻→雅婷→…
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(toSpeechText(text));
   u.lang = voice?.lang || 'zh-TW';
   u.rate = 0.82;
   if (voice) u.voice = voice;
+  let ended = false;
+  const finish = () => { if (!ended) { ended = true; onEnd?.(); } };
+  u.onend = finish; u.onerror = finish;
   window.speechSynthesis.speak(u);
 }
 
 // 播放心裡 OS：預錄旁白 MP3（曉臻，audio/clerk/{場景}_{情境}_{步驟}_os）優先——
 // 像店員台詞一樣可自動播放；缺檔才退回即時 TTS（bestOSVoice：曉臻→雅婷）。
-function playInnerOS(step, osText) {
-  if (!osText) return;
-  if (state.scenario?.isCustom) { speakInnerOS(osText); return; }  // 自訂情境無預錄 → 即時 TTS
+function playInnerOS(step, osText, onDone) {
+  if (!osText) { onDone?.(); return; }
+  if (state.scenario?.isCustom) { speakInnerOS(osText, onDone); return; }  // 自訂情境無預錄 → 即時 TTS
   const base  = `audio/clerk/${state.scenario.id}_${state.situation.id}_${step.id}_os`;
   const cands = [base + '.mp3', base + '.wav'];
   let i = 0;
   const tryNext = () => {
-    if (i >= cands.length) { speakInnerOS(osText); return; }
+    if (i >= cands.length) { speakInnerOS(osText, onDone); return; }
     const a = new Audio(cands[i++]);
     _shopkeeperAudio = a;
-    a.onended = () => { if (_shopkeeperAudio === a) _shopkeeperAudio = null; };
+    a.onended = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; onDone?.(); } };
     a.onerror = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } };
     a.play().catch(() => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } });
   };
@@ -591,8 +605,13 @@ let _userAudio       = null;   // 學生示範音檔（本機 edge-tts 伺服器
 const VOICE_SERVER   = 'http://localhost:5678';
 let _voiceServerDown = false;
 
+// 播放世代序號：每次 stopAllAudio 就 +1。跨越「等待」的接續播放（句首旁白唸完 → 接店員台詞、
+// 台詞播完 → 接句尾旁白）在真正開播前比對世代，避免使用者已關彈窗/已作答後語音才冒出來。
+let _audioSeq = 0;
+
 // 停止所有系統語音（WAV + TTS），任何新語音播放前都應呼叫
 function stopAllAudio() {
+  _audioSeq++;
   if (_shopkeeperAudio) { _shopkeeperAudio.pause(); _shopkeeperAudio = null; }
   if (_feedbackAudio)   { _feedbackAudio.pause();   _feedbackAudio   = null; }
   if (_userAudio)       { _userAudio.pause();       _userAudio       = null; }
@@ -638,15 +657,22 @@ function playShopkeeperAudio(step) {
   const osMatch    = fullPrompt.match(/（([^）]*)）/);
   const osText     = osMatch ? osMatch[1].trim() : '';
   const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
-  const speakOS    = () => { if (osText) setTimeout(() => playInnerOS(step, osText), 350); };
+  // 唸的順序＝畫面上文字的順序：括號在句首（「（電話響了）欸，我是…」）＝場景旁白，
+  // 要先唸旁白再唸台詞；括號在句尾（「…（老闆找回 35 元）」）＝事後內心話，維持台詞在前。
+  const osLeading  = !!osText && /^\s*（/.test(fullPrompt);
+  const mySeq      = _audioSeq;   // 本次播放的世代（stopAllAudio 會使其失效）
+  const speakOS    = () => {
+    if (osText && !osLeading) setTimeout(() => { if (mySeq === _audioSeq) playInnerOS(step, osText); }, 350);
+  };
 
   const doTTS = () => {
     if (done) return;
     done = true;
     // 有店員台詞：先唸台詞再接心理 OS；純旁白步驟（無台詞）：直接用旁白語音唸 OS，不唸括號
+    // （句首旁白已在進台詞前唸過，這裡不重複）
     if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
-    else if (osText) playInnerOS(step, osText);
-    else tts.speak(fullPrompt, 0.85);
+    else if (osText && !osLeading) playInnerOS(step, osText);
+    else if (!osText) tts.speak(fullPrompt, 0.85);
   };
 
   function tryNext() {
@@ -663,7 +689,9 @@ function playShopkeeperAudio(step) {
     audio.play().then(() => { done = true; }).catch(() => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; tryNext(); } });
   }
 
-  tryNext();
+  // 句首旁白先唸完，隔 250ms 再進店員台詞；其餘情況直接播台詞（旁白由 speakOS 收尾）
+  if (osLeading) playInnerOS(step, osText, () => setTimeout(() => { if (mySeq === _audioSeq) tryNext(); }, 250));
+  else tryNext();
 }
 
 // 自訂情境步驟語音：老師錄音 blob（custom_audio store）優先，缺檔走即時 TTS。
@@ -673,29 +701,38 @@ function playCustomStepAudio(step, avatar) {
   const osMatch    = fullPrompt.match(/（([^）]*)）/);
   const osText     = osMatch ? osMatch[1].trim() : '';
   const clerkLine  = fullPrompt.replace(/（[^）]*）/g, '').trim();
-  const speakOS    = () => { if (osText) setTimeout(() => playInnerOS(step, osText), 350); };
+  const osLeading  = !!osText && /^\s*（/.test(fullPrompt);   // 同 playShopkeeperAudio：句首旁白先唸
+  const mySeq      = _audioSeq;
+  const speakOS    = () => {
+    if (osText && !osLeading) setTimeout(() => { if (mySeq === _audioSeq) playInnerOS(step, osText); }, 350);
+  };
   const doTTS      = () => {
     if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
-    else if (osText) playInnerOS(step, osText);
-    else tts.speak(fullPrompt, 0.85);
+    else if (osText && !osLeading) playInnerOS(step, osText);   // 句首旁白已在 start 前唸過，不重複
+    else if (!osText) tts.speak(fullPrompt, 0.85);
   };
 
-  const key = `${state.scenario.id}::${step.id}::say`;
-  (typeof dbAudioGet === 'function' ? dbAudioGet(key) : Promise.resolve(null))
-    .then(blob => {
-      if (!blob) { doTTS(); return; }
-      const url   = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      _shopkeeperAudio = audio;
-      audio.onplay  = () => avatar?.classList.add('speaking');
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        if (_shopkeeperAudio === audio) { avatar?.classList.remove('speaking'); speakOS(); }
-      };
-      audio.onerror = () => { URL.revokeObjectURL(url); if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } };
-      audio.play().catch(() => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } });
-    })
-    .catch(doTTS);
+  const start = () => {
+    const key = `${state.scenario.id}::${step.id}::say`;
+    (typeof dbAudioGet === 'function' ? dbAudioGet(key) : Promise.resolve(null))
+      .then(blob => {
+        if (!blob) { doTTS(); return; }
+        const url   = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        _shopkeeperAudio = audio;
+        audio.onplay  = () => avatar?.classList.add('speaking');
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          if (_shopkeeperAudio === audio) { avatar?.classList.remove('speaking'); speakOS(); }
+        };
+        audio.onerror = () => { URL.revokeObjectURL(url); if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } };
+        audio.play().catch(() => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } });
+      })
+      .catch(doTTS);
+  };
+
+  if (osLeading) playInnerOS(step, osText, () => setTimeout(() => { if (mySeq === _audioSeq) start(); }, 250));
+  else start();
 }
 
 // 以學生語音朗讀（選項喇叭用）。onEnd：唸完（或無法唸）後的回呼，供「播完再出彈窗」使用。
