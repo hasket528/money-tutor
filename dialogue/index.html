@@ -319,11 +319,15 @@
           <button class="btn-tool btn-echo-play" id="btn-echo-play" hidden>▶ 聽我念的</button>
         </div>
         <p class="echo-status" id="echo-status" hidden aria-live="polite"></p>
-        <p class="echo-ask">念得怎麼樣？</p>
-        <div class="echo-rate" role="group" aria-label="自己評分">
-          <button class="btn-echo-rate rate-perfect" data-rate="perfect">😀 很清楚</button>
-          <button class="btn-echo-rate rate-partial" data-rate="partial">🙂 還可以</button>
-          <button class="btn-echo-rate rate-failed"  data-rate="failed">🔁 再練一次</button>
+        <!-- 自評要等「念過」才出現（錄完音，或按下不錄音直接評分），避免還沒開口就先按分數 -->
+        <button class="btn-echo-skip" id="btn-echo-skip-rec">不錄音，直接評分</button>
+        <div class="echo-rate-block" id="echo-rate-block" hidden>
+          <p class="echo-ask">念得怎麼樣？</p>
+          <div class="echo-rate" role="group" aria-label="自己評分">
+            <button class="btn-echo-rate rate-perfect" data-rate="perfect">😀 很清楚</button>
+            <button class="btn-echo-rate rate-partial" data-rate="partial">🙂 還可以</button>
+            <button class="btn-echo-rate rate-failed"  data-rate="failed">🔁 再練一次</button>
+          </div>
         </div>
       </div>
 

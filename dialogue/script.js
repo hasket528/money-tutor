@@ -2003,6 +2003,7 @@ const echoRecorder = {
       this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       echoSetStatus('沒辦法使用麥克風，請允許錄音權限；也可以不錄音直接自評。');
+      unlockEchoRate();          // 拿不到麥克風就別把學生卡在這一步
       return;
     }
     const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
@@ -2015,7 +2016,7 @@ const echoRecorder = {
       const blob = new Blob(this._chunks, { type: this._rec?.mimeType || 'audio/webm' });
       if (blob.size >= 200) this._url = URL.createObjectURL(blob);
       echoSetStatus(this._url ? '錄好了！按「▶ 聽我念的」聽聽看，再評分。' : '錄音太短，再念一次試試。');
-      updateEchoRecUI();
+      if (this._url) unlockEchoRate(); else updateEchoRecUI();   // 念過了才開放自評
     };
     this._rec.start();
     echoSetStatus('🔴 錄音中……請念出上面的句子，念完按「⏹ 停止」。');
@@ -2051,17 +2052,32 @@ function echoSetStatus(msg) {
   if (el) { el.textContent = msg || ''; el.hidden = !msg; }
 }
 
+// 自評是否已開放：先念過（錄完音／按了「不錄音，直接評分」）才給評分，順序才是「做→評」。
+// 錄音失敗或裝置不能錄音時也會開放，免得流程卡死。
+let _echoRateUnlocked = false;
+function unlockEchoRate() { _echoRateUnlocked = true; updateEchoRecUI(); }
+
 function updateEchoRecUI() {
   const recBtn  = document.getElementById('btn-echo-rec');
   const playBtn = document.getElementById('btn-echo-play');
+  const skipBtn = document.getElementById('btn-echo-skip-rec');
+  const rateBox = document.getElementById('echo-rate-block');
   if (!recBtn || !playBtn) return;
-  if (!echoRecorder.supported) { recBtn.hidden = true; playBtn.hidden = true; return; }
-  recBtn.hidden = false;
-  recBtn.textContent = echoRecorder.recording ? '⏹ 停止'
-                     : echoRecorder.hasClip   ? '🔄 重新錄音'
-                     : '🎤 錄下我念的';
-  recBtn.classList.toggle('recording', echoRecorder.recording);
-  playBtn.hidden = !echoRecorder.hasClip || echoRecorder.recording;
+
+  const canRecord = echoRecorder.supported;
+  recBtn.hidden  = !canRecord;
+  playBtn.hidden = !canRecord || !echoRecorder.hasClip || echoRecorder.recording;
+  if (canRecord) {
+    recBtn.textContent = echoRecorder.recording ? '⏹ 停止'
+                       : echoRecorder.hasClip   ? '🔄 重新錄音'
+                       : '🎤 錄下我念的';
+    recBtn.classList.toggle('recording', echoRecorder.recording);
+  }
+
+  // 不能錄音的裝置直接開放自評；能錄音的要先念過（或明示跳過錄音）
+  const rateOpen = _echoRateUnlocked || !canRecord;
+  if (rateBox) rateBox.hidden = !rateOpen;
+  if (skipBtn) skipBtn.hidden = rateOpen || echoRecorder.recording;
 }
 
 function renderEchoRow() {
@@ -2069,6 +2085,7 @@ function renderEchoRow() {
   if (!step) return;
   document.getElementById('echo-model-text').textContent = `「${echoModelSentence(step)}」`;
   echoRecorder.discard();          // 每一步重新錄，不會播到上一句
+  _echoRateUnlocked = false;       // 新的一步：自評重新鎖回去，先念再評
   echoSetStatus(echoRecorder.supported ? '' : '這個瀏覽器不能錄音，念完直接自評即可。');
   updateEchoRecUI();
 }
@@ -3820,6 +3837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (echoRecorder.recording) echoRecorder.stop(); else echoRecorder.start();
   });
   document.getElementById('btn-echo-play').addEventListener('click', () => { sfx.click(); echoRecorder.play(); });
+  document.getElementById('btn-echo-skip-rec').addEventListener('click', () => { sfx.click(); unlockEchoRate(); });
   document.querySelectorAll('.btn-echo-rate').forEach(btn => {
     btn.addEventListener('click', () => { sfx.click(); handleEchoSelfRate(btn.dataset.rate); });
   });

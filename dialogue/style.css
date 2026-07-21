@@ -2885,6 +2885,20 @@ body.aac-mode .practice-footer::before {
   line-height: 1.5;
 }
 .echo-ask { font-size: 0.9rem; color: var(--gray-600); margin-top: 4px; }
+.echo-rate-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* 次要動作：不錄音直接評分（現場吵、學生不想錄音時的出口） */
+.btn-echo-skip {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: var(--gray-600);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .echo-rate { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .btn-echo-rate {
   min-height: 44px;              /* 觸控命中區 */
