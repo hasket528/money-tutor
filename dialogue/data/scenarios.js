@@ -3298,7 +3298,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#DB2777', bg: '#FCE7F3', accent: '#9D174D' },
       situations: [
         {
-          id: "offer_seat", name: "讓座給需要的人", icon: "🧓", clerkName: "老奶奶",
+          id: "offer_seat", name: "讓座給需要的人", icon: "🧓", clerkName: "老奶奶", clerkImage: "images/clerk-ridemanner-passenger.jpg",
           desc: "看到更需要座位的人，主動讓座",
           steps: [
             mkStep({ id:"give_seat", say:"（一位老奶奶上車，車上沒有空位了，你坐在座位上）", task:"主動讓座",
@@ -3316,7 +3316,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "drop_item", name: "東西掉了請人幫忙", icon: "🎒", clerkName: "隔壁乘客",
+          id: "drop_item", name: "東西掉了請人幫忙", icon: "🎒", clerkName: "隔壁乘客", clerkImage: "images/clerk-ridemanner-passenger.jpg",
           desc: "水壺滾到別人腳邊，有禮貌請人幫忙",
           steps: [
             mkStep({ id:"ask_pick", say:"（你的水壺滾到別人腳邊了）", task:"有禮貌請人幫忙撿",
@@ -3334,7 +3334,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "stranger_money", name: "陌生人跟你要錢", icon: "🙅", clerkName: "陌生乘客",
+          id: "stranger_money", name: "陌生人跟你要錢", icon: "🙅", clerkName: "陌生乘客", clerkImage: "images/clerk-ridemanner-passenger.jpg",
           desc: "車上有陌生人跟你要錢：拒絕並靠近站務員",
           steps: [
             mkStep({ id:"refuse_give", say:"（車上陌生人靠近）同學，借我一百元啦！", task:"拒絕陌生人",
