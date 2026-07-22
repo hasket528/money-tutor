@@ -318,7 +318,7 @@ const SCENARIO_CLERK_MAP = {
   train_ticket:      { keyword: '晓涵', name: '惠姐', role: '火車站售票口', image: 'images/clerk-trainticket.jpg', intro: '你好！我是火車站售票口的惠姐。在這裡你可以練習到售票口買票，包括說清楚目的地和車種、付錢確認找零、問月台，還有趕不上車、車票不見時怎麼辦。' },
   taxi:              { keyword: '雲哲', name: '陳伯', role: '計程車', image: 'images/clerk-taxi.jpg', intro: '你好！我是計程車司機陳伯。在這裡你可以練習搭計程車，包括上車前先問價錢確認預算、說清楚目的地、下車付錢確認找零，不舒服也要開口說。' },
   easycard_service:  { keyword: '晓梦', name: '小雲', role: '悠遊卡服務台', image: 'images/clerk-easycard.jpg', intro: '你好！我是悠遊卡服務台的服務員小雲，在這裡你可以練習，加值後確認餘額、卡片掉了趕快掛失、辦學生卡要帶什麼。' },
-  ride_manner:       { keyword: '曉雨', name: '車上的人', role: '車廂禮儀', image: 'images/clerk-ridemanner.jpg', intro: '這裡練習車廂裡的禮儀與求助——讓座給需要的人、有禮貌請人幫忙，還有陌生人跟你要錢時怎麼拒絕、找站務員。' },
+  ride_manner:       { keyword: '曉雨', name: '車長', role: '車廂禮儀', image: 'images/clerk-ridemanner.jpg', intro: '你好，我是車長，在這裡你可以練習車廂裡的禮儀與求助——像是讓座給需要的人、有禮貌請人幫忙，還有陌生人跟你要錢時怎麼拒絕、找站務員' },
   cinema:            { keyword: '晓辰', name: '阿哲', role: '電影院', image: 'images/clerk-cinema.jpg', intro: '你好！我是電影院服務員阿哲。在這裡你可以練習買電影票，包括選場次、用學生證買優惠票、加購前想想預算，遲到了也知道怎麼辦。' },
   ktv:               { keyword: '晓睿', name: '小雅', role: 'KTV', image: 'images/clerk-ktv.jpg', intro: '歡迎光臨！我是 KTV 服務員小雅。在這裡你可以練習問清楚計費、算總價大家分攤、時間到照預算收手，還有點歌機不會用怎麼請人教。' },
   swimming_pool:     { keyword: '晓晓', name: '游泳池店員', role: '游泳池', image: 'images/clerk-pool.jpg', intro: '你好！我是游泳池的服務人員。這裡練習買學生票、租置物櫃認識「押金」、東西不見了到服務台找回來。' },
