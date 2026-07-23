@@ -559,7 +559,12 @@
           <select class="form-input" id="kw-situation-select"></select>
         </div>
       </div>
-      <p class="editor-desc">每一步可改三樣：<strong>🔑 關鍵字</strong>（說話／打字判定，逗號分隔）、<strong>💬 可接受完整語句</strong>（一行一句，第 1 句＝標準答案，用於提示與高級判定）、<strong>🔘 選項</strong>（一行一個，第 1 個＝正解）。<strong>欄位清空＝還原該項預設</strong>。改文字不影響預錄語音（音檔仍唸原句）；干擾選項若與可接受語句相同，儲存時會自動剔除以確保只有一個正解。</p>
+      <p class="editor-desc">勾選要編修的欄位（未勾選的欄位收起、原設定保留）：<strong>🔑 關鍵字</strong>（說話／打字判定，逗號分隔）、<strong>💬 可接受完整語句</strong>（一行一句，第 1 句＝標準答案，用於提示與高級判定）、<strong>🔘 選項</strong>（一行一個，第 1 個＝正解）。<strong>欄位清空＝還原該項預設</strong>。改文字不影響預錄語音（音檔仍唸原句）；干擾選項若與可接受語句相同，儲存時會自動剔除以確保只有一個正解。</p>
+      <div id="kw-field-toggles" style="display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 6px;font-size:0.9rem">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="kw-show-kw" checked> 🔑 關鍵字</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="kw-show-acc"> 💬 完整語句</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="kw-show-opt"> 🔘 選項</label>
+      </div>
       <div id="kw-step-list"></div>
       <p id="kw-save-status" style="font-size:0.82rem;color:var(--green);margin-top:8px;min-height:1.2em"></p>
       <button class="btn-secondary" id="btn-kw-reset-situation" style="margin-top:4px">↩ 還原本子情境的全部預設</button>

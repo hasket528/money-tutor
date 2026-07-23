@@ -1094,6 +1094,13 @@ function openKeywordEditor() {
     });
   scSel.onchange = renderKwSituations;
   document.getElementById('kw-situation-select').onchange = renderKwSteps;
+  // 欄位顯示勾選：載入記憶狀態＋綁定（勾選只切顯示，不重繪、不丟未存輸入）
+  const show = loadKwShow();
+  [['kw', 'kw-show-kw'], ['acc', 'kw-show-acc'], ['opt', 'kw-show-opt']].forEach(([k, id]) => {
+    const cb = document.getElementById(id);
+    cb.checked  = !!show[k];
+    cb.onchange = applyKwFieldVisibility;
+  });
   renderKwSituations();
   nav.push('screen-keyword-editor');
 }
@@ -1179,14 +1186,42 @@ function renderKwSteps() {
     optInput.placeholder = '一行一個；第 1 行＝正確選項；清空＝還原預設';
     optInput.style.cssText = 'resize:vertical;font-size:0.85rem';
 
+    // 各欄位包進分類容器，由上方勾選控制顯示（只切顯示不重繪，未存的輸入不會丟）
+    const wrapField = (cls, subLabel, inputEl) => {
+      const d = document.createElement('div');
+      d.className = cls;
+      d.append(mkSub(subLabel), inputEl);
+      return d;
+    };
     row.append(
       label, hint,
-      mkSub('🔑 關鍵字（說話／打字判定）'), kwInput,
-      mkSub('💬 可接受完整語句（第 1 句＝標準答案，用於提示與高級判定）'), accInput,
-      mkSub('🔘 選項（第 1 個＝正解，用於選項模式）'), optInput,
+      wrapField('kw-field-kw',  '🔑 關鍵字（說話／打字判定）', kwInput),
+      wrapField('kw-field-acc', '💬 可接受完整語句（第 1 句＝標準答案，用於提示與高級判定）', accInput),
+      wrapField('kw-field-opt', '🔘 選項（第 1 個＝正解，用於選項模式）', optInput),
     );
     list.appendChild(row);
   });
+  applyKwFieldVisibility();
+}
+
+// ─── 編輯欄位顯示勾選（要不要呈現編修）───────────────────
+// 三個分類各一個勾選框；未勾選＝收起該欄位（值仍在 DOM，儲存時照常保留）。狀態記憶本機。
+const KW_SHOW_KEY = 'sp_kwEditorShow';
+function loadKwShow() {
+  const def = { kw: true, acc: false, opt: false };
+  try { return { ...def, ...(JSON.parse(localStorage.getItem(KW_SHOW_KEY)) || {}) }; }
+  catch { return def; }
+}
+function applyKwFieldVisibility() {
+  const show = {
+    kw:  document.getElementById('kw-show-kw').checked,
+    acc: document.getElementById('kw-show-acc').checked,
+    opt: document.getElementById('kw-show-opt').checked,
+  };
+  try { localStorage.setItem(KW_SHOW_KEY, JSON.stringify(show)); } catch {}
+  document.querySelectorAll('.kw-field-kw').forEach(el => { el.hidden = !show.kw; });
+  document.querySelectorAll('.kw-field-acc').forEach(el => { el.hidden = !show.acc; });
+  document.querySelectorAll('.kw-field-opt').forEach(el => { el.hidden = !show.opt; });
 }
 
 function saveKeywordEditor() {
