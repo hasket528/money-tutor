@@ -665,6 +665,26 @@ function stopAllAudio() {
   tts.cancel();
 }
 
+// ── Android 媒體控制卡殘留修復（2026-07-23，同 adventure）────────
+// 店員預錄 mp3 播到一半離頁/切背景時，只 pause 會留下「暫停中」媒體工作階段，
+// 手機通知欄的媒體卡（頁標題＋播放條）會殘留到分頁關閉。離頁時徹底卸載＋清工作階段。
+(() => {
+  const release = () => {
+    [_shopkeeperAudio, _feedbackAudio, _userAudio].forEach(a => {
+      if (a) { try { a.pause(); a.src = ''; a.load(); } catch (_) {} }
+    });
+    stopAllAudio();
+    try {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = 'none';
+      }
+    } catch (_) {}
+  };
+  window.addEventListener('pagehide', release);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+})();
+
 function playShopkeeperAudio(step) {
   stopAllAudio();
 

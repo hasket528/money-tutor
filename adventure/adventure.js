@@ -182,11 +182,30 @@ const AdvSpeech = (() => {
         },
         cancel() {
             _clearFb();
-            if (_audio) { _audio.onended = _audio.onerror = null; try { _audio.pause(); } catch {} _audio = null; }
+            // pause 之外還要卸載媒體資源（src=''+load）：只 pause 會留下「暫停中」的
+            // 媒體工作階段，Android Chrome 通知欄的媒體控制卡會一直殘留到分頁關閉。
+            if (_audio) { _audio.onended = _audio.onerror = null; try { _audio.pause(); _audio.src = ''; _audio.load(); } catch {} _audio = null; }
             window.speechSynthesis?.cancel();
             _pending = null;
         }
     };
+})();
+
+// ── Android 媒體控制卡殘留修復（2026-07-23）────────────────────
+// 症狀：離開冒險後，手機通知欄仍顯示「一日金錢冒險」的媒體播放卡（頁面進返回快取、
+// 音訊停在暫停狀態所致）。離頁/切背景時徹底停音並清掉媒體工作階段。
+(() => {
+    const release = () => {
+        AdvSpeech.cancel();
+        try {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.playbackState = 'none';
+            }
+        } catch (_) {}
+    };
+    window.addEventListener('pagehide', release);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
 })();
 
 // 角色化過場短語：讓四位主角在同一段故事裡有不同反應（純文字，不影響任何數值/計分）
