@@ -238,9 +238,11 @@
     @media (min-width: 768px)  { .action-btn { padding:16px; font-size:1.05rem; border-radius:16px; } .btn-reset-score { font-size:0.9rem; } }
     @media (min-width: 1024px) { .action-btn { padding:18px; font-size:1.15rem; border-radius:18px; } }
   </style>
-  <script src="../js/game-audio.js"></script>
+<script src="../js/game-audio.js"></script>
 </head>
 <body>
+  <!-- audio-unlocker 需在 body 存在後載入（其 init 綁 document.body） -->
+  <script src="../../js/audio-unlocker.js"></script>
 
   <div id="game-screen">
     <div class="page-header" style="width:100%">

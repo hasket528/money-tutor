@@ -151,19 +151,9 @@ class GameEngine {
 
   _emit(event, data) {
     (this._listeners[event] || []).forEach(cb => cb(data));
-    // 遊戲結束時寫入學習紀錄
-    if (event === 'gameOver' && window.LearningTracker) {
-      LearningTracker.save({
-        unit:       this.gameId,
-        unitName:   `小遊戲 ${this.gameId}`,
-        series:     'games',
-        score:      data.correctCount || 0,
-        total:      (data.correctCount || 0) + (this.incorrectCount || 0),
-        difficulty: 'normal',
-        durationSec: data.elapsed || 0,
-        stars:      data.score >= 2000 ? 3 : data.score >= 500 ? 2 : 1,
-      });
-    }
+    // 小遊戲不寫學習紀錄（2026-07-23 使用者定案）：遊戲室定位是放鬆，不混入 IEP/學習證據。
+    // 舊寫入還有兩個資料品質問題（incorrectCount 從未累計→正確率恆 100%、教師端無 games 區塊），
+    // 故整段移除；最高分仍存 localStorage（miniGame_*_highScore）供遊戲內顯示。
   }
 
   destroy() {
