@@ -571,6 +571,45 @@ function speakInnerOS(text, onEnd) {
   window.speechSynthesis.speak(u);
 }
 
+// ─── 旁白句（自述／心裡話）判定與播放（2026-07-23）──────────────
+// 這類步驟不是角色在說話：整句由「旁白聲」（曉臻）唸出、照畫面文字順序、不拆段、
+// 不觸發店員頭像動畫。涵蓋四類：純括號旁白、（想一想）反思句、（你掛掉了電話）自問
+// 引導句、括號外只剩狀聲詞（如「（閘門）嗶嗶！（亮紅燈，門沒開）」）。
+// 預錄檔＝標準 clerk 檔名 {場景}_{情境}_{步驟}（Edge 曉臻，voicegen/lists/narration_list.csv）。
+// ⚠️ 規則與 voicegen/_gen_narration_list.js 鏡像——改任一邊務必同步另一邊！
+function isNarrationPrompt(fp) {
+  if (!/^\s*（/.test(fp)) return false;
+  const rest = fp.replace(/（[^）]*）/g, '').trim();
+  if (!rest) return true;                                    // 純旁白（整句都在括號內）
+  if (/^\s*（想一想）/.test(fp)) return true;                 // 反思句
+  if (/^\s*（你掛掉了電話）/.test(fp)) return true;            // 掛電話後的自問引導句
+  return /^[嗶叭叮咚鈴噹～~！!？?。，、\s…]+$/.test(rest);     // 括號外只剩狀聲詞／標點
+}
+// 旁白句朗讀文字：括號拿掉、界線變停頓，維持原文順序（預錄清單同一規則）
+function narrationSpeechText(fp) {
+  return fp
+    .replace(/）\s*/g, '，')
+    .replace(/（\s*/g, '')
+    .replace(/([。！？])，/g, '$1')
+    .replace(/[，、]+$/, '')
+    .trim();
+}
+// 旁白句播放：預錄檔（mp3→wav）→ 即時旁白 TTS（曉臻→雅婷）。不動店員頭像。
+function playNarration(step, fp) {
+  const base  = `audio/clerk/${state.scenario.id}_${state.situation.id}_${step.id}`;
+  const cands = [base + '.mp3', base + '.wav'];
+  let i = 0;
+  const tryNext = () => {
+    if (i >= cands.length) { speakInnerOS(narrationSpeechText(fp)); return; }
+    const a = new Audio(cands[i++]);
+    _shopkeeperAudio = a;
+    a.onended = () => { if (_shopkeeperAudio === a) _shopkeeperAudio = null; };
+    a.onerror = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } };
+    a.play().catch(() => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } });
+  };
+  tryNext();
+}
+
 // 播放心裡 OS：預錄旁白 MP3（曉臻，audio/clerk/{場景}_{情境}_{步驟}_os）優先——
 // 像店員台詞一樣可自動播放；缺檔才退回即時 TTS（bestOSVoice：曉臻→雅婷）。
 function playInnerOS(step, osText, onDone) {
@@ -638,15 +677,11 @@ function playShopkeeperAudio(step) {
     playCustomStepAudio(step, avatar);
     return;
   }
-  // 純旁白步驟（台詞只有括號心裡 OS、無店員話）：直接用旁白語音（曉臻→雅婷）唸 OS，
-  // 不去探測必 404 的店員預錄檔（避免延遲/卡頓，並確保 OS 會被唸出）。
+  // 旁白句（自述／心裡話／反思／狀聲）：整句一個旁白聲照文字順序唸，
+  // 不拆「旁白＋店員」兩段、不觸發店員頭像動畫（見 isNarrationPrompt 定義處說明）。
   {
     const fp = step.shopkeeper_prompt || '';
-    if (!fp.replace(/（[^）]*）/g, '').trim()) {
-      const os = (fp.match(/（([^）]*)）/) || [])[1];
-      if (os) playInnerOS(step, os.trim()); else tts.speak(fp, 0.85);
-      return;
-    }
+    if (isNarrationPrompt(fp)) { playNarration(step, fp); return; }
   }
   // 候選清單：情境專屬 → 共用版（_unknown_）；各試 mp3 與 wav。
   // mp3 優先（檔小、預錄主格式；wav 已備份移出，留 .wav 後備相容舊部署）
