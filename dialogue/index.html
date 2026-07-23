@@ -615,16 +615,39 @@
         </div>
       </div>
 
-      <!-- AI 輔助生成 -->
+      <!-- AI 輔助生成（免 API Key：引導問答→複製提示詞→貼到 Gemini/ChatGPT→回答貼回匯入） -->
       <div class="form-section ai-gen-section">
         <div class="form-section-header">
-          <span class="section-label">✨ AI 輔助生成步驟</span>
+          <span class="section-label">✨ AI 幫我寫步驟（免 API Key）</span>
         </div>
-        <p class="form-hint" style="margin-bottom:8px">輸入情境主題，AI 自動草稿對話步驟（需在設定頁填入 Gemini API Key）</p>
-        <div style="display:flex;gap:8px">
-          <input id="ai-gen-topic" class="form-input" type="text" placeholder="例如：在麵包店詢問今日特價" style="flex:1">
-          <button class="btn-primary" id="btn-ai-gen" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">✨ 生成</button>
+        <p class="form-hint" style="margin-bottom:8px">回答下面問題 → 複製提示詞，貼到 Gemini 或 ChatGPT 網頁 → 把 AI 的回答貼回來匯入。</p>
+
+        <label class="form-hint" for="ai-gen-topic" style="display:block;margin-bottom:2px">① 要練習的情境是什麼？（必填）</label>
+        <input id="ai-gen-topic" class="form-input" type="text" placeholder="例如：在麵包店詢問今日特價" style="margin-bottom:8px">
+
+        <label class="form-hint" for="ai-gen-partner" style="display:block;margin-bottom:2px">② 對話的對方是誰？（選填）</label>
+        <input id="ai-gen-partner" class="form-input" type="text" placeholder="例如：麵包店老闆" style="margin-bottom:8px">
+
+        <label class="form-hint" for="ai-gen-focus" style="display:block;margin-bottom:2px">③ 想特別練習的重點、或學生的困難？（選填）</label>
+        <input id="ai-gen-focus" class="form-input" type="text" placeholder="例如：練習開口求助；句子要短一點" style="margin-bottom:8px">
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <label class="form-hint" for="ai-gen-count" style="margin:0">④ 步驟數</label>
+          <select id="ai-gen-count" class="form-input" style="width:auto;padding:6px 8px">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="7">7</option>
+          </select>
+          <button class="btn-primary" id="btn-ai-copy-prompt" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem">📋 複製提示詞</button>
         </div>
+        <p class="form-hint" style="margin-bottom:10px">開啟
+          <a href="https://gemini.google.com/" target="_blank" rel="noopener">Gemini</a>｜
+          <a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>
+          → 貼上提示詞送出（免登入的也可以）。</p>
+
+        <label class="form-hint" for="ai-gen-paste" style="display:block;margin-bottom:2px">⑤ 把 AI 的回答整段複製、貼到這裡：</label>
+        <textarea id="ai-gen-paste" class="form-input" rows="4" placeholder="貼上 AI 的回答後，按「匯入步驟」" style="width:100%;resize:vertical;margin-bottom:8px;font-size:0.82rem"></textarea>
+        <button class="btn-primary" id="btn-ai-import" style="padding:8px 14px;font-size:0.85rem">⬇️ 匯入步驟</button>
         <p id="ai-gen-status" style="font-size:0.78rem;margin-top:6px;color:var(--gray-600);min-height:1.2em"></p>
       </div>
 
