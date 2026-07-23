@@ -3316,7 +3316,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "drop_item", name: "東西掉了請人幫忙", icon: "🎒", clerkName: "隔壁乘客", clerkImage: "images/clerk-ridemanner-passenger.jpg",
+          id: "drop_item", name: "東西掉了請人幫忙", icon: "🎒", clerkName: "隔壁乘客", clerkImage: "images/clerk-ridemanner-helper.jpg",
           desc: "水壺滾到別人腳邊，有禮貌請人幫忙",
           steps: [
             mkStep({ id:"ask_pick", say:"（你的水壺滾到別人腳邊了）", task:"有禮貌請人幫忙撿",
@@ -3334,7 +3334,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "stranger_money", name: "陌生人跟你要錢", icon: "🙅", clerkName: "陌生乘客", clerkImage: "images/clerk-ridemanner-passenger.jpg",
+          id: "stranger_money", name: "陌生人跟你要錢", icon: "🙅", clerkName: "陌生乘客", clerkImage: "images/clerk-ridemanner-stranger.jpg",
           desc: "車上有陌生人跟你要錢：拒絕並靠近站務員",
           steps: [
             mkStep({ id:"refuse_give", say:"（車上陌生人靠近）同學，借我一百元啦！", task:"拒絕陌生人",
@@ -3346,6 +3346,7 @@ const SCENARIOS_DATA = {
               accepted:["（走向站務員）站務員，有人跟我要錢","站務員，有人跟我要錢","有人跟我要錢","有人一直跟我要錢"], kw:["跟我要錢"],
               feedback:{ failed:"馬上靠近工作人員。可以說：「站務員，有人跟我要錢」" } }),
             mkStep({ id:"thank_safe", say:"好，你站我旁邊，我來處理！", task:"道謝",
+              clerkName:"站務員", clerkImage:"images/clerk-ridemanner-staff.jpg",   // 這一步說話的是站務員（步驟層覆寫，配 Rasalgethi 男聲）
               options:["謝謝站務員","我自己也可以啦","他好可怕","嗚嗚"],
               accepted:["謝謝站務員","謝謝","謝謝你"], kw:["謝謝"],
               feedback:{ failed:"可以說：「謝謝站務員」" } }),
