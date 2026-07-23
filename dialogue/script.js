@@ -1029,9 +1029,12 @@ async function importDialoguePack(jsonText) {
   return { scenarios: data.scenarios.length, audios };
 }
 
-// ─── 內建情境關鍵字覆寫 ───────────────────────────────
-// 教師可在設定頁修改內建情境的判定關鍵字，存在本機（不動 scenarios.js、不影響任何語音）。
-// 僅在「說話／打字」模式的評分用；選擇/看圖造句走精確比對，不受影響。
+// ─── 內建情境對話覆寫（關鍵字／完整語句／選項）───────────────────
+// 教師可在設定頁修改內建情境的判定關鍵字、可接受完整語句（accepted_phrases）與選項
+// （options），存在本機（不動 scenarios.js、不影響任何預錄語音——音檔仍唸原句）。
+// 值格式：舊版＝關鍵字陣列（相容保留）；2026-07-23 起＝{ keywords?, accepted?, options? }。
+// 套用點：startWithSituation 進子情境時以 applyStepOverrides 產生覆寫後的步驟複本，
+// 下游（提示/判定/選項渲染/評分/自動句框）全部自然生效；手工 frame 句框不受影響。
 const KW_OVERRIDE_KEY = 'sp_keywordOverrides';
 function loadKeywordOverrides() {
   try { return JSON.parse(localStorage.getItem(KW_OVERRIDE_KEY)) || {}; } catch { return {}; }
@@ -1040,14 +1043,41 @@ function saveKeywordOverrides(obj) {
   try { localStorage.setItem(KW_OVERRIDE_KEY, JSON.stringify(obj)); } catch {}
 }
 function kwOverrideId(scId, sitId, stepId) { return `${scId}__${sitId}__${stepId}`; }
+// 舊格式（陣列＝只有關鍵字）→ 新格式物件
+function normalizeOverride(v) {
+  if (Array.isArray(v)) return { keywords: v };
+  return (v && typeof v === 'object') ? v : {};
+}
 // 依目前情境取步驟「有效關鍵字」：有覆寫回傳套用覆寫的 step 複本，否則原樣回傳
+// （評分路徑的第二道保險；accepted/options 已在進情境時套用）
 function withEffectiveKeywords(step) {
   const sc = state?.scenario, sit = state?.situation;
   if (sc && sit && step?.id) {
-    const ov = loadKeywordOverrides()[kwOverrideId(sc.id, sit.id, step.id)];
-    if (Array.isArray(ov)) return { ...step, keywords: ov };
+    const ov = normalizeOverride(loadKeywordOverrides()[kwOverrideId(sc.id, sit.id, step.id)]);
+    if (Array.isArray(ov.keywords) && ov.keywords.length) return { ...step, keywords: ov.keywords };
   }
   return step;
+}
+// 進子情境時套用覆寫：回傳步驟已覆寫的 situation 複本（無覆寫＝原物件，零成本）
+function applyStepOverrides(scId, sitId, situation) {
+  const all = loadKeywordOverrides();
+  const hasAny = (situation.steps || []).some(st => all[kwOverrideId(scId, sitId, st.id)]);
+  if (!hasAny) return situation;
+  return {
+    ...situation,
+    steps: situation.steps.map(st => {
+      const ov = normalizeOverride(all[kwOverrideId(scId, sitId, st.id)]);
+      if (!ov.keywords && !ov.accepted && !ov.options) return st;
+      const out = { ...st };
+      if (Array.isArray(ov.keywords) && ov.keywords.length)   out.keywords         = ov.keywords;
+      if (Array.isArray(ov.accepted) && ov.accepted.length)   out.accepted_phrases = ov.accepted;
+      if (Array.isArray(ov.options)  && ov.options.length >= 2) out.options        = ov.options;
+      // 守門：options[0]（正解）必須 ∈ accepted_phrases（選項判定與稽核規則依賴）
+      if (out.options?.length && !(out.accepted_phrases || []).includes(out.options[0]))
+        out.accepted_phrases = [out.options[0], ...(out.accepted_phrases || [])];
+      return out;
+    }),
+  };
 }
 
 // 關鍵字編輯器 UI（只列內建情境；自訂情境已有自己的步驟編輯器）
@@ -1092,13 +1122,19 @@ function renderKwSteps() {
   document.getElementById('kw-save-status').textContent = '';
 
   (sit?.steps || []).forEach(step => {
-    const key  = kwOverrideId(scId, sitId, step.id);
-    const isOv = Array.isArray(overrides[key]);
-    const cur  = isOv ? overrides[key] : (step.keywords || []);
-    const ans  = step.accepted_phrases?.[0] || step.options?.[0] || '';
+    const key   = kwOverrideId(scId, sitId, step.id);
+    const ov    = normalizeOverride(overrides[key]);
+    const isOv  = !!(ov.keywords || ov.accepted || ov.options);
+    const curKw  = ov.keywords || step.keywords || [];
+    const curAcc = ov.accepted || step.accepted_phrases || [];
+    const curOpt = ov.options  || step.options || [];
 
-    const row   = document.createElement('div');
-    row.className = 'form-group';
+    const row = document.createElement('div');
+    row.className   = 'form-group kw-step-row';
+    row.dataset.key = key;
+    row.dataset.defKw  = (step.keywords || []).join(',');
+    row.dataset.defAcc = (step.accepted_phrases || []).join('\n');
+    row.dataset.defOpt = (step.options || []).join('\n');
 
     const label = document.createElement('label');
     label.className   = 'form-label';
@@ -1110,45 +1146,90 @@ function renderKwSteps() {
       label.append(' ', b);
     }
 
-    const input = document.createElement('input');
-    input.className = 'form-input kw-step-input';
-    input.type      = 'text';
-    input.value     = cur.join(', ');
-    input.dataset.key     = key;
-    input.dataset.default = (step.keywords || []).join(',');
-    input.placeholder = '逗號分隔；留空＝還原預設';
-
     const hint = document.createElement('p');
     hint.className = 'form-hint';
-    hint.style.marginTop = '4px';
-    hint.textContent = `店員：「${step.shopkeeper_prompt || ''}」　標準答案：「${ans}」`;
+    hint.style.margin = '0 0 4px';
+    hint.textContent = `店員：「${step.shopkeeper_prompt || ''}」`;
 
-    row.append(label, input, hint);
+    const mkSub = (text) => {
+      const p = document.createElement('p');
+      p.className = 'form-hint';
+      p.style.cssText = 'margin:6px 0 2px;font-weight:600';
+      p.textContent = text;
+      return p;
+    };
+
+    const kwInput = document.createElement('input');
+    kwInput.className = 'form-input kw-step-input';
+    kwInput.type      = 'text';
+    kwInput.value     = curKw.join(', ');
+    kwInput.placeholder = '逗號分隔；留空＝還原預設';
+
+    const accInput = document.createElement('textarea');
+    accInput.className = 'form-input kw-acc-input';
+    accInput.rows      = Math.min(4, Math.max(2, curAcc.length));
+    accInput.value     = curAcc.join('\n');
+    accInput.placeholder = '一行一句；第 1 行＝標準答案；清空＝還原預設';
+    accInput.style.cssText = 'resize:vertical;font-size:0.85rem';
+
+    const optInput = document.createElement('textarea');
+    optInput.className = 'form-input kw-opt-input';
+    optInput.rows      = Math.min(5, Math.max(2, curOpt.length));
+    optInput.value     = curOpt.join('\n');
+    optInput.placeholder = '一行一個；第 1 行＝正確選項；清空＝還原預設';
+    optInput.style.cssText = 'resize:vertical;font-size:0.85rem';
+
+    row.append(
+      label, hint,
+      mkSub('🔑 關鍵字（說話／打字判定）'), kwInput,
+      mkSub('💬 可接受完整語句（第 1 句＝標準答案，用於提示與高級判定）'), accInput,
+      mkSub('🔘 選項（第 1 個＝正解，用於選項模式）'), optInput,
+    );
     list.appendChild(row);
   });
 }
 
 function saveKeywordEditor() {
   const overrides = loadKeywordOverrides();
-  document.querySelectorAll('.kw-step-input').forEach(inp => {
-    const key = inp.dataset.key;
-    const def = inp.dataset.default;
-    const arr = inp.value.split(/[,，、]+/).map(s => s.trim()).filter(Boolean);
-    // 留空或與預設相同 → 移除覆寫（還原預設）；否則存覆寫
-    if (arr.length === 0 || arr.join(',') === def) delete overrides[key];
-    else overrides[key] = arr;
+  let droppedOpts = 0;   // 因「干擾項＝可接受語句」被剔除的選項數（守唯一正解）
+  document.querySelectorAll('.kw-step-row').forEach(row => {
+    const key   = row.dataset.key;
+    const kwArr  = row.querySelector('.kw-step-input').value
+      .split(/[,，、]+/).map(s => s.trim()).filter(Boolean);
+    const accArr = row.querySelector('.kw-acc-input').value
+      .split(/\n+/).map(s => s.trim()).filter(Boolean);
+    let optArr   = row.querySelector('.kw-opt-input').value
+      .split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+    // 守門：正解對齊＋唯一正解（干擾項不得 ∈ 可接受語句；欄位留空時以預設值交叉檢查）
+    const effAcc = accArr.length ? accArr : row.dataset.defAcc.split('\n').filter(Boolean);
+    if (optArr.length) {
+      const answer = optArr[0];
+      if (accArr.length && !accArr.includes(answer)) accArr.unshift(answer);
+      const before = optArr.length;
+      optArr = [answer, ...optArr.slice(1).filter(o => o !== answer && !effAcc.includes(o) && !accArr.includes(o))];
+      droppedOpts += before - optArr.length;
+    }
+
+    const o = {};
+    if (kwArr.length  && kwArr.join(',')   !== row.dataset.defKw)  o.keywords = kwArr;
+    if (accArr.length && accArr.join('\n') !== row.dataset.defAcc) o.accepted = accArr;
+    if (optArr.length >= 2 && optArr.join('\n') !== row.dataset.defOpt) o.options = optArr;
+    if (Object.keys(o).length) overrides[key] = o;
+    else delete overrides[key];
   });
   saveKeywordOverrides(overrides);
   renderKwSteps();
-  document.getElementById('kw-save-status').textContent = '✓ 已儲存，立即生效（說話／打字模式）';
+  document.getElementById('kw-save-status').textContent =
+    `✓ 已儲存（下次進入該情境生效）${droppedOpts ? `；有 ${droppedOpts} 個干擾選項與可接受語句相同，已自動剔除` : ''}`;
 }
 
 function resetKwSituation() {
   const overrides = loadKeywordOverrides();
-  document.querySelectorAll('.kw-step-input').forEach(inp => { delete overrides[inp.dataset.key]; });
+  document.querySelectorAll('.kw-step-row').forEach(row => { delete overrides[row.dataset.key]; });
   saveKeywordOverrides(overrides);
   renderKwSteps();
-  document.getElementById('kw-save-status').textContent = '↩ 已還原本子情境的預設關鍵字';
+  document.getElementById('kw-save-status').textContent = '↩ 已還原本子情境的全部預設（關鍵字／語句／選項）';
 }
 
 function getAllScenarios() {
@@ -1808,10 +1889,14 @@ function isScaffoldPilot(scenario, situation) {
 }
 
 function startWithSituation(situation) {
+  // 內建情境套用教師覆寫（關鍵字／完整語句／選項）；自訂情境有自己的編輯器，不套
+  const effective = state.scenario?.isCustom
+    ? situation
+    : applyStepOverrides(state.scenario.id, situation.id, situation);
   // 簡易版：截取前 3 步驟
   const steps = state.simpleMode
-    ? { ...situation, steps: situation.steps.slice(0, 3) }
-    : situation;
+    ? { ...effective, steps: effective.steps.slice(0, 3) }
+    : effective;
   state.situation = steps;
   const label = `${state.scenario.name}・${situation.name}${state.simpleMode ? '（簡易）' : ''}`;
 

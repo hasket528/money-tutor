@@ -515,11 +515,11 @@
         </div>
       </div>
 
-      <!-- 內建情境關鍵字 -->
+      <!-- 內建情境對話判定（關鍵字／完整語句／選項） -->
       <div class="settings-block">
-        <h3 class="settings-block-title">內建情境關鍵字</h3>
-        <p class="editor-desc" style="margin-bottom:10px">修改內建情境在「說話／打字」模式下的判定關鍵字（存在本機、可隨時還原）。<strong>不影響語音、也不影響選擇/看圖造句模式</strong>。</p>
-        <button class="btn-secondary" id="btn-edit-keywords">🔑 編輯內建關鍵字</button>
+        <h3 class="settings-block-title">內建情境對話判定</h3>
+        <p class="editor-desc" style="margin-bottom:10px">修改內建情境每一步的<strong>判定關鍵字、可接受完整語句、選項</strong>（存在本機、可隨時還原）。<strong>預錄語音不變</strong>——改了文字，店員與回饋音檔仍唸原句；手寫的看圖造句句框不受影響。</p>
+        <button class="btn-secondary" id="btn-edit-keywords">🔑 編輯關鍵字・語句・選項</button>
       </div>
 
       <!-- 自訂情境 -->
@@ -545,7 +545,7 @@
   <div id="screen-keyword-editor" class="screen">
     <header class="editor-header">
       <button class="btn-icon" id="btn-kw-back" aria-label="返回">←</button>
-      <h2 class="editor-title">編輯內建關鍵字</h2>
+      <h2 class="editor-title">編輯對話判定</h2>
       <button class="btn-header-action" id="btn-kw-save">儲存</button>
     </header>
     <div class="editor-body">
@@ -559,10 +559,10 @@
           <select class="form-input" id="kw-situation-select"></select>
         </div>
       </div>
-      <p class="editor-desc">每個步驟的判定關鍵字，逗號分隔。說出任一關鍵字＝部分正確；<strong>留空＝還原成內建預設</strong>。只在「說話／打字」模式生效，不影響語音。</p>
+      <p class="editor-desc">每一步可改三樣：<strong>🔑 關鍵字</strong>（說話／打字判定，逗號分隔）、<strong>💬 可接受完整語句</strong>（一行一句，第 1 句＝標準答案，用於提示與高級判定）、<strong>🔘 選項</strong>（一行一個，第 1 個＝正解）。<strong>欄位清空＝還原該項預設</strong>。改文字不影響預錄語音（音檔仍唸原句）；干擾選項若與可接受語句相同，儲存時會自動剔除以確保只有一個正解。</p>
       <div id="kw-step-list"></div>
       <p id="kw-save-status" style="font-size:0.82rem;color:var(--green);margin-top:8px;min-height:1.2em"></p>
-      <button class="btn-secondary" id="btn-kw-reset-situation" style="margin-top:4px">↩ 還原本子情境的預設關鍵字</button>
+      <button class="btn-secondary" id="btn-kw-reset-situation" style="margin-top:4px">↩ 還原本子情境的全部預設</button>
     </div>
   </div>
 
