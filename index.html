@@ -1082,6 +1082,10 @@
         .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
         .site-nav a:hover { background:rgba(255,255,255,0.30); }
         .site-nav a.current { background:#f59e0b; }
+        /* 隱藏舞台開啟時導覽列讓位：sticky 導覽列 z-index(10000) 高於舞台(9600)，
+           手機（尤其教師登入後選項變多、折成多行）會蓋住舞台上緣的角色圖示。
+           不動層級鏈（舞台9600＜角色彈窗9700＜導覽列10000），只在舞台開啟期間隱藏。 */
+        body.stage-open .site-nav { visibility: hidden; }
     </style>
     <nav class="site-nav">
         <a href="index.html" class="current">🏠 主頁</a>
@@ -1550,12 +1554,14 @@
                 idx = 0; queue = []; spinning = false;
                 renderStage();
                 document.getElementById('stage-overlay').classList.add('open');
+                document.body.classList.add('stage-open');   // 導覽列讓位（見 .site-nav 的 stage-open 規則）
                 document.body.style.overflow = 'hidden';
             };
 
             window.closeStage = function () {
                 window.stopCharacterVoice?.();
                 document.getElementById('stage-overlay').classList.remove('open');
+                document.body.classList.remove('stage-open');
                 document.body.style.overflow = '';
             };
 
@@ -2101,7 +2107,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260723a';
+            const BUILD_VERSION = '20260723b';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {
