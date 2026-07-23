@@ -2437,7 +2437,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#DC2626', bg: '#FEE2E2', accent: '#B91C1C' },
       situations: [
         {
-          id: "scam_prize", name: "中獎詐騙電話", icon: "🎁", clerkName: "陌生來電",
+          id: "scam_prize", name: "中獎詐騙電話", icon: "🎁", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
           desc: "接到說你中獎、要你先付錢的電話",
           steps: [
             mkStep({ id:"ask_who", say:"（電話響了，是陌生號碼）喂，恭喜你！你中了十萬元大獎！", task:"先問對方是誰",
@@ -2467,7 +2467,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "fake_service", name: "假客服電話", icon: "🎧", clerkName: "陌生來電",
+          id: "fake_service", name: "假客服電話", icon: "🎧", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
           desc: "接到假客服說重複扣款、要你去 ATM 操作",
           steps: [
             mkStep({ id:"ask_who", say:"（電話響了）你好，這裡是網購客服，你的訂單重複扣款了！", task:"先問對方是誰",
@@ -2497,7 +2497,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "lend_card", name: "借提款卡的電話", icon: "💳", clerkName: "陌生來電",
+          id: "lend_card", name: "借提款卡的電話", icon: "💳", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
           desc: "有人打電話裝熟、要借你的提款卡（本系列最重要）",
           steps: [
             mkStep({ id:"ask_who", say:"（電話響了）欸，我是你朋友的朋友啦！", task:"先問對方是誰",
@@ -2527,7 +2527,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "buy_points", name: "要你買點數的電話", icon: "🎮", clerkName: "陌生來電",
+          id: "buy_points", name: "要你買點數的電話", icon: "🎮", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
           desc: "網友打電話要你幫買遊戲點數、唸卡號",
           steps: [
             mkStep({ id:"ask_who", say:"（電話響了）嗨，我是網路上認識你的朋友！", task:"先問對方是誰",
@@ -2645,7 +2645,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#EA580C', bg: '#FFEDD5', accent: '#C2410C' },
       situations: [
         {
-          id: "fake_sale", name: "假網拍先匯款", icon: "🛒", clerkName: "陌生賣家",
+          id: "fake_sale", name: "假網拍先匯款", icon: "🛒", clerkName: "陌生賣家", clerkImage: "images/clerk-unknown-message.jpg",
           desc: "網路賣家超便宜、要你先匯款",
           steps: [
             mkStep({ id:"ask_who", say:"（有人私訊你）哈囉！這支手機全新只要兩千，超便宜！", task:"先問對方是誰",
@@ -2671,7 +2671,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "fake_link", name: "中獎簡訊點連結", icon: "📩", clerkName: "陌生訊息",
+          id: "fake_link", name: "中獎簡訊點連結", icon: "📩", clerkName: "陌生訊息", clerkImage: "images/clerk-unknown-message.jpg",
           desc: "手機收到中獎簡訊、要你點連結",
           steps: [
             mkStep({ id:"read", say:"（我的手機收到一封中獎簡訊，上面寫著：恭喜你中獎了，點這個連結就能領獎品！）", task:"判斷這是不是真的",
@@ -2755,7 +2755,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#D97706', bg: '#FEF3C7', accent: '#B45309' },
       situations: [
         {
-          id: "pay_deposit", name: "要先繳保證金", icon: "💰", clerkName: "可疑老闆",
+          id: "pay_deposit", name: "要先繳保證金", icon: "💰", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
           desc: "應徵打工，老闆說要先繳保證金才能上班",
           steps: [
             mkStep({ id:"ask_detail", say:"（你去應徵打工）你好啊！我們這裡時薪很高，馬上可以上班！", task:"先問工作內容",
@@ -2781,7 +2781,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "keep_id", name: "要押證件", icon: "🪪", clerkName: "可疑老闆",
+          id: "keep_id", name: "要押證件", icon: "🪪", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
           desc: "老闆說要把身分證押在店裡才能打工",
           steps: [
             mkStep({ id:"refuse_id", say:"來上班可以，先把你的身分證押在我這裡！", task:"拒絕押證件",
@@ -2807,7 +2807,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "too_good", name: "輕鬆高薪的工作", icon: "🤑", clerkName: "陌生網友",
+          id: "too_good", name: "輕鬆高薪的工作", icon: "🤑", clerkName: "陌生網友", clerkImage: "images/clerk-unknown-message.jpg",
           desc: "網路上看到「日領三千、超輕鬆」的打工訊息",
           steps: [
             mkStep({ id:"ask_what", say:"（網路訊息）同學看過來！日領三千、工作超輕鬆，要做嗎？", task:"先問要做什麼",
@@ -2840,7 +2840,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#4F46E5', bg: '#E0E7FF', accent: '#3730A3' },
       situations: [
         {
-          id: "otp_code", name: "要驗證碼的電話", icon: "📲", clerkName: "陌生來電",
+          id: "otp_code", name: "要驗證碼的電話", icon: "📲", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
           desc: "有人打來說要你唸手機收到的驗證碼",
           steps: [
             mkStep({ id:"ask_who", say:"（電話響了）你好！我是電信客服，系統出錯，需要你的協助！", task:"先問對方是誰",
@@ -2866,7 +2866,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "street_survey", name: "填問卷送禮物", icon: "📋", clerkName: "問卷人員",
+          id: "street_survey", name: "填問卷送禮物", icon: "📋", clerkName: "問卷人員", clerkImage: "images/clerk-survey-stranger.jpg",
           desc: "路上有人請你填問卷送小禮物，要寫電話和身分證字號",
           steps: [
             mkStep({ id:"ask_purpose", say:"同學你好～填個問卷就送可愛小禮物喔！", task:"先問問卷用途",
@@ -2888,7 +2888,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "share_password", name: "朋友要借帳號密碼", icon: "🎮", clerkName: "同學",
+          id: "share_password", name: "朋友要借帳號密碼", icon: "🎮", clerkName: "同學", clerkImage: "images/clerk-classmate-girl.jpg",
           desc: "同學想跟你借遊戲帳號和密碼",
           steps: [
             mkStep({ id:"refuse_pw", say:"欸～你的遊戲帳號借我玩，密碼跟我說一下！", task:"拒絕給密碼",
