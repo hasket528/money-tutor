@@ -199,6 +199,7 @@ const RewardCfg = (() => {
     ['b1', 'B1 今天帶多少錢'], ['b2', 'B2 零用錢日記'], ['b3', 'B3 存錢計畫'], ['b4', 'B4 特賣比一比'], ['b5', 'B5 生日派對預算'], ['b6', 'B6 菜市場買菜'],
     ['c1', 'C1 認識錢幣'], ['c2', 'C2 數錢'], ['c3', 'C3 換錢'], ['c4', 'C4 付款'], ['c5', 'C5 夠不夠'], ['c6', 'C6 找零'],
     ['f1', 'F1 一對一對應'], ['f2', 'F2 唱數'], ['f3', 'F3 數字認讀'], ['f4', 'F4 數字排序'], ['f5', 'F5 量比較'], ['f6', 'F6 數的組成'],
+    ['adventure', '🗺️ 一日金錢冒險'],
     ['dialogue', '💬 對話練習（金好聊）'],
   ];
   function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
@@ -220,7 +221,11 @@ const RewardCfg = (() => {
   function toggle() {
     const p = document.getElementById('reward-cfg-panel');
     p.hidden = !p.hidden;
-    if (!p.hidden) render();
+    if (!p.hidden) {
+      render();
+      // 工具列在窄螢幕會折行、面板可能展開在視窗外 → 自動捲到面板，避免「按了沒反應」的錯覺
+      setTimeout(() => p.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
   }
   function save() {
     const units = {};
