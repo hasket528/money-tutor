@@ -2963,15 +2963,18 @@ function showComplete() {
   // 推薦相關遊戲單元
   renderRecommendCards(state.scenario.id);
 
-  // 待發獎勵（pendingRewards → reward/ 計分板）：2026-07-23 使用者決定停用——
-  // 獎勵經濟統一交給金隊長成長系統（寶石/金幣/寵物），避免雙軌並存。
-  // 管線兩端（此處寫入、reward/script.js processPendingRewards 發放）都保留，
-  // 要恢復把旗標改 true 即可（同 SCAFFOLD_ENABLED 的停用模式）。
-  const PENDING_REWARD_ENABLED = false;
+  // 待發獎勵（pendingRewards → reward/ 計分板）：2026-07-23 改教師設定制，預設關閉。
+  // 教師在 teacher.html「🎁 完成獎勵設定」開總開關＋設「對話練習」點數才會寫入
+  // （固定點數制，與 24 單元一致；設定鍵 mt_unit_rewards_cfg，讀法同 learning-tracker.js）。
+  // 未設定＝完全不動作；獎勵經濟平常統一走金隊長成長系統。
   const curStudent = getCurrentStudent();
   const partial = state.results.filter(r => r?.score === 'partial').length;
-  const rewardPoints = perfect * 10 + partial * 5;
-  if (PENDING_REWARD_ENABLED && rewardPoints > 0) {
+  let rewardPoints = 0;
+  try {
+    const rewardCfg = JSON.parse(localStorage.getItem('mt_unit_rewards_cfg') || 'null');
+    if (rewardCfg?.enabled) rewardPoints = Math.max(0, parseInt(rewardCfg.units?.dialogue, 10) || 0);
+  } catch (_) {}
+  if (rewardPoints > 0) {
     try {
       const pending = JSON.parse(localStorage.getItem('pendingRewards') || '[]');
       const who = curStudent ? `（${curStudent.name}）` : '';
@@ -2979,9 +2982,9 @@ function showComplete() {
       localStorage.setItem('pendingRewards', JSON.stringify(pending));
     } catch (_) {}
   }
-  // 完成頁點數顯示（停用時清空不顯示）
+  // 完成頁點數顯示（未啟用時清空不顯示）
   const rewardEl = document.getElementById('complete-reward');
-  if (rewardEl) rewardEl.textContent = (PENDING_REWARD_ENABLED && rewardPoints > 0) ? `🎁 獲得 ${rewardPoints} 點獎勵！` : '';
+  if (rewardEl) rewardEl.textContent = rewardPoints > 0 ? `🎁 獲得 ${rewardPoints} 點獎勵！` : '';
 
   // 儲存學習紀錄
   const endTs = Date.now();

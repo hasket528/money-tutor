@@ -157,6 +157,11 @@
     </div>
     <span class="t-sep"></span>
     <div class="t-group">
+      <span class="t-group-label">獎勵</span>
+      <button class="t-btn t-btn-primary" onclick="RewardCfg.toggle()" title="單元完成後自動累積待發獎勵點數（預設關閉；0＝該單元不給）">🎁 完成獎勵設定</button>
+    </div>
+    <span class="t-sep"></span>
+    <div class="t-group">
       <span class="t-group-label">資料</span>
       <button class="t-btn t-btn-primary" onclick="CaptainTools.backup(document.getElementById('ct-status'))">📦 備份</button>
       <button class="t-btn t-btn-primary" onclick="document.getElementById('ct-restore-file').click()">📥 還原</button>
@@ -167,6 +172,71 @@
   </div>
   <span id="ct-status" class="no-print" style="font-size:0.78rem;color:var(--gray-600);width:100%"></span>
 </header>
+
+<!-- 🎁 完成獎勵設定（教師，預設關閉）：寫 mt_unit_rewards_cfg，由 js/learning-tracker.js
+     （24 單元完成匯流點）與 dialogue/script.js（對話完成頁）讀取。總開關關＝全部不動作。 -->
+<div id="reward-cfg-panel" class="no-print" hidden style="margin:12px 16px;padding:14px 16px;border:1.5px solid #dbe7f5;border-radius:12px;background:#f8fbff">
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <strong style="font-size:1rem">🎁 完成獎勵設定</strong>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem">
+      <input type="checkbox" id="rc-enabled"> 啟用完成獎勵（預設關閉）
+    </label>
+    <button class="t-btn t-btn-primary" onclick="RewardCfg.save()">💾 儲存設定</button>
+    <span id="rc-status" style="font-size:0.8rem;color:#16a34a;min-height:1.1em"></span>
+  </div>
+  <p style="font-size:0.8rem;color:#475569;margin:8px 0 10px">
+    啟用後，學生完成單元時依下方點數累積到「待發獎勵」；老師開啟優良表現獎勵板時會跳確認框、由老師把關發放。
+    <strong>0＝該單元不給獎勵；總開關關閉＝全部不動作（與未設定時行為完全相同）。</strong>
+  </p>
+  <div id="rc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 14px"></div>
+</div>
+<script>
+// 完成獎勵設定面板（自包含；設定鍵 mt_unit_rewards_cfg = { enabled, units:{a1:10,…,dialogue:10} }）
+const RewardCfg = (() => {
+  const KEY = 'mt_unit_rewards_cfg';
+  const UNITS = [
+    ['a1', 'A1 販賣機'], ['a2', 'A2 理髮廳'], ['a3', 'A3 麥當勞'], ['a4', 'A4 超市購物'], ['a5', 'A5 ATM'], ['a6', 'A6 火車票'],
+    ['b1', 'B1 今天帶多少錢'], ['b2', 'B2 零用錢日記'], ['b3', 'B3 存錢計畫'], ['b4', 'B4 特賣比一比'], ['b5', 'B5 生日派對預算'], ['b6', 'B6 菜市場買菜'],
+    ['c1', 'C1 認識錢幣'], ['c2', 'C2 數錢'], ['c3', 'C3 換錢'], ['c4', 'C4 付款'], ['c5', 'C5 夠不夠'], ['c6', 'C6 找零'],
+    ['f1', 'F1 一對一對應'], ['f2', 'F2 唱數'], ['f3', 'F3 數字認讀'], ['f4', 'F4 數字排序'], ['f5', 'F5 量比較'], ['f6', 'F6 數的組成'],
+    ['dialogue', '💬 對話練習（金好聊）'],
+  ];
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+  function render() {
+    const cfg = load();
+    document.getElementById('rc-enabled').checked = !!cfg.enabled;
+    const grid = document.getElementById('rc-grid');
+    grid.innerHTML = '';
+    UNITS.forEach(([id, name]) => {
+      const v = Math.max(0, parseInt(cfg.units?.[id], 10) || 0);
+      const lab = document.createElement('label');
+      lab.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.82rem;';
+      lab.innerHTML = `<span style="flex:1">${name}</span>` +
+        `<input type="number" min="0" max="999" value="${v}" data-unit="${id}" ` +
+        `style="width:60px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit">`;
+      grid.appendChild(lab);
+    });
+  }
+  function toggle() {
+    const p = document.getElementById('reward-cfg-panel');
+    p.hidden = !p.hidden;
+    if (!p.hidden) render();
+  }
+  function save() {
+    const units = {};
+    document.querySelectorAll('#rc-grid input[data-unit]').forEach(inp => {
+      const v = Math.max(0, parseInt(inp.value, 10) || 0);
+      if (v > 0) units[inp.dataset.unit] = v;
+    });
+    const enabled = document.getElementById('rc-enabled').checked;
+    localStorage.setItem(KEY, JSON.stringify({ enabled, units }));
+    document.getElementById('rc-status').textContent = enabled
+      ? `✓ 已儲存（啟用中，${Object.keys(units).length} 個單元有點數）`
+      : '✓ 已儲存（總開關關閉，不會發放）';
+  }
+  return { toggle, save };
+})();
+</script>
 
 <!-- 學習週報（列印專用；printWeeklyReport 動態填入） -->
 <div id="weekly-report" style="display:none"></div>
