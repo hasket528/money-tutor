@@ -328,7 +328,7 @@ const SCENARIO_CLERK_MAP = {
   job_interview:     { keyword: '云泽', name: '阿宏店長', role: '打工面試', image: 'images/clerk-jobinterview.jpg', intro: '你好！我是阿宏店長。在這裡你可以練習打工面試，包括自我介紹、誠實回答問題，還有問清楚時薪和發薪日；遇到要先繳錢的，記得先回家問大人喔！' },
   first_day:         { keyword: 'Zhiwei', name: '前輩同事', role: '第一天上班', image: 'images/clerk-firstday.jpg', intro: '嗨，我是帶你的前輩！這裡練習第一天報到——主動打招呼、聽工作說明複誦重點、問清楚制服和置物，好的開始是成功的一半！' },
   ask_at_work:       { keyword: '云健', name: '資深同事', role: '工作中求助', image: 'images/clerk-senior.jpg', intro: '這裡練習工作中最重要的能力——聽不懂就問、做錯了主動承認、不會操作請人示範。不裝懂的人進步最快！' },
-  call_leave:        { keyword: 'Yating', name: '店長', role: '電話請假', image: 'images/clerk-callleave.jpg', intro: '這裡練習打電話請假——生病提早說、臨時有事誠心道歉配合補班、要遲到先通知。負責任的態度大家都看得到！' },
+  call_leave:        { keyword: 'Yating', name: '林店長', role: '電話請假', image: 'images/clerk-callleave.jpg', intro: '你好！我是店裡的林店長。在這裡你可以練習打電話請假，包括生病提早說、臨時有事誠心道歉配合補班、要遲到先通知。' },
   get_paid:          { keyword: '晓涵', name: '會計阿姨', role: '領薪水', image: 'images/clerk-payday.jpg', intro: '你好！這裡練習領薪水——時薪乘時數自己算一次、當面點清楚、發現算錯有禮貌反映，最後別忘了先存一部分，這是理財的開始！' },
   serve_customer:    { keyword: '曉雨', name: '客人', role: '接待客人', image: 'images/clerk-customer.jpg', intro: '這次換你當店員囉！練習歡迎光臨和謝謝光臨、被客人問倒了找懂的人、客人不高興先道歉再請主管——把學過的對話換邊用用看！' },
 };
