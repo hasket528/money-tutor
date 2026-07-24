@@ -1375,21 +1375,119 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px;
+  padding: 32px 16px;
   text-align: center;
   gap: 20px;
-  max-width: 480px;
+  max-width: 620px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* ─── 完成頁卡片（對齊 24 單元測驗結束卡片風格）────────── */
+.dlg-result-card {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  padding: 32px 24px 26px;
+  box-shadow: 0 20px 44px rgba(102, 90, 190, 0.38);
+  text-align: center;
+  animation: dlgCardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dlg-result-trophy {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  animation: dlgTrophyBounce 2s ease-in-out infinite;
+}
+
+@keyframes dlgTrophyBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@keyframes dlgCardIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 標題與星星在紫底上改白字 */
+.dlg-result-card .complete-title {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  margin: 0;
+}
+
+/* 白色內容容器 */
+.dlg-result-inner {
+  background: var(--white);
+  border-radius: 18px;
+  padding: 22px 18px 20px;
+  margin-top: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 三張統計卡片 */
+.dlg-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.dlg-stat-card {
+  border-radius: 14px;
+  padding: 16px 8px 14px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.dlg-stat-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+.dlg-stat-blue   { background: linear-gradient(135deg, #2980b9, #3498db); }
+.dlg-stat-orange { background: linear-gradient(135deg, #e67e22, #f39c12); }
+.dlg-stat-ico   { font-size: 1.7rem; line-height: 1; }
+.dlg-stat-label { font-size: 0.82rem; font-weight: 600; opacity: 0.95; }
+.dlg-stat-val   { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+
+/* 表現徽章（原 complete-msg 改造）*/
+.dlg-perf-badge {
+  align-self: center;
+  background: linear-gradient(45deg, #f39c12, #e67e22);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 24px;
+  box-shadow: 0 4px 14px rgba(230, 126, 34, 0.4);
+}
+.dlg-perf-badge:empty { display: none; }
+
+/* 步驟摘要區塊 */
+.dlg-summary-block {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.dlg-summary-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 6px;
+}
+
 .complete-stars {
-  font-size: 3.2rem;
+  font-size: 3rem;
   letter-spacing: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  margin-top: 8px;
+  min-height: 3rem;
 }
 .complete-stars .star {
   display: inline-block;
@@ -1411,10 +1509,8 @@ body {
 .complete-msg   { font-size: 1.1rem; color: var(--gray-600); }
 
 .complete-summary {
-  background: var(--white);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  background: transparent;
+  padding: 0;
   width: 100%;
   text-align: left;
 }
@@ -1422,7 +1518,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--gray-200);
   font-size: 0.95rem;
 }
@@ -1585,6 +1681,8 @@ body {
   .screen.active           { animation: none; }
   .feedback-result         { animation: none; }
   .complete-stars .star    { animation: none; opacity: 1; }
+  .dlg-result-trophy       { animation: none; }
+  .dlg-result-card         { animation: none; }
   .shopkeeper-avatar.speaking { animation: none; }
   .modal-overlay           { animation: none; }
   .modal-card              { animation: none; }
@@ -2529,9 +2627,9 @@ body.aac-mode .practice-footer::before {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--orange);
-  margin: 4px 0 8px;
-  min-height: 1.5em;
+  margin: 0;
 }
+.complete-reward:empty { display: none; }
 
 /* ─── 完成頁推薦遊戲 ─────────────────────────────── */
 .complete-recommend {

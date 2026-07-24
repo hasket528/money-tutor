@@ -262,28 +262,33 @@
             justify-content: center; min-height: 100vh; padding: 24px 20px; text-align: center;
         }
         .adv-v-card-wrap { width: 100%; max-width: 480px; text-align: center; }
-        .adv-v-trophy { font-size: 80px; line-height: 1; margin-bottom: 8px; }
+        .adv-v-trophy {
+            font-size: 80px; line-height: 1; margin-bottom: 8px;
+            animation: advTrophyBounce 2s ease-in-out infinite;
+        }
+        @keyframes advTrophyBounce {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-12px); }
+        }
         .adv-v-title  { font-size: 2rem; font-weight: 900; color: var(--loc-deep); margin: 0 0 8px; }
         .adv-v-sub    { font-size: 1rem; color: #78350f; margin: 0 0 22px; }
+        /* 三張彩色統計卡片（對齊 24 單元／對話練習測驗結束卡片風格）*/
         .adv-v-stats {
-            display: grid; grid-template-columns: 1fr 1fr 1fr;
-            width: 100%; margin-bottom: 20px;
-            background: rgba(255,255,255,0.75); border: 2px solid var(--loc-border);
-            border-radius: 16px; overflow: hidden;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; width: 100%; margin-bottom: 20px;
         }
-        .adv-v-th {
-            padding: 9px 6px; font-size: 0.8rem; font-weight: 800; color: #b45309;
-            background: rgba(251,191,36,0.2); text-align: center;
-            border-bottom: 1px solid var(--loc-border);
+        .adv-v-card {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            padding: 15px 6px 13px; border-radius: 14px; color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.14);
         }
-        .adv-v-th:not(:last-child) { border-right: 1px solid rgba(251,191,36,0.5); }
-        .adv-v-td {
-            display: flex; flex-direction: column; align-items: center;
-            padding: 12px 6px; gap: 4px;
-        }
-        .adv-v-td:not(:last-child) { border-right: 1px solid rgba(251,191,36,0.35); }
-        .adv-v-ico  { font-size: 1.5rem; }
-        .adv-v-val  { font-size: 1.1rem; font-weight: 900; color: var(--loc-main); text-align: center; line-height: 1.2; }
+        .adv-vc-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .adv-vc-blue   { background: linear-gradient(135deg, #2980b9, #3498db); }
+        .adv-vc-orange { background: linear-gradient(135deg, #e67e22, #f39c12); }
+        .adv-v-ico  { font-size: 1.6rem; line-height: 1; }
+        .adv-v-lbl  { font-size: 0.78rem; font-weight: 700; opacity: 0.95; }
+        .adv-v-val  { font-size: 1.25rem; font-weight: 900; text-align: center; line-height: 1.2; }
+        @media (prefers-reduced-motion: reduce) { .adv-v-trophy { animation: none; } }
         .adv-v-btn  {
             display: block; border: none; border-radius: 14px; padding: 13px;
             font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: center;
@@ -416,10 +421,11 @@
             .adv-start-btn { font-size: 0.95rem; padding: 12px 10px; }
             .adv-enough { gap: 8px; }
             .adv-ew-amt { font-size: 1.3rem; }
-            .adv-v-th { font-size: 0.72rem; padding: 7px 4px; }
-            .adv-v-td { padding: 10px 4px; }
-            .adv-v-ico { font-size: 1.3rem; }
-            .adv-v-val { font-size: 0.95rem; }
+            .adv-v-stats { gap: 8px; }
+            .adv-v-card { padding: 12px 4px 10px; }
+            .adv-v-ico { font-size: 1.35rem; }
+            .adv-v-lbl { font-size: 0.7rem; }
+            .adv-v-val { font-size: 1.05rem; }
             .adv-trans-card { padding: 28px 18px; }
             .adv-trans-icon { font-size: 56px; }
             .adv-trans-text { font-size: 1rem; }

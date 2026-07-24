@@ -2940,6 +2940,12 @@ function showComplete() {
 
   document.getElementById('complete-title').textContent = '練習完成！';
 
+  // 三張統計卡片：答對步驟 / 正確率 / 星星
+  const setStat = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setStat('stat-correct', `${perfect}/${total}`);
+  setStat('stat-rate',    `${Math.round(ratio * 100)}%`);
+  setStat('stat-stars',   `${starCount}/3`);
+
   // 三顆星撒花
   if (starCount === 3) setTimeout(launchConfetti, 600);
 

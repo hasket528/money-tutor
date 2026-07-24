@@ -2069,12 +2069,21 @@ ${storesHTML}`;
     <h1 class="adv-v-title">🎉 冒險完成！🎉</h1>
     <p class="adv-v-sub">${perfect ? `${char.name}零失誤！真是金錢小達人！` : `完成所有關卡，共答錯 ${this.state.mistakes} 次`}</p>
     <div class="adv-v-stats">
-      <div class="adv-v-th">通關數</div>
-      <div class="adv-v-th">完成時間</div>
-      <div class="adv-v-th">表現</div>
-      <div class="adv-v-td"><div class="adv-v-ico">⭐</div><div class="adv-v-val">${this.state.score}/${MAX_SCORE}</div></div>
-      <div class="adv-v-td"><div class="adv-v-ico">⏱️</div><div class="adv-v-val">${timeStr}</div></div>
-      <div class="adv-v-td"><div class="adv-v-ico">${perf.icon}</div><div class="adv-v-val">${perf.label}</div></div>
+      <div class="adv-v-card adv-vc-green">
+        <div class="adv-v-ico">⭐</div>
+        <div class="adv-v-lbl">通關數</div>
+        <div class="adv-v-val">${this.state.score}/${MAX_SCORE}</div>
+      </div>
+      <div class="adv-v-card adv-vc-blue">
+        <div class="adv-v-ico">⏱️</div>
+        <div class="adv-v-lbl">完成時間</div>
+        <div class="adv-v-val">${timeStr}</div>
+      </div>
+      <div class="adv-v-card adv-vc-orange">
+        <div class="adv-v-ico">${perf.icon}</div>
+        <div class="adv-v-lbl">表現</div>
+        <div class="adv-v-val">${perf.label}</div>
+      </div>
     </div>
     ${diagHTML}
     ${recapHTML}

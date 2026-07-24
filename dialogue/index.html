@@ -363,16 +363,46 @@
   ════════════════════════════════════════ -->
   <div id="screen-complete" class="screen">
     <div class="complete-wrap">
-      <div class="complete-stars" id="complete-stars" aria-label="評分" role="img"></div>
-      <h2 class="complete-title" id="complete-title">練習完成！</h2>
-      <p class="complete-msg" id="complete-msg"></p>
-      <p class="complete-reward" id="complete-reward" aria-live="polite"></p>
-      <div class="complete-summary" id="complete-summary" aria-label="各步驟結果"></div>
-      <div class="complete-recommend" id="complete-recommend" hidden aria-label="推薦練習"></div>
-      <div class="complete-actions">
-        <button class="btn-primary btn-again-big" id="btn-again">🔁 再練習一次</button>
-        <button class="btn-secondary" id="btn-change-sit">換個情境</button>
-        <button class="btn-secondary" id="btn-home">回到首頁</button>
+      <div class="dlg-result-card">
+        <div class="dlg-result-trophy" aria-hidden="true">🏆</div>
+        <h2 class="complete-title" id="complete-title">練習完成！</h2>
+        <div class="complete-stars" id="complete-stars" aria-label="評分" role="img"></div>
+
+        <div class="dlg-result-inner">
+          <div class="dlg-stat-grid">
+            <div class="dlg-stat-card dlg-stat-green">
+              <div class="dlg-stat-ico" aria-hidden="true">✅</div>
+              <div class="dlg-stat-label">答對步驟</div>
+              <div class="dlg-stat-val" id="stat-correct">–</div>
+            </div>
+            <div class="dlg-stat-card dlg-stat-blue">
+              <div class="dlg-stat-ico" aria-hidden="true">🎯</div>
+              <div class="dlg-stat-label">正確率</div>
+              <div class="dlg-stat-val" id="stat-rate">–</div>
+            </div>
+            <div class="dlg-stat-card dlg-stat-orange">
+              <div class="dlg-stat-ico" aria-hidden="true">⭐</div>
+              <div class="dlg-stat-label">星星</div>
+              <div class="dlg-stat-val" id="stat-stars">–</div>
+            </div>
+          </div>
+
+          <div class="dlg-perf-badge" id="complete-msg"></div>
+          <p class="complete-reward" id="complete-reward" aria-live="polite"></p>
+
+          <div class="dlg-summary-block">
+            <div class="dlg-summary-title">📋 每一步的表現</div>
+            <div class="complete-summary" id="complete-summary" aria-label="各步驟結果"></div>
+          </div>
+
+          <div class="complete-recommend" id="complete-recommend" hidden aria-label="推薦練習"></div>
+
+          <div class="complete-actions">
+            <button class="btn-primary btn-again-big" id="btn-again">🔁 再練習一次</button>
+            <button class="btn-secondary" id="btn-change-sit">換個情境</button>
+            <button class="btn-secondary" id="btn-home">回到首頁</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
