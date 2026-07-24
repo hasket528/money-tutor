@@ -108,12 +108,16 @@
 })();
 
 // =================================================================
-// TTS 中文語音守門（2026-07-15）：統一全站「即時語音」優先序。
+// TTS 中文語音守門（2026-07-15；2026-07-25 改雅婷第一順位）：統一全站「即時語音」。
+// 為何雅婷第一：雅婷是 Windows 內建的「本機離線」zh-TW 語音，Web Speech（瀏覽器即時 TTS）
+//   抓得到、最可靠；曉臻是 Edge/Azure 的「雲端」語音，通常「不」出現在 Web Speech 清單，
+//   即時 TTS 叫不到 → 原本把曉臻放第一會失效、退到怪聲音（對話完成頁曾聽到怪音即此因）。
 // 全站語音順序＝ ①預錄音檔（各模組自行播放，不經過這裡）
-//              → ②微軟 曉臻 HsiaoChen → ③Google 國語（臺灣）
-//              → ④任何 zh-TW → ⑤任何中文語音 → ⑥都沒有則 lang=zh-TW 交系統挑。
+//              → ②微軟 雅婷 Yating（本機語音，第一順位）→ 微軟 曉臻 HsiaoChen（若有）
+//              → ③Google 國語（臺灣）→ ④任何 zh-TW → ⑤任何中文 → ⑥都沒有則 lang=zh-TW 交系統挑。
 // 攔截 speechSynthesis.speak：凡「含中文」的語句一律按上述順序指派語音，
-// 蓋過各單元自選的語音 → 保證中文絕不會被英文等非中文語音唸成「不知名語言」。
+// 蓋過各單元自選的即時語音 → 保證中文用可靠的中文聲，不被英文等唸成「不知名語言」。
+// （預錄音檔＝角色指定聲不經此處，維持不變。）
 // =================================================================
 (function () {
     if (!window.speechSynthesis || !('SpeechSynthesisUtterance' in window)) return;
@@ -123,7 +127,9 @@
 
     function pickZhVoice() {
         const vs = synth.getVoices() || [];
-        return vs.find(v => /HsiaoChen/i.test(v.name)) ||                                  // ② 微軟曉臻（Edge Online）
+        return vs.find(v => /Yating/i.test(v.name)) ||          // ① 微軟雅婷（Windows 本機／Edge Online）＝專案第一順位（Web Speech 最可靠）
+               vs.find(v => /雅婷/.test(v.name)) ||
+               vs.find(v => /HsiaoChen/i.test(v.name)) ||                                  // ② 微軟曉臻（Edge Online）
                vs.find(v => /曉臻|晓臻/.test(v.name)) ||
                vs.find(v => /google/i.test(v.name) && /^zh[-_]TW/i.test(v.lang || '')) ||  // ③ Google 台灣
                vs.find(v => v.name === 'Google 國語（臺灣）') ||
