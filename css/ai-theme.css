@@ -221,6 +221,17 @@ body {
     transition: all var(--transition-normal);
 }
 
+/* 設定頁一致性（原僅 F4 個別有，2026-07-25 提升到共用層讓全站設定頁一致）：
+   設定頁（.unit-welcome）的外層是 --primary→--secondary 藍綠漸層，但 body 預設是
+   --background-primary 天藍漸層，兩者不一致會在頂端導覽列與設定卡之間露出色帶。
+   當畫面含 .unit-welcome 時，把 body 背景改成與設定卡外層同一漸層、#app 透明，消除色帶。 */
+body:has(.unit-welcome) {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+}
+#app:has(.unit-welcome) {
+    background: transparent !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
     text-shadow: 0 2px 4px rgba(135, 206, 235, 0.3);

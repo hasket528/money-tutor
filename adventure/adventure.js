@@ -1932,9 +1932,13 @@ ${storesHTML}`;
             }
         };
 
+        // 進關先唸引導語鋪陳「回家路上」情境（曉臻預錄），再接實際狀況，學生更順暢融入情境。
+        // 引導語字串須與 voicegen/_gen_adv_list2.js 完全一致（LEVELS[5].scene 帶「⋯」）才命中預錄。
+        const introText     = `回家路上要小心。${this.LEVELS[5].scene(char.name)}`;
+        const situationText = `${d.scene(char.name)} ${d.question}`;
         document.getElementById('adv-replay')?.addEventListener('click', () =>
-            AdvSpeech.speak(`${d.scene(char.name)} ${d.question}`));
-        AdvTimer.set(() => AdvSpeech.speak(`${d.scene(char.name)} ${d.question}`), 300);
+            AdvSpeech.speak(situationText));
+        AdvTimer.set(() => AdvSpeech.speak(introText, () => AdvSpeech.speak(situationText), 'narrator'), 300);
     },
 
     // ── 關卡 7：存錢 ────────────────────────────────────────────
