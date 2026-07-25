@@ -502,11 +502,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 基礎樣式配置 - F1 拖拽介面
             base: {
                 correspondenceLayout: {
+                    // 對齊 F4：根容器鋪滿視窗、背景用全站漸層（同 body），標題列才會齊頂無縫，
+                    // 不再出現「標題列被近白圓角框內縮」的色帶。內容間距改由 .correspondence-frame 自帶的 padding 負責。
                     width: '100%',
-                    minHeight: '600px',
-                    background: '#f8f9fa',
-                    borderRadius: '15px',
-                    padding: '20px'
+                    minHeight: '100vh',
+                    background: 'var(--background-primary)',
+                    borderRadius: '0',
+                    padding: '0'
                 },
                 targetArea: {
                     background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
