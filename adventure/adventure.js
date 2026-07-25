@@ -469,18 +469,18 @@ const Adventure = {
         },
         {
             venue:'超級市場',
-            // 柑仔店改為超級市場，改用 B6 雜貨攤的生活用品。2026-07-25
-            t3: c => `走著走著，${c.name}想起家裡有些東西要補貨，前面剛好有一間超級市場，於是走了進去⋯`,
-            label:'生活用品', scene: n => `${n}走進超級市場，採買一些生活用品。`,
+            // 超級市場：改為挑零食/飲料/水果（比家用雜貨更貼近孩子帶零用錢的情境）。2026-07-25
+            t3: c => `走著走著，${c.name}看到一間超級市場，想進去挑點愛吃的零食和飲料⋯`,
+            label:'點心', scene: n => `${n}走進超級市場，挑些想吃想喝的。`,
             items:[
-                { name:'食鹽',   price:20, img:'../images/b6/icon-b6-salt.png',        icon:'🧂' },
-                { name:'豆腐',   price:25, img:'../images/b6/icon-b6-tofu.png',        icon:'🫙' },
-                { name:'砂糖',   price:30, img:'../images/b6/icon-b6-sugar.png',       icon:'🍬' },
-                { name:'麵條',   price:35, img:'../images/b6/icon-b6-noodle.png',      icon:'🍜' },
-                { name:'味噌',   price:40, img:'../images/b6/icon-b6-miso.png',        icon:'🟡' },
-                { name:'醬油',   price:45, img:'../images/b6/icon-b6-soy-sauce.png',   icon:'🍶' },
-                { name:'沙拉油', price:75, img:'../images/b6/icon-b6-cooking-oil.png', icon:'🫙' },
-                { name:'白米',   price:90, img:'../images/b6/icon-b6-rice.png',        icon:'🌾' },
+                { name:'洋芋片',     price:35, img:'../images/a4/icon-a4-potato-chips-shop.png',        icon:'🥔' },
+                { name:'家庭號餅乾', price:55, img:'../images/a4/icon-a4-family-pack-cookies-shop.png', icon:'🍪' },
+                { name:'可樂',       price:30, img:'../images/a1/icon-a07-classic-coke.png',            icon:'🥤' },
+                { name:'沙士',       price:30, img:'../images/a1/icon-a08-sarsaparilla-drink.png',      icon:'🥤' },
+                { name:'草莓',       price:45, img:'../images/b6/icon-b6-strawberry.png',               icon:'🍓' },
+                { name:'豆漿',       price:20, img:'../images/b6/icon-b6-soy-milk.png',                 icon:'🥛' },
+                { name:'香蕉',       price:15, img:'../images/b6/icon-b6-banana.png',                   icon:'🍌' },
+                { name:'布丁',       price:25, img:'../images/b6/icon-b6-pudding.png',                  icon:'🍮' },
             ]
         },
         {
@@ -513,6 +513,22 @@ const Adventure = {
                 { name:'可頌',   price:45, img:'../images/b6/icon-b6-croissant.png',  icon:'🥐' },
                 { name:'鬆餅',   price:50, img:'../images/b6/icon-b6-waffle.png',     icon:'🧇' },
                 { name:'蛋糕',   price:60, img:'../images/b6/icon-b6-cake-slice.png', icon:'🎂' },
+            ]
+        },
+        {
+            venue:'早餐店',
+            // 新增場景：台式早餐店，用 A4 早餐店圖示。放在陣列最後→ T3 索引為 3v7、不影響既有場景。2026-07-25
+            t3: c => `走著走著，一股蛋餅和奶茶的香味飄了過來，${c.name}看到一間早餐店，決定進去吃份早餐⋯`,
+            label:'早餐', scene: n => `${n}走進早餐店，想吃份熱騰騰的早餐。`,
+            items:[
+                { name:'吐司',   price:25, img:'../images/a4/icon-a4-toast-shop.png',       icon:'🍞' },
+                { name:'豆漿',   price:20, img:'../images/a4/icon-a4-soy-milk-shop.png',    icon:'🥛' },
+                { name:'蛋餅',   price:30, img:'../images/a4/icon-a4-egg-pancake-shop.png', icon:'🥞' },
+                { name:'蘿蔔糕', price:35, img:'../images/a4/icon-a4-radish-cake-shop.png', icon:'🍘' },
+                { name:'奶茶',   price:35, img:'../images/a4/icon-a4-milk-tea-shop.png',    icon:'🥤' },
+                { name:'飯糰',   price:40, img:'../images/a4/icon-a4-rice-ball-shop.png',   icon:'🍙' },
+                { name:'果汁',   price:30, img:'../images/a4/icon-a4-juice-shop.png',       icon:'🧃' },
+                { name:'三明治', price:45, img:'../images/a4/icon-a4-sandwich-shop.png',    icon:'🥪' },
             ]
         },
     ],
