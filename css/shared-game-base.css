@@ -541,10 +541,10 @@ a.selection-btn {
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
-/* 沒有選項內容時（如 F1 拖放對應模式）不要顯示空白框，
-   有內容（選項付款按鈕）時才顯示。2026-07-25 */
+/* 沒有選項內容時（如 F1 拖放對應／普通模式）不要顯示空白框，有內容（選項付款按鈕）時才顯示。
+   需 !important：#options-area 有 id 選擇器的 display 規則（特異性較高）會蓋過本 class 規則。2026-07-25 */
 .product-selection-area:empty {
-    display: none;
+    display: none !important;
 }
 
 .product-selection-area h3 {

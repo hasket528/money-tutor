@@ -119,8 +119,11 @@
 }
 
 /* ── 設定頁：unit-welcome / welcome-content 覆寫 ─────────────────── */
+/* 設定頁背景改與其他單元一致（藍→綠，同 --primary→--secondary）：
+   原本 B 系列用橘色漸層，和其他單元不一致、又和共用 body:has(.unit-welcome) 的藍綠底
+   在導覽列之間形成色帶。2026-07-25 統一。B 系列的橘色主題（按鈕/標題）不受影響。 */
 .b-series .unit-welcome {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #10b981 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
 }
 .b-series .welcome-content {
     border-top: 6px solid var(--b-primary);
