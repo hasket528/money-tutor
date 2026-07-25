@@ -275,6 +275,29 @@ const Adventure = {
         AdvSpeech.speak(ADV_YAY[id], () => AdvSpeech.speak(tail, cb, id), id);
     },
 
+    // ── 卡死修正（2026-07-25）────────────────────────────────────
+    // 症狀：測驗中畫面莫名卡住、無法繼續。根因：每關「推進下一關／答錯後重置輸入」原本
+    // 只寫在語音的 onend 回呼裡，學生若在回饋語還在唸時按了 🔊 重聽（或其他會發聲的鈕），
+    // AdvSpeech.cancel() 會把還沒觸發的回呼直接丟掉 → 按鈕停在鎖定狀態、關卡永遠不推進＝卡死。
+    // 修法：語音照播，但「推進動作」改由「獨立計時器」保證執行——AdvSpeech.cancel() 不會動到
+    // AdvTimer，故就算語音被打斷，安全網計時器仍會把流程往下帶。兩路以 fired 旗標去重：
+    // 正常時語音唸完後 gap 毫秒推進；被打斷時安全網（估算語音長度）保底推進。
+    _sayThen(speech, who, action, gap) {
+        let fired = false;
+        const go = () => { if (fired) return; fired = true; action(); };
+        const g = (gap == null) ? 500 : gap;
+        AdvSpeech.speak(speech, () => AdvTimer.set(go, g), who);        // 正常：語音結束後推進
+        AdvTimer.set(go, 1400 + (speech ? String(speech).length * 180 : 0) + g); // 安全網：被中斷也推進
+    },
+    // 同 _sayThen，但答對用角色歡呼（預錄）＋數字報讀（_cheer 兩段語音）。
+    _cheerThen(char, tail, action, gap) {
+        let fired = false;
+        const go = () => { if (fired) return; fired = true; action(); };
+        const g = (gap == null) ? 500 : gap;
+        this._cheer(char, tail, () => AdvTimer.set(go, g));
+        AdvTimer.set(go, 3200 + (tail ? String(tail).length * 180 : 0) + g);     // 安全網（含歡呼時長）
+    },
+
     // ── 目前學生（決定學習歷程記給誰；與 reward / dialogue / 金隊長基地共用 sp_currentStudent）──
     _loadRoster()  { try { return JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch { return []; } },
     _getCurStudent() { try { return JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch { return null; } },
@@ -1159,10 +1182,10 @@ const Adventure = {
         if (typeof confetti === 'function') {
             confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, zIndex: 9999 });
         }
-        AdvSpeech.speak(speech, () => AdvTimer.set(() => {
+        this._sayThen(speech, (this.state.char || this.CHARACTERS[0]).id, () => {
             this.state.level++;
             this._renderLevel();
-        }, 500), (this.state.char || this.CHARACTERS[0]).id);
+        }, 500);
     },
 
     _wrong(btn, correctBtn, speech, hint) {
@@ -1176,13 +1199,13 @@ const Adventure = {
             fb.innerHTML = `❌ 再想想！${hint ? `<span class="adv-hint"> ${hint}</span>` : ''}`;
             fb.className = 'adv-feedback adv-fb-ng';
         }
-        AdvSpeech.speak(speech, () => AdvTimer.set(() => {
+        this._sayThen(speech, 'retry', () => {
             document.querySelectorAll('.adv-choice-btn').forEach(b => {
                 b.disabled = false;
                 b.classList.remove('adv-ok', 'adv-ng');
             });
             if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-        }, 800), 'retry');
+        }, 800);
     },
 
     _makeChoices(answer, dists) {
@@ -1440,22 +1463,22 @@ const Adventure = {
                 this.state.score++;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                this._cheer(char, `共有${d.answer}元！`, () => AdvTimer.set(() => {
+                this._cheerThen(char, `共有${d.answer}元！`, () => {
                     this.state.level++;
                     this._renderLevel();
-                }, 500));
+                }, 500);
             } else {
                 this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = '❌ 再算算！<span class="adv-hint"> 把每一枚硬幣加起來</span>'; fb.className = 'adv-feedback adv-fb-ng'; }
-                AdvSpeech.speak('不對喔，再數一次！', () => AdvTimer.set(() => {
+                this._sayThen('不對喔，再數一次！', 'retry', () => {
                     entered = '';
                     display.textContent = '點擊輸入金額';
                     display.classList.remove('adv-input-ok', 'adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800), 'retry');
+                }, 800);
             }
         });
 
@@ -1642,8 +1665,8 @@ const Adventure = {
             this._sfx('adv-sfx-cash');
             // 本關是「選自己想吃的」，沒有標準答案（score 為參與即得），故不播 ADV_YAY 答對歡呼——
             // 只複述選了什麼、花多少錢（敘述而非對錯回饋）。
-            AdvSpeech.speak(`${char.name}選了${itemNames}，共花${spent}元！`, () =>
-                AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500), char.id);
+            this._sayThen(`${char.name}選了${itemNames}，共花${spent}元！`, char.id,
+                () => { this.state.level++; this._renderLevel(); }, 500);
         });
 
         document.getElementById('adv-back').addEventListener('click', () => {
@@ -1720,19 +1743,19 @@ const Adventure = {
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
                 this._sfx('adv-sfx-cash');
-                this._cheer(char, `${paid}減${price}，找回${change}元！`, () =>
-                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
+                this._cheerThen(char, `${paid}減${price}，找回${change}元！`,
+                    () => { this.state.level++; this._renderLevel(); }, 500);
             } else {
                 this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${paid} − ${price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
-                AdvSpeech.speak('再算算！', () => AdvTimer.set(() => {
+                this._sayThen('再算算！', 'retry', () => {
                     entered = ''; display.textContent = '?';
                     display.classList.remove('adv-input-ok','adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800), 'retry');
+                }, 800);
             }
         });
         this._advCalcBind();
@@ -1781,8 +1804,8 @@ ${storesHTML}`;
                     if (fb) { fb.textContent = `✅ 對！${cheapest.name}最便宜！`; fb.className = 'adv-feedback adv-fb-ok'; }
                     document.getElementById('correct-sound')?.play();
                     if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                    this._cheer(char, `${cheapest.name}只要${cheapest.price}元！`, () =>
-                        AdvTimer.set(() => this._level5Phase2(d, stores, cheapest, diff), 600));
+                    this._cheerThen(char, `${cheapest.name}只要${cheapest.price}元！`,
+                        () => this._level5Phase2(d, stores, cheapest, diff), 600);
                 } else {
                     this._wrong(btn, null, '再看看！', '比比看哪個數字比較小');
                 }
@@ -1841,12 +1864,12 @@ ${storesHTML}`;
                     document.getElementById('error-sound')?.play();
                     display.classList.add('adv-input-ng');
                     if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${expensive.price} − ${cheapest.price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
-                    AdvSpeech.speak('再算算！', () => AdvTimer.set(() => {
+                    this._sayThen('再算算！', 'retry', () => {
                         entered = ''; display.textContent = '?';
                         display.classList.remove('adv-input-ok','adv-input-ng');
                         confirmBtn.disabled = true;
                         if (fb) { fb.textContent=''; fb.className='adv-feedback'; }
-                    }, 800), 'retry');
+                    }, 800);
                 }
             });
         }
@@ -1901,8 +1924,8 @@ ${storesHTML}`;
                 this.state.score++;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
-                AdvSpeech.speak(`做得好！${d.safeSpeak}`, () =>
-                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 700), char.id);
+                this._sayThen(`做得好！${d.safeSpeak}`, char.id,
+                    () => { this.state.level++; this._renderLevel(); }, 700);
             } else {
                 const safeIdx = all.findIndex(o => o.safe);
                 this._wrong(btn, safeIdx >= 0 ? this._btn(safeIdx) : null, '再想想，這樣安全嗎？', c.fb || d.hint);
@@ -1984,19 +2007,19 @@ ${storesHTML}`;
                 document.getElementById('correct-sound')?.play();
                 if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
                 this._sfx('adv-sfx-drop');
-                this._cheer(char, `每天存${d.daily}元，${d.answer}天就能存到${d.goal}元！`, () =>
-                    AdvTimer.set(() => { this.state.level++; this._renderLevel(); }, 500));
+                this._cheerThen(char, `每天存${d.daily}元，${d.answer}天就能存到${d.goal}元！`,
+                    () => { this.state.level++; this._renderLevel(); }, 500);
             } else {
                 this._miss();
                 document.getElementById('error-sound')?.play();
                 display.classList.add('adv-input-ng');
                 if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${d.goal} ÷ ${d.daily} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
-                AdvSpeech.speak('再算算！', () => AdvTimer.set(() => {
+                this._sayThen('再算算！', 'retry', () => {
                     entered = ''; display.textContent = '?';
                     display.classList.remove('adv-input-ok','adv-input-ng');
                     confirmBtn.disabled = true;
                     if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
-                }, 800), 'retry');
+                }, 800);
             }
         });
         this._advCalcBind();
