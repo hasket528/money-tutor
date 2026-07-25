@@ -438,15 +438,16 @@ const Adventure = {
             venue:'飲料攤',
             t3: c => `走著走著，${c.name}覺得有點口渴，前面剛好有一攤飲料店，於是走了過去⋯`,
             label:'飲料', scene: n => `${n}來到飲料攤，想買杯好喝的。`,
+            // 飲料改用 B6 飲料攤的外賣飲料（杯裝、圖與品項一致；原本混了非飲料的冰淇淋）。2026-07-25
             items:[
-                { name:'珍珠奶茶', price:55, img:'../images/a4/icon-a4-milk-tea-shop.png', icon:'🧋' },
-                { name:'紅茶',     price:25, img:'../images/a4/icon-a4-black-tea-shop.png', icon:'🍵' },
-                { name:'果汁',     price:40, img:'../images/a4/icon-a4-juice-shop.png',    icon:'🧃' },
-                { name:'可樂',     price:30, img:'../images/a4/icon-a4-cola-shop.png',     icon:'🥤' },
-                { name:'豆漿',     price:20, img:'../images/a4/icon-a4-soy-milk-shop.png', icon:'🥛' },
-                { name:'鮮奶',     price:35, img:'../images/a4/icon-a4-milk-shop.png',     icon:'🥛' },
-                { name:'汽水',     price:25, img:'../images/c6/icon-c6-drink.png',         icon:'🫧' },
-                { name:'冰淇淋',   price:35, img:'../images/a4/icon-a4-ice-cream-shop.png', icon:'🍦' },
+                { name:'珍珠奶茶', price:55, img:'../images/b6/icon-b6-bubble-tea.png',       icon:'🧋' },
+                { name:'西瓜汁',   price:50, img:'../images/b6/icon-b6-watermelon-juice.png', icon:'🍉' },
+                { name:'奶茶',     price:45, img:'../images/b6/icon-b6-milk-tea.png',         icon:'🍵' },
+                { name:'檸檬茶',   price:40, img:'../images/b6/icon-b6-lemon-tea.png',        icon:'🍋' },
+                { name:'烏龍茶',   price:35, img:'../images/b6/icon-b6-oolong-tea.png',       icon:'🥛' },
+                { name:'甘蔗汁',   price:30, img:'../images/b6/icon-b6-sugarcane-juice.png',  icon:'🌿' },
+                { name:'紅茶',     price:30, img:'../images/b6/icon-b6-iced-black-tea.png',   icon:'🍶' },
+                { name:'冬瓜茶',   price:25, img:'../images/b6/icon-b6-winter-melon-tea.png', icon:'🍵' },
             ]
         },
         {
