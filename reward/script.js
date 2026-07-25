@@ -1313,9 +1313,12 @@ document.addEventListener('DOMContentLoaded', () => {
         else speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
     }
     try { if (window.speechSynthesis) speechSynthesis.getVoices(); } catch (e) {}   // 提早觸發音色載入
-    window.speakPetDesc = function () {   // 點介紹詞旁喇叭鈕：朗讀目前階段介紹詞
+    window.speakPetDesc = function () {   // 點介紹詞旁喇叭鈕：先唸目前階段「名稱」再接「介紹詞」
+        const nm = document.getElementById('gp-pet-name');
         const el = document.getElementById('gp-pet-desc');
-        if (el) speakText(el.textContent);
+        const name = (nm && nm.textContent || '').trim();
+        const desc = (el && el.textContent || '').trim();
+        if (name || desc) speakText((name ? name + '，' : '') + desc);
     };
 
     // 成就與寵物頁的「金幣」獨立於計分板分數，另存 mt_coins_{id}；由「🔄 轉換成金幣」注入
