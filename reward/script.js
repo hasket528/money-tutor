@@ -1188,13 +1188,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 : `<div class="gp-crt-emoji"><img class="gp-crt-img" src="../images/pets/pet_${c.key}_s${st.stage}.png" alt="${c.name}" onerror="this.replaceWith(document.createTextNode('${emo}'))"></div>`;
             let sub = '', btn = '';
             if (locked) {
-                sub = c.gems > 0 ? `🔒 ${c.gems} 💎 解鎖` : '🔒 免費解鎖';
-                const can = c.gems === 0 || gems >= c.gems;
+                const uc = G.cfg().unlockCoins;
+                sub = `🔒 ${uc} 金幣 解鎖`;
+                const can = getCoins(stu.id) >= uc;
                 btn = `<button class="gp-crt-btn" data-key="${c.key}" ${can ? '' : 'disabled'}>解鎖</button>`;
-            } else if (st.next != null) {
-                sub = `再練 ${Math.max(0, st.next - st.grown)} 次進化`;
-            } else {
+            } else if (st.stage >= 3) {
                 sub = '🎉 已完全進化';
+            } else {
+                const cdd = G.petsData(stu.id)[c.key] || {};
+                const finalNeed = G.PET_STAGES[3].need;
+                if ((cdd.fed || 0) >= finalNeed && !cdd.evolved) sub = '✨ 可用寶石進化';
+                else { const cn = Math.max(0, Math.ceil((st.next - st.grown) / G.FEED_GAIN) * G.FEED_COST); sub = `再 ${cn} 金幣進化`; }
             }
             el.innerHTML = `${visual}
                 <div class="gp-crt-name">${(c.stageNames && c.stageNames[locked ? 0 : st.stage]) || c.name}</div>
@@ -1218,14 +1222,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         host.querySelectorAll('.gp-crt-btn').forEach(b => {
             b.addEventListener('click', () => {
-                const ok = G.unlockCreature(_gpRecords, stu.id, b.dataset.key);
+                const uc = G.cfg().unlockCoins;
                 const msg = document.getElementById('gp-creatures-msg');
+                if (getCoins(stu.id) < uc) { if (msg) msg.textContent = `金幣不夠——解鎖要 ${uc} 金幣（可把練習次數領成金幣）！`; return; }
+                const ok = G.unlockCreature(stu.id, b.dataset.key);
                 if (ok) {
+                    setCoins(stu.id, getCoins(stu.id) - uc);
                     try { playSound('bonus'); } catch (e) {}
-                    if (msg) msg.textContent = '🎉 解鎖成功！繼續練習牠就會長大進化！';
+                    if (msg) msg.textContent = '🎉 解鎖成功！餵金幣牠就會長大進化！';
                     renderGrowthPage();
-                } else if (msg) {
-                    msg.textContent = '寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！';
                 }
             });
         });
@@ -1348,8 +1353,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (im2) { im2.classList.remove('gp-evo-out'); void im2.offsetWidth; im2.classList.add('gp-evo-in'); }
             setTimeout(function () {
                 if (im2) im2.classList.remove('gp-evo-in'); fx.forEach(el => el.remove());
-                const nm = document.getElementById('gp-pet-name');   // 變身完＋音效播完 → 唸出新階段名稱
-                if (nm && nm.textContent) speakText(nm.textContent);
+                const nm = document.getElementById('gp-pet-name');   // 變身完＋音效播完 → 唸出新階段名稱＋接著唸介紹詞
+                const dsc = document.getElementById('gp-pet-desc');
+                if (nm && nm.textContent) {
+                    const descTxt = (dsc && dsc.textContent) ? '。' + dsc.textContent : '';
+                    speakText(nm.textContent + descTxt);
+                }
             }, 1400);
         }, 1100);
     }
@@ -1423,7 +1432,27 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gp-gems').textContent = gems;
         document.getElementById('gp-practices').textContent = G.myRecords(_gpRecords, stu.id).length;
         const buyGemBtn = document.getElementById('gp-buy-gem');
-        if (buyGemBtn) buyGemBtn.disabled = getCoins(stu.id) < G.GEM_COIN_COST;
+        if (buyGemBtn) {
+            buyGemBtn.disabled = getCoins(stu.id) < G.GEM_COIN_COST;
+            buyGemBtn.textContent = `🪙 ${G.GEM_COIN_COST} 金幣 → 💎 1 寶石`;
+        }
+        // 練習次數領金幣（每練 1 次可領 coinsPerPractice 金幣；領取制、不重複）
+        const claimBtn = document.getElementById('gp-claim-practice');
+        if (claimBtn) {
+            const un = G.unclaimedPractices(_gpRecords, stu.id);
+            const per = G.cfg().coinsPerPractice;
+            claimBtn.disabled = un <= 0;
+            claimBtn.textContent = un > 0 ? `🪙 領取練習金幣（${un} × ${per} = ${un * per}）` : '✓ 練習金幣已領完';
+            claimBtn.onclick = () => {
+                const coins = G.claimPracticeCoins(_gpRecords, stu.id);
+                if (coins > 0) {
+                    setCoins(stu.id, getCoins(stu.id) + coins);
+                    try { playSound('bonus'); } catch (e) {}
+                    gpMsg(`🪙 領取了 ${coins} 金幣！可以拿去餵寵物或換寶石囉！`);
+                    renderGrowthPage();
+                }
+            };
+        }
 
         // ── 我的存錢寵物：◀▶ 切換（存錢豬 + 已解鎖收集寵物）；下方切換「已達階段」──
         const unlockedPets = (G.CREATURES || []).filter(cc => G.creatureState(_gpRecords, stu.id, cc.key).stage >= 0);
@@ -1467,21 +1496,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const stage    = G.PET_STAGES[stageIdx];
             const next     = G.PET_STAGES[stageIdx + 1];
             renderStageSwitch(stageIdx, (vs) => '../' + G.PET_STAGES[vs].img, (vs) => G.PET_STAGES[vs].name, (vs) => G.PET_STAGES[vs].desc || '');
-            feedBtn.hidden = false;
             if (!next) {
+                feedBtn.hidden = true; evolveBtn.hidden = true;
                 bar.style.width = '100%';
                 label.textContent = '🎉 已是最終型態，繼續保持好表現！';
-                evolveBtn.hidden = true; feedBtn.disabled = true;
             } else if (next.gems && pet.growth >= next.need) {
+                // 成長已滿、需寶石進化 → 隱藏餵食鈕，只留「✨寶石進化」鈕
+                feedBtn.hidden = true;
+                evolveBtn.hidden = false; evolveBtn.disabled = gems < next.gems;
+                evolveBtn.textContent = `✨ 寶石進化（花 ${next.gems} 💎）`;
                 bar.style.width = '100%';
-                label.textContent = `成長值滿了！用 ${next.gems} 顆 💎 進化成「${next.name}」`;
-                evolveBtn.hidden = false; evolveBtn.disabled = gems < next.gems; feedBtn.disabled = true;
+                label.textContent = `成長 ${pet.growth} / ${next.need}（用 ${next.gems} 顆 💎 進化成「${next.name}」）`;
             } else {
+                feedBtn.hidden = false; evolveBtn.hidden = true;
                 const base = stage.need, target = next.need;
                 const pct = Math.max(3, Math.min(100, Math.round((pet.growth - base) / (target - base) * 100)));
                 bar.style.width = pct + '%';
-                label.textContent = `成長值 ${pet.growth} / ${target}`;
-                evolveBtn.hidden = true; feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
+                const coinsNeed = Math.max(0, Math.ceil((target - pet.growth) / G.FEED_GAIN) * G.FEED_COST);
+                label.textContent = `成長 ${pet.growth} / ${target}（再 ${coinsNeed} 金幣進化）`;
+                feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
             }
             feedBtn.onclick = () => {
                 if (getCoins(stu.id) < G.FEED_COST) { gpMsg('金幣不夠——請到「優良表現獎勵板」把分數「🔄 轉換成金幣」！'); return; }
@@ -1508,20 +1541,29 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const c  = curPet.c;
             const st = G.creatureState(_gpRecords, stu.id, c.key);
-            evolveBtn.hidden = true;
+            const cd = G.petsData(stu.id)[c.key] || {};
+            const finalNeed = G.PET_STAGES[3].need, finalGems = G.PET_STAGES[3].gems;
             renderStageSwitch(st.stage, (vs) => `../images/pets/pet_${c.key}_s${vs}.png`, (vs) => (c.stageNames && c.stageNames[vs]) || c.name, (vs) => (c.stageDesc && c.stageDesc[vs]) || '');
-            if (st.next != null) {
-                feedBtn.hidden = false;
-                bar.style.width = Math.max(6, Math.min(100, Math.round((st.grown / Math.max(1, st.next)) * 100))) + '%';
-                label.textContent = `成長 ${st.grown} / ${st.next}（練習或餵食都會長大）`;
-                feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
-            } else {
-                feedBtn.hidden = true;
+            if (st.stage >= 3) {
+                feedBtn.hidden = true; evolveBtn.hidden = true;
                 bar.style.width = '100%';
                 label.textContent = '🎉 已完全進化！';
+            } else if ((cd.fed || 0) >= finalNeed && !cd.evolved) {
+                // 成長已滿、需寶石進化 → 隱藏餵食鈕，只留「✨寶石進化」鈕
+                feedBtn.hidden = true;
+                evolveBtn.hidden = false; evolveBtn.disabled = gems < finalGems;
+                evolveBtn.textContent = `✨ 寶石進化（花 ${finalGems} 💎）`;
+                bar.style.width = '100%';
+                label.textContent = `成長 ${st.grown} / ${finalNeed}（用 ${finalGems} 顆 💎 進化）`;
+            } else {
+                feedBtn.hidden = false; evolveBtn.hidden = true;
+                bar.style.width = Math.max(6, Math.min(100, Math.round((st.grown / Math.max(1, st.next)) * 100))) + '%';
+                const coinsNeed = Math.max(0, Math.ceil((st.next - st.grown) / G.FEED_GAIN) * G.FEED_COST);
+                label.textContent = `成長 ${st.grown} / ${st.next}（再 ${coinsNeed} 金幣進化）`;
+                feedBtn.disabled = getCoins(stu.id) < G.FEED_COST;
             }
             feedBtn.onclick = () => {
-                if (getCoins(stu.id) < G.FEED_COST) { gpMsg('金幣不夠——請到「優良表現獎勵板」把分數「🔄 轉換成金幣」！'); return; }
+                if (getCoins(stu.id) < G.FEED_COST) { gpMsg('金幣不夠——把練習次數領成金幣、或到獎勵板把分數轉金幣！'); return; }
                 const before = G.creatureState(_gpRecords, stu.id, c.key).stage;
                 setCoins(stu.id, getCoins(stu.id) - G.FEED_COST);
                 G.feedCreature(stu.id, c.key);
@@ -1530,9 +1572,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     playEvolveEffect(() => { _savePetStage = null; gpMsg('🎉 進化了！長大到「' + ((c.stageNames && c.stageNames[after]) || c.name) + '」！'); renderGrowthPage(); });
                 } else {
                     try { playSound('bonus'); } catch (e) {}
-                    gpMsg('🍎 好好吃！成長 +' + G.CREATURE_FEED_GAIN);
+                    gpMsg('🍎 好好吃！成長 +' + G.FEED_GAIN);
                     renderGrowthPage();
                 }
+            };
+            evolveBtn.onclick = () => {
+                if (!G.evolveCreature(_gpRecords, stu.id, c.key)) { gpMsg('寶石不夠——在單元拿到 🌟 無錯通過就能獲得寶石！'); return; }
+                playEvolveEffect(() => { _savePetStage = null; gpMsg('✨ 進化成功！'); renderGrowthPage(); });
             };
         }
 

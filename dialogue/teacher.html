@@ -159,6 +159,7 @@
     <div class="t-group">
       <span class="t-group-label">獎勵</span>
       <button class="t-btn t-btn-primary" onclick="RewardCfg.toggle()" title="單元完成後自動累積待發獎勵點數（預設關閉；0＝該單元不給）">🎁 完成獎勵設定</button>
+      <button class="t-btn t-btn-primary" onclick="GrowthCfg.toggle()" title="設定成就與寵物的成長門檻、寶石與金幣兌換">🌱 成長設定</button>
     </div>
     <span class="t-sep"></span>
     <div class="t-group">
@@ -240,6 +241,83 @@ const RewardCfg = (() => {
       : '✓ 已儲存（總開關關閉，不會發放）';
   }
   return { toggle, save };
+})();
+</script>
+
+<!-- 🌱 成長設定（教師）：寫 mt_growth_cfg，由 js/growth-system.js 讀取；統一制對所有寵物生效 -->
+<div id="growth-cfg-panel" class="no-print" hidden style="margin:12px 16px;padding:14px 16px;border:1.5px solid #d7ecd9;border-radius:12px;background:#f6fdf7">
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <strong style="font-size:1rem">🌱 成長設定（成就與寵物）</strong>
+    <button class="t-btn t-btn-primary" onclick="GrowthCfg.save()">💾 儲存設定</button>
+    <button class="t-btn" onclick="GrowthCfg.reset()" style="background:#e2e8f0">↩️ 回復預設</button>
+    <span id="gc-status" style="font-size:0.8rem;color:#16a34a;min-height:1.1em"></span>
+  </div>
+  <p style="font-size:0.8rem;color:#475569;margin:8px 0 10px">
+    對<strong>所有寵物（存錢豬＋收集寵物）統一生效</strong>。門檻＝各階段需要的成長值（餵金幣長大）；最後階段還要花寶石才能進化。金幣可由「優良表現分數」或「練習次數」兌換。
+  </p>
+  <div id="gc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 16px"></div>
+</div>
+<script>
+// 成長設定面板（自包含；設定鍵 mt_growth_cfg，schema 與 js/growth-system.js 的 CFG_DEFAULTS 一致）
+const GrowthCfg = (() => {
+  const KEY = 'mt_growth_cfg';
+  const DEFAULTS = { stageNeeds:[0,20,40,60], finalGems:3, coinsPerGem:25, unlockCoins:15, feedCost:5, feedGain:5, coinsPerPractice:5 };
+  const FIELDS = [
+    ['need1', '階段② 門檻（小金豬/幼體）', c => c.stageNeeds[1]],
+    ['need2', '階段③ 門檻（少年/成長）',   c => c.stageNeeds[2]],
+    ['need3', '階段④ 門檻（最終）',         c => c.stageNeeds[3]],
+    ['finalGems', '最終階段需寶石數',       c => c.finalGems],
+    ['coinsPerGem', '幾金幣換 1 寶石',      c => c.coinsPerGem],
+    ['unlockCoins', '解鎖新寵物需金幣',     c => c.unlockCoins],
+    ['feedGain', '餵一次成長多少',           c => c.feedGain],
+    ['feedCost', '餵一次花幾金幣',           c => c.feedCost],
+    ['coinsPerPractice', '每練習 1 次得幾金幣', c => c.coinsPerPractice],
+  ];
+  function load() {
+    try {
+      const c = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}'));
+      if (!Array.isArray(c.stageNeeds) || c.stageNeeds.length !== 4) c.stageNeeds = DEFAULTS.stageNeeds.slice();
+      return c;
+    } catch { return Object.assign({}, DEFAULTS); }
+  }
+  function render() {
+    const c = load();
+    const grid = document.getElementById('gc-grid');
+    grid.innerHTML = '';
+    FIELDS.forEach(([id, name, getv]) => {
+      const lab = document.createElement('label');
+      lab.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.85rem';
+      lab.innerHTML = `<span style="flex:1">${name}</span>` +
+        `<input type="number" min="0" max="9999" value="${getv(c)}" data-gc="${id}" style="width:72px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit">`;
+      grid.appendChild(lab);
+    });
+  }
+  function toggle() {
+    const p = document.getElementById('growth-cfg-panel');
+    p.hidden = !p.hidden;
+    if (!p.hidden) { render(); setTimeout(() => p.scrollIntoView({ behavior:'smooth', block:'start' }), 50); }
+  }
+  function val(id) { const el = document.querySelector(`#gc-grid input[data-gc="${id}"]`); return Math.max(0, parseInt(el.value, 10) || 0); }
+  function save() {
+    const c = {
+      stageNeeds: [0, val('need1'), val('need2'), val('need3')],
+      finalGems: val('finalGems'), coinsPerGem: Math.max(1, val('coinsPerGem')),
+      unlockCoins: val('unlockCoins'), feedCost: Math.max(1, val('feedCost')),
+      feedGain: Math.max(1, val('feedGain')), coinsPerPractice: val('coinsPerPractice'),
+    };
+    const s = document.getElementById('gc-status');
+    if (!(c.stageNeeds[1] < c.stageNeeds[2] && c.stageNeeds[2] < c.stageNeeds[3] && c.stageNeeds[1] > 0)) {
+      s.style.color = '#dc2626'; s.textContent = '⚠️ 門檻要由小到大（0 < 階段②<③<④）'; return;
+    }
+    localStorage.setItem(KEY, JSON.stringify(c));
+    s.style.color = '#16a34a'; s.textContent = '✓ 已儲存（所有寵物即時生效）';
+  }
+  function reset() {
+    localStorage.removeItem(KEY);
+    render();
+    const s = document.getElementById('gc-status'); s.style.color = '#16a34a'; s.textContent = '✓ 已回復預設值';
+  }
+  return { toggle, save, reset };
 })();
 </script>
 

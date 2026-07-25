@@ -88,8 +88,28 @@ window.GrowthSystem = (() => {
     return { earned, fresh };
   }
 
+  // ── 教師可調整的經濟設定（2026-07-25 統一制）──────────────────
+  // 預設：所有寵物階段門檻 0/20/40/60（餵金幣長大）、25 金幣換 1 寶石、最後階段需 3 寶石、
+  // 解鎖收集寵物 15 金幣、餵一次花 5 金幣＋成長 5、每練習 1 次可領 5 金幣。
+  // 教師在「學習歷程總覽 → 成長設定」可覆寫，存於 localStorage['mt_growth_cfg']。
+  const CFG_DEFAULTS = {
+    stageNeeds: [0, 20, 40, 60], finalGems: 3, coinsPerGem: 25,
+    unlockCoins: 15, feedCost: 5, feedGain: 5, coinsPerPractice: 5,
+  };
+  function cfg() {
+    try {
+      const c = Object.assign({}, CFG_DEFAULTS, JSON.parse(localStorage.getItem('mt_growth_cfg') || '{}'));
+      if (!Array.isArray(c.stageNeeds) || c.stageNeeds.length !== 4) c.stageNeeds = CFG_DEFAULTS.stageNeeds.slice();
+      return c;
+    } catch { return Object.assign({}, CFG_DEFAULTS); }
+  }
+  function saveCfg(patch) {
+    const c = Object.assign(cfg(), patch || {});
+    localStorage.setItem('mt_growth_cfg', JSON.stringify(c));
+    return c;
+  }
+
   // ── 寶石 ──（可用＝無錯通過總數 ＋ 金幣兌換 − 已花費）
-  const GEM_COIN_COST = 20;   // 20 金幣可兌換 1 顆寶石（金幣得來不易，維持寶石價值）
   function gemsStore(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_gems_${stuId}`) || '{}') || {}; } catch { return {}; }
   }
@@ -112,14 +132,17 @@ window.GrowthSystem = (() => {
   }
 
   // ── 寵物（金錢豬：蛋→小金豬→金豬少年→黃金飛天豬）──
-  const PET_STAGES = [
-    { key: 'egg',   name: '神祕金蛋',   img: 'images/common/pet_stage0_egg.png',   need: 0,   desc: '閃著金光的神祕蛋，裡面似乎有東西在動。用金幣餵食就能注入滿滿能量，快要孵化囉！' },
-    { key: 'baby',  name: '小金豬',     img: 'images/common/pet_stage1_baby.png',  need: 20,  desc: '剛出生的小金豬，圓滾滾又愛吃。肚子上有個投幣孔，餵食金幣就會開心地一天天長大。' },
-    { key: 'young', name: '金豬少年',   img: 'images/common/pet_stage2_young.png', need: 80,  desc: '長大一些的金豬少年，活潑好動。存越多、餵越多力氣越大，是勤儉存錢的好夥伴。' },
-    { key: 'super', name: '黃金飛天豬', img: 'images/common/pet_stage3_super.png', need: 180, gems: 3, desc: '進化完成的黃金飛天豬，背上長出小翅膀！象徵滿滿的儲蓄成果，帶著好運自在飛翔。' },
+  // 名稱/圖/敘述固定；門檻(need)與最終寶石數(gems)由設定注入 → petStages() 取得完整階段。
+  const PET_STAGE_META = [
+    { key: 'egg',   name: '神祕金蛋',   img: 'images/common/pet_stage0_egg.png',   desc: '閃著金光的神祕蛋，裡面似乎有東西在動。用金幣餵食就能注入滿滿能量，快要孵化囉！' },
+    { key: 'baby',  name: '小金豬',     img: 'images/common/pet_stage1_baby.png',  desc: '剛出生的小金豬，圓滾滾又愛吃。肚子上有個投幣孔，餵食金幣就會開心地一天天長大。' },
+    { key: 'young', name: '金豬少年',   img: 'images/common/pet_stage2_young.png', desc: '長大一些的金豬少年，活潑好動。存越多、餵越多力氣越大，是勤儉存錢的好夥伴。' },
+    { key: 'super', name: '黃金飛天豬', img: 'images/common/pet_stage3_super.png', desc: '進化完成的黃金飛天豬，背上長出小翅膀！象徵滿滿的儲蓄成果，帶著好運自在飛翔。' },
   ];
-  const FEED_COST = 5;   // 餵一次花 5 金幣
-  const FEED_GAIN = 5;   // 成長 +5
+  function petStages() {
+    const c = cfg();
+    return PET_STAGE_META.map((s, i) => ({ ...s, need: c.stageNeeds[i], gems: i === 3 ? c.finalGems : 0 }));
+  }
 
   function petData(stuId) {
     try { return JSON.parse(localStorage.getItem(`mt_pet_${stuId}`) || '{"growth":0,"evolved":false}'); }
@@ -127,9 +150,10 @@ window.GrowthSystem = (() => {
   }
   function savePet(stuId, pet) { localStorage.setItem(`mt_pet_${stuId}`, JSON.stringify(pet)); }
   function petStage(pet) {
-    if (pet.growth >= PET_STAGES[3].need && pet.evolved) return 3;
-    if (pet.growth >= PET_STAGES[2].need) return 2;
-    if (pet.growth >= PET_STAGES[1].need) return 1;
+    const st = petStages();
+    if (pet.growth >= st[3].need && pet.evolved) return 3;
+    if (pet.growth >= st[2].need) return 2;
+    if (pet.growth >= st[1].need) return 1;
     return 0;
   }
 
@@ -231,39 +255,68 @@ window.GrowthSystem = (() => {
   }
   function savePets(stuId, d) { localStorage.setItem(`mt_pets_${stuId}`, JSON.stringify(d)); }
   function mainRecordCount(records, stuId) { return myRecords(records, stuId).filter(isMainRec).length; }
-  // 解鎖一隻（花寶石；記錄解鎖當下的主課程紀錄數當成長起點）
-  function unlockCreature(records, stuId, key) {
+  // 解鎖一隻（統一制：花「金幣」解鎖；金幣扣除由 reward 端處理，這裡只標記解鎖）
+  function unlockCreature(stuId, key) {
     const c = CREATURES.find(x => x.key === key);
     if (!c) return false;
     const d = petsData(stuId);
     if (d[key] && d[key].unlocked) return false;
-    if (c.gems > 0 && !spendGems(records, stuId, c.gems)) return false;
-    d[key] = { unlocked: true, at: mainRecordCount(records, stuId) };
+    d[key] = { unlocked: true, fed: 0, evolved: false };
     savePets(stuId, d);
     return true;
   }
-  // 某隻目前進化階段（-1=未解鎖）＋還差幾筆到下一階
+  // 某隻目前進化階段（-1=未解鎖）＋成長值＋下一階門檻。統一制：改「餵金幣」長大、門檻讀設定、
+  // 最終階段(3)同存錢豬須另花寶石(evolved 旗標)才算進化完成。
   function creatureState(records, stuId, key) {
     const c = CREATURES.find(x => x.key === key);
     const d = petsData(stuId)[key];
+    const needs = cfg().stageNeeds;
     if (!c) return { stage: -1, grown: 0, next: null };
-    if (!d || !d.unlocked) return { stage: -1, grown: 0, next: c.needs[1] };
-    const grown = Math.max(0, mainRecordCount(records, stuId) - (d.at || 0)) + (d.fed || 0);   // 練習成長 ＋ 餵食金幣加成
-    let stage = 0;
-    for (let i = 0; i < c.needs.length; i++) if (grown >= c.needs[i]) stage = i;
-    const next = stage < c.needs.length - 1 ? c.needs[stage + 1] : null;
+    if (!d || !d.unlocked) return { stage: -1, grown: 0, next: needs[1] };
+    const grown = d.fed || 0;   // 統一制：成長值＝已餵金幣量（練習可先領成金幣再餵）
+    let stage;
+    if (grown >= needs[3] && d.evolved) stage = 3;
+    else if (grown >= needs[2]) stage = 2;
+    else if (grown >= needs[1]) stage = 1;
+    else stage = 0;
+    const next = stage < needs.length - 1 ? needs[stage + 1] : null;
     return { stage, grown, next };
   }
 
   // 餵食收集寵物（花金幣→加成長；成長由 reward 端扣金幣後呼叫）
-  const CREATURE_FEED_GAIN = 1;   // 每餵一次成長 +1（收集寵物 needs 為練習次數級距）
   function feedCreature(stuId, key) {
     const data = petsData(stuId);
     const d = data[key];
     if (!d || !d.unlocked) return false;
-    d.fed = (d.fed || 0) + CREATURE_FEED_GAIN;
+    d.fed = (d.fed || 0) + cfg().feedGain;
     savePets(stuId, data);
     return true;
+  }
+  // 收集寵物最終進化（花寶石；成長須已達最終門檻）
+  function evolveCreature(records, stuId, key) {
+    const data = petsData(stuId);
+    const d = data[key];
+    const needs = cfg().stageNeeds;
+    if (!d || !d.unlocked || (d.fed || 0) < needs[3] || d.evolved) return false;
+    if (!spendGems(records, stuId, cfg().finalGems)) return false;
+    d.evolved = true;
+    savePets(stuId, data);
+    return true;
+  }
+
+  // ── 練習次數兌換金幣（每練 1 次可領 coinsPerPractice 金幣；領取按鈕制，記已領筆數避免重複）──
+  function practiceClaimed(stuId) {
+    try { return parseInt(localStorage.getItem(`mt_practice_claimed_${stuId}`) || '0', 10) || 0; } catch { return 0; }
+  }
+  function unclaimedPractices(records, stuId) {
+    return Math.max(0, myRecords(records, stuId).length - practiceClaimed(stuId));
+  }
+  // 回傳「應發放的金幣數」；實際加金幣由 reward 端處理（與計分板同一份資料）
+  function claimPracticeCoins(records, stuId) {
+    const n = unclaimedPractices(records, stuId);
+    if (n <= 0) return 0;
+    localStorage.setItem(`mt_practice_claimed_${stuId}`, String(myRecords(records, stuId).length));
+    return n * cfg().coinsPerPractice;
   }
 
   function questMeta(stuId) {
@@ -271,12 +324,18 @@ window.GrowthSystem = (() => {
   }
 
   return {
-    CREATURES, petsData, savePets, unlockCreature, creatureState, feedCreature, CREATURE_FEED_GAIN,
-    addGems, GEM_COIN_COST,
+    CREATURES, petsData, savePets, unlockCreature, creatureState, feedCreature, evolveCreature,
+    addGems,
+    get GEM_COIN_COST() { return cfg().coinsPerGem; },
+    cfg, saveCfg, CFG_DEFAULTS,
+    unclaimedPractices, claimPracticeCoins,
     readAllRecords, isMainRec, myRecords,
     BADGES, badgeStore, computeBadges,
     gemsTotal, gemsSpent, gemsAvailable, spendGems,
-    PET_STAGES, FEED_COST, FEED_GAIN, petData, savePet, petStage,
+    get PET_STAGES() { return petStages(); },
+    get FEED_COST() { return cfg().feedCost; },
+    get FEED_GAIN() { return cfg().feedGain; },
+    petData, savePet, petStage,
     TREASURES, treasures, buyTreasure,
     questMeta,
   };
