@@ -924,6 +924,10 @@ const Adventure = {
     // ── init ────────────────────────────────────────────────────
     init() {
         const p = new URLSearchParams(location.search);
+        // 場景預覽模式：?preview=<索引或店名>，直接跳到該選購(L3)場景，供檢視各店頁面（不用一關一關玩）。
+        // 例：?preview=早餐店、?preview=9、?preview=0（第一個）；下方帶 ◀▶ 可翻看全部場景。
+        const pv = p.get('preview');
+        if (pv !== null) { this._previewScene(pv); return; }
         const resume = parseInt(p.get('resume') || '0');
         if (resume > 0) {
             const saved = JSON.parse(sessionStorage.getItem('adv_state') || 'null');
@@ -944,6 +948,55 @@ const Adventure = {
         } else {
             this.showSettings();
         }
+    },
+
+    // ── 場景預覽（供檢視各選購店家頁面，不用實際玩過每一關）──────────
+    _previewScene(key) {
+        // key 可為索引（0..N）或店名（venue，可含 label，如「便利商店早餐」）
+        let idx = parseInt(key, 10);
+        if (isNaN(idx)) {
+            idx = this.MEAL_TYPES.findIndex(m => m.venue === key || (m.venue + m.label) === key);
+        }
+        if (isNaN(idx) || idx < 0 || idx >= this.MEAL_TYPES.length) idx = 0;
+        const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = 'none';
+        Object.assign(this.state, { level: 3, score: 0, mistakes: 0, char: this.CHARACTERS[0], levelMiss: {} });
+        this._storyLog = {};
+        this._mealPick = this.MEAL_TYPES[idx];
+        this._applyTheme(3);
+        this._level3();
+        this._renderPreviewBar(idx);
+    },
+
+    _renderPreviewBar(idx) {
+        const total = this.MEAL_TYPES.length;
+        const m = this.MEAL_TYPES[idx];
+        const prev = (idx - 1 + total) % total;
+        const next = (idx + 1) % total;
+        if (!document.getElementById('adv-preview-style')) {
+            const st = document.createElement('style');
+            st.id = 'adv-preview-style';
+            st.textContent = `
+                .adv-preview-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;
+                    align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+                    padding:10px 14px;background:rgba(30,58,95,0.96);box-shadow:0 -3px 14px rgba(0,0,0,.25);}
+                .adv-preview-bar .adv-pv-label{color:#fff;font-size:.95rem;font-weight:700;}
+                .adv-preview-bar .adv-pv-label b{color:#fcd34d;}
+                .adv-pv-btn{border:none;border-radius:10px;padding:9px 16px;font-size:.95rem;font-weight:800;
+                    cursor:pointer;background:#f59e0b;color:#fff;text-decoration:none;touch-action:manipulation;}
+                .adv-pv-btn:active{filter:brightness(.9);}
+                .adv-pv-exit{background:#64748b;}`;
+            document.head.appendChild(st);
+        }
+        const bar = document.createElement('div');
+        bar.className = 'adv-preview-bar';
+        bar.innerHTML =
+            `<button class="adv-pv-btn" data-go="${prev}">◀ 上一個</button>`
+          + `<span class="adv-pv-label">🔎 場景預覽　<b>${m.venue}・${m.label}</b>　(${idx + 1}/${total})</span>`
+          + `<button class="adv-pv-btn" data-go="${next}">下一個 ▶</button>`
+          + `<a class="adv-pv-btn adv-pv-exit" href="index.html">✕ 離開預覽</a>`;
+        document.body.appendChild(bar);
+        bar.querySelectorAll('button[data-go]').forEach(b =>
+            b.addEventListener('pointerdown', e => { e.preventDefault(); location.search = '?preview=' + b.dataset.go; }));
     },
 
     // ── 設定頁（含選角）────────────────────────────────────────
