@@ -1,5 +1,5 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v119';
+const CACHE_CORE  = 'shopping-practice-v120';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 const PRECACHE = [

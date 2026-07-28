@@ -3502,7 +3502,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#0891B2', bg: '#CFFAFE', accent: '#0E7490' },
       situations: [
         {
-          id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "游泳池店員",
+          id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "阿豪",
           desc: "買學生優惠票、問場地規則",
           steps: [
             mkStep({ id:"buy_ticket", say:"你好！游泳池門票全票80元、學生票50元！", task:"買學生票",
@@ -3524,7 +3524,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "pool_locker", name: "租置物櫃", icon: "🔒", clerkName: "游泳池店員",
+          id: "pool_locker", name: "租置物櫃", icon: "🔒", clerkName: "阿豪",
           desc: "認識押金：暫放的錢，退櫃會還",
           steps: [
             mkStep({ id:"ask_locker", say:"（要放包包…看到置物櫃區有管理員）", task:"問怎麼租",
@@ -3546,7 +3546,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "pool_lost", name: "蛙鏡不見了", icon: "🥽", clerkName: "游泳池店員",
+          id: "pool_lost", name: "蛙鏡不見了", icon: "🥽", clerkName: "阿豪",
           desc: "到服務台說清楚特徵，詢問失物招領",
           steps: [
             mkStep({ id:"ask_lost", say:"（游完泳，蛙鏡不見了…找服務台）", task:"詢問失物招領",
@@ -3847,7 +3847,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#0D9488', bg: '#CCFBF1', accent: '#0F766E' },
       situations: [
         {
-          id: "greet_all", name: "跟大家打招呼", icon: "👋", clerkName: "前輩同事",
+          id: "greet_all", name: "跟大家打招呼", icon: "👋", clerkName: "志豪",
           desc: "主動打招呼，留下好印象",
           steps: [
             mkStep({ id:"intro_team", say:"（第一天上班，前輩帶你認識大家）來，這是新同事！", task:"跟大家自我介紹",
@@ -3865,7 +3865,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "listen_task", name: "聽工作說明", icon: "📝", clerkName: "前輩同事",
+          id: "listen_task", name: "聽工作說明", icon: "📝", clerkName: "志豪",
           desc: "聽指令複誦重點，不懂就問",
           steps: [
             mkStep({ id:"repeat_task", say:"你今天的工作是把飲料補到冰箱，日期舊的放前面喔！", task:"複誦確認",
@@ -3883,7 +3883,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "ask_stuff", name: "問制服與置物", icon: "👕", clerkName: "前輩同事",
+          id: "ask_stuff", name: "問制服與置物", icon: "👕", clerkName: "志豪",
           desc: "問清楚換裝與物品放置，儀容整齊",
           steps: [
             mkStep({ id:"ask_uniform", say:"對了，這是你的制服和名牌！", task:"問哪裡換衣服、包包放哪",
@@ -3908,7 +3908,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#F59E0B', bg: '#FEF3C7', accent: '#B45309' },
       situations: [
         {
-          id: "not_understand", name: "聽不懂指令", icon: "🤔", clerkName: "資深同事",
+          id: "not_understand", name: "聽不懂指令", icon: "🤔", clerkName: "陳師傅",
           desc: "聽不懂就請對方再說一次，不用猜的",
           steps: [
             mkStep({ id:"ask_again", say:"小安，去把那個『棧板』上的貨搬過來！", task:"聽不懂請再說一次",
@@ -3926,7 +3926,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "made_mistake", name: "做錯了", icon: "😅", clerkName: "資深同事",
+          id: "made_mistake", name: "做錯了", icon: "😅", clerkName: "陳師傅",
           desc: "做錯主動承認，問清楚怎麼改",
           steps: [
             mkStep({ id:"admit_wrong", say:"（糟糕，你把日期新的飲料放前面了，前輩發現了）", task:"主動承認錯誤",
@@ -3944,7 +3944,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "cant_operate", name: "不會操作機器", icon: "🖨️", clerkName: "資深同事",
+          id: "cant_operate", name: "不會操作機器", icon: "🖨️", clerkName: "陳師傅",
           desc: "請人示範、自己試做、說謝謝",
           steps: [
             mkStep({ id:"ask_demo", say:"幫我用這台標價機打一下價格標！", task:"請對方示範",
@@ -4034,7 +4034,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#65A30D', bg: '#ECFCCB', accent: '#4D7C0F' },
       situations: [
         {
-          id: "check_pay", name: "核對薪資", icon: "🧮", clerkName: "會計阿姨",
+          id: "check_pay", name: "核對薪資", icon: "🧮", clerkName: "秀琴阿姨",
           desc: "時薪×時數自己算一次，當面點清楚",
           steps: [
             mkStep({ id:"count_first", say:"小安，這是你這個月的薪水袋，時薪190元、你做了20小時！", task:"自己算一次總額",
@@ -4052,7 +4052,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "pay_wrong", name: "薪水算錯了", icon: "😲", clerkName: "會計阿姨",
+          id: "pay_wrong", name: "薪水算錯了", icon: "😲", clerkName: "秀琴阿姨",
           desc: "發現金額不對，有禮貌反映請對方確認",
           steps: [
             mkStep({ id:"speak_up", say:"（你算出來是3800，但袋子裡只有3600元…）", task:"有禮貌反映",
@@ -4070,7 +4070,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "plan_save", name: "薪水怎麼用", icon: "🐷", clerkName: "會計阿姨",
+          id: "plan_save", name: "薪水怎麼用", icon: "🐷", clerkName: "秀琴阿姨",
           desc: "自己賺的錢：先存一部分再安排",
           steps: [
             mkStep({ id:"say_plan", say:"第一次領薪水，有什麼打算？", task:"說出儲蓄規劃",
