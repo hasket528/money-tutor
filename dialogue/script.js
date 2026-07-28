@@ -308,7 +308,7 @@ const SCENARIO_CLERK_MAP = {
   library:           { keyword: '晓墨',   intro: '你好！我是圖書館的館員靜姐。在這裡你可以練習借書、辦借書證，還有還書逾期時怎麼禮貌地應對。' },
   police_station:    { keyword: '云泽',   intro: '你好！我是警察局的警員阿凱。在這裡你可以練習報案、遺失物招領，還有遇到危險時怎麼向警察求助。' },
   anti_scam:         { keyword: '云希', name: '阿威', role: '反詐騙宣導員', image: 'images/clerk-antiscam.jpg', intro: '你好！我是反詐騙宣導員阿威。在這裡你可以練習接到詐騙電話怎麼保護自己，像是中獎詐騙、假客服、借提款卡、買點數。記住四步：不給錢、不給資料、掛電話、告訴大人！' },
-  classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——要不要借、借了怎麼記下來、約好還錢時間、怎麼開口把錢要回來，還有怎麼好好拒絕。' },
+  classmate_borrow:  { keyword: 'Zhiwei', name: '小傑', role: '同班同學', image: 'images/clerk-classmate.jpg', intro: '嗨，我是你的同學小傑！這裡練習同學跟你借錢時怎麼辦——怎麼好好拒絕、說清楚理由、請他去找老師幫忙，還有借出去的錢怎麼開口要回來。' },
   online_scam:       { keyword: '云枫', name: '阿睿', role: '網路安全老師', image: 'images/clerk-onlinescam.jpg', intro: '你好！我是網路安全老師阿睿。在這裡你可以練習在網路上遇到陌生人要你花錢時怎麼保護自己，像是假網拍叫你先匯款、中獎簡訊叫你點連結。記住：不先匯款、不點陌生連結、不給帳號密碼！' },
   self_protect:      { keyword: '云泽', name: '安安', role: '金錢安全老師', image: 'images/clerk-selfprotect.jpg', intro: '你好！我是金錢安全老師安安。在這裡你可以練習怎麼主動保護自己的錢，像是被人勒索要錢怎麼辦、錢和密碼怎麼保管好、撿到別人的錢怎麼處理。' },
   job_scam:          { keyword: '云枫', name: '阿全', role: '打工防詐老師', image: 'images/clerk-jobguard.jpg', intro: '你好！我是打工防詐老師阿全。在這裡你可以練習找打工時怎麼保護自己，像是有人要你先繳保證金、押證件，或說有太好賺的工作。記住三不：不先繳錢、不押證件、不借帳戶！' },
