@@ -35,7 +35,9 @@
 為什麼不能直接雙擊 HTML：`file://` 不算瀏覽器的「安全來源」，購物練習的**麥克風無法使用**，
 離線快取（Service Worker）也不會啟用。`http://localhost` 與 https 同等級，兩者都正常。
 
-> 只想用購物練習：雙擊 `dialogue\start.bat`（網址 <http://localhost:47810/>）。
-> 兩支可以同時開，各自使用固定的通訊埠，麥克風權限不會互相干擾。
+> 只想直接進購物練習：雙擊 `dialogue\start.bat`。它會開在同一個 <http://localhost:47800/dialogue/>，
+> **刻意共用同一個通訊埠**——學生名冊與學習歷程存在瀏覽器本機，而瀏覽器是按「網址＋通訊埠」
+> 分隔資料的；換一個埠就會變成另一份獨立資料，教師端的學習歷程總覽就對不起來。
 
-已安裝 Python 的話也可以改用：`python -m http.server 8000`（再開 <http://localhost:8000/>）。
+**完全不需要安裝 Python 或任何軟體**，伺服器用的是 Windows 內建的 PowerShell。
+（若你本來就有 Python，`python -m http.server 8000` 也可以，但沒有必要。）

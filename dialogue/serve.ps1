@@ -14,13 +14,19 @@
 #   -Root DIR   : serve DIR instead of this folder (used by the launcher .bat in the project
 #                 root to serve the whole project, so index.html / the 24 units / adventure
 #                 are reachable too). Pass it without a trailing backslash ("%~dp0." in a .bat).
+#   -OpenPath P : which page to open in the browser (default "/"). Lets dialogue\start.bat
+#                 serve the whole project yet still land on /dialogue/ - one origin for
+#                 everything, because localStorage and IndexedDB are per-origin and the
+#                 roster / learning history must be shared, not split across ports.
 param(
   [int]$Port = 0,
   [switch]$NoBrowser,
   [string]$Root = '',
   [switch]$StrictPort,
-  [ValidateSet('auto', 'edge', 'chrome', 'default')][string]$Browser = 'auto'
+  [ValidateSet('auto', 'edge', 'chrome', 'default')][string]$Browser = 'auto',
+  [string]$OpenPath = '/'
 )
+if (-not $OpenPath.StartsWith('/')) { $OpenPath = '/' + $OpenPath }
 
 # Tried in order. What matters most is that the FIRST one is almost never already taken: a
 # stable port means a stable origin, and the browser only remembers the microphone permission
@@ -136,7 +142,7 @@ foreach ($p in $candidates) {
       Write-Host ""
       # -NoBrowser also means "unattended" (tests): no prompt, so the script cannot hang.
       if (-not $NoBrowser) {
-        Write-Host "  Opened in: $(Open-Browser "http://localhost:$p/")" -ForegroundColor DarkGray
+        Write-Host "  Opened in: $(Open-Browser "http://localhost:$p$OpenPath")" -ForegroundColor DarkGray
         Read-Host "Press Enter to close this window"
       }
       exit 0
@@ -168,7 +174,7 @@ $mime = @{
   '.woff'='font/woff';      '.woff2'='font/woff2';'.webmanifest'='application/manifest+json'
 }
 
-$url = "http://localhost:$Port/"
+$url = "http://localhost:$Port$OpenPath"
 Write-Host ""
 Write-Host "  Money Tutor - local server running" -ForegroundColor Green
 Write-Host "  URL:  $url" -ForegroundColor Cyan
@@ -208,10 +214,14 @@ while ($true) {
     $method = $parts[0]
     $target = if ($parts.Count -ge 2) { $parts[1] } else { '/' }
     $path   = [System.Uri]::UnescapeDataString(($target -split '\?')[0])
-    if ($path -eq '/' -or $path -eq '') { $path = '/index.html' }
+    if ($path -eq '') { $path = '/' }
+    # Directory index for EVERY folder, not just the root: /dialogue/ must serve
+    # /dialogue/index.html the way GitHub Pages does, or every folder link 404s.
+    if ($path.EndsWith('/')) { $path += 'index.html' }
 
     $rel  = ($path.TrimStart('/')) -replace '/', '\'
     $file = [System.IO.Path]::GetFullPath((Join-Path $root $rel))
+    $extraHead = ''
 
     if ($path -eq '/__mt_probe') {                               # "is this one of ours?" (see above)
       $status='200 OK'; $ctype='text/plain; charset=utf-8'
@@ -222,11 +232,16 @@ while ($true) {
       $status='200 OK'; $body=[System.IO.File]::ReadAllBytes($file)
       $ext=[System.IO.Path]::GetExtension($file).ToLower()
       $ctype= if ($mime.ContainsKey($ext)) { $mime[$ext] } else { 'application/octet-stream' }
+    } elseif (Test-Path -LiteralPath $file -PathType Container) {
+      # /dialogue -> /dialogue/  so relative links inside the page resolve, same as Pages does
+      $status='301 Moved Permanently'; $ctype='text/plain; charset=utf-8'
+      $extraHead = "Location: $path/`r`n"
+      $body=[System.Text.Encoding]::UTF8.GetBytes("301 -> $path/")
     } else {
       $status='404 Not Found'; $ctype='text/plain; charset=utf-8'; $body=[System.Text.Encoding]::UTF8.GetBytes('404 Not Found')
     }
 
-    $head = "HTTP/1.1 $status`r`nContent-Type: $ctype`r`nContent-Length: $($body.Length)`r`nCache-Control: no-cache`r`nConnection: close`r`n`r`n"
+    $head = "HTTP/1.1 $status`r`nContent-Type: $ctype`r`nContent-Length: $($body.Length)`r`n$($extraHead)Cache-Control: no-cache`r`nConnection: close`r`n`r`n"
     $hb = [System.Text.Encoding]::ASCII.GetBytes($head)
     $ns.Write($hb, 0, $hb.Length)
     if ($method -ne 'HEAD' -and $body.Length -gt 0) { $ns.Write($body, 0, $body.Length) }

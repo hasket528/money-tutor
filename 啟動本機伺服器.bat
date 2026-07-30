@@ -11,6 +11,10 @@ rem else wants means one stable origin, and the browser remembers the microphone
 rem per origin. If it is busy anyway, serve.ps1 checks who holds it: our own server for this
 rem same folder -> reuses it; anything else -> next candidate, and it says so on screen.
 rem
+rem dialogue\start.bat deliberately uses this SAME port and root, and only opens /dialogue/.
+rem localStorage / IndexedDB are per-origin, so a second port would split the student roster
+rem and the learning history into a separate copy that teacher.html could not see.
+rem
 rem The browser opens by itself: Edge first (it has the Microsoft Yating Chinese voice this
 rem project prefers), then Chrome, then whatever Windows uses.
 rem
