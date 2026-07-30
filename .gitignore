@@ -12,6 +12,12 @@ CLAUDE.md
 *.bat
 *.ps1
 *.py
+
+# 例外：離線／本機使用的伺服器啟動器（見 README「離線／本機使用」）。
+# 麥克風與 Service Worker 都要求安全來源，file:// 不算，所以下載回去離線用的人需要這三個檔。
+!啟動本機伺服器.bat
+!dialogue/serve.ps1
+!dialogue/start.bat
 .claude/
 .vscode/
 Thumbs.db

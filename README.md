@@ -24,13 +24,18 @@
    Branch 選 **main / (root)**，儲存
 4. 等待 1–2 分鐘，網站網址為 `https://<帳號>.github.io/money-tutor/`
 
-## 本機預覽（開發者）
+## 離線／本機使用
 
-因瀏覽器安全限制（PWA、音訊、localStorage 同源共用），請以 HTTP 伺服器開啟，不要直接雙擊 HTML：
+把整個資料夾下載到電腦後，**請雙擊 `啟動本機伺服器.bat`**，不要直接雙擊 HTML 檔。
 
-```
-cd 本資料夾
-python -m http.server 8000
-```
+它用 Windows 內建的 PowerShell 起一個小型伺服器（不需安裝 Python、Node 或系統管理權限），
+網址是 <http://localhost:47800/>，瀏覽器會自動開啟（優先 Edge，其次 Chrome）。
+關掉那個黑色視窗即停止。
 
-再以瀏覽器開啟 <http://localhost:8000/>。
+為什麼不能直接雙擊 HTML：`file://` 不算瀏覽器的「安全來源」，購物練習的**麥克風無法使用**，
+離線快取（Service Worker）也不會啟用。`http://localhost` 與 https 同等級，兩者都正常。
+
+> 只想用購物練習：雙擊 `dialogue\start.bat`（網址 <http://localhost:47810/>）。
+> 兩支可以同時開，各自使用固定的通訊埠，麥克風權限不會互相干擾。
+
+已安裝 Python 的話也可以改用：`python -m http.server 8000`（再開 <http://localhost:8000/>）。
