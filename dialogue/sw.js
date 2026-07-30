@@ -1,11 +1,12 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v121';
+const CACHE_CORE  = 'shopping-practice-v122';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 // 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
 // 為何不直接 bump CACHE_AUDIO：那會清掉整包已下載語音（上千條），使用者得重下。
-// 檔名比對用 endsWith，之後再重錄別的音檔就換掉這份清單。
+// 檔名比對用 endsWith。清單保留數批，讓「跳版更新」的裝置也清得到；累積太長時再整批清空。
 const STALE_AUDIO = [
+  // 2026-07-30 換音色（Pulcherrima 女店長）
   'call_leave_intro.mp3',
   'call_leave_sick_leave_call_sick.mp3',
   'call_leave_sick_leave_say_proof.mp3',
@@ -13,6 +14,15 @@ const STALE_AUDIO = [
   'call_leave_sudden_leave_agree_makeup.mp3',
   'call_leave_late_notice_call_late.mp3',
   'call_leave_late_notice_arrive_soon.mp3',
+  // 2026-07-30 改名阿豪→小藍＋換音色（Laomedeia 女救生員）
+  'swimming_pool_intro.mp3',
+  'swimming_pool_pool_ticket_buy_ticket.mp3',
+  'swimming_pool_pool_ticket_pay_pool.mp3',
+  'swimming_pool_pool_ticket_ask_rule.mp3',
+  'swimming_pool_pool_locker_know_deposit.mp3',
+  'swimming_pool_pool_locker_get_back.mp3',
+  'swimming_pool_pool_lost_describe_item.mp3',
+  'swimming_pool_pool_lost_thank_found.mp3',
 ];
 
 const PRECACHE = [

@@ -321,7 +321,7 @@ const SCENARIO_CLERK_MAP = {
   ride_manner:       { keyword: '曉雨', name: '車長', role: '車廂禮儀', image: 'images/clerk-ridemanner.jpg', intro: '你好，我是車長，在這裡你可以練習車廂裡的禮儀與求助——像是讓座給需要的人、有禮貌請人幫忙，還有陌生人跟你要錢時怎麼拒絕、找站務員' },
   cinema:            { keyword: '晓辰', name: '阿哲', role: '電影院', image: 'images/clerk-cinema.jpg', intro: '你好！我是電影院服務員阿哲。在這裡你可以練習買電影票，包括選場次、用學生證買優惠票、加購前想想預算，遲到了也知道怎麼辦。' },
   ktv:               { keyword: '晓睿', name: '小雅', role: 'KTV', image: 'images/clerk-ktv.jpg', intro: '歡迎光臨！我是 KTV 服務員小雅。在這裡你可以練習問清楚計費、算總價大家分攤、時間到照預算收手，還有點歌機不會用怎麼請人教。' },
-  swimming_pool:     { keyword: '晓晓', name: '阿豪', role: '游泳池', image: 'images/clerk-pool.jpg', intro: '你好！我是游泳池的救生員阿豪。在這裡你可以練習買學生票、租置物櫃認識押金、東西不見了到服務台找回來。' },
+  swimming_pool:     { keyword: '晓晓', name: '小藍', role: '游泳池', image: 'images/clerk-pool.jpg', intro: '你好！我是游泳池的救生員小藍。在這裡你可以練習買學生票、租置物櫃認識押金、東西不見了到服務台找回來。' },
   amusement_park:    { keyword: '晓伊', name: '小樂', role: '遊樂園', image: 'images/clerk-park.jpg', intro: '歡迎光臨，我是遊樂園的工作人員小樂，在這裡你可以練習算一算哪種票划算、問設施安全限制，還有和朋友走散時找工作人員、在原地等。' },
   arcade:            { keyword: '曉臻', name: '阿翔', role: '電子遊樂場', image: 'images/clerk-arcade.jpg', intro: '歡迎光臨！我是遊樂場的店員阿翔。在這裡你可以練習換代幣控制預算、夾娃娃先設上限說到做到，機台吃錢不拍不踢找店員。' },
   comic_store:       { keyword: '云野', name: '小昕', role: '漫畫店', image: 'images/clerk-comic.jpg', intro: '歡迎光臨！我是漫畫店的店員小昕。在這裡你可以練習租書認識押金和逾期費、遲還了誠實道歉，還有分辨辦會員留哪些資料合理、哪些絕對不能給。' },

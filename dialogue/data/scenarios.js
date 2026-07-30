@@ -3502,7 +3502,7 @@ const SCENARIOS_DATA = {
       theme: { color: '#0891B2', bg: '#CFFAFE', accent: '#0E7490' },
       situations: [
         {
-          id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "阿豪",
+          id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "小藍",
           desc: "買學生優惠票、問場地規則",
           steps: [
             mkStep({ id:"buy_ticket", say:"你好！游泳池門票全票80元、學生票50元！", task:"買學生票",
@@ -3524,7 +3524,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "pool_locker", name: "租置物櫃", icon: "🔒", clerkName: "阿豪",
+          id: "pool_locker", name: "租置物櫃", icon: "🔒", clerkName: "小藍",
           desc: "認識押金：暫放的錢，退櫃會還",
           steps: [
             mkStep({ id:"ask_locker", say:"（要放包包…看到置物櫃區有管理員）", task:"問怎麼租",
@@ -3546,7 +3546,7 @@ const SCENARIOS_DATA = {
           ]
         },
         {
-          id: "pool_lost", name: "蛙鏡不見了", icon: "🥽", clerkName: "阿豪",
+          id: "pool_lost", name: "蛙鏡不見了", icon: "🥽", clerkName: "小藍",
           desc: "到服務台說清楚特徵，詢問失物招領",
           steps: [
             mkStep({ id:"ask_lost", say:"（游完泳，蛙鏡不見了…找服務台）", task:"詢問失物招領",
