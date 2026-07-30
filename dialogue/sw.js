@@ -1,6 +1,19 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v120';
+const CACHE_CORE  = 'shopping-practice-v121';
 const CACHE_AUDIO = 'shopping-audio-v3';
+
+// 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
+// 為何不直接 bump CACHE_AUDIO：那會清掉整包已下載語音（上千條），使用者得重下。
+// 檔名比對用 endsWith，之後再重錄別的音檔就換掉這份清單。
+const STALE_AUDIO = [
+  'call_leave_intro.mp3',
+  'call_leave_sick_leave_call_sick.mp3',
+  'call_leave_sick_leave_say_proof.mp3',
+  'call_leave_sudden_leave_call_sudden.mp3',
+  'call_leave_sudden_leave_agree_makeup.mp3',
+  'call_leave_late_notice_call_late.mp3',
+  'call_leave_late_notice_arrive_soon.mp3',
+];
 
 const PRECACHE = [
   './',
@@ -31,6 +44,13 @@ self.addEventListener('activate', event => {
           .filter(k => k !== CACHE_CORE && k !== CACHE_AUDIO)
           .map(k => caches.delete(k))
       ))
+      // 重錄過的音檔：只刪這幾支，其餘已下載語音保留
+      .then(() => caches.open(CACHE_AUDIO))
+      .then(cache => cache.keys().then(reqs => Promise.all(
+        reqs
+          .filter(r => STALE_AUDIO.some(name => r.url.endsWith(name)))
+          .map(r => cache.delete(r))
+      )))
       .then(() => self.clients.claim())
   );
 });
