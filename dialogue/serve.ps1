@@ -1,4 +1,4 @@
-# serve.ps1 - zero-install local static web server (built-in Windows PowerShell, no admin needed).
+﻿# serve.ps1 - zero-install local static web server (built-in Windows PowerShell, no admin needed).
 # Serves THIS folder over http://localhost so the service worker / PWA install / microphone
 # permission all work (localhost is a "secure context", same as https).
 # Launched by start.bat. Close the window (or press Ctrl+C) to stop; the port is released with
@@ -7,7 +7,13 @@
 #   -Port N     : PREFERRED port. Taken by another program -> falls back to the next free
 #                 candidate in $PORT_CANDIDATES. Taken by another copy of THIS script ->
 #                 reuses it instead of starting a second one (see -StrictPort).
-#   -StrictPort : never fall back; stop if the preferred port is not free.
+#   -StrictPort : never fall back and never ask; stop if the preferred port is not free.
+#   -AnyPort    : fall back silently without asking (tests / throwaway sessions).
+#                 DEFAULT BEHAVIOUR IS NEITHER: if the port is taken by something else the
+#                 script explains the consequence and asks, because a different port is a
+#                 different origin and localStorage / IndexedDB are per-origin - the roster and
+#                 the learning history simply would not be there. Nothing is deleted, but it
+#                 looks exactly like data loss, so the user has to make that call knowingly.
 #   -Browser X  : auto (default) = Edge, then Chrome, then whatever Windows uses;
 #                 edge | chrome = only that one, falling back to the system default;
 #                 default = always hand the URL to Windows.
@@ -23,6 +29,7 @@ param(
   [switch]$NoBrowser,
   [string]$Root = '',
   [switch]$StrictPort,
+  [switch]$AnyPort,
   [ValidateSet('auto', 'edge', 'chrome', 'default')][string]$Browser = 'auto',
   [string]$OpenPath = '/'
 )
@@ -39,8 +46,8 @@ $PORT_CANDIDATES = @(47800, 47801, 47802, 47803, 8000, 8080, 8888, 8123, 9000)
 $ErrorActionPreference = 'Stop'
 $root = if ($Root) { [System.IO.Path]::GetFullPath($Root) } else { $PSScriptRoot }
 if (-not (Test-Path -LiteralPath $root -PathType Container)) {
-  Write-Host "Root folder not found: $root"
-  if (-not $NoBrowser) { Read-Host "Press Enter to exit" }
+  Write-Host "找不到要服務的資料夾：$root"
+  if (-not $NoBrowser) { Read-Host "按 Enter 結束" }
   exit 1
 }
 # Normalise to a trailing separator so the path-traversal check below cannot be fooled by a
@@ -114,54 +121,99 @@ function Open-Browser([string]$u) {
   try { Start-Process $u; return 'system default browser' } catch { return 'nothing (open the URL yourself)' }
 }
 
-# Bind to 127.0.0.1 (loopback) via a raw TCP socket -> no admin / no URL ACL needed.
-$prefer     = if ($Port -gt 0) { $Port } else { $PORT_CANDIDATES[0] }
-$candidates = if ($StrictPort) { @($prefer) }
-              else { @(@($prefer) + $PORT_CANDIDATES | Select-Object -Unique) }
-$listener = $null
-$taken    = @()
-foreach ($p in $candidates) {
+# Who is holding a port, in words a teacher can act on ("close Foo and try again").
+function Get-PortOwner([int]$p) {
+  try {
+    $ownerPid = (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction Stop |
+                 Select-Object -First 1).OwningProcess
+    $proc = Get-Process -Id $ownerPid -ErrorAction Stop
+    return "$($proc.ProcessName)（PID $ownerPid）"
+  } catch { return $null }
+}
+
+# Try to bind $p. Returns the listener, 'reuse' when our own server for the SAME folder is
+# already there, or $null when the port belongs to something else.
+function Try-Bind([int]$p) {
   try {
     $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $p)
-    $l.Start(); $listener = $l; $Port = $p; break
+    $l.Start()
+    return $l
   } catch {
     $mtRoot = Get-MtServerRoot $p
-    # Only reuse a server that serves the SAME folder. The whole-site launcher and
-    # dialogue\start.bat are different websites, so one must never hijack the other's port.
-    if ($mtRoot -and $mtRoot.TrimEnd('\') -ne $rootFull.TrimEnd('\')) {
-      Write-Host "  Port $p serves a different folder ($mtRoot) -> trying the next one." -ForegroundColor DarkGray
-      $mtRoot = $null
-    }
+    # Only reuse a server serving the SAME folder. The whole-site launcher and a stand-alone
+    # dialogue copy are different websites, so one must never hijack the other's port.
+    if ($mtRoot -and $mtRoot.TrimEnd('\') -eq $rootFull.TrimEnd('\')) { return 'reuse' }
     if ($mtRoot) {
-      Write-Host ""
-      Write-Host "  A Money Tutor server is ALREADY running on port $p" -ForegroundColor Yellow
-      Write-Host "  Dir:  $mtRoot" -ForegroundColor DarkGray
-      Write-Host "  Opening the browser at that one instead of starting a second server."
-      Write-Host "  (Same port = same origin = microphone permission stays granted.)"
-      Write-Host "  This window can be closed; the OTHER window is the one serving."
-      Write-Host ""
-      # -NoBrowser also means "unattended" (tests): no prompt, so the script cannot hang.
-      if (-not $NoBrowser) {
-        Write-Host "  Opened in: $(Open-Browser "http://localhost:$p$OpenPath")" -ForegroundColor DarkGray
-        Read-Host "Press Enter to close this window"
-      }
-      exit 0
+      Write-Host "  通訊埠 $p 上的伺服器服務的是別的資料夾（$mtRoot）。" -ForegroundColor DarkGray
     }
-    $taken += $p        # not the server we want -> try the next candidate
+    return $null
+  }
+}
+
+function Use-ExistingServer([int]$p) {
+  Write-Host ""
+  Write-Host "  已經有一個「金錢小達人」伺服器在通訊埠 $p 執行中。" -ForegroundColor Yellow
+  Write-Host "  資料夾：$rootFull" -ForegroundColor DarkGray
+  Write-Host "  不再另外啟動，直接開啟原本那一個（同一個位置，資料與麥克風權限都不變）。"
+  Write-Host "  這個視窗可以關掉；提供服務的是「另一個」視窗。"
+  Write-Host ""
+  # -NoBrowser also means "unattended" (tests): no prompt, so the script cannot hang.
+  if (-not $NoBrowser) {
+    Write-Host "  開啟於：$(Open-Browser "http://localhost:$p$OpenPath")" -ForegroundColor DarkGray
+    Read-Host "按 Enter 關閉這個視窗"
+  }
+  exit 0
+}
+
+# Bind to 127.0.0.1 (loopback) via a raw TCP socket -> no admin / no URL ACL needed.
+$prefer = if ($Port -gt 0) { $Port } else { $PORT_CANDIDATES[0] }
+$listener = $null
+$taken    = @()
+
+$r = Try-Bind $prefer
+if ($r -eq 'reuse') { Use-ExistingServer $prefer }
+if ($r) { $listener = $r; $Port = $prefer } else { $taken += $prefer }
+
+# Changing port means changing origin, which hides the existing localStorage / IndexedDB data.
+# Never do that behind the user's back: explain it and let them decide.
+if (-not $listener) {
+  $owner = Get-PortOwner $prefer
+  Write-Host ""
+  Write-Host "  通訊埠 $prefer 已被其他程式占用$(if ($owner) { "：$owner" } else { '。' })" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "  換用其他通訊埠會怎樣：瀏覽器把資料綁在「網址＋通訊埠」上，換了埠就等於" -ForegroundColor Yellow
+  Write-Host "  換到另一個位置，原本的學生名冊與學習紀錄在那裡讀不到（資料沒有被刪除，" -ForegroundColor Yellow
+  Write-Host "  改回 $prefer 就會回來）。" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "  建議：先關掉占用 $prefer 的那個程式，再重新啟動本程式。"
+  Write-Host ""
+  if ($StrictPort) {
+    Write-Host "  （-StrictPort：不改用其他通訊埠，就此結束。）"
+    exit 1
+  }
+  if (-not $AnyPort) {
+    if ($NoBrowser) { Write-Host "  （非互動模式：不自動改埠，就此結束。要改埠請加 -AnyPort。）"; exit 1 }
+    $ans = Read-Host "  仍要改用其他通訊埠嗎？(輸入 Y 改用／直接按 Enter 結束)"
+    if ($ans -notmatch '^[Yy]') { Write-Host "  已結束，沒有啟動伺服器。"; exit 1 }
+  }
+  foreach ($p in ($PORT_CANDIDATES | Where-Object { $_ -ne $prefer })) {
+    $r = Try-Bind $p
+    if ($r -eq 'reuse') { Use-ExistingServer $p }
+    if ($r) { $listener = $r; $Port = $p; break }
+    $taken += $p
   }
 }
 if (-not $listener) {
-  Write-Host "No free port (tried $($candidates -join ', ')). Close other servers and retry."
-  if (-not $NoBrowser) { Read-Host "Press Enter to exit" }
+  Write-Host "  找不到可用的通訊埠（試過 $($taken -join ', ')）。請關掉其他伺服器後再試。"
+  if (-not $NoBrowser) { Read-Host "  按 Enter 結束" }
   exit 1
 }
 if ($taken.Count -gt 0) {
   Write-Host ""
-  Write-Host "  Port $($taken -join ', ') not available -> using $Port instead." -ForegroundColor Yellow
-  Write-Host "  Note: a different port is a different origin, so the browser will ask for" -ForegroundColor Yellow
-  Write-Host "  microphone permission once more on this port." -ForegroundColor Yellow
+  Write-Host "  改用通訊埠 $Port（$($taken -join ', ') 無法使用）。" -ForegroundColor Yellow
+  Write-Host "  這是另一個位置：麥克風要再同意一次，而且看不到通訊埠 $prefer 上原有的" -ForegroundColor Yellow
+  Write-Host "  學生名冊與學習紀錄（資料仍在，改回 $prefer 就會回來）。" -ForegroundColor Yellow
 }
-
 
 $mime = @{
   '.html'='text/html; charset=utf-8';        '.htm'='text/html; charset=utf-8'
@@ -176,14 +228,14 @@ $mime = @{
 
 $url = "http://localhost:$Port$OpenPath"
 Write-Host ""
-Write-Host "  Money Tutor - local server running" -ForegroundColor Green
-Write-Host "  URL:  $url" -ForegroundColor Cyan
-Write-Host "  Dir:  $rootFull" -ForegroundColor DarkGray
+Write-Host "  金錢小達人 - 本機伺服器執行中" -ForegroundColor Green
+Write-Host "  網址：  $url" -ForegroundColor Cyan
+Write-Host "  資料夾：$rootFull" -ForegroundColor DarkGray
 if (-not $NoBrowser) {
   $opened = Open-Browser $url
-  Write-Host "  Opened in: $opened" -ForegroundColor DarkGray
+  Write-Host "  開啟於：$opened" -ForegroundColor DarkGray
 }
-Write-Host "  To STOP: close this window (or press Ctrl+C). The port is freed with it."
+Write-Host "  要停止：關掉這個視窗（或按 Ctrl+C），通訊埠會一起釋放。"
 Write-Host ""
 
 # Read one line (up to LF) from the network stream as ASCII; strips CR.
@@ -254,5 +306,5 @@ while ($true) {
 }
 } finally {
   if ($listener) { $listener.Stop() }
-  Write-Host "Server stopped; port $Port released." -ForegroundColor DarkGray
+  Write-Host "伺服器已停止，通訊埠 $Port 已釋放。" -ForegroundColor DarkGray
 }
