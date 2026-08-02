@@ -3018,7 +3018,8 @@ function showComplete() {
   const modeCount = {};
   state.results.forEach(r => { if (r?.mode) modeCount[r.mode] = (modeCount[r.mode] || 0) + 1; });
   const sessionMode = Object.entries(modeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || state.inputMode || null;
-  dbSave({
+  resetSelfRate();          // 每場重置自評區（上一場的選擇不可留到這一場）
+  const savePromise = dbSave({
     studentId:    curStudent?.id ?? null,
     studentName:  curStudent?.name || '',
     scenarioId:   state.scenario.id,
@@ -3042,7 +3043,50 @@ function showComplete() {
       selfRated: !!r?.selfRated,      // 跟讀自評（非系統評分）
     })),
     durationSec: Math.round((endTs - (state.startTs || endTs)) / 1000),
-  }).catch(() => {});
+  }).catch(() => null);
+  // 存檔是非同步的，但學生可能在它完成前就按自評 → 存 Promise 而非 id，點下去再 await
+  _selfRateSave = savePromise;
+}
+
+
+// ─── 學生自評（後設認知）────────────────────────────
+// 24 單元走 learning-tracker._showSelfRating（浮動泡泡、8 秒自動消失）；
+// 對話練習只有一個完成頁，改為內嵌且不自動消失——學生可以慢慢想，未作答就是不記錄。
+let _selfRateSave = null;   // dbSave 的 Promise，resolve 為該筆紀錄 id
+
+function resetSelfRate() {
+  _selfRateSave = null;
+  const block = document.getElementById('selfrate-block');
+  const title = document.getElementById('selfrate-title');
+  const btns  = document.getElementById('selfrate-btns');
+  if (!block || !title || !btns) return;
+  block.classList.remove('done');
+  title.textContent = '😀 這次練習，你覺得怎麼樣？';
+  btns.hidden = false;
+  btns.querySelectorAll('.dlg-selfrate-btn').forEach(b => {
+    b.disabled = false;
+    b.setAttribute('aria-pressed', 'false');
+  });
+}
+
+function bindSelfRate() {
+  const block = document.getElementById('selfrate-block');
+  const btns  = document.getElementById('selfrate-btns');
+  if (!block || !btns) return;
+  btns.querySelectorAll('.dlg-selfrate-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      const rate = btn.dataset.rate;
+      btn.setAttribute('aria-pressed', 'true');
+      btns.querySelectorAll('.dlg-selfrate-btn').forEach(b => { b.disabled = true; });
+      sfx.click();
+      // 存檔失敗不影響學生（僅少一筆自評），畫面照樣給正向回饋
+      try { await dbSetSelfRating(await _selfRateSave, rate); } catch (_) {}
+      block.classList.add('done');
+      document.getElementById('selfrate-title').textContent = '謝謝你告訴老師！💛';
+      btns.hidden = true;
+    });
+  });
 }
 
 
@@ -3869,6 +3913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-change-sit').addEventListener('click', () => startScenario(state.scenario));
   document.getElementById('btn-home').addEventListener('click', renderHome);
+  bindSelfRate();   // 完成頁學生自評（綁一次，每場由 resetSelfRate 重置）
 
   // 資料匯出匯入
   document.getElementById('btn-export-data').addEventListener('click', async () => {

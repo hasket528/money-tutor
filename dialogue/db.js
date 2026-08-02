@@ -43,6 +43,21 @@ async function dbSave(record) {
   });
 }
 
+// 學生自評（後設認知）：完成頁作答後回寫該筆紀錄。
+// 值域 easy/ok/hard，與 24 單元的 learning-tracker 一致，teacher.html 兩張表才能共用同一組圖示。
+async function dbSetSelfRating(id, rating) {
+  if (id == null || !['easy', 'ok', 'hard'].includes(rating)) return false;
+  const db = await dbOpen();
+  return new Promise((resolve) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const st = tx.objectStore(STORE);
+    const g  = st.get(id);
+    g.onsuccess = () => { const r = g.result; if (r) { r.selfRating = rating; st.put(r); } };
+    tx.oncomplete = () => resolve(true);
+    tx.onerror    = () => resolve(false);
+  });
+}
+
 async function dbAll() {
   const db = await dbOpen();
   return new Promise((resolve, reject) => {

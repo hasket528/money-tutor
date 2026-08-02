@@ -153,7 +153,7 @@ const LearningTracker = (() => {
   }
 
   // ── 完成獎勵（教師設定制，預設關閉；2026-07-23）──────────────
-  // 教師在 dialogue/teacher.html「🎁 完成獎勵設定」開啟總開關並為個別單元設定點數後，
+  // 教師在 teacher.html「🎁 完成獎勵設定」開啟總開關並為個別單元設定點數後，
   // 該單元完成時把點數寫入 pendingRewards（由 reward/ 獎勵板跳確認框、老師把關發放）。
   // 設定鍵：mt_unit_rewards_cfg = { enabled:false, units:{ a1:10, … , dialogue:10 } }。
   // 未設定/總開關關/該單元 0 點 → 完全不動作＝與加掛前行為一致；獨立 try/catch 不影響存檔。

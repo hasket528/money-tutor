@@ -122,15 +122,15 @@
   @media print { .site-nav { display:none; } }
 </style>
 <nav class="site-nav no-print">
-  <a href="../index.html">🏠 主頁</a>
-  <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
-  <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+  <a href="index.html">🏠 主頁</a>
+  <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
+  <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
   <a href="teacher.html" class="current nav-teacher">📊 學習歷程總覽</a>
-  <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
-  <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
+  <a href="teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
+  <a href="lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
   <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
 </nav>
-<script src="../js/nav-auth.js"></script>
+<script src="js/nav-auth.js"></script>
 <header class="t-header">
   <div class="t-topbar">
     <div class="t-title-block">
@@ -145,8 +145,8 @@
     <span class="t-sep"></span>
     <div class="t-group">
       <span class="t-group-label">學生工具</span>
-      <a class="t-btn t-btn-primary" href="../assessment.html?phase=pre" title="每技能 2 題共 24 題、難度帶固定；找學習起點＋留下前測基線，成效佐證用">🧭 能力快篩／前測</a>
-      <a class="t-btn t-btn-primary" href="../assessment.html?phase=post" title="與前測同結構的 24 題（隨機重生不重複）；教學後施測，與前測對照">📅 後測</a>
+      <a class="t-btn t-btn-primary" href="assessment.html?phase=pre" title="每技能 2 題共 24 題、難度帶固定；找學習起點＋留下前測基線，成效佐證用">🧭 能力快篩／前測</a>
+      <a class="t-btn t-btn-primary" href="assessment.html?phase=post" title="與前測同結構的 24 題（隨機重生不重複）；教學後施測，與前測對照">📅 後測</a>
     </div>
     <span class="t-sep"></span>
     <div class="t-group">
@@ -394,6 +394,11 @@ const GrowthCfg = (() => {
     <div class="stat-card"><div class="stat-num" id="s-scenarios">—</div><div class="stat-label">購物練習情境</div></div>
   </div>
 
+  <!-- 指標說明 -->
+  <div class="student-filter no-print" style="font-size:0.82rem;color:var(--gray-600);line-height:1.6;">
+    <span>ℹ️ <b>嘗試正確率</b>＝答對次數 ÷ 嘗試總數（答對次數＋錯誤嘗試次數）。本教材採「無錯學習」設計，答錯會提示學生再試一次、最終仍會完成正確操作，所以最終分數幾乎恆為滿分；這個指標才看得出過程中「靠幾次嘗試才成功」——數字越低，代表越常需要提示或反覆練習。<b>完成題數</b>即累計作答量（僅 C／F 系列選「單次作答」模式時才會出現「答對／總題數」的分母）。兩種測驗模式的數字意義相同、可直接對照。</span>
+  </div>
+
   <!-- 主課程四大區塊（學習履歷主體） -->
   <div id="series-sections"></div>
 
@@ -411,10 +416,12 @@ const GrowthCfg = (() => {
 
 </div>
 
-<script src="db.js"></script>
-<script src="../js/captain-tools.js"></script>
+<script src="dialogue/db.js"></script>
+<script src="js/captain-tools.js"></script>
 <script>
 const DIFF = { easy: '初級', normal: '中級', hard: '高級' };
+const SELF_ICON  = { easy: '😀', ok: '😐', hard: '😣' };
+const SELF_LABEL = { easy: '簡單', ok: '普通', hard: '好難' };
 
 // 主課程目錄：四大部分 × 各單元（順序即顯示順序）
 const SERIES = [
@@ -471,7 +478,7 @@ const isMain = (r) => r.source === 'main' || !!UNIT_PAGE[r.situationId];
 const stuKey = (r) => (r.studentId != null ? String(r.studentId) : '__guest__');
 
 // ── 精熟標準（全班預設 mt_mastery_default；個別覆寫 mt_mastery_{id}）──
-const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: false };
+const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: true };
 function masteryDefault() {
   try { return { ...MASTERY_FALLBACK, ...(JSON.parse(localStorage.getItem('mt_mastery_default') || '{}')) }; }
   catch { return { ...MASTERY_FALLBACK }; }
@@ -577,7 +584,7 @@ async function loadData() {
   const byUnit = {};
   mains.forEach(r => {
     const u = r.situationId;
-    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, list: [] };
+    if (!byUnit[u]) byUnit[u] = { count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, self: {}, list: [] };
     byUnit[u].count++;
     byUnit[u].correct += (r.score || 0);
     byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
@@ -586,12 +593,16 @@ async function loadData() {
     byUnit[u].dur     += (r.durationSec || 0);
     const dk = r.difficulty || 'normal';
     byUnit[u].diffs[dk] = (byUnit[u].diffs[dk] || 0) + 1;
+    if (r.selfRating) byUnit[u].self[r.selfRating] = (byUnit[u].self[r.selfRating] || 0) + 1;
     byUnit[u].list.push(r);
   });
 
   const fmtDur = (sec) => sec >= 60 ? `${Math.floor(sec / 60)} 分 ${sec % 60} 秒` : `${sec} 秒`;
   const fmtDiffs = (diffs) => ['easy', 'normal', 'hard']
     .filter(k => diffs[k]).map(k => `${DIFF[k]}×${diffs[k]}`).join('・') || '—';
+  // 學生自評（後設認知）：學生 8 秒內未點選就不記，故次數可能少於練習次數
+  const fmtSelf = (sr) => ['easy', 'ok', 'hard']
+    .filter(k => sr[k]).map(k => `${SELF_ICON[k]}×${sr[k]}`).join(' ') || '—';
 
   const host = document.getElementById('series-sections');
   host.innerHTML = '';
@@ -608,19 +619,21 @@ async function loadData() {
     wrap.className = 'table-scroll';
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>單元</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>單元</th><th>🎯 精熟</th><th title="累計作答題數；單次作答模式若有答錯，顯示為「答對／總題數」">📝 完成題數</th><th>難度</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
 
     units.forEach(([u, name]) => {
       const s  = byUnit[u];
       const tr = document.createElement('tr');
       if (!s) {
         tr.className = 'never';
-        tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="${u === 'adventure' ? '../adventure/index.html' : '../html/' + UNIT_PAGE[u] + '.html'}">▶ 去練習</a></td>
+        tr.innerHTML = `<td>${name} <a class="w-practice-link no-print" href="${u === 'adventure' ? 'adventure/index.html' : 'html/' + UNIT_PAGE[u] + '.html'}">▶ 去練習</a></td>
           <td>${showMastery ? MASTERY_TAG.not : '—'}</td>
-          <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
+          <td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>尚未練習</td><td>—</td>`;
       } else {
         const attempts = s.correct + s.wrong;
-        const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
+        // 分子＝真正答對數（非總題數）：反複作答模式最終必定答對，兩者相等；
+        // 但單次作答模式答錯就過，用總題數當分子會把答錯的題也算成正確操作（全錯仍得 50%）。
+        const attemptAccPct = (s.correct + s.wrongTries) > 0 ? Math.round(s.correct / (s.correct + s.wrongTries) * 100) : 100;
         const sorted = [...s.list].sort((a, b) => a.ts - b.ts);
         const last   = sorted[sorted.length - 1];
         const lastPct = last.total > 0 ? Math.round(last.score / last.total * 100) : 100;
@@ -643,12 +656,11 @@ async function loadData() {
         tr.innerHTML = `
           <td>${hasDetail ? '<span class="dt-toggle" style="cursor:pointer;color:var(--blue);font-weight:800" title="展開逐題明細">▸</span> ' : ''}${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
           <td>${showMastery ? MASTERY_TAG[masteryStatus(sortedList, mastery)] : '—'}</td>
-          <td>${s.count}</td>
+          <td class="${s.wrong > 0 ? 'acc-low' : ''}" title="練習 ${s.count} 次，累計作答 ${attempts} 題">${s.wrong > 0 ? `${s.correct}/${attempts}` : attempts}</td>
           <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
-          <td class="acc-good">${s.correct}</td>
-          <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
           <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
-          <td class="${accClass(avgPct)}">${avgPct}%</td>
+          <td class="${accClass(attemptAccPct)}" title="答對題數 ÷（答對題數＋錯誤嘗試次數）">${attemptAccPct}%</td>
+          <td style="font-size:0.86rem;white-space:nowrap" title="${last.selfRating ? `最近一次自評：${SELF_ICON[last.selfRating]} ${SELF_LABEL[last.selfRating]}` : '最近一次未留下自評'}">${fmtSelf(s.self)}</td>
           <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
           <td>${last.score}/${last.total}（${when}）</td>
           <td class="trend" title="與前一次相比">${trend}</td>`;
@@ -662,7 +674,7 @@ async function loadData() {
             : '<li>沒有答錯的題目 👍</li>';
           const seqHtml = lastDetail.map(st =>
             `<span title="${st.q}" style="margin-right:4px">${st.ok ? '✅' : '❌'}</span>`).join('');
-          dtr.innerHTML = `<td colspan="11" style="background:#F8FAFC">
+          dtr.innerHTML = `<td colspan="10" style="background:#F8FAFC">
             <div style="font-size:0.82rem;padding:4px 6px">
               <b>📌 常錯題目</b><ul style="margin:4px 0 8px 18px;padding:0">${wrongHtml}</ul>
               <b>🕐 最近一次逐題</b>：${seqHtml}
@@ -693,7 +705,7 @@ async function loadData() {
     if (!byScenario[key]) byScenario[key] = {
       scenarioName: r.scenarioName || r.scenarioId,
       situationName: r.situationName || r.situationId,
-      count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, modes: {}, list: [],
+      count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, modes: {}, self: {}, list: [],
     };
     const s = byScenario[key];
     s.count++;
@@ -706,6 +718,7 @@ async function loadData() {
     const dk = r.difficulty || 'normal';
     s.diffs[dk] = (s.diffs[dk] || 0) + 1;
     if (r.mode) s.modes[r.mode] = (s.modes[r.mode] || 0) + 1;
+    if (r.selfRating) s.self[r.selfRating] = (s.self[r.selfRating] || 0) + 1;
     s.list.push(r);
   });
   document.getElementById('dlg-coverage').textContent = `${Object.keys(byScenario).length} 個情境`;
@@ -716,10 +729,11 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th>練習次數</th><th>難度</th><th>模式</th><th>✅ 答對</th><th>❌ 答錯</th><th>🔁 錯誤嘗試</th><th>平均正確率</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
       const attempts = s.correct + s.wrong;
-      const avgPct = attempts > 0 ? Math.round(s.correct / attempts * 100) : 100;
+      // 分子＝真正答對數（非總步驟數）：跳過的步驟不該算成正確操作。理由同主課程表。
+      const attemptAccPct = (s.correct + s.wrongTries) > 0 ? Math.round(s.correct / (s.correct + s.wrongTries) * 100) : 100;
       const sorted = [...s.list].sort((a, b) => a.ts - b.ts)
         .map(r => ({ ...r, flawless: (r.total > 0 && r.score === r.total) }));   // 供精熟判定
       const last = sorted[sorted.length - 1];
@@ -732,13 +746,12 @@ async function loadData() {
       tr.innerHTML = `
         <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span>${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
         <td>${showMastery ? MASTERY_TAG[masteryStatus(sorted, mastery)] : '—'}</td>
-        <td>${s.count}</td>
+        <td class="${s.wrong > 0 ? 'acc-low' : ''}" title="練習 ${s.count} 次，累計作答 ${attempts} 步驟">${s.wrong > 0 ? `${s.correct}/${attempts}` : attempts}</td>
         <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
         <td style="font-size:0.78rem">${fmtModes(s.modes)}</td>
-        <td class="acc-good">${s.correct}</td>
-        <td class="${s.wrong > 0 ? 'acc-low' : ''}">${s.wrong}</td>
         <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
-        <td class="${accClass(avgPct)}">${avgPct}%</td>
+        <td class="${accClass(attemptAccPct)}" title="答對題數 ÷（答對題數＋錯誤嘗試次數）">${attemptAccPct}%</td>
+        <td style="font-size:0.86rem;white-space:nowrap" title="${last.selfRating ? `最近一次自評：${SELF_ICON[last.selfRating]} ${SELF_LABEL[last.selfRating]}` : '最近一次未留下自評'}">${fmtSelf(s.self)}</td>
         <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
         <td>${last.score}/${last.total}（${when}）</td>
         <td class="trend" title="與前一次相比">${trend}</td>`;
@@ -776,7 +789,7 @@ async function loadData() {
       d.className = 'weakness-card';
       d.innerHTML = `
         <div class="w-step">${w.label}
-          <a href="index.html" class="w-practice-link no-print" title="前往練習此情境">▶ 去練習</a>
+          <a href="dialogue/index.html" class="w-practice-link no-print" title="前往練習此情境">▶ 去練習</a>
           <span class="weakness-pct">${pct}% 需改進</span>
         </div>
         <div class="w-meta">${w.scene} ・ 練習 ${w.total} 次，答錯 ${w.failed} 次</div>`;
@@ -798,7 +811,7 @@ async function loadData() {
         <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
         <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${({easy:' ・ 自評 😀 簡單',ok:' ・ 自評 😐 普通',hard:' ・ 自評 😣 好難'})[r.selfRating] || ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${r.selfRating ? ` ・ 自評 ${SELF_ICON[r.selfRating]} ${SELF_LABEL[r.selfRating]}` : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }
@@ -829,9 +842,9 @@ async function printWeeklyReport() {
   const lastWeek = mine.filter(r => now - r.ts >= WEEK && now - r.ts < 2 * WEEK);
 
   const acc = (list) => {
-    let c = 0, t = 0;
-    list.forEach(r => { c += (r.score || 0); t += (r.total || 0); });
-    return t > 0 ? Math.round(c / t * 100) : null;
+    let sc = 0, wa = 0;   // sc＝答對數（非總題數，單次作答模式才不會失真）
+    list.forEach(r => { sc += (r.score || 0); wa += (r.wrongAttempts || 0); });
+    return (sc + wa) > 0 ? Math.round(sc / (sc + wa) * 100) : null;
   };
   const accNow = acc(thisWeek), accPrev = acc(lastWeek);
   const trend = accPrev == null || accNow == null ? '—'
@@ -842,16 +855,19 @@ async function printWeeklyReport() {
   const byU = {};
   thisWeek.forEach(r => {
     const key = r.situationName || r.situationId;
-    if (!byU[key]) byU[key] = { n: 0, c: 0, t: 0, dur: 0, star: 0 };
-    byU[key].n++; byU[key].c += (r.score || 0); byU[key].t += (r.total || 0);
+    if (!byU[key]) byU[key] = { n: 0, t: 0, sc: 0, dur: 0, star: 0, wa: 0 };
+    byU[key].n++; byU[key].t += (r.total || 0); byU[key].sc += (r.score || 0);
     byU[key].dur += (r.durationSec || 0);
+    byU[key].wa += (r.wrongAttempts || 0);
     if (r.flawless) byU[key].star++;
   });
   const totalDur = thisWeek.reduce((a, r) => a + (r.durationSec || 0), 0);
-  const rows = Object.entries(byU).map(([name, s]) =>
-    `<tr><td>${name}${s.star ? ' 🌟×' + s.star : ''}</td><td>${s.n}</td>
-     <td>${s.t > 0 ? Math.round(s.c / s.t * 100) + '%' : '—'}</td>
-     <td>${Math.floor(s.dur / 60)} 分 ${s.dur % 60} 秒</td></tr>`).join('');
+  const rows = Object.entries(byU).map(([name, s]) => {
+    const attemptAccPct = (s.sc + s.wa) > 0 ? Math.round(s.sc / (s.sc + s.wa) * 100) : 100;
+    return `<tr><td>${name}${s.star ? ' 🌟×' + s.star : ''}</td><td>${s.t > s.sc ? `${s.sc}/${s.t}` : s.t}</td>
+     <td>${attemptAccPct}%</td>
+     <td>${Math.floor(s.dur / 60)} 分 ${s.dur % 60} 秒</td></tr>`;
+  }).join('');
 
   // 本週新徽章（讀 mt_badges_{id} 的取得時間）
   const BADGE_NAMES = { first_step:'🔰初次上路', flawless_1:'🌟無錯新星', streak_3:'🔥連續3天練習',
@@ -873,11 +889,11 @@ async function printWeeklyReport() {
     <div class="wr-sub">學生：<b>${stuName}</b>　期間：${fmt(now - WEEK + 86400_000)} ～ ${fmt(now)}　（本週練習 ${thisWeek.length} 次・共 ${Math.floor(totalDur / 60)} 分鐘）</div>
     <div class="wr-sec">📚 本週練習內容</div>
     ${thisWeek.length
-        ? `<table><tr><th>單元／情境</th><th>次數</th><th>正確率</th><th>時間</th></tr>${rows}</table>`
+        ? `<table><tr><th>單元／情境</th><th>完成題數</th><th>嘗試正確率</th><th>時間</th></tr>${rows}</table>`
         : '<p>本週尚無練習紀錄。</p>'}
     <div class="wr-sec">📈 整體表現：${trend}</div>
     <div class="wr-sec">🏅 本週新獲得徽章：${newBadges.length ? newBadges.join('、') : '—'}</div>
-    <div class="wr-sec">💬 學生自評：😀 簡單 ×${sr.easy}　😐 普通 ×${sr.ok}　😣 好難 ×${sr.hard}</div>
+    <div class="wr-sec">💬 學生自評：${['easy','ok','hard'].map(k => `${SELF_ICON[k]} ${SELF_LABEL[k]} ×${sr[k]}`).join('　')}</div>
     <div class="wr-sec">✏️ 老師的話</div>
     <div class="wr-lines"></div><div class="wr-lines"></div><div class="wr-lines"></div>
     <div class="wr-sign"><span>老師簽名：＿＿＿＿＿＿＿＿</span><span>家長簽名：＿＿＿＿＿＿＿＿</span><span>日期：＿＿＿＿＿＿</span></div>`;
@@ -905,13 +921,15 @@ function clearStudents() {
 async function exportCSV() {
   const records = await dbAll();
   if (records.length === 0) { alert('尚無學習紀錄'); return; }
-  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','無錯通過','總計','星數','時長(秒)']];
+  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
+    const sc = r.score || 0, wa = r.wrongAttempts || 0;   // 分子＝答對數，單次作答模式才不失真
+    const attemptAccPct = (sc + wa) > 0 ? Math.round(sc / (sc + wa) * 100) : 100;
     rows.push([d, r.studentName || '未指定', isMain(r) ? '主課程' : '購物練習',
       r.scenarioName || r.scenarioId, r.situationName || r.situationId,
       DIFF[r.difficulty] || r.difficulty || '', r.score,
-      Math.max(0, (r.total || 0) - (r.score || 0)), r.wrongAttempts || 0,
+      Math.max(0, (r.total || 0) - (r.score || 0)), wa, attemptAccPct,
       r.flawless ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');

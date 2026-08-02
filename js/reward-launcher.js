@@ -217,7 +217,7 @@ const RewardLauncher = {
         ['../index.html', '🏠 主頁'],
         ['../reward/index.html?page=growth', '🌟 成就與寵物'],
         ['../reward/index.html', '🏆 優良表現獎勵板'],
-        ['../dialogue/teacher.html', '📊 學習歷程總覽'],
+        ['../teacher.html', '📊 學習歷程總覽'],
         ['../teacher-guide.html', '👩‍🏫 教師指南'],
         ['../lesson-plans.html', '📚 單元教案包'],
     ];

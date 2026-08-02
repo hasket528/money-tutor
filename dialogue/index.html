@@ -65,7 +65,7 @@
       <a href="../index.html">🏠 主頁</a>
       <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
       <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
-      <a href="teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+      <a href="../teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
       <a href="../teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
       <a href="../lesson-plans.html" class="nav-teacher">📚 單元教案包</a>
       <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
@@ -395,6 +395,17 @@
             <div class="complete-summary" id="complete-summary" aria-label="各步驟結果"></div>
           </div>
 
+          <!-- 學生自評（後設認知）：選項與 24 單元的 learning-tracker._showSelfRating 相同（easy/ok/hard），
+               但改為完成頁內嵌且「不自動消失」——特教學生不必趕在 8 秒內作答。未作答就是不記錄。 -->
+          <div class="dlg-selfrate-block" id="selfrate-block">
+            <div class="dlg-selfrate-title" id="selfrate-title">😀 這次練習，你覺得怎麼樣？</div>
+            <div class="dlg-selfrate-btns" id="selfrate-btns">
+              <button type="button" class="dlg-selfrate-btn" data-rate="easy"><span aria-hidden="true">😀</span> 簡單</button>
+              <button type="button" class="dlg-selfrate-btn" data-rate="ok"><span aria-hidden="true">😐</span> 普通</button>
+              <button type="button" class="dlg-selfrate-btn" data-rate="hard"><span aria-hidden="true">😣</span> 好難</button>
+            </div>
+          </div>
+
           <div class="complete-recommend" id="complete-recommend" hidden aria-label="推薦練習"></div>
 
           <div class="complete-actions">
@@ -407,7 +418,7 @@
     </div>
   </div>
 
-  <!-- 學習歷程已統一至專案「學習歷程總覽」（dialogue/teacher.html）；主頁內嵌歷程頁已移除 -->
+  <!-- 學習歷程已統一至專案「學習歷程總覽」（teacher.html）；主頁內嵌歷程頁已移除 -->
 
   <!-- ════════════════════════════════════════
        設定頁：自訂情境列表

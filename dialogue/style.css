@@ -1479,6 +1479,49 @@ body {
   margin-bottom: 6px;
 }
 
+/* 學生自評（完成頁內嵌，不自動消失） */
+.dlg-selfrate-block {
+  background: rgba(59, 130, 246, 0.10);
+  border: 1.5px solid rgba(59, 130, 246, 0.28);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.dlg-selfrate-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--blue, #2563EB);
+  margin-bottom: 10px;
+}
+.dlg-selfrate-btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dlg-selfrate-btn {
+  min-height: 44px;              /* 觸控命中區，與全站一致 */
+  min-width: 88px;
+  padding: 8px 16px;
+  border: 1.5px solid #dbe7f5;
+  border-radius: 22px;
+  background: #fff;
+  color: var(--gray-700, #334155);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;    /* 消 300ms 延遲 */
+  transition: background .15s, border-color .15s;
+}
+/* 按下回饋只改顏色，不改幾何——避免元素從指標下滑走導致 click 落空 */
+.dlg-selfrate-btn:hover   { background: #eff6ff; border-color: #93c5fd; }
+.dlg-selfrate-btn:active  { background: #dbeafe; }
+.dlg-selfrate-btn[aria-pressed="true"] {
+  background: #2563EB; border-color: #2563EB; color: #fff;
+}
+.dlg-selfrate-block.done .dlg-selfrate-title { color: #16a34a; }
+
 .complete-stars {
   font-size: 3rem;
   letter-spacing: 6px;

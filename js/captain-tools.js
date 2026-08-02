@@ -1,5 +1,5 @@
 /* js/captain-tools.js — 金隊長工具「共用資料層」
- * index.html（金隊長基地）與 dialogue/teacher.html（學習歷程總覽）共用同一份邏輯，
+ * index.html（金隊長基地）與 teacher.html（學習歷程總覽）共用同一份邏輯，
  * 避免全站備份/還原、學習紀錄/錄音讀取、老師指派 的程式在兩頁各寫一份而分歧。
  * 只做資料層；各頁自己接自己的按鈕與狀態顯示。
  * 相依：同源 localStorage 與 IndexedDB 'shopping-practice'（records / custom_audio）。
