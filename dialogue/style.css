@@ -1957,6 +1957,177 @@ body {
 .editor-quickstart ol { margin: 8px 0 4px; padding-left: 20px; line-height: 1.7; }
 .editor-quickstart p  { margin: 6px 0 2px; color: var(--gray-600, #475569); }
 
+/* file:// 開啟時的限制警告條 */
+.file-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #FEF3C7;
+  color: #78350F;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-bottom: 2px solid #F59E0B;
+}
+.file-warn[hidden] { display: none; }
+.file-warn-go {
+  display: inline-block;
+  margin: 4px 4px 0 0;
+  padding: 4px 10px;
+  background: #78350F;
+  color: #FFFBEB;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.file-warn-go:hover { filter: brightness(1.2); }
+.file-warn-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+.file-warn-close:hover { background: rgba(120, 53, 15, 0.12); }
+
+/* 設定頁的版本資訊 */
+.version-info {
+  font-size: 0.85rem;
+  background: var(--gray-50, #F8FAFC);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.version-row {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+}
+.version-key { flex: 0 0 5.5em; color: var(--gray-600, #4b5563); }
+.version-val { flex: 1; font-weight: 700; word-break: break-all; }
+.version-warn {
+  margin: 4px 0 6px;
+  padding: 6px 8px;
+  background: #FEF3C7;
+  color: #78350F;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+/* 語音診斷清單（設定頁 → 版本資訊 → 檢查這台的語音） */
+.voice-diag { margin-top: 10px; font-size: 0.82rem; }
+.voice-diag[hidden] { display: none; }
+.voice-diag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+.voice-diag-play {
+  flex-shrink: 0;
+  border: 1px solid var(--gray-300, #CBD5E1);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+}
+.voice-diag-play:hover { background: #EFF6FF; border-color: var(--blue); }
+.voice-diag-tag  { flex-shrink: 0; color: var(--gray-600, #4b5563); white-space: nowrap; }
+.voice-diag-name { flex: 1; word-break: break-all; }
+
+/* 儲存情境：步驟卡片下方的大按鈕（取代原本標題列的小按鈕） */
+.save-section { text-align: center; }
+.btn-save-large {
+  width: 100%;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 1.05rem;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+  touch-action: manipulation;
+  transition: filter 0.15s;
+}
+.btn-save-large:hover { filter: brightness(1.1); }
+
+/* 泛用店員選擇（自訂情境編輯器）。
+   刻意不用 transform 做 hover/active 回饋——按下時改變幾何會讓 click 落空（見 CLAUDE.md 踩雷）。 */
+.clerk-role-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.clerk-role-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200, #e5e7eb);
+  border-radius: 14px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+.clerk-role-card:hover:not(:disabled),
+.clerk-role-card:focus-visible { border-color: var(--blue); outline: none; }
+.clerk-role-card.selected { border-color: var(--blue); background: var(--blue-lt); }
+.clerk-role-card.unavailable {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.clerk-role-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+.clerk-role-name { font-size: 0.9rem; font-weight: 700; }
+.clerk-role-na   { font-size: 0.72rem; color: var(--gray-600, #4b5563); }
+
+/* AI 區塊裡的精簡版店員角色選擇（同一份 selectedClerkGender，見 renderClerkRolePicker） */
+.ai-gen-gender-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.clerk-role-picker--compact {
+  gap: 6px;
+  margin-top: 0;
+}
+.clerk-role-picker--compact .clerk-role-card {
+  flex-direction: row;
+  padding: 4px 10px 4px 4px;
+  gap: 6px;
+  border-radius: 999px;
+}
+.clerk-role-picker--compact .clerk-role-img {
+  width: 26px;
+  height: 26px;
+}
+.clerk-role-picker--compact .clerk-role-name { font-size: 0.82rem; }
+
 /* 語音工作室（步驟編輯器：TTS 試聽／老師錄音） */
 .voice-studio-row {
   display: flex;

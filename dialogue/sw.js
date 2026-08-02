@@ -1,5 +1,5 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v124';
+const CACHE_CORE  = 'shopping-practice-v137';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 // 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
@@ -32,6 +32,7 @@ const PRECACHE = [
   './script.js',
   './data/frames.js',
   './data/scenarios.js',
+  './data/clerk_gender.js',
   './manifest.json',
   './icon.svg',
 ];
@@ -100,6 +101,13 @@ self.addEventListener('fetch', event => {
 });
 
 // 接收主頁面的「快取音檔」指令
+// 版本查詢：頁面用它比對「程式版本」與「SW 實際在用的快取版本」。
+// 兩者不一致＝這個分頁還在跑快取裡的舊程式，是最常見的「改了卻沒生效」原因。
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'GET_VERSION') return;
+  event.ports?.[0]?.postMessage({ version: CACHE_CORE });
+});
+
 self.addEventListener('message', event => {
   if (event.data?.type !== 'CACHE_AUDIO') return;
   const urls = event.data.urls || [];

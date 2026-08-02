@@ -61,6 +61,13 @@
       .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
       .site-nav a:hover { background:rgba(255,255,255,0.30); }
     </style>
+    <!-- 直接雙擊 index.html（file://）開啟時的限制警告，只在該情況顯示 -->
+    <div id="file-protocol-warn" class="file-warn" hidden>
+      <span>⚠️ <b>你是直接開啟檔案（file://）</b>，瀏覽器會限制功能：<b>🎤 說話模式不能用</b>（麥克風要安全網址才開放）、離線快取也不會生效。
+        <a id="file-warn-go" class="file-warn-go" href="http://localhost:47800/dialogue/index.html">➡️ 開啟正確網址</a>
+        （沒反應代表伺服器沒開，先執行 <b>啟動本機伺服器.bat</b>）</span>
+      <button type="button" id="file-warn-close" class="file-warn-close" aria-label="關閉提示">✕</button>
+    </div>
     <nav class="site-nav">
       <a href="../index.html">🏠 主頁</a>
       <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
@@ -576,6 +583,16 @@
         </div>
       </div>
 
+      <!-- 版本資訊：語音已排查完成，2026-08-02 依教師端要求先隱藏（診斷資訊對一般使用者是雜訊）。
+           程式碼與 JS（renderVersionInfo/renderVoiceDiag）保留，之後真的要重驗語音再拿掉 hidden 即可。 -->
+      <div class="settings-block" id="version-info-block" hidden>
+        <h3 class="settings-block-title">版本資訊</h3>
+        <p class="editor-desc" style="margin-bottom:6px">功能改了卻沒生效、或聲音怪怪的時候，先看這裡。</p>
+        <div id="version-info" class="version-info">讀取中…</div>
+        <button class="btn-secondary" id="btn-voice-diag" style="margin-top:10px">🔍 檢查這台的語音</button>
+        <div id="voice-diag" class="voice-diag" hidden></div>
+      </div>
+
     </div>
   </div>
 
@@ -619,7 +636,6 @@
     <header class="editor-header">
       <button class="btn-icon" id="btn-scenario-back" aria-label="返回">←</button>
       <h2 class="editor-title" id="scenario-editor-title">新增情境</h2>
-      <button class="btn-header-action" id="btn-save-scenario">儲存</button>
     </header>
     <div class="editor-body">
 
@@ -649,6 +665,14 @@
             <div class="color-swatches" id="edit-color" role="group" aria-label="主題色選擇"></div>
           </div>
         </div>
+        <div class="form-group" id="clerk-role-group">
+          <label class="form-label">店員角色</label>
+          <div class="clerk-role-picker" id="edit-clerk-role" role="radiogroup" aria-label="選擇店員角色"></div>
+          <!-- 「這台電腦會用 X 唸台詞／剛才是 X 唸的」診斷文字：語音已排查完成，2026-08-02 依教師端要求先隱藏
+               （曝露引擎細節如「Google 國語（臺灣）」對老師是雜訊）。JS 仍會寫入內容，只是不顯示。 -->
+          <p class="form-hint" id="clerk-role-voice" style="margin-top:2px" hidden></p>
+          <p class="form-hint" id="clerk-role-hint">學生在練習畫面看到、也是唸台詞的那位店員。沒有上傳場景照片時就顯示他。</p>
+        </div>
         <div class="form-group" id="scene-photo-group">
           <label class="form-label">場景照片（可選）</label>
           <div class="voice-studio-row">
@@ -667,6 +691,14 @@
           <span class="section-label">✨ AI 幫我寫步驟（免 API Key）</span>
         </div>
         <p class="form-hint" style="margin-bottom:8px">回答下面問題 → 複製提示詞，貼到 Gemini 或 ChatGPT 網頁 → 把 AI 的回答貼回來匯入。</p>
+
+        <!-- 對方性別：與上面「店員角色」是同一份設定（selectedClerkGender），這裡切換上面也會跟著換，
+             不是另一份獨立設定——放在這裡是因為老師填 AI 問題時常常沒往上滑去注意到已經選了誰。 -->
+        <div class="ai-gen-gender-row">
+          <span class="form-hint" style="margin:0">店員角色：</span>
+          <div class="clerk-role-picker clerk-role-picker--compact" id="ai-gen-clerk-role" role="radiogroup" aria-label="選擇店員角色"></div>
+        </div>
+        <p class="form-hint" id="ai-gen-gender-note" style="margin-bottom:8px"></p>
 
         <label class="form-hint" for="ai-gen-topic" style="display:block;margin-bottom:2px">① 要練習的情境是什麼？（必填）</label>
         <input id="ai-gen-topic" class="form-input" type="text" placeholder="例如：在麵包店詢問今日特價" style="margin-bottom:8px">
@@ -704,6 +736,12 @@
         </div>
         <p id="step-list-empty" class="step-empty">尚無步驟，請點擊「＋ 新增步驟」</p>
         <div id="step-list" class="step-list"></div>
+      </div>
+
+      <!-- 儲存：放在步驟卡片下方（原本在標題列，做完步驟要往回找不直覺） -->
+      <div class="form-section save-section">
+        <button class="btn-save-large" id="btn-save-scenario">💾 儲存情境</button>
+        <p class="form-hint" style="text-align:center;margin-top:8px">儲存後回首頁點「⭐ 自訂」就會看到這張卡片，學生可以馬上練習</p>
       </div>
 
     </div>
@@ -904,6 +942,7 @@
 
   <script src="data/frames.js"></script>
   <script src="data/scenarios.js"></script>
+  <script src="data/clerk_gender.js"></script>
   <script src="data/student_audio_map.js"></script>
   <script src="db.js"></script>
   <script src="../js/nav-auth.js"></script>

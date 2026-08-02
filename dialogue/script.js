@@ -1,3 +1,9 @@
+// ⚠️ 改了 script.js／index.html 就要把這個版本號和 sw.js 的 CACHE_CORE 一起 +1，
+// 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
+// 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
+// `node tests/_audit_version.js` 會擋下兩處對不上的情況。
+const APP_VERSION = 'v137';
+
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
 
@@ -287,6 +293,22 @@ const VOICE_INFO = [
 
 const GENDER_AVATAR = { female: '👩', male: '👨', neutral: '🧑' };
 
+// 教師自訂情境用的「泛用店員」（2026-08-02）。內建 42 場景各有專屬角色（SCENARIO_CLERK_MAP），
+// 自訂情境沒有，過去只能顯示 emoji。這兩張圖刻意不帶任何店家識別特徵（素色 T 恤＋牛仔褲），
+// 因為老師的情境可能是合作社、福利社、診所批價……任何場所。場景圖同理，男女共用一張。
+// 姓名（2026-08-02 由「店員姊姊／店員哥哥」改真人名）：已核對過與全站 42 場景配角＋4 位學生
+// 共 44 個既有角色名不重複（見 dialogue/docs/clerk-avatar-prompts.md 的核對紀錄）。
+const GENERIC_CLERKS = {
+  female: { key: 'female', name: '小雯', gender: 'female', image: 'images/clerk-generic-female.jpg' },
+  male:   { key: 'male',   name: '小宇', gender: 'male',   image: 'images/clerk-generic-male.jpg' },
+};
+const CUSTOM_SCENE_IMAGE = 'images/scenes/custom.webp';
+
+// 自訂情境的店員角色（舊資料沒有這欄 → 預設女店員，與過去 emoji 預設的女性形象一致）
+function getCustomClerk(scenario) {
+  return GENERIC_CLERKS[scenario?.clerkGender] || GENERIC_CLERKS.female;
+}
+
 // 場所 → 店員對應（含開場介紹詞）
 const SCENARIO_CLERK_MAP = {
   convenience_store: { keyword: 'Yating', intro: '你好！我是便利商店的店員小美。在這裡你可以練習詢問商品在哪裡、結帳付款，還有找零錯誤時怎麼說。點卡片就可以開始練習囉！' },
@@ -391,6 +413,7 @@ const voiceManager = {
   refresh() {
     this._loadVoices();
     renderUserVoiceSelector();
+    renderClerkRolePicker();   // 男聲是否可用取決於清單，載入後要重判
   },
 
   init() {
@@ -403,6 +426,7 @@ const voiceManager = {
         this._loadVoices();
         if (!userVoiceManager.selected) userVoiceManager.init();
         renderUserVoiceSelector();
+        renderClerkRolePicker();
       };
       speechSynthesis.addEventListener('voiceschanged', onChanged);
 
@@ -484,6 +508,227 @@ function bestTWVoice(prefer) {
       || prefer || A[0] || null;
 }
 
+// ── 依角色性別挑語音（2026-08-02，自訂情境的泛用男/女店員用）──────────
+// 為什麼要自己判性別：語音清單的 name 沒有性別欄位，SpeechSynthesisVoice 也不給。
+// 只能靠「已知音色名單」比對——這與 voicegen/voice_ears.json 的原則一致：**性別只信耳朵**，
+// 引擎回報的 gender 會標錯，所以這裡列的是實際聽過的音色。
+// ⚠️ 男聲在多數裝置上是稀缺資源：Google 中文語音全族都是女聲、Windows 系統聲要另外裝
+// zh-TW 語音套件才有 Zhiwei；Edge 才穩定有 Online 男聲。挑不到就回 null，由呼叫端決定退路。
+// ⚠️ `yunxi(?!a)`：Yunxia（云夏）是卡通童聲、實測 311.7 Hz，不能被 `yunxi` 順手吃進來當男店員。
+const MALE_VOICE_PAT   = /yunjhe|云哲|雲哲|zhiwei|智威|yunxi(?!a)|云希|yunjian|云健|yunyang|云扬|yunze|云泽|yunfeng|云枫|yunye|云野|kangkang|康康/i;
+const FEMALE_VOICE_PAT = /yating|雅婷|hsiaochen|曉臻|hsiaoyu|曉雨|hsiaochi|曉琪|xiaoxiao|晓晓|xiaoyi|晓伊|xiaochen|晓辰|xiaomeng|晓梦|xiaorui|晓睿|xiaohan|晓涵|xiaomo|晓墨|hanhan|涵涵|huihui|慧慧|yaoyao|瑤瑤|google 國語|google 普通话/i;
+
+function voiceGenderOf(v) {
+  const info = VOICE_INFO.find(i => v.name.includes(i.keyword));
+  if (info && info.gender !== 'neutral') return info.gender;   // 專案已聽過確認的音色最優先
+  if (MALE_VOICE_PAT.test(v.name))   return 'male';
+  if (FEMALE_VOICE_PAT.test(v.name)) return 'female';
+  return 'neutral';
+}
+
+// 實測夠低沉的男聲（F0：YunJhe 119.1、Yunjian 117.1、Yunyang 114.8 Hz）。
+// 男聲不是有就好——同樣掛「Male」的 Yunxi 是 185.3 Hz，比女聲 Yating 的 175.8 還高，
+// 拿來當店員會被學生聽成女生。所以挑男聲時「低沉的」優先於「同語系的」。
+const DEEP_MALE_PAT = /yunjhe|云哲|雲哲|yunjian|云健|yunyang|云扬|yunze|云泽|yunfeng|云枫|yunye|云野/i;
+
+// ⚠️ 這裡曾經有一整套「偵測指定失敗 → 記黑名單 → 換人重講」的機制，2026-08-02 全部移除。
+// 移除原因（血淚）：那套機制自己製造假陽性並連鎖自我毀滅——
+//   ① 在 u.onstart 比對「u.voice 是不是我指定的那支」來判斷成功與否，本身就不可靠；
+//   ② 判定失敗後 cancel() 隔 30ms 立刻重講，Chromium 還在處理 cancel，
+//      這時的 voice 設定又容易失效 → 換去的那支也被判定失敗 → 一路標到全部語音都「壞掉」；
+//   ③ 全部壞掉後 preferVoice 變成 null，落回品質優先的預設挑選＝女聲，
+//      於是男角色永遠用女聲說話，而畫面還信誓旦旦說「這台的男聲全部不能用」。
+// 同一台電腦上，沒有這套機制的簡單實作（Downloads/voice-audition.html）從頭到尾正常。
+// **定則：直接指定語音就好，不要自作聰明去驗證瀏覽器有沒有照做。**
+
+// 該性別的最佳語音（音質優先）。挑完就直接用，不再驗證瀏覽器有沒有照做——見上方說明。
+function bestVoiceByGender(gender) {
+  const A    = voiceManager.all || [];
+  const tw   = v => (v.lang || '').toLowerCase().includes('tw');
+  const hiFi = v => /online|natural|google/i.test(v.name);
+  const deep = v => DEEP_MALE_PAT.test(v.name);
+
+  const match = A.filter(v => voiceGenderOf(v) === gender);
+
+  // 男聲：低沉＋高品質＋台灣腔最前（實測 F0：雲哲 119 Hz ＞ 系統音 Zhiwei 153.8 Hz）
+  if (gender === 'male') {
+    return match.find(v => deep(v) && hiFi(v) && tw(v))
+        || match.find(v => deep(v) && hiFi(v))
+        || match.find(deep)
+        || match.find(v => hiFi(v) && tw(v))
+        || match.find(tw)
+        || match[0] || null;
+  }
+  return match.find(v => hiFi(v) && tw(v))
+      || match.find(tw)
+      || match.find(hiFi)
+      || match[0] || null;
+}
+
+// 這台裝置有沒有該性別的中文語音（編輯器用來決定男店員能不能選）
+function hasVoiceForGender(gender) { return !!bestVoiceByGender(gender); }
+
+// ⚠️ Chromium 的坑（2026-08-02 由使用者的裝置診斷出來）：
+// `getVoices()` 每次可能回傳**全新的物件實例**，而雲端 Online 語音是非同步載入的
+// （那台 17 支語音裡有 14 支雲端）。頁面載入時存進 voiceManager.all 的物件，等到要唸的時候
+// 早就跟引擎當下那批對不上，設給 `u.voice` 會被靜默忽略 → 一律用系統預設語音唸
+// （那台就是女聲 Yating，所以男女店員聽起來完全一樣）。
+// 開發機只有 3 支本機語音、一次載完，物件永遠有效，因此完全無法重現。
+// 解法：真正要唸之前，用「名字」重新抓一次當下的物件。
+function freshVoice(v) {
+  if (!v || !window.speechSynthesis) return v;
+  const all = window.speechSynthesis.getVoices();
+  return all.find(x => x.name === v.name && x.lang === v.lang)
+      || all.find(x => x.name === v.name)
+      || v;
+}
+
+// ── file:// 開啟的限制（2026-08-02 實測確認）────────────────────────
+// 直接雙擊 index.html 開啟時，**Chromium 會忽略 utterance.voice**：程式指定 Zhiwei（男），
+// 瀏覽器照樣用系統預設語音（這台是 Yating 女聲）——於是男女店員聽起來一模一樣，
+// 文字卻是對的，非常容易誤判成「程式挑錯聲音」。同一份程式用 localhost 開就完全正常。
+// 麥克風在 file:// 也不是安全內容（🎤 說話模式直接不能用），所以一律提醒改用 start.bat。
+function isFileProtocol() { return location.protocol === 'file:'; }
+
+// 設定頁的版本資訊：程式版本、SW 實際在用的快取版本、開啟方式，三件事一次講清楚。
+// 「改了卻沒生效」幾乎都是這三者其中之一出問題，與其猜，不如讓畫面直接說。
+async function renderVersionInfo() {
+  const el = document.getElementById('version-info');
+  if (!el) return;
+
+  let swVer = null;
+  try {
+    const ctrl = navigator.serviceWorker?.controller;
+    if (ctrl) {
+      swVer = await new Promise(resolve => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = e => resolve(e.data?.version || null);
+        ctrl.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+        setTimeout(() => resolve(null), 1500);   // 舊版 SW 不認得這個訊息，別卡住畫面
+      });
+    }
+  } catch (_) {}
+
+  const swShort = swVer ? swVer.replace('shopping-practice-', '') : null;
+  const rows = [
+    ['程式版本', APP_VERSION, null],
+    ['快取版本', swShort || (isFileProtocol() ? '未啟用（檔案開啟時沒有）' : '未啟用'),
+      (swShort && swShort !== APP_VERSION)
+        ? '⚠️ 與程式版本不一致，請按 Ctrl+Shift+R 重新整理兩次' : null],
+    ['開啟方式', isFileProtocol() ? '📁 直接開啟檔案（file://）' : `🌐 ${location.origin}`,
+      isFileProtocol() ? '⚠️ 這種開法 🎤 麥克風不能用、離線快取不生效，請改用 start.bat' : null],
+  ];
+  el.innerHTML = rows.map(([k, v, warn]) =>
+    `<div class="version-row"><span class="version-key">${k}</span>`
+    + `<span class="version-val">${v}</span></div>`
+    + (warn ? `<div class="version-warn">${warn}</div>` : '')
+  ).join('');
+}
+
+// 語音診斷：列出這台實際有哪些中文語音、程式判定的性別、以及「點下去真的唸得出來嗎」。
+// 存在的理由：語音清單每台電腦都不一樣（有沒有雲端 Online 語音差最多），
+// 開發機測到的結果不能代表老師的電腦——與其猜，不如讓這台自己講。
+function renderVoiceDiag() {
+  const box = document.getElementById('voice-diag');
+  if (!box) return;
+  box.hidden = false;
+
+  const zh = (voiceManager.all || []);
+  if (!zh.length) {
+    box.innerHTML = '<p class="form-hint">找不到任何中文語音。這台可能沒安裝中文語音套件。</p>';
+    return;
+  }
+  const male   = bestVoiceByGender('male');
+  const female = bestVoiceByGender('female');
+  const head = `<p class="form-hint" style="margin-bottom:8px">共 ${zh.length} 支中文語音。`
+    + `目前<b>男店員</b>會用：<b>${male ? male.name : '（無，男店員停用）'}</b>；`
+    + `<b>女店員</b>會用：<b>${female ? female.name : '（無）'}</b>。<br>`
+    + `每一列有兩顆試聽鈕：<b>🔊</b>＝App 平常的播放方式，<b>🅰️</b>＝最原始的 Web Speech 呼叫。<br>`
+    + `<b>如果兩顆聽起來不一樣，就是 App 的播放鏈有問題</b>（請把這個結果告訴我）；一樣則是瀏覽器或系統層的限制。</p>`;
+
+  box.innerHTML = head + zh.map((v, i) => {
+    const g      = voiceGenderOf(v);
+    const label  = g === 'male' ? '♂ 男' : g === 'female' ? '♀ 女' : '－ 未知';
+    const cloud  = /online|natural/i.test(v.name) ? '☁️ 雲端' : '💻 本機';
+    return `<div class="voice-diag-row">`
+         + `<button class="voice-diag-play" data-i="${i}" aria-label="用 App 的方式試聽 ${v.name}">🔊</button>`
+         + `<button class="voice-diag-play voice-diag-raw" data-i="${i}" aria-label="用最原始的方式試聽 ${v.name}">🅰️</button>`
+         + `<span class="voice-diag-tag">${label}</span>`
+         + `<span class="voice-diag-tag">${cloud}</span>`
+         + `<span class="voice-diag-name">${v.name}</span></div>`;
+  }).join('') + '<p id="voice-diag-result" class="form-hint" style="margin-top:8px"></p>';
+
+  // 🅰️ ＝完全繞過 App 的播放鏈，用最原始的三行 Web Speech 呼叫（與 voice-audition.html 相同）。
+  // 兩顆按鈕聽起來不一樣時，問題就在 App 的播放鏈；一樣時就是瀏覽器／系統層的事。
+  box.querySelectorAll('.voice-diag-raw').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const v = zh[Number(btn.dataset.i)];
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('你好，我是店員，請問要買什麼？');
+      if (v) { u.voice = v; u.lang = v.lang; }
+      u.rate = 0.9; u.pitch = 1;
+      u.onstart = () => {
+        const res = document.getElementById('voice-diag-result');
+        const got = u.voice?.name || '(瀏覽器預設)';
+        if (res) res.innerHTML = (got === v?.name)
+          ? `🅰️ 原始方式：確實是 <b>${got}</b> 唸的`
+          : `🅰️ 原始方式：指定 <b>${v?.name}</b>，實際唸的是 <b>${got}</b>`;
+      };
+      speechSynthesis.speak(u);
+    });
+  });
+
+  box.querySelectorAll('.voice-diag-play:not(.voice-diag-raw)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = zh[Number(btn.dataset.i)];
+      tts.speak('你好，我是店員，請問要買什麼？', 0.9, null, v);
+      setTimeout(() => {
+        const actual = tts.lastVoiceName || '(未知)';
+        const msg = actual === v.name
+          ? `🔊 App 方式：確實是 <b>${v.name}</b> 唸的`
+          : `⚠️ App 方式：指定 <b>${v.name}</b>，實際唸的卻是 <b>${actual}</b>`
+            + `——請按同一列的 <b>🅰️</b> 再聽一次，兩者若不同就是 App 的播放鏈有問題`;
+        renderVoiceDiag();   // 先重繪（更新黑名單標記），再寫結果，否則結果會被蓋掉
+        const res = document.getElementById('voice-diag-result');
+        if (res) res.innerHTML = msg;
+      }, 900);
+    });
+  });
+}
+
+function showFileProtocolWarning() {
+  if (!isFileProtocol()) return;
+  const bar = document.getElementById('file-protocol-warn');
+  if (!bar) return;
+  bar.hidden = false;
+  document.getElementById('file-warn-close')?.addEventListener('click', () => { bar.hidden = true; });
+}
+
+// 角色性別：自訂情境看老師挑的 clerkGender；內建情境查 data/clerk_gender.js。
+// ⚠️ **不能用音色的性別代替角色的性別**——兩者常常不一致（電影院阿哲是男生，配的音色卻是
+// 女聲「晓辰」），照音色判會讓男角色用女聲說話。角色性別的真相在 voicegen/voice_config.json
+// 與 voice_ears.json（人工聽過確認），由 _gen_voice_truth.js 產出 data/clerk_gender.js 快照，
+// 跑任何語音稽核都會自動重生。VOICE_INFO 的 gender 只當快照缺場景時的最後退路。
+// ⚠️ 步驟層的角色覆寫（clerkName/clerkImage，如車廂禮儀的站務員）性別無從得知，一律以場景主角色為準。
+function clerkGenderOf(scenario) {
+  if (scenario?.isCustom) return getCustomClerk(scenario).gender;
+  const id = scenario?.id;
+  if (typeof CLERK_GENDER !== 'undefined' && CLERK_GENDER[id]) return CLERK_GENDER[id];
+  const scMap = SCENARIO_CLERK_MAP[id];
+  const info  = scMap ? VOICE_INFO.find(v => v.keyword === scMap.keyword) : null;
+  return (info && info.gender !== 'neutral') ? info.gender : null;
+}
+
+// 角色台詞該用哪支即時語音：先照角色性別挑，挑不到才回 null（呼叫端走 bestTWVoice）。
+// 為什麼不能只靠 bestTWVoice：它是「品質優先」的挑選，會把不是 Online/Natural 的音色
+// 升級成最好的 zh-TW 語音——在只有系統音的裝置上，男聲 Zhiwei 會被升級成女聲 Hanhan，
+// 於是男角色全部用女聲說話（2026-08-02 回報「男生頭像卻是 Yating 的聲音」的真因）。
+function voiceForClerk(scenario) {
+  const g = clerkGenderOf(scenario);
+  return g ? bestVoiceByGender(g) : null;
+}
+
 // 心裡 OS（括號旁白）語音：固定用「曉臻 HsiaoChen」當旁白聲；退援順位＝
 // 曉臻(HsiaoChen) → 雅婷(Yating) → 其他 Online/Natural zh-TW → 一般高品質挑選。
 function bestOSVoice() {
@@ -507,22 +752,40 @@ function toSpeechText(text) {
 }
 
 const tts = {
-  speak(text, rate = 0.85, onEnd) {
+  lastVoiceName: null,   // 上一句實際發聲的語音（試聽回報／診斷用）
+  // preferVoice：指定要用哪支語音（角色台詞依性別挑聲音用）；傳 null 才走「品質優先」的挑選。
+  // ⚠️ 角色說話一律要傳 preferVoice——bestTWVoice 會為了音質把男聲換成女聲（見 voiceForClerk）。
+  speak(text, rate = 0.85, onEnd, preferVoice = null) {
     if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(toSpeechText(text));
     // 後備瀏覽器 TTS 也用高品質即時語音：店員聲音若已是 Online/Natural 就沿用，
     // 否則升級為最佳 Online zh-TW（與提示/任務朗讀同一支高品質聲音）
-    const voice = bestTWVoice(voiceManager.selected);
-    u.lang = voice?.lang || 'zh-TW';
+    // ⚠️ 這五行刻意與 Downloads/voice-audition.html 的 speak() 逐字相同（那份在同一台電腦上
+    // 證實能正確切換語音）。順序＝先 voice 再 lang、最後 rate，中間不做任何額外處理。
+    // 之前繞過這個順序、加了 freshVoice 與 try/catch 之後就一路播不出指定的聲音，
+    // 所以**這段不要再「優化」**，要動先去 voice-audition.html 對照。
+    let voice = preferVoice || bestTWVoice(voiceManager.selected);
+    try {
+      if (voice) { u.voice = voice; u.lang = voice.lang; }
+    } catch (_) {
+      voice = null;                      // 物件失效時賦值會丟 TypeError，讓瀏覽器用預設語音把話說完
+    }
+    if (!voice) u.lang = 'zh-TW';
     u.rate = rate;
-    if (voice) u.voice = voice;
+    // 記下「我們要求的」與「瀏覽器真的用的」——這兩者會不一樣：file:// 下指定會被無視，
+    // 讀回來是系統預設語音。編輯器的試聽就是靠這個如實回報，不必再猜是不是挑錯聲音。
+    this.lastVoiceName = voice?.name || '(未指定)';
 
     // 店員說話時的頭像動畫
     const avatar = document.getElementById('shopkeeper-avatar');
     let ended = false;
     const finish = () => { avatar?.classList.remove('speaking'); if (!ended) { ended = true; if (onEnd) onEnd(); } };
-    u.onstart = () => avatar?.classList.add('speaking');
+    // 只記錄實際發聲者供診斷顯示，**不做任何自動判定或換人**（見檔案上方的血淚說明）
+    u.onstart = () => {
+      tts.lastVoiceName = u.voice?.name || '(瀏覽器預設)';
+      avatar?.classList.add('speaking');
+    };
     u.onend   = finish;
     u.onerror = finish;
 
@@ -728,14 +991,17 @@ function playShopkeeperAudio(step) {
     if (osText && !osLeading) setTimeout(() => { if (mySeq === _audioSeq) playInnerOS(step, osText); }, 350);
   };
 
+  // 缺預錄檔時的即時語音也要合角色性別：不指定的話 bestTWVoice 會把男聲升級成女聲，
+  // 男店員（阿豪、阿宏、阿財…）就全部變成女生在說話。
+  const clerkVoice = voiceForClerk(state.scenario);
   const doTTS = () => {
     if (done) return;
     done = true;
     // 有店員台詞：先唸台詞再接心理 OS；純旁白步驟（無台詞）：直接用旁白語音唸 OS，不唸括號
     // （句首旁白已在進台詞前唸過，這裡不重複）
-    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
+    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS, clerkVoice);
     else if (osText && !osLeading) playInnerOS(step, osText);
-    else if (!osText) tts.speak(fullPrompt, 0.85);
+    else if (!osText) tts.speak(fullPrompt, 0.85, null, clerkVoice);
   };
 
   function tryNext() {
@@ -769,10 +1035,15 @@ function playCustomStepAudio(step, avatar) {
   const speakOS    = () => {
     if (osText && !osLeading) setTimeout(() => { if (mySeq === _audioSeq) playInnerOS(step, osText); }, 350);
   };
+  // 店員台詞用「所選泛用店員性別」的聲音（男聲：Edge Online 男聲／系統 Zhiwei…）。
+  // 這台裝置沒有該性別的中文語音時 bestVoiceByGender 回 null → tts.speak 自動退回預設高品質語音，
+  // 圖是男生但聲音是女生——編輯器已在選擇時就把不可用的性別擋掉，這裡只是最後一道保險
+  // （舊資料存了 male、之後換到沒有男聲的裝置上開，仍要唸得出來）。
+  const clerkVoice = voiceForClerk(state.scenario);
   const doTTS      = () => {
-    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS);
+    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS, clerkVoice);
     else if (osText && !osLeading) playInnerOS(step, osText);   // 句首旁白已在 start 前唸過，不重複
-    else if (!osText) tts.speak(fullPrompt, 0.85);
+    else if (!osText) tts.speak(fullPrompt, 0.85, null, clerkVoice);
   };
 
   const start = () => {
@@ -860,10 +1131,17 @@ function browserSpeakAsUser(text, onEnd) {
   let done = false;
   const finish = () => { if (!done) { done = true; if (onEnd) onEnd(); } };
   if (!window.speechSynthesis) { finish(); return; }
+  // 學生也要用合性別的聲音：selected 是「品質優先」挑的，本身不看性別，
+  // 學生專屬音色沒安裝時（多數只有系統音的電腦都是），女學生會被配到男聲。
+  const student = STUDENT_PROFILES[userVoiceManager.selectedStudentIdx];
+  const voice = voiceManager.all.find(v => student?.voiceKeyword && v.name.includes(student.voiceKeyword))
+             || (student?.gender && student.gender !== 'neutral' ? bestVoiceByGender(student.gender) : null)
+             || userVoiceManager.selected;
+
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = userVoiceManager.selected?.lang || 'zh-TW';
+  u.lang = voice?.lang || 'zh-TW';
   u.rate = 0.9;
-  if (userVoiceManager.selected) u.voice = userVoiceManager.selected;
+  if (voice) u.voice = voice;
   if (onEnd) {
     u.onend = finish;
     u.onerror = finish;
@@ -1467,8 +1745,12 @@ function showScreen(id) {
 
 // ─── 語音選擇器 UI ────────────────────────────────────
 
+// ⚠️ 死程式碼（2026-08-02 查證）：index.html 已無 `#voice-list`，店員語音選擇器整個從 UI 移除，
+// 全專案也沒有呼叫點（只有函式內部自我重繪）。保留是為了日後若要恢復「選店員聲音」的入口；
+// 真的要恢復時記得 list 可能為 null 要先防呆。
 function renderVoiceSelector() {
   const list = document.getElementById('voice-list');
+  if (!list) return;
   list.innerHTML = '';
 
   // 固定顯示所有有圖片的店員（不管語音有沒有安裝）
@@ -1521,7 +1803,11 @@ function renderVoiceSelector() {
       voiceManager.selectedInfo = info;
       voiceManager.selected     = matchedVoice || fallbackVoice;
       sfx.click();
-      tts.speak('你好！歡迎光臨！');
+      // 專屬音色沒安裝時，試聽也要用同性別的替代聲音（fallbackVoice 是女聲，
+      // 直接用會讓男店員的卡片發出女聲）
+      const demoVoice = matchedVoice
+        || (info.gender !== 'neutral' ? bestVoiceByGender(info.gender) : null);
+      tts.speak('你好！歡迎光臨！', 0.85, null, demoVoice);
       renderVoiceSelector();
     });
     list.appendChild(card);
@@ -1536,14 +1822,13 @@ function renderUserVoiceSelector() {
   if (!list) return;
   list.innerHTML = '';
 
-  // 備用語音（學生語音未安裝時使用）
-  const fallback = voiceManager.all.find(v => v.name.includes('Zhiwei'))
-                || voiceManager.all.find(v => v.name.includes('Yating'))
-                || voiceManager.all[0]
-                || null;
-
   STUDENT_PROFILES.forEach((student, idx) => {
     const matchedVoice = voiceManager.all.find(v => v.name.includes(student.voiceKeyword));
+    // 專屬音色沒安裝時退到「同性別」的聲音，不是寫死的那一支——
+    // 原本一律退 Zhiwei（男），害女學生小婷、中性小恩都用男聲說話。
+    const fallback = (student.gender && student.gender !== 'neutral'
+                        ? bestVoiceByGender(student.gender) : null)
+                  || voiceManager.all[0] || null;
     const isActive     = userVoiceManager.selectedStudentIdx === idx
                       || (!userVoiceManager.selectedStudentIdx && idx === 0);
 
@@ -1662,17 +1947,19 @@ function showPracticeClerkPopup() {
   const voiceInfo = voiceManager.selectedInfo
                  || (voiceManager.selected ? voiceManager.getInfo(voiceManager.selected) : null);
   // 圖片以練習頁頭像當下顯示者為準（含教師自訂場景照片），再退回場景/語音推斷
+  const generic = state.scenario?.isCustom ? getCustomClerk(state.scenario) : null;
   const curImg = document.querySelector('#shopkeeper-avatar img')?.getAttribute('src') || '';
-  const img  = curImg || step.clerkImage || state.situation.clerkImage || scMap?.image || voiceInfo?.image || '';
-  const name = step.clerkName  || state.situation.clerkName  || scMap?.name  || voiceInfo?.name  || '店員';
+  const img  = curImg || step.clerkImage || state.situation.clerkImage || scMap?.image || generic?.image || voiceInfo?.image || '';
+  const name = step.clerkName  || state.situation.clerkName  || scMap?.name  || generic?.name  || voiceInfo?.name  || '店員';
   const imgEl = document.getElementById('clerk-modal-img');
   imgEl.src = img;
   imgEl.alt = name;
   imgEl.hidden = !img;
   imgEl.onerror = () => { imgEl.hidden = true; };
   document.getElementById('clerk-modal-name').textContent = name;
+  // 自訂情境不顯示 voiceInfo 的職稱（那是首頁選的內建店員，例如「便利商店」，與本情境無關）
   document.getElementById('clerk-modal-role').textContent =
-    state.situation.clerkName ? '' : (scMap?.role || voiceInfo?.role || '');
+    state.situation.clerkName ? '' : (scMap?.role || (generic ? '' : voiceInfo?.role) || '');
   // 彈窗下方顯示正在播放的台詞文字（與語音同步呈現，多元表徵）
   document.getElementById('clerk-modal-text').textContent = step.shopkeeper_prompt || '';
   const modal = document.getElementById('clerk-modal');
@@ -1693,6 +1980,10 @@ function playClerkIntro(scenario) {
   const info  = VOICE_INFO.find(v => v.keyword === clerkData.keyword);
   if (voice) voiceManager.selected = voice;
   if (info)  voiceManager.selectedInfo = info;
+  // 這台裝置沒裝該店員的專屬音色時（多數只有系統音的電腦都是如此），至少要找一支同性別的頂上；
+  // 否則 selected 會停在上一個角色（預設女聲雅婷），男店員的自我介紹就用女聲唸了。
+  // 性別以「角色」為準（clerkGenderOf），不是音色——兩者常不一致。
+  const introVoice = voice || voiceForClerk(scenario);
 
   const candidates = [
     `audio/clerk/${scenario.id}_intro.mp3`,
@@ -1700,7 +1991,7 @@ function playClerkIntro(scenario) {
   ];
   let idx = 0;
   const tryNext = () => {
-    if (idx >= candidates.length) { tts.speak(clerkData.intro, 0.85); return; }
+    if (idx >= candidates.length) { tts.speak(clerkData.intro, 0.85, null, introVoice); return; }
     const audio = new Audio(candidates[idx++]);
     _shopkeeperAudio = audio;
     audio.onended = () => { if (_shopkeeperAudio === audio) _shopkeeperAudio = null; };
@@ -1785,8 +2076,9 @@ function renderHome() {
       ? `${scenario.situations.length} 種情境`
       : ((scenario.steps?.length ?? 0) > 0 ? `${scenario.steps.length} 個對話步驟` : '即將推出');
     const isCustom = scenario.isCustom;
-    // 商店場景圖（僅內建情境）：鋪在卡片最底層當背景，載入失敗則移除→退回 emoji 圖示
-    const sceneImg = !isCustom ? `images/scenes/${scenario.id}.webp` : null;
+    // 商店場景圖：鋪在卡片最底層當背景，載入失敗則移除→退回 emoji 圖示。
+    // 自訂情境沒有專屬場景，用泛用櫃檯圖（男女店員共用同一張）。
+    const sceneImg = isCustom ? CUSTOM_SCENE_IMAGE : `images/scenes/${scenario.id}.webp`;
 
     card.innerHTML = `
       ${sceneImg ? `<img class="card-bg-img" src="${sceneImg}" alt="" aria-hidden="true">` : ''}
@@ -2011,18 +2303,22 @@ function renderStep() {
   const scMap      = SCENARIO_CLERK_MAP[state.scenario?.id];
   const voiceInfo  = voiceManager.selectedInfo
                   || (voiceManager.selected ? voiceManager.getInfo(voiceManager.selected) : null);
-  const avatarImg  = step.clerkImage || state.situation.clerkImage || scMap?.image || voiceInfo?.image;
-  const avatarName = step.clerkName  || state.situation.clerkName  || scMap?.name  || voiceInfo?.name || '店員';
+  // 自訂情境：用老師挑的泛用店員（無 scMap），排在 voiceInfo 之前——否則會顯示首頁選的
+  // 那位內建店員（例如便利商店小美），與情境無關。老師上傳的場景照片仍會在下方覆蓋掉。
+  const genericClerk = state.scenario?.isCustom ? getCustomClerk(state.scenario) : null;
+  const avatarImg  = step.clerkImage || state.situation.clerkImage || scMap?.image || genericClerk?.image || voiceInfo?.image;
+  const avatarName = step.clerkName  || state.situation.clerkName  || scMap?.name  || genericClerk?.name  || voiceInfo?.name || '店員';
   if (avatarImg) {
     avatarEl.innerHTML = `<img src="${avatarImg}" alt="${avatarName}">`;
-    // 圖檔缺失時退回場景店員圖，再退回 emoji（避免破圖）
+    // 圖檔缺失時退回場景店員圖，再退回 emoji（避免破圖）。
+    // 自訂情境不退回 voiceInfo 的圖——那是首頁選的內建店員，與這個情境無關。
     avatarEl.querySelector('img').onerror = () => {
-      const fb = scMap?.image || voiceInfo?.image;
+      const fb = scMap?.image || (genericClerk ? null : voiceInfo?.image);
       if (fb && fb !== avatarImg) avatarEl.innerHTML = `<img src="${fb}" alt="${avatarName}">`;
-      else avatarEl.textContent = voiceManager.getAvatar();
+      else avatarEl.textContent = genericClerk ? GENDER_AVATAR[genericClerk.gender] : voiceManager.getAvatar();
     };
   } else {
-    avatarEl.textContent = voiceManager.getAvatar();
+    avatarEl.textContent = genericClerk ? GENDER_AVATAR[genericClerk.gender] : voiceManager.getAvatar();
   }
   // 教師自訂場景照片（IndexedDB）優先覆蓋店員頭像
   const _rScId = state.scenario?.id, _rIdx = state.stepIndex;
@@ -3146,6 +3442,7 @@ function stopListeningUI() {
 
 function renderSettings() {
   renderUserVoiceSelector();
+  renderVersionInfo();
   const list   = document.getElementById('custom-scenario-list');
   const empty  = document.getElementById('custom-empty');
   const customs = loadCustom();
@@ -3198,6 +3495,7 @@ let editingScenarioIdx = -1;
 let editingScenarioId  = null;   // 進編輯器即固定（新情境預產），錄音 key 依賴它
 let editingSteps       = [];
 let selectedTheme      = THEME_PRESETS[0];
+let selectedClerkGender = 'female';   // 泛用店員性別（GENERIC_CLERKS 的鍵）
 
 // ─── AI 輔助情境生成（免 API Key，2026-07-23 改版）──────────────────
 // 舊流程要使用者自備 Gemini API Key 直接打 API，門檻高；改為三段式：
@@ -3210,10 +3508,17 @@ function buildAiPrompt() {
   const partner = document.getElementById('ai-gen-partner').value.trim();
   const focus   = document.getElementById('ai-gen-focus').value.trim();
   const count   = document.getElementById('ai-gen-count').value || '5';
+  // 店員角色的性別要進提示詞：畫面上的角色圖與唸台詞的語音都跟著這個設定走，
+  // 若 AI 寫出「謝謝姊姊」配男店員圖，學生看到聽到的會互相矛盾。
+  const clerk      = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
+  const genderText = clerk.gender === 'male' ? '男生' : '女生';
+  const callText   = clerk.gender === 'male' ? '哥哥、老闆、先生' : '姊姊、老闆娘、小姐';
   return `你是特殊教育「生活對話練習」的課程設計師。請為以下情境設計 ${count} 個對話步驟，讓國中特教學生練習開口表達。
 
 情境主題：${topic}
-${partner ? `對話對象：${partner}\n` : ''}${focus ? `練習重點：${focus}\n` : ''}
+對話對象：${partner || `一位${genderText}店員`}（${genderText}）
+⚠️ 對方是${genderText}：畫面上的角色圖與唸台詞的語音都是${genderText}。台詞的自稱語氣，以及學生答句裡對他的稱呼（例如${callText}），都必須符合這個性別，不可出現相反性別的稱呼。
+${focus ? `練習重點：${focus}\n` : ''}
 每個步驟包含（全部繁體中文、台灣日常口語、句子簡短）：
 - id: 英文小寫底線識別碼（如 greeting、ask_price）
 - shopkeeper_prompt: 對方說的一句話（自然口語）
@@ -3350,12 +3655,14 @@ function openScenarioEditor(idx) {
   editingSteps      = sc ? JSON.parse(JSON.stringify(sc.steps)) : [];
   selectedTheme     = sc?.theme ?? THEME_PRESETS[0];
   editingScenarioId = sc?.id ?? ('custom_' + Date.now());
+  selectedClerkGender = GENERIC_CLERKS[sc?.clerkGender] ? sc.clerkGender : 'female';
 
   document.getElementById('scenario-editor-title').textContent = sc ? '編輯情境' : '新增情境';
   document.getElementById('edit-name').value  = sc?.name  ?? '';
   document.getElementById('edit-icon').value  = sc?.icon  ?? '';
 
   renderColorSwatches();
+  renderClerkRolePicker();
   renderStepList();
   scenePhoto.init(`${editingScenarioId}::__scene::img`);
   nav.push('screen-scenario-editor');
@@ -3374,6 +3681,105 @@ function renderColorSwatches() {
     sw.addEventListener('click', () => { selectedTheme = preset; renderColorSwatches(); });
     container.appendChild(sw);
   });
+}
+
+// 泛用店員選擇（自訂情境專用，2026-08-02）。
+// 男聲在多數裝置上不存在：Google 中文語音全族都是女聲、Windows 系統聲要裝了 zh-TW 語音套件
+// 才有 Zhiwei，Edge 才穩定有 Online 男聲。這台沒有就把男店員停用（灰掉不給選）——
+// 免得老師挑了男生形象、學生卻聽到女聲。點卡片會順便唸一句，選擇即試聽。
+// 店員角色選擇器：有兩處入口共用同一份狀態（selectedClerkGender）——編輯器上方的
+// 「店員角色」主選擇器，以及 AI 區塊裡的精簡版（老師填 AI 問題時常沒往上滑去注意到已選了誰）。
+// 兩處都渲染，任一處點擊都會同步更新兩邊，不是各自獨立的設定。
+const CLERK_ROLE_PICKER_IDS = ['edit-clerk-role', 'ai-gen-clerk-role'];
+
+function renderClerkRolePicker() {
+  const boxes = CLERK_ROLE_PICKER_IDS.map(id => document.getElementById(id)).filter(Boolean);
+  const hint  = document.getElementById('clerk-role-hint');
+  if (!boxes.length) return;
+
+  // 語音清單是非同步載入的，還沒載完時不能斷定「沒有男聲」→ 先全放行，
+  // 載完後 voiceManager.refresh()／voiceschanged 會再叫一次這裡重繪。
+  const voicesReady = (voiceManager.all || []).length > 0;
+  const maleOK      = !voicesReady || hasVoiceForGender('male');
+  if (!maleOK && selectedClerkGender === 'male') selectedClerkGender = 'female';
+
+  boxes.forEach(box => {
+    const compact = box.id !== 'edit-clerk-role';
+    box.innerHTML = '';
+    Object.values(GENERIC_CLERKS).forEach(c => {
+      const usable   = c.gender !== 'male' || maleOK;
+      const isActive = selectedClerkGender === c.key;
+
+      const btn = document.createElement('button');
+      btn.type      = 'button';
+      btn.className = 'clerk-role-card' + (isActive ? ' selected' : '') + (usable ? '' : ' unavailable');
+      btn.disabled  = !usable;
+      btn.setAttribute('role', 'radio');
+      btn.setAttribute('aria-checked', String(isActive));
+      btn.setAttribute('aria-label', c.name + (usable ? '' : '（這台裝置沒有中文男聲，無法選擇）'));
+      btn.innerHTML = compact
+        ? `<img class="clerk-role-img" src="${c.image}" alt="">
+           <span class="clerk-role-name">${c.name}</span>`
+        : `<img class="clerk-role-img" src="${c.image}" alt="">
+           <span class="clerk-role-name">${c.name}</span>
+           ${usable ? '' : '<span class="clerk-role-na">🔇 沒有男聲</span>'}`;
+      // 圖檔缺失（舊部署尚未同步新圖）時移除 img，避免破圖
+      btn.querySelector('img').addEventListener('error', e => e.target.remove());
+      if (usable) btn.addEventListener('click', () => {
+        selectedClerkGender = c.key;
+        renderClerkRolePicker();
+        tts.speak(`你好，我是${c.name}。`, 0.85, null, bestVoiceByGender(c.gender));
+        // 唸完後如實回報實際發聲的語音：老師覺得聲音不對時，一眼就能分辨是
+        // 「這台只有這支音色」還是「開啟方式/快取讓指定失效」。
+        setTimeout(reportSpokenVoice, 700);
+      });
+      box.appendChild(btn);
+    });
+  });
+
+  if (hint) hint.innerHTML = maleOK
+    ? '學生在練習畫面看到、也是唸台詞的那位店員。沒有上傳場景照片時就顯示他。'
+    : '學生在練習畫面看到、也是唸台詞的那位店員。<br><b>這台裝置沒有中文男聲，男店員暫時不能選</b>——'
+      + '可到 Windows「設定 → 時間與語言 → 語音」加裝中文（繁體）語音，或改用 Microsoft Edge 開啟。';
+
+  // 如實顯示「這台裝置實際會用哪支聲音」。台詞好不好聽取決於裝置裝了什麼語音，
+  // 老師若覺得聲音不像男生，看到這行才知道是裝置只有這支、不是選錯角色。
+  const vEl = document.getElementById('clerk-role-voice');
+  if (vEl) {
+    const cur = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
+    const v   = bestVoiceByGender(cur.gender);
+    vEl.innerHTML = v
+      ? `🔊 這台電腦會用 <b>${v.name.replace(/ - .*/, '').replace('Microsoft ', '')}</b> 唸台詞（點上面的頭像可以先聽聽看）`
+      : '🔊 這台電腦找不到合適的語音，台詞會用系統預設聲音朗讀';
+  }
+  renderAiGenderNote();
+}
+
+// 試聽後回報「剛才那句實際是誰唸的」。與上面那行「這台電腦會用 X」互相對照：
+// 兩者一致＝正常；不一致＝指定被無視（file:// 開啟、或還在跑快取裡的舊程式）。
+function reportSpokenVoice() {
+  const vEl = document.getElementById('clerk-role-voice');
+  if (!vEl || !tts.lastVoiceName) return;
+  const spoken = tts.lastVoiceName.replace(/ - .*/, '').replace('Microsoft ', '');
+  const cur    = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
+  const want   = bestVoiceByGender(cur.gender);
+  const wantN  = want ? want.name.replace(/ - .*/, '').replace('Microsoft ', '') : null;
+  if (wantN && spoken === wantN) {
+    vEl.innerHTML = `🔊 剛才是 <b>${spoken}</b> 唸的（${cur.name}指定的聲音）`;
+  } else {
+    vEl.innerHTML = `⚠️ 指定的是 <b>${wantN || '（無）'}</b>，但實際唸的是 <b>${spoken}</b>——`
+                  + `這支語音在這台唸不出來。可到「⚙️ 設定 → 檢查這台的語音」逐支試聽找出能用的。`;
+  }
+}
+
+// AI 提示詞區塊的角色提示：老師在上面選的店員，會被寫進提示詞裡（見 buildAiPrompt，
+// 那邊仍會明確告訴 AI 性別，讓它寫出正確稱呼），也會拿來挑語音——
+// 這裡的說明文字改成不特別強調性別，只講「提示詞／語音都跟著這裡選的角色走」。
+function renderAiGenderNote() {
+  const el = document.getElementById('ai-gen-gender-note');
+  if (!el) return;
+  const c = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
+  el.innerHTML = `提示詞和語音都會依上面選的<b>${c.name}</b>產生，讓文字稱呼跟聲音一致。要改就點上面的頭像。`;
 }
 
 function renderStepList() {
@@ -3454,12 +3860,13 @@ function saveScenario() {
 
   const arr = loadCustom();
   const sc  = {
-    id:        editingScenarioId || ('custom_' + Date.now()),
+    id:          editingScenarioId || ('custom_' + Date.now()),
     name,
-    icon:      icon || '💬',
-    theme:     selectedTheme,
-    available: true,
-    steps:     editingSteps,
+    icon:        icon || '💬',
+    theme:       selectedTheme,
+    clerkGender: selectedClerkGender,   // 泛用店員（頭像＋唸台詞的聲音）；舊資料沒這欄＝女
+    available:   true,
+    steps:       editingSteps,
   };
 
   if (editingScenarioIdx >= 0) arr[editingScenarioIdx] = sc;
@@ -3813,6 +4220,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  showFileProtocolWarning();
   await voiceManager.init();
   userVoiceManager.init();
 
@@ -3942,6 +4350,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 對話包匯出/匯入
+  document.getElementById('btn-voice-diag')?.addEventListener('click', renderVoiceDiag);
+
   document.getElementById('btn-export-pack').addEventListener('click', async () => {
     const statusEl = document.getElementById('pack-status');
     statusEl.textContent = '⏳ 打包中…';
