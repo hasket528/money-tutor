@@ -533,6 +533,36 @@ function flawlessOf(r) {
   return (r.total || 0) > 0 && (r.score || 0) === r.total && wrongTriesOf(r) === 0;
 }
 
+// ── 🗣️ 開口統計（對話練習・語音模式專用；重度障礙學生的參與度指標）────────
+// 為什麼要跟「嘗試正確率」分開看：正確率的分母是「所有作答次數」，把「沒收到聲音」
+// 也算成失敗，於是「不敢開口」「太小聲」「說了但說錯」三件事被混成同一個數字，
+// 但這三者的介入方式完全不同。拆開後看得到兩條獨立的進展軸：
+//   參與度＝開口次數 ÷ 作答次數    準確度＝說對次數 ÷ 開口次數
+// 一個孩子從「開口 2 次說對 1 次」進步到「開口 6 次說對 3 次」，正確率同為 50%
+// 看似原地踏步，實際上參與度翻了三倍。
+//
+// 資料來源：script.js 在 handleResult 當場累加 steps[].spoke / noVoice——每步只留
+// 最後一次結果，中間那次是「有開口沒說對」還是「沒收到音」事後無法回推，必須當場記。
+// 2026-08-03 之前的紀錄沒有這兩個欄位，回傳 has:false，畫面顯示「—」。
+function spokenOf(r) {
+  if (isMain(r)) return { has: false, spoke: 0, noVoice: 0, correct: 0 };
+  const steps = r.steps || [];
+  if (!steps.some(st => st && (st.spoke != null || st.noVoice != null))) {
+    return { has: false, spoke: 0, noVoice: 0, correct: 0 };
+  }
+  let spoke = 0, noVoice = 0, correct = 0;
+  steps.forEach(st => {
+    if (!st) return;
+    spoke   += (st.spoke   || 0);
+    noVoice += (st.noVoice || 0);
+    // 說對＝這一步最終答對，且是靠語音說出來的。單位與 spoke 一致（都是「作答次數」）：
+    // 每步最多只有最後一次是 perfect，所以「perfect 且有收過音的步驟數」＝「說對的作答次數」，
+    // 因此 correct ÷ spoke 是有意義的百分比。
+    if (st.score === 'perfect' && (st.spoke || 0) > 0) correct++;
+  });
+  return { has: spoke + noVoice > 0, spoke, noVoice, correct };
+}
+
 // ── 精熟標準（全班預設 mt_mastery_default；個別覆寫 mt_mastery_{id}）──
 // minDiff＝列入「整體精熟」的最低難度；低於此的難度仍各自算狀態，只是不列入整體。
 const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: true, minDiff: 'easy' };
@@ -792,6 +822,19 @@ async function loadData() {
   const MODE = { voice: '🎤說話', options: '🔘選項', text: '⌨️打字', frame: '🖼️看圖', wordbank: '🧩詞庫', echo: '🗣️跟讀(自評)' };
   const fmtModes = (modes) => Object.entries(modes).filter(([, n]) => n)
     .sort((a, b) => b[1] - a[1]).map(([k, n]) => `${MODE[k] || k}×${n}`).join('・') || '—';
+  // 🗣️ 開口／說對：分母都是「語音模式的作答次數」，單位一致可直接算百分比。
+  // 參與度＝開口 ÷ 語音作答；準確度＝說對 ÷ 開口。舊紀錄無此資料時顯示 —。
+  const fmtSpoken = (s) => {
+    if (!s.hasSpoke) return '<span style="color:var(--gray-600)" title="這個情境的紀錄還沒有開口資料（2026-08-03 前的舊紀錄，或未用語音模式練習）">—</span>';
+    const tries = s.spoke + s.noVoice;
+    const part  = tries > 0 ? Math.round(s.spoke / tries * 100) : 0;
+    const acc   = s.spoke > 0 ? Math.round(s.spokeCorrect / s.spoke * 100) : 0;
+    const tip = `語音作答 ${tries} 次｜開口 ${s.spoke} 次（參與度 ${part}%）`
+              + (s.noVoice ? `、沒收到聲音 ${s.noVoice} 次` : '')
+              + `｜開口後說對 ${s.spokeCorrect} 次（準確度 ${acc}%）`;
+    return `<span title="${tip}">🗣️${s.spoke} ✅${s.spokeCorrect}`
+         + (s.noVoice ? ` <span style="color:var(--gray-600)">🔇${s.noVoice}</span>` : '') + '</span>';
+  };
   const byScenario = {};
   dlgs.forEach(r => {
     const key = r.scenarioId + '|' + r.situationId;
@@ -799,12 +842,15 @@ async function loadData() {
       scenarioName: r.scenarioName || r.scenarioId,
       situationName: r.situationName || r.situationId,
       count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, modes: {}, self: {}, list: [],
+      spoke: 0, noVoice: 0, spokeCorrect: 0, hasSpoke: false,
     };
     const s = byScenario[key];
     s.count++;
     s.correct += (r.score || 0);
     s.wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
     s.wrongTries += wrongTriesOf(r);
+    const sp = spokenOf(r);
+    if (sp.has) { s.hasSpoke = true; s.spoke += sp.spoke; s.noVoice += sp.noVoice; s.spokeCorrect += sp.correct; }
     if (flawlessOf(r)) s.flawless++;   // 全步驟正確且沒重試過（判準與 24 單元一致）
     s.dur += (r.durationSec || 0);
     const dk = normDiff(r);   // 與精熟判定用同一套正規化，難度欄與 🎯 欄才不會對不上
@@ -821,7 +867,7 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="語音模式專用。開口＝有收到聲音的作答次數（🔇＝沒收到聲音的次數）；說對＝靠語音答對的步驟數。與左側正確率對照：正確率把「沒開口」也算成失敗，這一欄把「參與度」和「準確度」拆開，重度障礙學生的進展常先反映在開口次數上。2026-08-03 之前的紀錄沒有這筆資料，顯示為 —">🗣️ 開口／說對</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
       const attempts = s.correct + s.wrong;
       // 分子＝真正答對數（非總步驟數）：跳過的步驟不該算成正確操作。理由同主課程表。
@@ -842,6 +888,7 @@ async function loadData() {
         <td style="font-size:0.78rem">${fmtModes(s.modes)}</td>
         <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
         <td class="${accClass(attemptAccPct)}" title="答對題數 ÷（答對題數＋錯誤嘗試次數）">${attemptAccPct}%</td>
+        <td style="font-size:0.82rem;white-space:nowrap">${fmtSpoken(s)}</td>
         <td style="font-size:0.86rem;white-space:nowrap" title="${last.selfRating ? `最近一次自評：${SELF_ICON[last.selfRating]} ${SELF_LABEL[last.selfRating]}` : '最近一次未留下自評'}">${fmtSelf(s.self)}</td>
         <td style="font-size:0.82rem">${fmtDur(s.dur)}</td>
         <td>${last.score}/${last.total}（${when}）</td>
@@ -1013,16 +1060,20 @@ function clearStudents() {
 async function exportCSV() {
   const records = await dbAll();
   if (records.length === 0) { alert('尚無學習紀錄'); return; }
-  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)']];
+  // ⚠️ 新欄位一律往後加：report/analysis/effect_stats.js 以欄位索引讀取（錯誤嘗試＝第 8 欄），
+  //    在中間插欄會讓它靜默讀到錯的資料。
+  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)','開口次數','沒收到聲音']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
     const sc = r.score || 0, wa = wrongTriesOf(r);   // 分子＝答對數，單次作答模式才不失真
+    const sp = spokenOf(r);                          // 舊紀錄無開口資料時留空白，不填 0 以免誤讀成「都沒開口」
     const attemptAccPct = (sc + wa) > 0 ? Math.round(sc / (sc + wa) * 100) : 100;
     rows.push([d, r.studentName || '未指定', isMain(r) ? '主課程' : '購物練習',
       r.scenarioName || r.scenarioId, r.situationName || r.situationId,
       DIFF[r.difficulty] || r.difficulty || '', r.score,
       Math.max(0, (r.total || 0) - (r.score || 0)), wa, attemptAccPct,
-      flawlessOf(r) ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0]);
+      flawlessOf(r) ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0,
+      sp.has ? sp.spoke : '', sp.has ? sp.noVoice : '']);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

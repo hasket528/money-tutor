@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v142';
+const APP_VERSION = 'v143';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -2400,6 +2400,8 @@ function renderStep() {
   state.failCount    = 0;
   state.hintLevel    = 0;
   state.stepAttempts = 0;      // 本步驟作答次數（重試累計，IEP 紀錄用）
+  state.stepSpoke    = 0;      // 本步驟「有收到語音」的次數（開口參與度，只在語音模式累計）
+  state.stepNoVoice  = 0;      // 本步驟「沒收到語音」的次數（太小聲／沒開口／收音問題）
   state.stepHintUsed = false;  // 本步驟是否用過提示
   hideFeedback();
   hideActionRow();
@@ -3155,12 +3157,21 @@ function handleResult(text, result) {
     if (state.failCount >= 3 && state.difficulty !== 'hard') showHint();  // 高級不自動提示，只能按「💡 提示」
   }
 
+  // 🗣️ 開口統計（重度障礙學生的參與度指標，與「說對」分開看）：
+  // 只在語音辨識模式累計——打字不是開口、跟讀是學生自評沒有辨識結果、選項/句框/詞庫不需出聲。
+  // 每次作答的結果只留最後一次（見下），所以開口與否必須在這裡當場累加，事後無法回推。
+  if (state.inputMode === 'voice' && !result.selfRated) {
+    if (noVoice) state.stepNoVoice++; else state.stepSpoke++;
+  }
+
   // 每一步只保留最後一次結果：重試成功就以成功計，完成頁摘要與報告依步驟對位
   state.stepAttempts++;
   state.results[state.stepIndex] = {
     stepId: step.id,
     score: result.score,
     attempts: state.stepAttempts,
+    spoke:   state.stepSpoke,     // 累計：這一步有收到語音幾次
+    noVoice: state.stepNoVoice,   // 累計：這一步沒收到語音幾次
     hintUsed: state.stepHintUsed,
     promptLevel: state.frameLadder ? state.promptLevel : null,  // 作答當下的支持等級（IEP 用）
     mode: state.inputMode,                                       // 作答當下的反應模式（語音/選項/打字/句框/詞庫/跟讀）
@@ -3372,6 +3383,8 @@ function showComplete() {
       task:     state.situation.steps[i]?.task,
       score:    r?.score,
       attempts: r?.attempts || 1,
+      spoke:    r?.spoke   || 0,     // 🗣️ 有收到語音的次數（語音模式才有，其餘恆 0）
+      noVoice:  r?.noVoice || 0,     // 🔇 沒收到語音的次數
       hintUsed: !!r?.hintUsed,
       promptLevel: r?.promptLevel ?? null,
       mode: r?.mode ?? null,
