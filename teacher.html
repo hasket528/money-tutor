@@ -945,5 +945,15 @@ async function exportCSV() {
 loadData();
 try { populateAssignControls(); } catch (e) {}   // 指派任務方框常駐顯示，載入時先填好選單
 </script>
+
+<!-- ── 註冊主站 Service Worker（沿用根目錄 sw.js，同一份快取策略）。fetch 規則依副檔名判斷、
+     不是寫死路徑清單，這裡只是讓本頁也被同一顆 SW 控制。────────────────────────────── -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+    }
+</script>
 </body>
 </html>

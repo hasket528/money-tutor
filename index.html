@@ -1089,7 +1089,7 @@
     </style>
     <nav class="site-nav">
         <a href="index.html" class="current">🏠 主頁</a>
-        <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
+        <a href="reward/index.html?page=growth" class="nav-growth">🌟 成就與寵物</a>
         <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
         <a href="teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
         <a href="teacher-guide.html" class="nav-teacher">👩‍🏫 教師指南</a>
@@ -2107,7 +2107,7 @@
 
         // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
         (function () {
-            const BUILD_VERSION = '20260725m';
+            const BUILD_VERSION = '20260803a';
             fetch('version.txt', { cache: 'no-store' })
                 .then(r => r.ok ? r.text() : null)
                 .then(v => {

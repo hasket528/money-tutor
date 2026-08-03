@@ -351,6 +351,17 @@
     <script src="../js/growth-system.js"></script>
     <script src="../js/emoji-library.js"></script>
     <script src="script.js?v=4"></script>
+
+    <!-- ── 註冊主站 Service Worker（沿用根目錄 sw.js，同一份快取策略：HTML 網路優先／
+         JS,CSS,圖片,音效快取優先＋背景更新）。sw.js 的 fetch 規則本來就是依副檔名判斷、
+         不是寫死路徑清單，這裡只是讓 reward/ 也被同一顆 SW 控制，不必另外寫規則。────── -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('../sw.js').catch(() => {});
+            });
+        }
+    </script>
     <!-- 金隊長說明彈窗（點金隊長圖示開啟；300×300＋語音說明文字）──────── -->
     <div id="rewardCaptainModal" onclick="if(event.target===this)closeRewardCaptainModal()"
          style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">

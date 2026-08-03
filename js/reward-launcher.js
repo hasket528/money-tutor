@@ -210,16 +210,19 @@ const RewardLauncher = {
 // ── 單元設定頁：注入專案導覽列 ＋ 隱藏設定頁的「開啟獎勵系統」按鈕 ──
 // 集中一處涵蓋全部 24 單元（皆載入本檔、皆用 #settings-reward-link、皆渲染於 #app）。
 // 導覽列注入 #app 首位＝設定頁專屬；遊戲開始 app.innerHTML 重繪即自然移除。
+// 教師區項目／成就與寵物的「沒有學生就攔下」判斷，跟主頁（index.html）共用同一份規則
+// （class="nav-teacher"／"nav-growth"，邏輯只寫在 js/nav-auth.js），這裡只負責標記，不重寫判斷。
 (function unitSettingsNav() {
     if (!location.pathname.includes('/html/')) return;   // 僅作用於單元頁
     const NAV_ID = 'unit-site-nav';
+    // 第三欄＝額外 class（空字串代表不加）；nav-teacher／nav-growth 的顯示與否交給 nav-auth.js。
     const LINKS = [
-        ['../index.html', '🏠 主頁'],
-        ['../reward/index.html?page=growth', '🌟 成就與寵物'],
-        ['../reward/index.html', '🏆 優良表現獎勵板'],
-        ['../teacher.html', '📊 學習歷程總覽'],
-        ['../teacher-guide.html', '👩‍🏫 教師指南'],
-        ['../lesson-plans.html', '📚 單元教案包'],
+        ['../index.html', '🏠 主頁', ''],
+        ['../reward/index.html?page=growth', '🌟 成就與寵物', 'nav-growth'],
+        ['../reward/index.html', '🏆 優良表現獎勵板', 'nav-teacher'],
+        ['../teacher.html', '📊 學習歷程總覽', 'nav-teacher'],
+        ['../teacher-guide.html', '👩‍🏫 教師指南', 'nav-teacher'],
+        ['../lesson-plans.html', '📚 單元教案包', 'nav-teacher'],
     ];
     function injectStyleOnce() {
         if (document.getElementById('unit-site-nav-style')) return;
@@ -231,15 +234,31 @@ const RewardLauncher = {
             'padding:8px 12px;margin:0 0 10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);box-shadow:0 2px 10px rgba(0,0,0,.12);}' +
             '#' + NAV_ID + ' a{color:#fff;text-decoration:none;font-weight:700;font-size:.85rem;padding:6px 12px;' +
             'border-radius:10px;background:rgba(255,255,255,.14);white-space:nowrap;}' +
-            '#' + NAV_ID + ' a:hover{background:rgba(255,255,255,.3);}';
+            '#' + NAV_ID + ' a:hover{background:rgba(255,255,255,.3);}' +
+            '#' + NAV_ID + ' .nav-login-btn{color:#fff;font-weight:700;font-size:.85rem;padding:6px 14px;' +
+            'border-radius:10px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);' +
+            'cursor:pointer;font-family:inherit;white-space:nowrap;}';
         document.head.appendChild(st);
     }
     function buildNav() {
         const nav = document.createElement('nav');
         nav.id = NAV_ID;
         nav.setAttribute('aria-label', '網站導覽');
-        nav.innerHTML = LINKS.map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('');
+        nav.innerHTML = LINKS.map(function (l) {
+            return '<a href="' + l[0] + '"' + (l[2] ? ' class="' + l[2] + '"' : '') + '>' + l[1] + '</a>';
+        }).join('') + '<button class="nav-login-btn" onclick="siteNavLogin()">🔓 教師登入</button>';
         return nav;
+    }
+    // nav-auth.js 平常只在自己所在頁面的 DOMContentLoaded 套用一次；這裡的導覽列是之後才動態插進
+    // DOM 的，插入當下要主動再叫它套一次。單元頁原本沒載入這支檔案，只有這裡需要才動態補上。
+    function ensureNavAuthLoaded(cb) {
+        if (window.mtNavAuthApply) { cb(); return; }
+        const existing = document.querySelector('script[src="../js/nav-auth.js"]');
+        if (existing) { existing.addEventListener('load', cb, { once: true }); return; }
+        const s = document.createElement('script');
+        s.src = '../js/nav-auth.js';
+        s.onload = cb;
+        document.head.appendChild(s);
     }
     function hideRewardRow() {
         const link = document.getElementById('settings-reward-link');
@@ -257,6 +276,7 @@ const RewardLauncher = {
         if (app && !app.querySelector(':scope > #' + NAV_ID)) {
             injectStyleOnce();
             app.insertBefore(buildNav(), app.firstChild);
+            ensureNavAuthLoaded(function () { window.mtNavAuthApply(); });
         }
         hideRewardRow();
     }

@@ -328,5 +328,15 @@ document.getElementById('plans').insertAdjacentHTML('beforeend',
   + '「學習調整」四向度勾選為全站一致的 UDL 設計，逐格對應系統實作（簡化＝簡單模式、分解＝步驟拆解、減量＝題數可調、替代＝多模式作答…）。<br>'
   + '完整<b>附表三之1</b>（含學生能力描述、調整後學習表現/內容、教學活動設計逐步課程調整）另備紙本教案；請依校本課程計畫與學生 IEP 微調具體代碼與能力描述。購物對話練習屬〈社會技巧〉領域，代碼另計。</div>');
 </script>
+
+<!-- ── 註冊主站 Service Worker（沿用根目錄 sw.js，同一份快取策略）。fetch 規則依副檔名判斷、
+     不是寫死路徑清單，這裡只是讓本頁也被同一顆 SW 控制。────────────────────────────── -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+    }
+</script>
 </body>
 </html>

@@ -3,6 +3,23 @@
 # permission all work (localhost is a "secure context", same as https).
 # Launched by start.bat. Close the window (or press Ctrl+C) to stop; the port is released with
 # the process, so nothing stays bound afterwards.
+#
+# ENGINE (2026-08-02): System.Net.HttpListener + a small RunspacePool, not a hand-rolled
+# TcpListener loop. Three concrete problems that had, compared against GitHub Pages:
+#   1) One blocking Accept-and-handle loop meant a browser's ~6 parallel connections per origin
+#      queued behind each other instead of being served at the same time.
+#   2) Every response forced Connection: close, so each of those 6 connections paid a fresh TCP
+#      handshake per file instead of reusing one via HTTP/1.1 keep-alive.
+#   3) Cache-Control: no-cache with no validator meant "no-cache" behaved like "no-store" - every
+#      repeat load of an unchanged audio/image file was a full re-read + re-send.
+# Fix: HttpListener gives native keep-alive; each request now runs in a pooled runspace (PS 5.1
+# has no `ForEach-Object -Parallel`, hence RunspacePool) so requests are handled concurrently;
+# static files now send Last-Modified and honour If-Modified-Since with a 304. Cache-Control
+# stays "no-cache" (always revalidate) on purpose - files here can change on disk anytime during
+# development, so cheap revalidation is the safe choice, not a long max-age that risks serving a
+# stale file. HttpListener on "http://localhost:PORT/" specifically does NOT need admin rights or
+# a `netsh http add urlacl` reservation - that is only required for wildcard prefixes
+# (http://+:PORT/) or non-loopback hostnames; verified non-admin on PS 5.1 before relying on it.
 #   -NoBrowser  : do not auto-open the browser (used for testing)
 #   -Port N     : PREFERRED port. Taken by another program -> falls back to the next free
 #                 candidate in $PORT_CANDIDATES. Taken by another copy of THIS script ->
@@ -126,6 +143,13 @@ function Get-PortOwner([int]$p) {
   try {
     $ownerPid = (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction Stop |
                  Select-Object -First 1).OwningProcess
+    if ($ownerPid -eq 4) {
+      # PID 4 is the "System" process. Windows attributes EVERY http.sys-backed listener to it
+      # (that now includes another copy of this very script, since it also runs on HttpListener)
+      # - never the real app. Naming "System" would be actively misleading, since nothing should
+      # ever be told to close it, so say what it actually is instead of a process nobody can act on.
+      return 'Windows 的 HTTP 服務（http.sys，例如另一個本機伺服器）'
+    }
     $proc = Get-Process -Id $ownerPid -ErrorAction Stop
     return "$($proc.ProcessName)（PID $ownerPid）"
   } catch { return $null }
@@ -135,7 +159,8 @@ function Get-PortOwner([int]$p) {
 # already there, or $null when the port belongs to something else.
 function Try-Bind([int]$p) {
   try {
-    $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $p)
+    $l = New-Object System.Net.HttpListener
+    $l.Prefixes.Add("http://localhost:$p/")
     $l.Start()
     return $l
   } catch {
@@ -165,7 +190,7 @@ function Use-ExistingServer([int]$p) {
   exit 0
 }
 
-# Bind to 127.0.0.1 (loopback) via a raw TCP socket -> no admin / no URL ACL needed.
+# Bind to the "localhost" prefix -> no admin / no URL ACL needed (see ENGINE note up top).
 $prefer = if ($Port -gt 0) { $Port } else { $PORT_CANDIDATES[0] }
 $listener = $null
 $taken    = @()
@@ -238,34 +263,33 @@ if (-not $NoBrowser) {
 Write-Host "  要停止：關掉這個視窗（或按 Ctrl+C），通訊埠會一起釋放。"
 Write-Host ""
 
-# Read one line (up to LF) from the network stream as ASCII; strips CR.
-function Read-Line($stream) {
-  $bytes = New-Object System.Collections.Generic.List[byte]
-  while ($true) {
-    $b = $stream.ReadByte()
-    if ($b -lt 0 -or $b -eq 10) { break }
-    if ($b -ne 13) { [void]$bytes.Add([byte]$b) }
+# Requests run in a small pool of PowerShell runspaces (see ENGINE note up top) so this loop
+# only ever does the fast part - accept the next connection - while file reads/writes for
+# earlier connections happen at the same time on the pool. $active tracks in-flight handles so
+# they get disposed once done instead of leaking a runspace per request over a school day.
+$pool = [runspacefactory]::CreateRunspacePool(2, 16)
+$pool.Open()
+$active = New-Object System.Collections.ArrayList
+
+function Reap-Completed($list) {
+  for ($i = $list.Count - 1; $i -ge 0; $i--) {
+    if ($list[$i].Handle.IsCompleted) {
+      try { $list[$i].Ps.EndInvoke($list[$i].Handle) } catch { }
+      $list[$i].Ps.Dispose()
+      $list.RemoveAt($i)
+    }
   }
-  [System.Text.Encoding]::ASCII.GetString($bytes.ToArray())
 }
 
-# Closing the window kills the process and Windows reclaims the listening socket immediately
-# (a listener never sits in TIME_WAIT), so the port is free for the next run either way. The
-# try/finally below is for the graceful exits: Ctrl+C, or an unexpected error in the loop.
-try {
-while ($true) {
-  $client = $listener.AcceptTcpClient()
+# One request, run inside a pooled runspace. Same routing as before (probe / path-traversal
+# guard / directory index / 404) in the same single-write-at-the-end shape, plus Last-Modified
+# so a repeat load of an unchanged file costs a 304 instead of a full re-read (see ENGINE note).
+$handleRequest = {
+  param($context, $root, $rootFull, $mime, $PROBE_SIG)
+  $req = $context.Request; $res = $context.Response
   try {
-    $client.ReceiveTimeout = 5000
-    $ns = $client.GetStream()
-    $reqLine = Read-Line $ns
-    if (-not $reqLine) { continue }
-    while ((Read-Line $ns) -ne '') { }   # drain the remaining request headers
-
-    $parts  = $reqLine -split ' '
-    $method = $parts[0]
-    $target = if ($parts.Count -ge 2) { $parts[1] } else { '/' }
-    $path   = [System.Uri]::UnescapeDataString(($target -split '\?')[0])
+    $method = $req.HttpMethod
+    $path = [System.Uri]::UnescapeDataString($req.Url.AbsolutePath)
     if ($path -eq '') { $path = '/' }
     # Directory index for EVERY folder, not just the root: /dialogue/ must serve
     # /dialogue/index.html the way GitHub Pages does, or every folder link 404s.
@@ -273,38 +297,73 @@ while ($true) {
 
     $rel  = ($path.TrimStart('/')) -replace '/', '\'
     $file = [System.IO.Path]::GetFullPath((Join-Path $root $rel))
-    $extraHead = ''
+    $lastModHeader = $null
 
-    if ($path -eq '/__mt_probe') {                               # "is this one of ours?" (see above)
-      $status='200 OK'; $ctype='text/plain; charset=utf-8'
+    if ($path -eq '/__mt_probe') {                               # "is this one of ours?" (see Get-MtServerRoot)
+      $status=200; $ctype='text/plain; charset=utf-8'
       $body=[System.Text.Encoding]::UTF8.GetBytes("$PROBE_SIG $rootFull")
     } elseif (-not $file.StartsWith($rootFull)) {                # block path traversal
-      $status='403 Forbidden'; $ctype='text/plain'; $body=[System.Text.Encoding]::UTF8.GetBytes('403')
+      $status=403; $ctype='text/plain'; $body=[System.Text.Encoding]::UTF8.GetBytes('403')
     } elseif (Test-Path -LiteralPath $file -PathType Leaf) {
-      $status='200 OK'; $body=[System.IO.File]::ReadAllBytes($file)
-      $ext=[System.IO.Path]::GetExtension($file).ToLower()
-      $ctype= if ($mime.ContainsKey($ext)) { $mime[$ext] } else { 'application/octet-stream' }
+      $lastWriteUtc = [System.IO.File]::GetLastWriteTimeUtc($file)
+      $lastModHeader = $lastWriteUtc.ToString('R')
+      $ims = $req.Headers['If-Modified-Since']
+      $notModified = $false
+      if ($ims) {
+        $imsDate = [datetime]::MinValue
+        $ok = [datetime]::TryParse($ims, [Globalization.CultureInfo]::InvariantCulture,
+              ([Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal), [ref]$imsDate)
+        # HTTP dates are second-resolution but a file's own timestamp is not, hence the 1s slack.
+        if ($ok -and $lastWriteUtc -le $imsDate.AddSeconds(1)) { $notModified = $true }
+      }
+      if ($notModified) {
+        $status=304; $ctype='text/plain'; $body=[byte[]]@()
+      } else {
+        $status=200; $body=[System.IO.File]::ReadAllBytes($file)
+        $ext=[System.IO.Path]::GetExtension($file).ToLower()
+        $ctype= if ($mime.ContainsKey($ext)) { $mime[$ext] } else { 'application/octet-stream' }
+      }
     } elseif (Test-Path -LiteralPath $file -PathType Container) {
       # /dialogue -> /dialogue/  so relative links inside the page resolve, same as Pages does
-      $status='301 Moved Permanently'; $ctype='text/plain; charset=utf-8'
-      $extraHead = "Location: $path/`r`n"
+      $status=301; $ctype='text/plain; charset=utf-8'
       $body=[System.Text.Encoding]::UTF8.GetBytes("301 -> $path/")
     } else {
-      $status='404 Not Found'; $ctype='text/plain; charset=utf-8'; $body=[System.Text.Encoding]::UTF8.GetBytes('404 Not Found')
+      $status=404; $ctype='text/plain; charset=utf-8'; $body=[System.Text.Encoding]::UTF8.GetBytes('404 Not Found')
     }
 
-    $head = "HTTP/1.1 $status`r`nContent-Type: $ctype`r`nContent-Length: $($body.Length)`r`n$($extraHead)Cache-Control: no-cache`r`nConnection: close`r`n`r`n"
-    $hb = [System.Text.Encoding]::ASCII.GetBytes($head)
-    $ns.Write($hb, 0, $hb.Length)
-    if ($method -ne 'HEAD' -and $body.Length -gt 0) { $ns.Write($body, 0, $body.Length) }
-    $ns.Flush()
+    $res.StatusCode = $status
+    $res.ContentType = $ctype
+    $res.Headers['Cache-Control'] = 'no-cache'
+    if ($lastModHeader) { $res.Headers['Last-Modified'] = $lastModHeader }
+    if ($status -eq 301) { $res.Headers['Location'] = "$path/" }
+    $res.ContentLength64 = $body.Length
+    if ($method -ne 'HEAD' -and $body.Length -gt 0) { $res.OutputStream.Write($body, 0, $body.Length) }
+    $res.OutputStream.Close()
   } catch {
     # one bad request must not kill the server
-  } finally {
-    if ($client) { $client.Close() }
+    try { $res.StatusCode = 500; $res.OutputStream.Close() } catch { }
   }
 }
+
+# Closing the window kills the process and Windows reclaims the listening socket immediately
+# (a listener never sits in TIME_WAIT), so the port is free for the next run either way. The
+# try/finally below is for the graceful exits: Ctrl+C, or an unexpected error in the loop.
+try {
+while ($true) {
+  $iar = $listener.BeginGetContext($null, $null)
+  # Poll instead of one indefinite blocking call, so finished runspaces get reaped (and Ctrl+C
+  # gets noticed) every 200ms instead of only in between requests.
+  while (-not $iar.AsyncWaitHandle.WaitOne(200)) { Reap-Completed $active }
+  $context = $listener.EndGetContext($iar)
+  Reap-Completed $active
+  $ps = [powershell]::Create()
+  $ps.RunspacePool = $pool
+  [void]$ps.AddScript($handleRequest).AddArgument($context).AddArgument($root).AddArgument($rootFull).AddArgument($mime).AddArgument($PROBE_SIG)
+  [void]$active.Add(@{ Ps = $ps; Handle = $ps.BeginInvoke() })
+}
 } finally {
-  if ($listener) { $listener.Stop() }
+  if ($listener) { $listener.Stop(); $listener.Close() }
+  foreach ($a in $active) { try { $a.Ps.Stop() } catch { }; try { $a.Ps.Dispose() } catch { } }
+  $pool.Close(); $pool.Dispose()
   Write-Host "伺服器已停止，通訊埠 $Port 已釋放。" -ForegroundColor DarkGray
 }

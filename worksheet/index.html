@@ -71,6 +71,18 @@
 <script src="units/b5-worksheet.js"></script>
 <script src="units/b6-worksheet.js"></script>
 
+<!-- ── 註冊主站 Service Worker（沿用根目錄 sw.js，同一份快取策略：HTML 網路優先／
+     JS,CSS,圖片快取優先＋背景更新）。sw.js 的 fetch 規則依副檔名判斷、不是寫死路徑清單，
+     這裡只是讓 worksheet/ 也被同一顆 SW 控制；html2canvas/jspdf 這兩包 551KB 進快取後，
+     重複開作業單頁面／離線出題都會受益。────────────────────────────────────────── -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('../sw.js').catch(() => {});
+        });
+    }
+</script>
+
 <script>
 // 應用程式主控
 const WorksheetApp = {
