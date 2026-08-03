@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#2563EB">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="購物練習">
-  <title>購物練習</title>
+  <meta name="apple-mobile-web-app-title" content="日常對話練習">
+  <title>金錢小達人—日常對話練習</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -79,42 +79,60 @@
     </nav>
     <header class="home-header">
       <button class="btn-settings-icon" id="btn-settings" aria-label="設定自訂情境">⚙️</button>
-      <h1>購物練習</h1>
+      <h1>金錢小達人—日常對話練習</h1>
       <div class="home-subtitle-row">
         <p class="subtitle">選擇想要練習的情境</p>
         <span class="header-tagline" aria-hidden="true">互動練習 &nbsp;·&nbsp; 語音對話 &nbsp;·&nbsp; 即時回饋</span>
       </div>
-      <div class="home-chip-row">
-        <button class="student-chip" id="btn-student" aria-label="選擇練習的學生"><span class="icon-badge">👤</span> 選擇學生</button>
-      </div>
-      <div class="home-student-block">
-        <span class="home-student-label"><span class="icon-badge">🗣️</span> 選擇學生語音</span>
-        <div class="home-student-strip" id="home-student-strip" role="group" aria-label="選擇學生語音"></div>
-      </div>
     </header>
 
+    <div class="home-duo">
+      <div class="captain-banner" id="btn-student" role="button" tabindex="0" title="點擊選擇要練習的學生" aria-label="金隊長．選擇要練習的學生">
+        <div class="captain-avatar"><img src="../images/common/captain_gold.png" alt="金隊長"></div>
+        <div class="captain-text">
+          <div class="captain-name">🤖 金隊長・成長基地
+            <button type="button" class="ai-voice-btn" onclick="event.stopPropagation();speakHomeCharacter('captain')" title="播放語音">🔊</button>
+          </div>
+          <div class="captain-line">選好要練習的學生，表現會自動記錄成長。</div>
+        </div>
+        <div class="captain-cta" id="btn-student-cta"><span class="icon-badge">👤</span> 選擇學生</div>
+      </div>
+
+      <div class="chatdog-card" id="btn-chatdog-open" role="button" tabindex="0" title="點擊認識金好聊" aria-label="金好聊．點擊查看角色介紹與選擇學生語音">
+        <div class="captain-avatar chatdog-avatar"><img src="../images/common/money_chat_dog.png" alt="金好聊"></div>
+        <div class="captain-text">
+          <div class="captain-name">🐕 金好聊
+            <button type="button" class="ai-voice-btn" onclick="event.stopPropagation();speakHomeCharacter('chatdog')" title="播放語音">🔊</button>
+          </div>
+          <div class="captain-line">點我認識金好聊，設定練習用的學生語音</div>
+        </div>
+        <div class="captain-cta chatdog-cta">點我看看 →</div>
+      </div>
+    </div>
+
     <style>
-      .home-parts { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:0 auto 14px; padding:0 12px; max-width:760px; }
-      .home-part-btn { border:2px solid #dbe7f5; background:#fff; color:#334e68; font-weight:800; font-size:0.9rem; padding:8px 16px; border-radius:22px; cursor:pointer; font-family:inherit; transition:background .15s,border-color .15s,color .15s; white-space:nowrap; }
-      .home-part-btn:hover { border-color:#2563eb; }
+      .home-parts-wrap { max-width:900px; margin:18px auto 0; padding:10px; background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); }
+      .home-parts { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+      .home-part-btn { border:2px solid var(--gray-200); background:transparent; color:var(--gray-600); font-weight:800; font-size:0.82rem; padding:9px 6px; border-radius:14px; cursor:pointer; font-family:inherit; transition:background .15s,border-color .15s,color .15s; white-space:normal; text-align:center; line-height:1.3; }
+      .home-part-btn:hover { border-color:var(--blue); color:var(--blue); }
       .home-part-btn.active { background:linear-gradient(135deg,#1e3a5f,#2563eb); color:#fff; border-color:transparent; }
-      /* 手機：分頁改左對齊兩欄格線，第一～六部分上下成欄對齊；第七部分與自訂各自獨佔一列、左緣與左欄對齊 */
+      /* 手機：字級與內距縮小，維持「第一列1~4／第二列5~7+自訂」兩列格線不變 */
       @media (max-width:480px) {
-        .home-parts { display:grid; grid-template-columns:1fr 1fr; justify-items:start; }
-        .home-part-btn { white-space:normal; }
-        .home-part-btn[data-part="7"],
-        .home-part-btn[data-part="custom"] { grid-column:1 / -1; }
+        .home-parts { gap:6px; }
+        .home-part-btn { font-size:0.68rem; padding:7px 3px; border-radius:12px; }
       }
     </style>
-    <div class="home-parts" id="home-parts" role="tablist" aria-label="情境分部">
-      <button class="home-part-btn active" data-part="1" role="tab">第一部分・基礎買賣</button>
-      <button class="home-part-btn" data-part="2" role="tab">第二部分・點餐客製</button>
-      <button class="home-part-btn" data-part="3" role="tab">第三部分・生活應對</button>
-      <button class="home-part-btn" data-part="4" role="tab">第四部分・金錢安全</button>
-      <button class="home-part-btn" data-part="5" role="tab">第五部分・交通出行</button>
-      <button class="home-part-btn" data-part="6" role="tab">第六部分・休閒娛樂</button>
-      <button class="home-part-btn" data-part="7" role="tab">第七部分・職場初體驗</button>
-      <button class="home-part-btn" data-part="custom" role="tab">⭐ 自訂</button>
+    <div class="home-parts-wrap">
+      <div class="home-parts" id="home-parts" role="tablist" aria-label="情境分部">
+        <button class="home-part-btn active" data-part="1" role="tab">第一部分・基礎買賣</button>
+        <button class="home-part-btn" data-part="2" role="tab">第二部分・點餐客製</button>
+        <button class="home-part-btn" data-part="3" role="tab">第三部分・生活應對</button>
+        <button class="home-part-btn" data-part="4" role="tab">第四部分・金錢安全</button>
+        <button class="home-part-btn" data-part="5" role="tab">第五部分・交通出行</button>
+        <button class="home-part-btn" data-part="6" role="tab">第六部分・休閒娛樂</button>
+        <button class="home-part-btn" data-part="7" role="tab">第七部分・職場初體驗</button>
+        <button class="home-part-btn" data-part="custom" role="tab">⭐ 自訂</button>
+      </div>
     </div>
 
     <div class="scenario-grid" id="scenario-grid">
@@ -191,9 +209,9 @@
           <div class="diff-card-header">
             <span class="diff-dot" style="background:#16A34A"></span>
             <span class="diff-level-name">初級</span>
-            <span class="diff-tag">音節寬鬆</span>
+            <span class="diff-tag">有講就鼓勵</span>
           </div>
-          <p class="diff-desc">只要開口說、字數長度接近就給鼓勵（部分對），適合剛開始練習開口。</p>
+          <p class="diff-desc">只要偵測到有開口說話，不論有沒有說對都給鼓勵，適合剛開始練習開口。</p>
         </button>
 
         <button class="diff-card diff-card--recommended" id="diff-normal-card" data-level="normal">
@@ -443,7 +461,7 @@
         <p class="editor-desc" style="margin-top:10px">本練習以特教常用的<strong>「句框教學＋多元反應模式」</strong>設計，讓學生用最適合自己的方式開口買東西。選項／看圖造句採精確比對，<strong>不需要 AI、可完全離線、免費</strong>。</p>
         <p class="editor-desc" style="margin-top:8px"><strong>三段難度（判定寬鬆度可調）：</strong></p>
         <ul class="about-ladder">
-          <li><b>初級</b>　音節寬鬆：開口說、字數長度接近就給鼓勵</li>
+          <li><b>初級</b>　有講就鼓勵：只要偵測到有開口說話就給鼓勵，不比對長度</li>
           <li><b>中級</b>　關鍵字：說到重點詞就算對（推薦）</li>
           <li><b>高級</b>　完整語句：要說出整句標準答案</li>
         </ul>
@@ -848,17 +866,35 @@
   </div>
 
   <!-- ════════════════════════════════════════
-       學生選擇彈窗
+       學生選擇彈窗（金隊長）
   ════════════════════════════════════════ -->
   <div id="student-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
     <div class="modal-backdrop" id="student-backdrop"></div>
     <div class="modal-card">
-      <div class="hint-modal-header" style="color:var(--blue)">
-        <span aria-hidden="true">👤</span>
-        <span id="student-modal-title">現在是誰要練習？</span>
+      <div class="captain-modal-head">
+        <img src="../images/common/captain_gold.png" alt="金隊長">
+        <div class="bubble" id="student-modal-title">選擇你的學生資料——之後的練習表現會自動記錄成長。</div>
       </div>
       <div class="student-select-list" id="student-select-list"></div>
       <p class="student-modal-hint" id="student-modal-hint">名冊與獎勵系統共用；要新增學生請到獎勵系統。</p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       金好聊彈窗（角色介紹＋選擇學生語音）
+  ════════════════════════════════════════ -->
+  <div id="chatdog-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="chatdog-modal-bubble">
+    <div class="modal-backdrop" id="chatdog-backdrop"></div>
+    <div class="modal-card">
+      <div class="captain-modal-head chatdog-modal-head">
+        <img src="../images/common/money_chat_dog.png" alt="金好聊">
+        <div class="bubble" id="chatdog-modal-bubble">汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！</div>
+      </div>
+      <div class="home-student-block">
+        <span class="home-student-label"><span class="icon-badge">🗣️</span> 選擇學生語音</span>
+        <p class="home-student-note">※ 此功能適用於「選項」作答模式——練習時會用所選學生的聲音唸出答案選項。</p>
+        <div class="home-student-strip" id="home-student-strip" role="group" aria-label="選擇學生語音"></div>
+      </div>
     </div>
   </div>
 

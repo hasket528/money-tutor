@@ -79,6 +79,18 @@
     .acc-mid  { color: var(--blue);  font-weight: 700; }
     .acc-low  { color: var(--orange); font-weight: 700; }
     .trend { font-size: 1rem; }
+    /* 精熟欄：整體判定（大字）＋各難度小標籤（初/中/高各自的連續序列） */
+    .m-overall { font-weight: 800; white-space: nowrap; }
+    .m-chips { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+    .m-chip {
+      font-size: 0.68rem; font-weight: 700; padding: 1px 5px; border-radius: 6px;
+      background: var(--bg); border: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    .m-chip.m-mastered { color: var(--green);    border-color: currentColor; }
+    .m-chip.m-close    { color: var(--blue);     border-color: currentColor; }
+    .m-chip.m-not      { color: var(--gray-600); }
+    /* 低於最低難度門檻＝不列入整體精熟計算，仍顯示但淡化 */
+    .m-chip.m-off      { opacity: .45; }
     .table-scroll { overflow-x: auto; border-radius: 12px; }
 
     .star-bar { display: flex; gap: 2px; }
@@ -381,8 +393,20 @@ const GrowthCfg = (() => {
         </select> 次
       </label>
       <label style="font-size:0.82rem"><input type="checkbox" id="mastery-flawless"> 需 🌟 無錯通過</label>
+      <label style="font-size:0.82rem" title="低於門檻的難度仍會算出自己的狀態並顯示（淡化），只是不列入「整體精熟」">最低難度
+        <select id="mastery-mindiff">
+          <option value="easy">不限（初級也算）</option>
+          <option value="normal">需 ≥ 中級</option>
+          <option value="hard">需高級</option>
+        </select>
+      </label>
       <button class="t-btn t-btn-primary" onclick="saveMastery()">儲存</button>
       <span id="mastery-scope" style="font-size:0.75rem;color:var(--gray-600)"></span>
+      <div style="font-size:0.75rem;color:var(--gray-600);width:100%;line-height:1.6">
+        🎯 精熟欄各難度<b>分開計算連續次數</b>（初級答對不會累積到高級的連續序列）。
+        整體判定＝門檻以上的難度<b>任一</b>達精熟即算精熟。
+        沒有難度設定的單元（如一日金錢冒險）一律歸為中級。
+      </div>
     </div>
   </div>
 
@@ -477,8 +501,31 @@ function doAssign() {
 const isMain = (r) => r.source === 'main' || !!UNIT_PAGE[r.situationId];
 const stuKey = (r) => (r.studentId != null ? String(r.studentId) : '__guest__');
 
+// ── 一場紀錄的「錯誤嘗試次數」（唯一來源，勿在各處自行展開）──────────────
+// 兩種來源的資料形狀不同：24 單元（learning-tracker）存扁平 wrongAttempts；
+// 對話練習存巢狀 steps[]，沒有 wrongAttempts 欄位——過去五處各自直接讀 r.wrongAttempts，
+// 對話紀錄一律得到 0，週報／CSV 的正確率因此恆為 100%。
+//
+// 對話練習的算法：最終 perfect 才扣掉「最後一次成功」那次（attempts−1）；最終不是 perfect
+// （初級「有講就給部分對」／中級關鍵字部分對／真的答錯，答一次就跳過也算）代表這一步從頭到尾
+// 沒有一次答對，attempts 全部都是錯誤嘗試，不能再扣 1。
+// 兩種來源都滿足不變式：答對數 + 錯誤嘗試 = 總作答次數。
+//
+// 分支用 isMain 而非「有沒有 steps」——learning-tracker 也會寫 steps: []（目前恆空，
+// 但未來單元若開始傳步驟資料，用 steps 判斷會把主課程紀錄誤走對話公式）。
+function wrongTriesOf(r) {
+  if (isMain(r)) return r.wrongAttempts || 0;
+  return (r.steps || []).reduce((n, st) =>
+    n + (st?.score === 'perfect' ? Math.max(0, (st?.attempts || 1) - 1) : (st?.attempts || 1)), 0);
+}
+
 // ── 精熟標準（全班預設 mt_mastery_default；個別覆寫 mt_mastery_{id}）──
-const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: true };
+// minDiff＝列入「整體精熟」的最低難度；低於此的難度仍各自算狀態，只是不列入整體。
+const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: true, minDiff: 'easy' };
+const DIFF_ORDER = ['easy', 'normal', 'hard'];
+// 難度正規化：舊紀錄／無難度概念的單元（如冒險）沒有 difficulty，一律視為中級，
+// 否則設了「需 ≥ 中級」門檻後這些紀錄會被排到門檻外、永遠無法精熟。
+const normDiff = (r) => DIFF_ORDER.includes(r.difficulty) ? r.difficulty : 'normal';
 function masteryDefault() {
   try { return { ...MASTERY_FALLBACK, ...(JSON.parse(localStorage.getItem('mt_mastery_default') || '{}')) }; }
   catch { return { ...MASTERY_FALLBACK }; }
@@ -498,6 +545,7 @@ function saveMastery() {
     pct: parseInt(document.getElementById('mastery-pct').value),
     streak: parseInt(document.getElementById('mastery-streak').value),
     flawless: document.getElementById('mastery-flawless').checked,
+    minDiff: document.getElementById('mastery-mindiff').value,
   };
   if (who !== '__all__' && who !== '__guest__') localStorage.setItem(`mt_mastery_${who}`, JSON.stringify(m));
   else localStorage.setItem('mt_mastery_default', JSON.stringify(m));
@@ -507,15 +555,17 @@ function saveMastery() {
 function renderMasteryBar(who) {
   const m = masteryFor(who);
   const scopeTxt = (who !== '__all__' && who !== '__guest__') ? '（此學生個別標準）' : '（全班預設）';
+  const minTxt = m.minDiff === 'easy' ? '' : `・需 ${DIFF[m.minDiff]}${m.minDiff === 'normal' ? '以上' : ''}`;
   document.getElementById('mastery-desc').textContent =
-    `正確率 ≥ ${m.pct}%・連續 ${m.streak} 次${m.flawless ? '・需🌟無錯' : ''} ${scopeTxt}`;
+    `正確率 ≥ ${m.pct}%・連續 ${m.streak} 次（各難度分開計）${m.flawless ? '・需🌟無錯' : ''}${minTxt} ${scopeTxt}`;
   document.getElementById('mastery-pct').value = String(m.pct);
   document.getElementById('mastery-streak').value = String(m.streak);
   document.getElementById('mastery-flawless').checked = m.flawless;
+  document.getElementById('mastery-mindiff').value = m.minDiff;
   document.getElementById('mastery-scope').textContent =
     (who !== '__all__' && who !== '__guest__') ? '將儲存為此學生的個別標準' : '將儲存為全班預設標準';
 }
-// 回傳 'mastered' | 'close' | 'not' —— list 需為該生該單元的紀錄（依 ts 升冪）
+// 回傳 'mastered' | 'close' | 'not' —— list 需為「同一難度」的紀錄（依 ts 升冪）
 function masteryStatus(list, m) {
   const pass = (r) => ((r.total > 0 ? (r.score / r.total) * 100 : 100) >= m.pct) &&
                       (!m.flawless || r.flawless);
@@ -523,11 +573,40 @@ function masteryStatus(list, m) {
   if (list.length > 0 && pass(list[list.length - 1])) return 'close';
   return 'not';
 }
+// 按難度分別判定：每個難度各有獨立的連續序列（初級答對不會累積到高級）。
+// 整體＝門檻（minDiff）以上的難度中，任一達精熟即算精熟；否則任一接近即算接近。
+// 回傳 { overall, perDiff: { easy|normal|hard: 'mastered'|'close'|'not'|null } }，null＝該難度無紀錄。
+function masteryEval(list, m) {
+  const minIdx = Math.max(0, DIFF_ORDER.indexOf(m.minDiff || 'easy'));
+  const perDiff = {};
+  DIFF_ORDER.forEach(d => {
+    const sub = list.filter(r => normDiff(r) === d);
+    perDiff[d] = sub.length ? masteryStatus(sub, m) : null;
+  });
+  const eligible = DIFF_ORDER.slice(minIdx);
+  const overall = eligible.some(d => perDiff[d] === 'mastered') ? 'mastered'
+                : eligible.some(d => perDiff[d] === 'close')    ? 'close'
+                : 'not';
+  return { overall, perDiff, minIdx };
+}
 const MASTERY_TAG = {
-  mastered: '<span style="color:var(--green);font-weight:800" title="已達精熟標準">✅ 精熟</span>',
-  close:    '<span style="color:var(--blue);font-weight:800" title="最近一次達標，連續次數未滿">🔶 接近</span>',
-  not:      '<span style="color:var(--gray-600)" title="尚未達標">⬜ 未達</span>',
+  mastered: '<span class="m-overall" style="color:var(--green)" title="已達精熟標準">✅ 精熟</span>',
+  close:    '<span class="m-overall" style="color:var(--blue)" title="最近一次達標，連續次數未滿">🔶 接近</span>',
+  not:      '<span class="m-overall" style="color:var(--gray-600)" title="尚未達標">⬜ 未達</span>',
 };
+const MASTERY_MARK = { mastered: '✅', close: '🔶', not: '⬜' };
+// 精熟欄內容：整體判定 + 各難度小標籤（只列有紀錄的難度；低於門檻者淡化）
+function masteryCell(list, m) {
+  const { overall, perDiff, minIdx } = masteryEval(list, m);
+  const chips = DIFF_ORDER.map((d, i) => {
+    if (!perDiff[d]) return '';
+    const off = i < minIdx;
+    const tip = `${DIFF[d]}：${{ mastered: `連續 ${m.streak} 次達標`, close: '最近一次達標，連續次數未滿', not: '尚未達標' }[perDiff[d]]}` +
+                (off ? `（低於「${DIFF[m.minDiff]}」門檻，不列入整體精熟）` : '');
+    return `<span class="m-chip m-${perDiff[d]}${off ? ' m-off' : ''}" title="${tip}">${DIFF[d]}${MASTERY_MARK[perDiff[d]]}</span>`;
+  }).join('');
+  return MASTERY_TAG[overall] + (chips ? `<div class="m-chips">${chips}</div>` : '');
+}
 
 function accClass(pct) { return pct >= 80 ? 'acc-good' : pct >= 60 ? 'acc-mid' : 'acc-low'; }
 
@@ -588,10 +667,10 @@ async function loadData() {
     byUnit[u].count++;
     byUnit[u].correct += (r.score || 0);
     byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
-    byUnit[u].wrongTries += (r.wrongAttempts || 0);
+    byUnit[u].wrongTries += wrongTriesOf(r);
     if (r.flawless) byUnit[u].flawless++;
     byUnit[u].dur     += (r.durationSec || 0);
-    const dk = r.difficulty || 'normal';
+    const dk = normDiff(r);   // 與精熟判定用同一套正規化，難度欄與 🎯 欄才不會對不上
     byUnit[u].diffs[dk] = (byUnit[u].diffs[dk] || 0) + 1;
     if (r.selfRating) byUnit[u].self[r.selfRating] = (byUnit[u].self[r.selfRating] || 0) + 1;
     byUnit[u].list.push(r);
@@ -619,7 +698,7 @@ async function loadData() {
     wrap.className = 'table-scroll';
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>單元</th><th>🎯 精熟</th><th title="累計作答題數；單次作答模式若有答錯，顯示為「答對／總題數」">📝 完成題數</th><th>難度</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>單元</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答題數；單次作答模式若有答錯，顯示為「答對／總題數」">📝 完成題數</th><th>難度</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
 
     units.forEach(([u, name]) => {
       const s  = byUnit[u];
@@ -655,7 +734,7 @@ async function loadData() {
         const hasDetail = !!lastDetail;
         tr.innerHTML = `
           <td>${hasDetail ? '<span class="dt-toggle" style="cursor:pointer;color:var(--blue);font-weight:800" title="展開逐題明細">▸</span> ' : ''}${name}${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
-          <td>${showMastery ? MASTERY_TAG[masteryStatus(sortedList, mastery)] : '—'}</td>
+          <td>${showMastery ? masteryCell(sortedList, mastery) : '—'}</td>
           <td class="${s.wrong > 0 ? 'acc-low' : ''}" title="練習 ${s.count} 次，累計作答 ${attempts} 題">${s.wrong > 0 ? `${s.correct}/${attempts}` : attempts}</td>
           <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
           <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
@@ -711,11 +790,10 @@ async function loadData() {
     s.count++;
     s.correct += (r.score || 0);
     s.wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
-    // 錯誤嘗試＝各步驟反覆作答的答錯次數（attempts−1 加總）
-    s.wrongTries += (r.steps || []).reduce((n, st) => n + Math.max(0, (st.attempts || 1) - 1), 0);
+    s.wrongTries += wrongTriesOf(r);
     if ((r.total || 0) > 0 && (r.score || 0) === r.total) s.flawless++;   // 全步驟正確＝無錯通過
     s.dur += (r.durationSec || 0);
-    const dk = r.difficulty || 'normal';
+    const dk = normDiff(r);   // 與精熟判定用同一套正規化，難度欄與 🎯 欄才不會對不上
     s.diffs[dk] = (s.diffs[dk] || 0) + 1;
     if (r.mode) s.modes[r.mode] = (s.modes[r.mode] || 0) + 1;
     if (r.selfRating) s.self[r.selfRating] = (s.self[r.selfRating] || 0) + 1;
@@ -729,7 +807,7 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th>🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
       const attempts = s.correct + s.wrong;
       // 分子＝真正答對數（非總步驟數）：跳過的步驟不該算成正確操作。理由同主課程表。
@@ -745,7 +823,7 @@ async function loadData() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${s.scenarioName}</strong><br><span style="font-size:0.75rem;color:var(--gray-600)">${s.situationName}</span>${s.flawless > 0 ? ` <span title="無錯通過次數">🌟×${s.flawless}</span>` : ''}</td>
-        <td>${showMastery ? MASTERY_TAG[masteryStatus(sorted, mastery)] : '—'}</td>
+        <td>${showMastery ? masteryCell(sorted, mastery) : '—'}</td>
         <td class="${s.wrong > 0 ? 'acc-low' : ''}" title="練習 ${s.count} 次，累計作答 ${attempts} 步驟">${s.wrong > 0 ? `${s.correct}/${attempts}` : attempts}</td>
         <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
         <td style="font-size:0.78rem">${fmtModes(s.modes)}</td>
@@ -806,12 +884,13 @@ async function loadData() {
     const stu  = r.studentName ? `<span class="stu-tag">👤 ${r.studentName}</span>` : '';
     const d = document.createElement('div');
     d.className = 'recent-card';
+    const wt = wrongTriesOf(r);   // 對話練習沒有扁平 wrongAttempts 欄，過去這張卡從不顯示錯誤嘗試
     d.innerHTML = `
       <div class="recent-header">
         <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
         <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${r.wrongAttempts ? ` ・ 錯誤嘗試 ${r.wrongAttempts} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${r.selfRating ? ` ・ 自評 ${SELF_ICON[r.selfRating]} ${SELF_LABEL[r.selfRating]}` : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${wt ? ` ・ 錯誤嘗試 ${wt} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${r.selfRating ? ` ・ 自評 ${SELF_ICON[r.selfRating]} ${SELF_LABEL[r.selfRating]}` : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }
@@ -843,7 +922,7 @@ async function printWeeklyReport() {
 
   const acc = (list) => {
     let sc = 0, wa = 0;   // sc＝答對數（非總題數，單次作答模式才不會失真）
-    list.forEach(r => { sc += (r.score || 0); wa += (r.wrongAttempts || 0); });
+    list.forEach(r => { sc += (r.score || 0); wa += wrongTriesOf(r); });
     return (sc + wa) > 0 ? Math.round(sc / (sc + wa) * 100) : null;
   };
   const accNow = acc(thisWeek), accPrev = acc(lastWeek);
@@ -858,7 +937,7 @@ async function printWeeklyReport() {
     if (!byU[key]) byU[key] = { n: 0, t: 0, sc: 0, dur: 0, star: 0, wa: 0 };
     byU[key].n++; byU[key].t += (r.total || 0); byU[key].sc += (r.score || 0);
     byU[key].dur += (r.durationSec || 0);
-    byU[key].wa += (r.wrongAttempts || 0);
+    byU[key].wa += wrongTriesOf(r);
     if (r.flawless) byU[key].star++;
   });
   const totalDur = thisWeek.reduce((a, r) => a + (r.durationSec || 0), 0);
@@ -924,7 +1003,7 @@ async function exportCSV() {
   const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
-    const sc = r.score || 0, wa = r.wrongAttempts || 0;   // 分子＝答對數，單次作答模式才不失真
+    const sc = r.score || 0, wa = wrongTriesOf(r);   // 分子＝答對數，單次作答模式才不失真
     const attemptAccPct = (sc + wa) > 0 ? Math.round(sc / (sc + wa) * 100) : 100;
     rows.push([d, r.studentName || '未指定', isMain(r) ? '主課程' : '購物練習',
       r.scenarioName || r.scenarioId, r.situationName || r.situationId,

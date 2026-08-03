@@ -51,61 +51,35 @@ body {
 /* ─── 首頁 ──────────────────────────────────────── */
 
 .home-header {
-  background: linear-gradient(140deg, #1E3A8A 0%, #3730A3 55%, #4F46E5 100%);
-  color: var(--white);
+  background: var(--bg);
+  color: var(--gray-900);
   padding: 14px 20px 16px;
   text-align: center;
-  border-radius: 0 0 20px 20px;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 18px rgba(55, 48, 163, 0.3);
-}
-
-/* 裝飾圓圈 */
-.home-header::before {
-  content: '';
-  position: absolute;
-  top: -50px; right: -50px;
-  width: 220px; height: 220px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 50%;
-  pointer-events: none;
-}
-.home-header::after {
-  content: '';
-  position: absolute;
-  bottom: -80px; left: -40px;
-  width: 280px; height: 280px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
-  pointer-events: none;
 }
 
 .home-header h1 {
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.04em;
-  position: relative;
-  z-index: 1;
+  color: var(--blue);
 }
 .home-header .subtitle {
   font-size: 0.85rem;
-  opacity: 0.85;
+  color: var(--gray-600);
   margin-top: 2px;
-  position: relative;
-  z-index: 1;
 }
 .home-header .header-tagline {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--blue-lt);
+  color: var(--blue);
+  font-weight: 600;
   border-radius: 99px;
   padding: 3px 14px;
   font-size: 0.78rem;
   margin-top: 8px;
-  position: relative;
-  z-index: 1;
 }
 /* 副標「選擇想要練習的情境」與標語「互動練習…」同一列 */
 .home-header .home-subtitle-row {
@@ -120,6 +94,121 @@ body {
 }
 .home-header .home-subtitle-row .subtitle,
 .home-header .home-subtitle-row .header-tagline { margin-top: 0; }
+
+/* ── 首頁角色雙卡：左＝金隊長（選學生）／右＝金好聊（角色介紹＋選學生語音）──
+   用 grid 而非 flex-basis：兩欄寬度由格線本身保證相等，不受兩張卡內文字長短不同影響。 */
+.home-duo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+  max-width: 900px;
+  margin: 16px auto 0;
+  padding: 0 16px;
+}
+.home-duo > .captain-banner,
+.home-duo > .chatdog-card { min-width: 0; height: 100%; }
+@media (min-width: 700px) {
+  .home-duo { grid-template-columns: 1fr 1fr; }
+}
+
+.captain-banner,
+.chatdog-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: inherit;
+}
+
+.captain-banner {
+  background: linear-gradient(135deg, #fffdf5, #fff7e0);
+  border: 2px solid #f5d576;
+}
+.captain-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(245, 158, 11, 0.22);
+  border-color: #f0b429;
+}
+.captain-banner .captain-name { color: #92400e; }
+.captain-banner .captain-line { color: #78350f; }
+
+.chatdog-card {
+  background: linear-gradient(135deg, #f5fdf3, #eafbe6);
+  border: 2px solid #a7e3a0;
+}
+.chatdog-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.2);
+  border-color: #7bcf72;
+}
+.chatdog-card .captain-name { color: #15803d; }
+.chatdog-card .captain-line { color: #166534; }
+
+.captain-avatar { width: clamp(56px, 12vw, 76px); height: clamp(56px, 12vw, 76px); flex-shrink: 0; }
+.captain-avatar img { width: 100%; height: 100%; object-fit: contain; }
+
+.captain-text { flex: 1; min-width: 0; }
+.captain-name { font-weight: 800; font-size: 1em; display: flex; align-items: center; gap: 6px; }
+.captain-line { font-size: 0.8em; margin-top: 3px; line-height: 1.5; }
+
+.captain-cta {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff; font-weight: 700; font-size: 0.85em;
+  padding: 8px 14px; border-radius: 24px; white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);
+}
+.chatdog-cta {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.35);
+}
+
+/* 卡片上的喇叭鈕（播放角色語音，點擊不觸發卡片本身的彈窗） */
+.ai-voice-btn {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 20px;
+  line-height: 1.4;
+  transition: background 0.15s;
+}
+.ai-voice-btn:hover  { background: rgba(255, 255, 255, 0.9); }
+.ai-voice-btn:active { transform: scale(0.94); }
+
+/* 彈窗頂部：角色大頭貼＋台詞泡泡（金隊長選學生彈窗／金好聊彈窗共用） */
+.captain-modal-head { display: flex; align-items: center; gap: 14px; }
+.captain-modal-head img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+.captain-modal-head .bubble {
+  flex: 1;
+  background: #fff7e0;
+  border: 1px solid #f5d576;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85em;
+  line-height: 1.55;
+  color: #78350f;
+}
+.chatdog-modal-head .bubble {
+  background: #eafbe6;
+  border-color: #a7e3a0;
+  color: #14532d;
+}
+
+@media (max-width: 600px) {
+  .captain-banner, .chatdog-card { flex-wrap: wrap; justify-content: center; text-align: center; }
+  .captain-banner .captain-text, .chatdog-card .captain-text { flex: 1 1 100%; }
+  .captain-banner .captain-name, .chatdog-card .captain-name { justify-content: center; }
+}
 
 .scenario-grid {
   display: flex;
@@ -1755,8 +1844,8 @@ body {
 .btn-settings-icon {
   position: absolute;
   top: 16px; right: 16px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.14);
   border-radius: 10px;
   padding: 8px 10px;
   font-size: 1.1rem;
@@ -1766,7 +1855,7 @@ body {
   line-height: 1;
   color: inherit;
 }
-.btn-settings-icon:hover { background: rgba(255, 255, 255, 0.3); }
+.btn-settings-icon:hover { background: rgba(15, 23, 42, 0.12); }
 
 /* 編輯器共用 header */
 .editor-header {
@@ -2978,43 +3067,20 @@ body.aac-mode .practice-footer::before {
   vertical-align: -0.35em;
 }
 
-.student-chip {
-  margin-top: 10px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 2px solid rgba(255, 255, 255, 0.55);
-  color: var(--white);
-  border-radius: 99px;
-  padding: 8px 18px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-.student-chip:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.04); }
-.student-chip--set  { background: rgba(255, 255, 255, 0.92); color: var(--blue); }
-/* 主頁：選擇學生 + 獎勵系統 並排 */
-.home-chip-row { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.home-chip-row .student-chip { margin-top: 0; }
-
-/* 主頁「選擇學生語音」頭像列 */
+/* 金好聊卡片內：選擇學生語音頭像列 */
 .home-student-block {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #d9f0d5;
 }
-.home-student-label { font-size: 0.8rem; color: var(--white); opacity: 0.9; font-weight: 600; }
-.home-student-strip { display: flex; gap: 8px; }
+.home-student-label { font-size: 0.85rem; color: var(--gray-900); font-weight: 700; }
+.home-student-note { font-size: 0.75rem; color: var(--gray-600); margin: 4px 0 8px; line-height: 1.5; }
+.home-student-strip { display: flex; gap: 8px; flex-wrap: wrap; }
 .home-student-avatar {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.6);
+  border: 2px solid var(--gray-200);
   background: var(--white);
   padding: 0;
   overflow: hidden;

@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v137';
+const APP_VERSION = 'v142';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -140,19 +140,6 @@ function normalizePronunciation(text) {
   }
   return t.trim();
 }
-
-// 計算中文字數（一字 = 一音節）
-function countChinese(text) {
-  return (text.match(/[一-鿿㐀-䶿]/g) || []).length;
-}
-
-// 兩段文字的音節比率（0~1）
-function syllableRatio(a, b) {
-  const ca = countChinese(a), cb = countChinese(b);
-  if (!ca || !cb) return 0;
-  return Math.min(ca, cb) / Math.max(ca, cb);
-}
-
 
 // ─── 語音輸入（Web Speech API）──────────────────────
 
@@ -901,6 +888,7 @@ function playInnerOS(step, osText, onDone) {
 let _shopkeeperAudio = null;
 let _feedbackAudio   = null;
 let _userAudio       = null;   // 學生示範音檔（本機 edge-tts 伺服器產生）
+let _homeCharAudio   = null;   // 首頁角色語音（金隊長／金好聊）
 
 // 本機 edge-tts 語音伺服器（voicegen/voice_server.py）：學生語音優先走它，音色最準；
 // 連不到就退回瀏覽器即時 TTS。_voiceServerDown 記住本次 session 是否連過失敗，避免重複卡頓。
@@ -920,12 +908,37 @@ function stopAllAudio() {
   if (_shopkeeperAudio) { _shopkeeperAudio.pause(); _shopkeeperAudio = null; }
   if (_feedbackAudio)   { _feedbackAudio.pause();   _feedbackAudio   = null; }
   if (_userAudio)       { _userAudio.pause();       _userAudio       = null; }
+  if (_homeCharAudio)   { _homeCharAudio.pause();   _homeCharAudio   = null; }
   // 跟讀的自己錄音回放（echoRecorder 於後方定義，執行期才會用到）
   if (typeof echoRecorder !== 'undefined' && echoRecorder._audio) {
     try { echoRecorder._audio.pause(); } catch {}
     echoRecorder._audio = null;
   }
   tts.cancel();
+}
+
+// ── 首頁角色語音（金隊長／金好聊，共用主站 audio/chatbot 預錄音檔＋文字與主頁一致）──
+const HOME_CHAR_SPEECH = {
+  captain: { audio: '../audio/chatbot/index_captain_intro', text: '大家好，我是金隊長！你的努力，我都會記錄下來。跟我一起完成今天的任務，每天比昨天更進步！' },
+  chatdog: { audio: '../audio/chatbot/index_chatdog_intro', text: '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！' },
+};
+function speakHomeCharacter(key) {
+  const c = HOME_CHAR_SPEECH[key];
+  if (!c) return;
+  stopAllAudio();
+  const exts = ['mp3', 'wav'];
+  let i = 0;
+  const tryNext = () => {
+    if (i >= exts.length) { tts.speak(c.text, 0.92); return; }
+    const audio = new Audio(`${c.audio}.${exts[i++]}`);
+    _homeCharAudio = audio;
+    let advanced = false;
+    const fail = () => { if (advanced) return; advanced = true; tryNext(); };
+    audio.onerror = fail;
+    audio.onended = () => { if (_homeCharAudio === audio) _homeCharAudio = null; };
+    audio.play().catch(fail);
+  };
+  tryNext();
 }
 
 // ── Android 媒體控制卡殘留修復（2026-07-23，同 adventure）────────
@@ -1593,12 +1606,11 @@ function setCurrentStudent(s) {
 }
 
 function renderStudentChip() {
-  const btn = document.getElementById('btn-student');
-  if (!btn) return;
+  const chip = document.getElementById('btn-student-cta');
+  if (!chip) return;
   const cur = getCurrentStudent();
   const label = cur ? (cur.name || '(未命名)') : '選擇學生';
-  btn.innerHTML = `<span class="icon-badge">👤</span> ${label}`;
-  btn.classList.toggle('student-chip--set', !!cur);
+  chip.innerHTML = `<span class="icon-badge">👤</span> ${label}`;
 }
 
 function openStudentModal() {
@@ -2016,6 +2028,26 @@ function playFeedbackAudio(text, score) {
     const audio = new Audio(candidates[idx++]);
     _feedbackAudio = audio;
     audio.onended = () => { if (_feedbackAudio === audio) _feedbackAudio = null; };
+    audio.onerror = () => { if (_feedbackAudio === audio) { _feedbackAudio = null; tryNext(); } };
+    audio.play().catch(() => { if (_feedbackAudio === audio) { _feedbackAudio = null; tryNext(); } });
+  };
+  tryNext();
+}
+
+// 初級「有講話就給部分對」的專屬語音：先播一句通用肯定語，唸完接原本步驟的「可以這樣說」示範音檔。
+// 肯定語全站共用同一句、同一個檔案，不必比照 playFeedbackAudio 逐步驟各錄一份。
+const SPOKE_ACK_TEXT = '很棒，你有說出口！';
+function playSpokeAckThenFeedback(demoText) {
+  stopAllAudio();
+  const proceed = () => playFeedbackAudio(demoText, 'failed');
+  if (state.scenario?.isCustom) { tts.speak(SPOKE_ACK_TEXT, 0.85, proceed); return; }
+  const candidates = ['audio/feedback/spoke_detected.mp3', 'audio/feedback/spoke_detected.wav'];
+  let idx = 0;
+  const tryNext = () => {
+    if (idx >= candidates.length) { tts.speak(SPOKE_ACK_TEXT, 0.85, proceed); return; }
+    const audio = new Audio(candidates[idx++]);
+    _feedbackAudio = audio;
+    audio.onended = () => { if (_feedbackAudio === audio) _feedbackAudio = null; proceed(); };
     audio.onerror = () => { if (_feedbackAudio === audio) { _feedbackAudio = null; tryNext(); } };
     audio.play().catch(() => { if (_feedbackAudio === audio) { _feedbackAudio = null; tryNext(); } });
   };
@@ -2991,19 +3023,18 @@ function renderOptions() {
 
 // ─── 處理輸入（統一入口）────────────────────────────
 
-// 依難度調整評分（含音節數回退）
+// 依難度調整評分
 function applyDifficultyRules(result, text, step) {
-  // 初級＝音節寬鬆：完全沒對到關鍵字，但字數/長度接近 → 給「部分對」（鼓勵開口）
-  if (state.difficulty === 'easy' && result.score === 'failed') {
-    if (syllableRatio(text, step.accepted_phrases?.[0] || '') >= 0.55 && countChinese(text) >= 1) {
-      result = { score: 'partial', detected: [], syllableFallback: true };
-    }
+  // 初級：完全沒對到關鍵字，但只要有偵測到語音（開口說了什麼）→ 給「部分對」（鼓勵開口，但不算數）。
+  // 重度障礙學生的門檻是「有沒有開口」，連音節長度寬鬆都太難，故不比對長度，只看有沒有講話。
+  if (state.difficulty === 'easy' && result.score === 'failed' && text.trim().length > 0) {
+    result = { score: 'partial', detected: [], spokeFallback: true };
   }
-  // 初級：有對到關鍵字的結果升級為全對；音節寬鬆給的部分對不升
-  //（否則「沒有」對「你好」只因長度相近就被當全對）
-  if (state.difficulty === 'easy' && result.score !== 'failed' && !result.syllableFallback)
+  // 初級：有對到關鍵字的結果升級為全對；上面「有講話但沒對到」的部分對不升
+  //（否則只要開口就會被當全對，關鍵字比對形同虛設）
+  if (state.difficulty === 'easy' && result.score !== 'failed' && !result.spokeFallback)
     return { ...result, score: 'perfect' };
-  // 中級＝純關鍵字：沒對到關鍵字即答錯，不做音節寬鬆（此處不加料，直接回傳引擎結果）
+  // 中級＝純關鍵字：沒對到關鍵字即答錯，不做寬鬆處理（此處不加料，直接回傳引擎結果）
   return result;
 }
 
@@ -3021,7 +3052,7 @@ function evaluateInput(text, step) {
     const ok = !!t && accepts.some(p => norm(p) === t);
     return { score: ok ? 'perfect' : 'failed', detected: [] };
   }
-  // 初級（音節寬鬆）/ 中級（關鍵字）：關鍵字比對 + 難度規則
+  // 初級（有講就給部分對）/ 中級（關鍵字）：關鍵字比對 + 難度規則
   // 套用教師在設定頁修改的「內建關鍵字覆寫」（高級不看關鍵字，故上面已先 return）
   const kwStep = withEffectiveKeywords(step);
   const raw = engine.evaluate(text, kwStep);
@@ -3082,15 +3113,23 @@ function handleResult(text, result) {
     sfx.correct();
     playFeedbackAudio(step.feedback.perfect, 'perfect');
 
+  } else if (result.score === 'partial' && result.spokeFallback) {
+    // 初級專屬：關鍵字沒對到，但有偵測到語音就先肯定「有開口」，再接原本的示範句語音，
+    // 不算全對（不進精熟／連續答對，失敗次數照計，跟其他非全對結果一致）。
+    resultEl.className   = 'feedback-result partial';
+    resultEl.innerHTML   = '<span class="result-icon">👏</span><span class="result-text">很棒，你有說出口！</span>';
+    renderFeedbackMsg(msgEl, step.feedback.failed);
+    sfx.partial();
+    playSpokeAckThenFeedback(step.feedback.failed);
+    state.failCount++;
+    if (state.failCount >= 3 && state.difficulty !== 'hard') showHint();  // 高級不自動提示，只能按「💡 提示」
+
   } else if (result.score === 'partial') {
     resultEl.className   = 'feedback-result partial';
     resultEl.innerHTML   = '<span class="result-icon">💪</span><span class="result-text">再試一次！</span>';
-    const partialMsg = result.syllableFallback
-      ? `偵測到你有說話！請試著說清楚：「${step.accepted_phrases[0]}」`
-      : step.feedback.partial;
-    renderFeedbackMsg(msgEl, partialMsg);
+    renderFeedbackMsg(msgEl, step.feedback.partial);
     sfx.partial();
-    playFeedbackAudio(partialMsg, 'partial');
+    playFeedbackAudio(step.feedback.partial, 'partial');
     state.failCount++;
     if (state.failCount >= 3 && state.difficulty !== 'hard') showHint();  // 高級不自動提示，只能按「💡 提示」
 
@@ -4217,6 +4256,8 @@ document.addEventListener('keydown', (e) => {
   if (!document.getElementById('student-voice-modal').hidden) { hideStudentVoicePopup(); return; }
   if (!document.getElementById('hint-modal').hidden)     { hideHint();     return; }
   if (!document.getElementById('feedback-modal').hidden) { hideFeedback(); return; }
+  if (!document.getElementById('student-modal').hidden)  { document.getElementById('student-modal').hidden = true; return; }
+  if (!document.getElementById('chatdog-modal').hidden)  { stopAllAudio(); document.getElementById('chatdog-modal').hidden = true; return; }
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -4493,9 +4534,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-vs-play').addEventListener('click', () => voiceStudio.playRecording());
   document.getElementById('btn-vs-del').addEventListener('click', () => voiceStudio.deleteRecording());
 
-  // 學生選擇
+  // 學生選擇（金隊長卡片，點擊開啟選學生彈窗）
   renderStudentChip();
-  document.getElementById('btn-student').addEventListener('click', openStudentModal);
+  const btnStudent = document.getElementById('btn-student');
+  btnStudent.addEventListener('click', openStudentModal);
+  btnStudent.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openStudentModal(); }
+  });
+  document.getElementById('student-backdrop').addEventListener('click', () => {
+    document.getElementById('student-modal').hidden = true;
+  });
+
+  // 金好聊卡片：點擊開啟角色介紹＋選擇學生語音彈窗
+  const btnChatdog = document.getElementById('btn-chatdog-open');
+  const openChatdogModal = () => { sfx.click(); document.getElementById('chatdog-modal').hidden = false; };
+  btnChatdog.addEventListener('click', openChatdogModal);
+  btnChatdog.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChatdogModal(); }
+  });
+  document.getElementById('chatdog-backdrop').addEventListener('click', () => {
+    stopAllAudio();
+    document.getElementById('chatdog-modal').hidden = true;
+  });
 
   // 情境分部 tab：同一版面過濾顯示（第一/二/三部分＋自訂）
   document.getElementById('home-parts')?.addEventListener('click', (e) => {
@@ -4509,9 +4569,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-home-reward')?.addEventListener('click', () => {
     if (typeof RewardLauncher !== 'undefined') RewardLauncher.open();
     else window.open('../reward/index.html', 'RewardSystem', 'width=1200,height=800');
-  });
-  document.getElementById('student-backdrop').addEventListener('click', () => {
-    document.getElementById('student-modal').hidden = true;
   });
 
   // 店員介紹彈窗
