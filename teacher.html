@@ -519,6 +519,20 @@ function wrongTriesOf(r) {
     n + (st?.score === 'perfect' ? Math.max(0, (st?.attempts || 1) - 1) : (st?.attempts || 1)), 0);
 }
 
+// ── 一場紀錄是否「🌟 無錯通過」（唯一來源，勿在各處自行展開）────────────
+// 定義＝全部答對，而且過程中一次都沒錯。**「全對」本身不夠**：24 單元多是反複作答
+// （答錯要重做到對才過關），score 幾乎恆等於 total，光看分數分不出「一次就對」和
+// 「錯三次才對」——所以必須併看錯誤次數。
+//
+// 24 單元存檔時已算好 flawless 欄（learning-tracker.js：total>0 && wrongAttempts===0
+// && score>=total）；對話練習沒有這個欄位，過去各處自行用 `score === total` 代替，
+// 等於**允許中途重試**，標準比主課程寬一截（精熟門檻因此對對話練習實質較低）。
+// 這裡用 wrongTriesOf(r)===0 補上「沒重試過」，兩種來源判準一致。
+function flawlessOf(r) {
+  if (isMain(r)) return !!r.flawless;
+  return (r.total || 0) > 0 && (r.score || 0) === r.total && wrongTriesOf(r) === 0;
+}
+
 // ── 精熟標準（全班預設 mt_mastery_default；個別覆寫 mt_mastery_{id}）──
 // minDiff＝列入「整體精熟」的最低難度；低於此的難度仍各自算狀態，只是不列入整體。
 const MASTERY_FALLBACK = { pct: 80, streak: 3, flawless: true, minDiff: 'easy' };
@@ -568,7 +582,7 @@ function renderMasteryBar(who) {
 // 回傳 'mastered' | 'close' | 'not' —— list 需為「同一難度」的紀錄（依 ts 升冪）
 function masteryStatus(list, m) {
   const pass = (r) => ((r.total > 0 ? (r.score / r.total) * 100 : 100) >= m.pct) &&
-                      (!m.flawless || r.flawless);
+                      (!m.flawless || flawlessOf(r));
   if (list.length >= m.streak && list.slice(-m.streak).every(pass)) return 'mastered';
   if (list.length > 0 && pass(list[list.length - 1])) return 'close';
   return 'not';
@@ -668,7 +682,7 @@ async function loadData() {
     byUnit[u].correct += (r.score || 0);
     byUnit[u].wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
     byUnit[u].wrongTries += wrongTriesOf(r);
-    if (r.flawless) byUnit[u].flawless++;
+    if (flawlessOf(r)) byUnit[u].flawless++;
     byUnit[u].dur     += (r.durationSec || 0);
     const dk = normDiff(r);   // 與精熟判定用同一套正規化，難度欄與 🎯 欄才不會對不上
     byUnit[u].diffs[dk] = (byUnit[u].diffs[dk] || 0) + 1;
@@ -791,7 +805,7 @@ async function loadData() {
     s.correct += (r.score || 0);
     s.wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
     s.wrongTries += wrongTriesOf(r);
-    if ((r.total || 0) > 0 && (r.score || 0) === r.total) s.flawless++;   // 全步驟正確＝無錯通過
+    if (flawlessOf(r)) s.flawless++;   // 全步驟正確且沒重試過（判準與 24 單元一致）
     s.dur += (r.durationSec || 0);
     const dk = normDiff(r);   // 與精熟判定用同一套正規化，難度欄與 🎯 欄才不會對不上
     s.diffs[dk] = (s.diffs[dk] || 0) + 1;
@@ -812,8 +826,7 @@ async function loadData() {
       const attempts = s.correct + s.wrong;
       // 分子＝真正答對數（非總步驟數）：跳過的步驟不該算成正確操作。理由同主課程表。
       const attemptAccPct = (s.correct + s.wrongTries) > 0 ? Math.round(s.correct / (s.correct + s.wrongTries) * 100) : 100;
-      const sorted = [...s.list].sort((a, b) => a.ts - b.ts)
-        .map(r => ({ ...r, flawless: (r.total > 0 && r.score === r.total) }));   // 供精熟判定
+      const sorted = [...s.list].sort((a, b) => a.ts - b.ts);   // 精熟判定改由 flawlessOf() 認定，不需再補欄位
       const last = sorted[sorted.length - 1];
       const lastPct = last.total > 0 ? Math.round(last.score / last.total * 100) : 100;
       const prev = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
@@ -890,7 +903,7 @@ async function loadData() {
         <span class="recent-scenario">${isMain(r) ? '📚 ' : '🐕 '}${r.situationName || r.situationId}</span>
         <span>${stu} ${'⭐'.repeat(r.stars || 0)}</span>
       </div>
-      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${wt ? ` ・ 錯誤嘗試 ${wt} 次` : ''}${r.flawless ? ' ・ 🌟 無錯通過' : ''}${r.selfRating ? ` ・ 自評 ${SELF_ICON[r.selfRating]} ${SELF_LABEL[r.selfRating]}` : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
+      <div class="recent-meta">${DIFF[r.difficulty] || r.difficulty || ''} ・ 答對 ${r.score}/${r.total}${wt ? ` ・ 錯誤嘗試 ${wt} 次` : ''}${flawlessOf(r) ? ' ・ 🌟 無錯通過' : ''}${r.selfRating ? ` ・ 自評 ${SELF_ICON[r.selfRating]} ${SELF_LABEL[r.selfRating]}` : ''} ・ 時長 ${r.durationSec || 0} 秒 ・ ${date}</div>`;
     recent.appendChild(d);
   });
 }
@@ -938,7 +951,7 @@ async function printWeeklyReport() {
     byU[key].n++; byU[key].t += (r.total || 0); byU[key].sc += (r.score || 0);
     byU[key].dur += (r.durationSec || 0);
     byU[key].wa += wrongTriesOf(r);
-    if (r.flawless) byU[key].star++;
+    if (flawlessOf(r)) byU[key].star++;
   });
   const totalDur = thisWeek.reduce((a, r) => a + (r.durationSec || 0), 0);
   const rows = Object.entries(byU).map(([name, s]) => {
@@ -1009,7 +1022,7 @@ async function exportCSV() {
       r.scenarioName || r.scenarioId, r.situationName || r.situationId,
       DIFF[r.difficulty] || r.difficulty || '', r.score,
       Math.max(0, (r.total || 0) - (r.score || 0)), wa, attemptAccPct,
-      r.flawless ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0]);
+      flawlessOf(r) ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
