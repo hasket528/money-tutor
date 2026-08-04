@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v143';
+const APP_VERSION = 'v145';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -467,7 +467,23 @@ const userVoiceManager = {
       all.find(v => hiFi(v))                           ||   // 任一高品質
       all.find(v => v !== clerk)                       ||   // 退：與店員不同
       all[0] || null;
-    this.selectedStudentIdx = 0;
+    // 站台主頁的金好聊彈窗也能選學生語音，選擇存在 sp_studentVoiceIdx（兩邊共用同一個鍵）
+    this.selectedStudentIdx = this.loadIdx();
+    const chosen = STUDENT_PROFILES[this.selectedStudentIdx];
+    if (chosen) {
+      const matched = all.find(v => v.name.includes(chosen.voiceKeyword));
+      if (matched) this.selected = matched;
+    }
+  },
+
+  STORE_KEY: 'sp_studentVoiceIdx',
+  loadIdx() {
+    const n = parseInt(localStorage.getItem(this.STORE_KEY), 10);
+    return Number.isInteger(n) && n >= 0 && n < STUDENT_PROFILES.length ? n : 0;
+  },
+  saveIdx(idx) {
+    this.selectedStudentIdx = idx;
+    try { localStorage.setItem(this.STORE_KEY, String(idx)); } catch (e) {}
   },
 
   getInfo(v) { return voiceManager.getInfo(v); },
@@ -1659,6 +1675,9 @@ const THEME_PRESETS = [
 
 // ─── 導覽堆疊 ────────────────────────────────────────
 
+// 這一次是從站台主頁深連結進來的（?editor=new）：返回時要回站台主頁，不是本模組首頁
+let _fromSiteHome = false;
+
 const nav = {
   stack: [],
   push(toId) {
@@ -1859,7 +1878,7 @@ function renderUserVoiceSelector() {
       ${roleHtml}
     `;
     card.addEventListener('click', () => {
-      userVoiceManager.selectedStudentIdx = idx;
+      userVoiceManager.saveIdx(idx);   // 存起來，主頁的金好聊彈窗與下次開啟都吃同一個選擇
       userVoiceManager.selected = matchedVoice || fallback;
       sfx.click();
       speakAsUser('我要點餐！');
@@ -1878,7 +1897,7 @@ function selectStudentVoice(idx) {
                 || voiceManager.all.find(v => v.name.includes('Yating'))
                 || voiceManager.all[0] || null;
   const matched  = voiceManager.all.find(v => v.name.includes(student.voiceKeyword));
-  userVoiceManager.selectedStudentIdx = idx;
+  userVoiceManager.saveIdx(idx);
   userVoiceManager.selected = matched || fallback;
   return { student, matched };
 }
@@ -3926,6 +3945,8 @@ function saveScenario() {
 
   saveCustom(arr);
   sfx.click();
+  // 從站台主頁的「去建立自訂情境」進來的：存好就回主頁的自訂情境頁（新情境會出現在那裡）
+  if (_fromSiteHome) { location.href = '../index.html?hero=chatdog&part=custom'; return; }
   nav.pop();
   renderSettings();
   // 從首頁 ➕ 卡進來時，pop 回首頁需重繪卡片列表
@@ -4279,9 +4300,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   userVoiceManager.init();
 
 
-  // 情境選擇頁：上一頁（=首頁）+ 返回主頁
-  document.getElementById('btn-sit-back').addEventListener('click', renderHome);
-  document.getElementById('btn-sit-home').addEventListener('click', renderHome);
+  // 「🏠 返回主頁」＝回**站台主頁**（不是本模組首頁），並讓主頁直接停在金好聊＋這個場所所屬的分部。
+  // 「← 上一頁」才是回本模組首頁。
+  const goSiteHome = () => {
+    const part = SCENARIO_PART[state.scenario?.id];
+    location.href = '../index.html?hero=chatdog' + (part ? '&part=' + part : '');
+  };
+
+  // 情境選擇頁：只有「返回主頁」（上一頁鈕已移除，見 index.html 的說明）
+  document.getElementById('btn-sit-home').addEventListener('click', goSiteHome);
 
   // 簡易版 / 完整版切換
   document.querySelectorAll('.sit-mode-btn').forEach(btn => {
@@ -4298,7 +4325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (state.scenario?.situations) showScreen('screen-situation');
     else renderHome();
   });
-  document.getElementById('btn-diff-home').addEventListener('click', renderHome);
+  document.getElementById('btn-diff-home').addEventListener('click', goSiteHome);
   // 鷹架卡（置頂，僅主情境顯示）：系統帶練，終點開口說
   document.getElementById('diff-scaffold-card').addEventListener('click', () => { sfx.click(); startScaffoldMode(); });
   // 難度卡（初/中/高級）：只綁有 data-level 的卡，避免誤把鷹架卡當難度
@@ -4312,7 +4339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 練習頁：上一頁（=難度/模式選擇頁）+ 返回主頁
   document.getElementById('btn-prev').addEventListener('click', () => showScreen('screen-difficulty'));
-  document.getElementById('btn-back').addEventListener('click', renderHome);
+  document.getElementById('btn-back').addEventListener('click', goSiteHome);
 
   // 麥克風按鈕
   document.getElementById('btn-mic').addEventListener('click', startListening);
@@ -4516,6 +4543,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (editingScenarioIdx < 0 && editingScenarioId && typeof dbAudioDeletePrefix === 'function') {
       dbAudioDeletePrefix(`${editingScenarioId}::`).catch(() => {});
     }
+    // 從站台主頁的「去建立自訂情境」直接進來的話，nav 堆疊是空的（會落回本模組首頁）→ 回站台主頁的自訂情境頁
+    if (_fromSiteHome) { location.href = '../index.html?hero=chatdog&part=custom'; return; }
     nav.pop();
   });
   document.getElementById('btn-save-scenario').addEventListener('click', saveScenario);
@@ -4640,7 +4669,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 啟動
-  renderHome();
+  // 站台主頁的場所卡片會帶 ?scenario=<id> 進來（?part=<1-7> 只選分部不進情境），
+  // 這樣學生在主頁點了「便利商店」就直接開始，不用到這裡再找一次。
+  {
+    const q  = new URLSearchParams(location.search);
+    const sp = q.get('part');
+    if (sp && (/^[1-7]$/.test(sp) || sp === 'custom')) {
+      homePart = sp;
+      document.querySelectorAll('.home-part-btn').forEach(b => b.classList.toggle('active', b.dataset.part === sp));
+    }
+    const sid = q.get('scenario');
+    const sc  = sid ? getAllScenarios().find(s => s.id === sid && s.available !== false) : null;
+    // renderHome() 結尾會 showScreen('screen-home')，直接跳情境時會先閃一下首頁 →
+    // 先建好首頁內容（返回時要用），再立刻切到情境頁，中間不讓首頁露臉
+    renderHome();
+    if (sc) startScenario(sc);
+    // 站台主頁的「去建立自訂情境 →」帶 ?editor=new 進來：直接開新增情境的編輯頁
+    else if (q.get('editor') === 'new') { _fromSiteHome = true; openScenarioEditor(-1); }
+    document.documentElement.classList.remove('deep-link');   // 擋幕收起（見 index.html 的說明）
+  }
 
   // ─── 除錯工具初始化 ──────────────────────────────
   if (new URLSearchParams(location.search).get('debug') === '1') {

@@ -17,6 +17,25 @@
 </head>
 <body>
 
+  <!-- 深連結（站台主頁點某個場所進來，網址帶 ?scenario=）：先把首頁蓋住再切到情境頁。
+       啟動流程要 await voiceManager.init()，中間會讓出去繪製一次 → 不擋的話會先閃一下首頁。
+       擋幕由 script.js 啟動段收尾時移除（找不到該場所也會移除，退回正常首頁）。 -->
+  <script>
+    if (new URLSearchParams(location.search).get('scenario')) {
+      document.documentElement.classList.add('deep-link');
+    }
+  </script>
+  <style>
+    html.deep-link #screen-home { display: none !important; }
+    html.deep-link .deep-link-mask {
+      position: fixed; inset: 0; z-index: 50; display: flex;
+      align-items: center; justify-content: center; gap: 10px;
+      background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 1.05rem;
+    }
+    .deep-link-mask { display: none; }
+  </style>
+  <div class="deep-link-mask" aria-hidden="true">🛒 正在開啟情境…</div>
+
   <!-- Skip-to-content（鍵盤/screen reader 快速跳到主要內容） -->
   <a href="#screen-home" class="skip-link">跳到主要內容</a>
 
@@ -60,6 +79,49 @@
       .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
       .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
       .site-nav a:hover { background:rgba(255,255,255,0.30); }
+      .site-nav a.current { background:#f59e0b; }   /* 與其他頁一致：目前頁面標橘色 */
+
+      /* ── 標題旁的跳頁三角形（「◀ 金錢小達人—日常對話練習」→ 回主頁）──
+             主頁 index.html 有一份鏡像的 ▶，改樣式時兩邊要一起改。
+             這裡的三角形用 0.5em/0.72em：本頁標題只有 1.4rem，用主頁的比例會太小。
+         ⚠️ 命中區固定 44×44（特教觸控最小尺寸）；hover 回饋只改底色/亮度，不用 scale/translate。 */
+      /* 用 block＋vertical-align（不用 inline-flex）：手機窄螢幕時標題文字才能自然換行 */
+      .title-jump-wrap { position: relative; }
+      .title-jump {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 44px; height: 44px; vertical-align: middle;
+        margin-right: 2px; border-radius: 50%;
+        text-decoration: none; cursor: pointer;
+        transition: background 0.15s, filter 0.15s;
+        touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      }
+      .title-jump:hover  { background: rgba(37,99,235,0.16); }
+      .title-jump:active { filter: brightness(0.85); }
+      .title-jump .tj-tri {
+        width: 0; height: 0; color: var(--blue);
+        border-top: 0.5em solid transparent;
+        border-bottom: 0.5em solid transparent;
+        border-right: 0.72em solid currentColor;   /* 左指三角形 */
+      }
+      /* 滑鼠移到標題（含三角形）就冒出的說明泡泡；觸控裝置無 hover，另有 title 屬性 */
+      .title-tip {
+        position: absolute; left: 50%; top: 100%;
+        transform: translateX(-50%);
+        background: #1e293b; color: #fff;
+        font-size: 0.85rem; font-weight: 600; letter-spacing: 0; line-height: 1.4;
+        padding: 7px 14px; border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        white-space: nowrap; pointer-events: none; z-index: 5;
+        opacity: 0; visibility: hidden; transition: opacity 0.18s;
+      }
+      .title-jump-wrap:hover .title-tip,
+      .title-jump:focus-visible + .title-tip { opacity: 1; visibility: visible; }
+      @media (max-width: 640px) {
+        .title-tip { font-size: 0.78rem; white-space: normal; max-width: 84vw; }
+        /* 讓出右上角 ⚙️（absolute，right:16px）的位置：標題改成兩行也不會被蓋住。
+           左右對稱留白，標題才仍是視覺置中。加了 ◀ 之後尤其需要。 */
+        .home-header h1 { padding: 0 46px; }
+      }
     </style>
     <!-- 直接雙擊 index.html（file://）開啟時的限制警告，只在該情況顯示 -->
     <div id="file-protocol-warn" class="file-warn" hidden>
@@ -70,6 +132,9 @@
     </div>
     <nav class="site-nav">
       <a href="../index.html">🏠 主頁</a>
+      <a href="index.html" class="current">💬 日常對話練習</a>
+      <a href="../index.html?hero=doctor">🗺️ 一日金錢冒險</a>
+      <a href="../index.html?hero=detective">🎮 小遊戲</a>
       <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
       <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
       <a href="../teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
@@ -79,7 +144,9 @@
     </nav>
     <header class="home-header">
       <button class="btn-settings-icon" id="btn-settings" aria-label="設定自訂情境">⚙️</button>
-      <h1>金錢小達人—日常對話練習</h1>
+      <h1 class="title-jump-wrap"><a class="title-jump" href="../index.html"
+              title="按下去可以切換回「金錢小達人」主頁" aria-label="切換回金錢小達人主頁"><span class="tj-tri" aria-hidden="true"></span></a>金錢小達人—日常對話練習<span
+              class="title-tip">按下 ◀ 可以切換回「金錢小達人」主頁</span></h1>
       <div class="home-subtitle-row">
         <p class="subtitle">選擇想要練習的情境</p>
         <span class="header-tagline" aria-hidden="true">互動練習 &nbsp;·&nbsp; 語音對話 &nbsp;·&nbsp; 即時回饋</span>
@@ -146,9 +213,9 @@
   ════════════════════════════════════════ -->
   <div id="screen-situation" class="screen">
     <header class="app-header">
-      <div class="ah-left">
-        <button class="btn-back-text" id="btn-sit-back">← 上一頁</button>
-      </div>
+      <!-- 情境選擇是進來的第一頁，「上一頁」沒有意義（要離開就按右邊的返回主頁），
+           左側留一塊等寬佔位讓標題維持置中 -->
+      <div class="ah-left" aria-hidden="true"></div>
       <div class="ah-center">
         <div class="ah-ctitle">
           <span class="ah-icon" id="sit-icon" aria-hidden="true"></span>

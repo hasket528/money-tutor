@@ -2,6 +2,26 @@
  * GameUI — 小遊戲共用 UI 元件
  * HUD、倒數開場、Combo 動畫、得分飛出、粒子爆炸、結束畫面
  */
+
+// ── 內嵌模式（站台主頁用 iframe 開遊戲，網址帶 ?embed=1）──────────────
+// 這時「返回選單／遊戲選單」不能自己導去 games/index.html（會把主頁換掉），
+// 改成通知外層主頁關掉 iframe、停在原來那一頁遊戲清單。
+const GUE_EMBED = new URLSearchParams(location.search).get('embed') === '1';
+function gueBackToMenu() {
+  if (GUE_EMBED) { try { parent.postMessage({ type: 'mt-game-back' }, '*'); } catch (e) {} return; }
+  location.href = '../index.html';
+}
+if (GUE_EMBED && !window.__gueEmbedBack) {
+  window.__gueEmbedBack = true;   // 與 games/js/embed-back.js 二選一，不重複註冊
+  // 各遊戲頁自己也有「← 遊戲選單／← 返回」連結，統一在捕獲階段攔下來
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('.gue-back-link, .gue-back-btn, a[href="../index.html"]');
+    if (!el) return;
+    e.preventDefault();
+    gueBackToMenu();
+  }, true);
+}
+
 class GameUI {
   constructor() {
     this._particleColors = [
@@ -209,7 +229,7 @@ class GameUI {
     document.getElementById('gue-replay-btn')
       .addEventListener('click', () => location.reload());
     document.getElementById('gue-home-btn')
-      .addEventListener('click', () => { location.href = '../index.html'; });
+      .addEventListener('click', () => gueBackToMenu());
     document.getElementById('gue-clear-hs-btn')
       .addEventListener('click', () => {
         localStorage.removeItem(`miniGame_${gameId}_highScore`);

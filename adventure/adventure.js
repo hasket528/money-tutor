@@ -359,6 +359,9 @@ const Adventure = {
           scene: n => `${n}看上了一個物品，決定每天存錢！` },
     ],
 
+    // 首頁金博士的開場白（同時是 🔊 鈕唸的內容；改字要一起看預錄語音是否需重生）
+    DOC_INTRO: '今天要出門走七個地方：數零用錢、去 ATM 領錢、買東西、結帳找零、路邊比價、回家路上小心陌生人，最後把剩下的錢存起來。',
+
     // ── 過場文字（text 接受 char 與 storyLog）─────────────────
     TRANSITIONS: {
         1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${c.name}${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
@@ -928,6 +931,15 @@ const Adventure = {
         // 例：?preview=早餐店、?preview=9、?preview=0（第一個）；下方帶 ◀▶ 可翻看全部場景。
         const pv = p.get('preview');
         if (pv !== null) { this._previewScene(pv); return; }
+        // 站台主頁的「一日金錢冒險」大框會帶 ?start=1&char=<角色id> 進來：
+        // 學生在主頁已經選好角色了，這裡就直接開場，不用再看一次設定頁。
+        if (p.get('start') === '1') {
+            const cid = p.get('char') || localStorage.getItem('adv_selectedChar');
+            this.state.char = this.CHARACTERS.find(c => c.id === cid) || this.CHARACTERS[0];
+            history.replaceState(null, '', location.pathname);
+            this._startGame();
+            return;
+        }
         const resume = parseInt(p.get('resume') || '0');
         if (resume > 0) {
             const saved = JSON.parse(sessionStorage.getItem('adv_state') || 'null');
@@ -999,6 +1011,82 @@ const Adventure = {
             b.addEventListener('pointerdown', e => { e.preventDefault(); location.search = '?preview=' + b.dataset.go; }));
     },
 
+    // ── 首頁的冒險路徑（方格由左至右，中間彎曲斜線＋箭頭）────────
+    // 方格用 HTML/grid 排（文字可縮放、換行交給瀏覽器），連線用 SVG 依「實際量到的座標」畫，
+    // 所以無論一行排幾格、視窗怎麼縮放，箭頭都會接在正確的兩格之間。
+    _roadHTML() {
+        const nodes = this.LEVELS.map((l, i) => `
+          <div class="adv-road-node" title="${l.title}">
+            <div class="adv-road-num">${i + 1}</div>
+            <div class="adv-road-icon">${l.icon}</div>
+            <div class="adv-road-title">${l.title}</div>
+          </div>`).join('');
+        return `<div class="adv-road" id="adv-road">
+            <div class="adv-road-inner" id="adv-road-inner">
+              <svg class="adv-road-svg" id="adv-road-svg" aria-hidden="true"></svg>
+              <div class="adv-road-grid">${nodes}</div>
+            </div>
+          </div>
+          <div class="adv-road-hint">← 左右滑動看完整路線 →</div>`;
+    },
+
+    _drawRoad() {
+        // 座標一律相對 inner（不是相對會捲動的外框），橫向捲動時連線才不會跟方格錯開
+        const inner = document.getElementById('adv-road-inner');
+        const svg   = document.getElementById('adv-road-svg');
+        if (!inner || !svg) return;
+        const nodes = [...inner.querySelectorAll('.adv-road-node')];
+        const box = inner.getBoundingClientRect();
+        if (nodes.length < 2 || !box.width) return;
+
+        const r = nodes.map(n => {
+            const b = n.getBoundingClientRect();
+            return { x: b.left - box.left, y: b.top - box.top, w: b.width, h: b.height };
+        });
+        const GAP = 9;    // 箭頭與方格之間留的空隙
+        let paths = '';
+        for (let i = 0; i < r.length - 1; i++) {
+            const a = r[i], b = r[i + 1];
+            const ac = a.y + a.h / 2, bc = b.y + b.h / 2;
+            let d;
+            if (b.x > a.x && Math.abs(ac - bc) < Math.max(a.h, b.h)) {
+                // 同一列：右緣 → 左緣，二次貝茲往「行進方向的外側」鼓起
+                const x1 = a.x + a.w + GAP, y1 = ac;
+                const x2 = b.x - GAP,       y2 = bc;
+                // 鼓起幅度隨兩格距離縮放：間距窄時別彎成尖角，間距寬時才彎得明顯
+                const bow = (y2 <= y1 ? -1 : 1) * Math.min(30, Math.max(10, Math.hypot(x2 - x1, y2 - y1) * 0.34));
+                d = `M${x1},${y1} Q${(x1 + x2) / 2},${(y1 + y2) / 2 + bow} ${x2},${y2}`;
+            } else {
+                // 換行：從上一格下緣繞到下一格上緣（走在兩列之間的空白帶）
+                const x1 = a.x + a.w / 2, y1 = a.y + a.h + GAP;
+                const x2 = b.x + b.w / 2, y2 = b.y - GAP;
+                const mid = (y1 + y2) / 2;
+                d = `M${x1},${y1} C${x1},${mid} ${x2},${mid} ${x2},${y2}`;
+            }
+            paths += `<path d="${d}" fill="none" stroke="var(--loc-main)" stroke-width="3"
+                        stroke-linecap="round" stroke-dasharray="8 7" marker-end="url(#adv-road-arrow)"/>`;
+        }
+        svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+        svg.innerHTML =
+            `<defs><marker id="adv-road-arrow" viewBox="0 0 10 10" refX="7" refY="5"
+                 markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+               <path d="M0,0 L10,5 L0,10 z" fill="var(--loc-main)"/>
+             </marker></defs>${paths}`;
+    },
+
+    // 版面一變（換行數、視窗縮放、字型載入）就重畫；重進首頁時先斷開舊的 observer
+    _watchRoad() {
+        this._roadRO?.disconnect();
+        const wrap = document.getElementById('adv-road-inner');
+        if (!wrap) return;
+        this._drawRoad();
+        requestAnimationFrame(() => this._drawRoad());   // 圖片/字型就位後再畫一次
+        if (window.ResizeObserver) {
+            this._roadRO = new ResizeObserver(() => this._drawRoad());
+            this._roadRO.observe(wrap);
+        }
+    },
+
     // ── 設定頁（含選角）────────────────────────────────────────
     showSettings() {
         AdvTimer.clearAll(); AdvSpeech.cancel();
@@ -1009,30 +1097,62 @@ const Adventure = {
         this._storyLog = {};
         this._mealPick = null;
 
+        // 預選＝上次選的角色（站台主頁的金博士彈窗也寫同一個鍵），沒有才用第一位
+        const savedChar = localStorage.getItem('adv_selectedChar');
+        const preIdx = Math.max(0, this.CHARACTERS.findIndex(c => c.id === savedChar));
         const charGrid = this.CHARACTERS.map((c, i) => `
-            <div class="adv-char-opt ${i===0?'selected':''}" data-id="${c.id}" tabindex="0" role="button" aria-label="${c.name}">
+            <div class="adv-char-opt ${i===preIdx?'selected':''}" data-id="${c.id}" tabindex="0" role="button" aria-label="${c.name}">
                 <div class="adv-co-circle">${this._charFace(c)}</div>
                 <div class="adv-co-name">${c.name}</div>
             </div>`).join('');
 
         document.getElementById('app').innerHTML = `
 <div class="adv-settings">
-  <div class="adv-settings-card">
+  <div class="adv-settings-card adv-home-card">
     <div class="adv-logo">🗺️</div>
-    <h1 class="adv-title">一日金錢冒險</h1>
+    <h1 class="adv-title title-jump-wrap">一日金錢冒險<a class="title-jump" href="../index.html"
+          title="按下去可以切換回「金錢小達人」主頁" aria-label="切換回金錢小達人主頁"><span class="tj-tri" aria-hidden="true"></span></a><span
+          class="title-tip">按下 ▶ 可以切換回「金錢小達人」主頁</span></h1>
     <p class="adv-sub">選擇喜歡的角色 體驗有趣的金錢故事！</p>
-    <div class="adv-student-bar" id="adv-student-bar"></div>
-    <div class="adv-section-lbl">選擇角色</div>
-    <div class="adv-char-grid">${charGrid}</div>
-    <div class="adv-section-lbl">今天的冒險</div>
-    <div class="adv-preview">
-      ${this.LEVELS.map((l,i)=>`
-      <div class="adv-chip">
-        <span class="adv-chip-num">${i+1}</span>
-        <span class="adv-chip-icon">${l.icon}</span>
-        <span class="adv-chip-title">${l.title}</span>
-      </div>`).join('')}
+
+    <!-- 左：金隊長（記錄給誰＋今天由誰去冒險）／右：金博士（今天的任務）-->
+    <div class="adv-duo">
+      <div class="adv-hero-card cap">
+        <div class="adv-hero-head">
+          <div class="adv-hero-ava"><img src="../images/common/captain_gold.png" alt="金隊長"></div>
+          <div class="adv-hero-txt">
+            <div class="adv-hero-name">🤖 金隊長・冒險準備
+              <button class="adv-voice-btn" id="adv-cap-voice" type="button" title="播放語音">🔊</button>
+            </div>
+            <div class="adv-hero-line">先選好要練習的學生，這趟冒險的表現才會記進學習歷程。</div>
+          </div>
+        </div>
+        <div class="adv-student-bar" id="adv-student-bar"></div>
+        <div class="adv-pick-lbl">今天由誰去冒險？（點頭像先認識他們）</div>
+        <div class="adv-char-grid">${charGrid}</div>
+      </div>
+
+      <div class="adv-hero-card doc">
+        <div class="adv-hero-head">
+          <div class="adv-hero-ava"><img src="../images/common/money_doctor.png" alt="金博士"></div>
+          <div class="adv-hero-txt">
+            <div class="adv-hero-name">🔬 金博士・今天的任務
+              <button class="adv-voice-btn" id="adv-doc-voice" type="button" title="播放語音">🔊</button>
+            </div>
+            <div class="adv-hero-line">${this.DOC_INTRO}</div>
+          </div>
+        </div>
+        <ul class="adv-doc-tips">
+          <li>🧭 一趟走完 ${this.LEVELS.length} 站，從數零用錢到把錢存起來。</li>
+          <li>💡 每一站都會先講故事，答錯可以再試一次。</li>
+          <li>🏆 全部走完會看到成績，還能拿到獎勵。</li>
+        </ul>
+      </div>
     </div>
+
+    <div class="adv-section-lbl">今天的冒險</div>
+    ${this._roadHTML()}
+
     <div class="adv-btn-row" style="justify-content:center">
       <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
     </div>
@@ -1059,6 +1179,21 @@ const Adventure = {
 </div>`;
 
         this._renderStudentBar();
+        this._watchRoad();
+
+        // 兩張角色卡的 🔊：金隊長講「記錄給誰」、金博士講今天要走哪幾站
+        document.getElementById('adv-cap-voice')?.addEventListener('click', e => {
+            e.stopPropagation();
+            const cur = this._getCurStudent();
+            AdvSpeech.speak(cur
+                ? `我是金隊長。這趟冒險會記在${cur.name}的學習歷程裡。`
+                : '我是金隊長。還沒選學生喔，先選好學生，冒險的表現才記得起來。');
+        });
+        document.getElementById('adv-doc-voice')?.addEventListener('click', e => {
+            e.stopPropagation();
+            AdvSpeech.speak('我是金博士。' + this.DOC_INTRO);
+        });
+
         {
             const stuModal = document.getElementById('adv-stu-modal');
             const hide = () => { stuModal.hidden = true; };
@@ -1101,6 +1236,7 @@ const Adventure = {
         document.getElementById('adv-start').addEventListener('click', () => {
             const sel = document.querySelector('.adv-char-opt.selected');
             const charId = sel?.dataset.id || 'boy';
+            try { localStorage.setItem('adv_selectedChar', charId); } catch (e) {}   // 與主頁金博士彈窗共用
             this.state.char = this.CHARACTERS.find(c => c.id === charId) || this.CHARACTERS[0];
             AdvSpeech.speak('開始冒險！');
             AdvTimer.set(() => this._startGame(), 700);

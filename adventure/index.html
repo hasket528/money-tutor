@@ -42,22 +42,8 @@
         .adv-logo  { font-size: 72px; line-height: 1; margin-bottom: 8px; }
         .adv-title { font-size: 2.2rem; font-weight: 900; color: var(--loc-deep); margin: 0 0 6px; text-align: center; }
         .adv-sub   { font-size: 1rem; color: #78350f; margin: 0 0 20px; text-align: center; }
-        .adv-preview {
-            display: flex; flex-direction: column; gap: 7px;
-            width: 100%; margin-bottom: 24px;
-        }
-        .adv-chip {
-            display: flex; align-items: center; gap: 10px;
-            background: rgba(255,255,255,0.7); border: 2px solid var(--loc-border);
-            border-radius: 12px; padding: 7px 14px;
-        }
-        .adv-chip-num {
-            width: 22px; height: 22px; background: var(--loc-main); color: #fff;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; flex-shrink: 0;
-        }
-        .adv-chip-icon  { font-size: 18px; }
-        .adv-chip-title { font-size: 14px; font-weight: 600; color: #78350f; }
+        /* （原首頁的關卡條列 .adv-preview/.adv-chip 已於 2026-08-04 改版移除，
+            改用下方的冒險路徑 .adv-road；.adv-preview-bar 是場景預覽列，另在 JS 內定義）*/
         .adv-btn-row { display: flex; gap: 12px; width: 100%; }
         .adv-start-btn {
             flex: 1;
@@ -431,6 +417,128 @@
             .adv-trans-text { font-size: 1rem; }
         }
 
+        /* ── 標題旁的跳頁三角形（「一日金錢冒險 ▶」→ 回站台主頁）──
+           站台主頁 index.html、對話首頁 dialogue/index.html 各有一份同名樣式，改視覺要三處一起改。
+           顏色照「目的地」走：回主頁＝主頁的藍。命中區固定 44×44。 */
+        .title-jump-wrap { position: relative; }
+        .title-jump {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; vertical-align: middle;
+            margin-left: 4px; border-radius: 50%;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.15s, filter 0.15s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .title-jump:hover  { background: rgba(37,99,235,0.14); }
+        .title-jump:active { filter: brightness(0.85); }
+        .title-jump .tj-tri {
+            width: 0; height: 0; color: #2563eb;
+            border-top: 0.3em solid transparent;
+            border-bottom: 0.3em solid transparent;
+            border-left: 0.44em solid currentColor;   /* 右指三角形 */
+        }
+        .title-tip {
+            position: absolute; left: 50%; top: 100%;
+            transform: translateX(-50%);
+            background: #1e293b; color: #fff;
+            font-size: 0.9rem; font-weight: 600; letter-spacing: 0; line-height: 1.4;
+            padding: 7px 14px; border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            white-space: nowrap; pointer-events: none; z-index: 5;
+            opacity: 0; visibility: hidden; transition: opacity 0.18s;
+        }
+        .title-jump-wrap:hover .title-tip,
+        .title-jump:focus-visible + .title-tip { opacity: 1; visibility: visible; }
+        @media (max-width: 640px) {
+            .title-tip { font-size: 0.78rem; white-space: normal; max-width: 84vw; }
+        }
+
+        /* ── 首頁改版（2026-08-04）：上方雙角色卡 ─────────────────
+           左＝金隊長（記錄給誰＋今天由誰去冒險）／右＝金博士（今天的任務說明），
+           排版比照站台主頁的 .home-duo：窄螢幕上下堆疊、寬螢幕左右等寬。 */
+        .adv-home-card { max-width: 1060px; }
+        .adv-duo { display: flex; flex-wrap: wrap; gap: 14px; width: 100%; margin-bottom: 6px; }
+        .adv-duo > * { flex: 1 1 320px; min-width: 0; }
+        @media (min-width: 880px) {
+            .adv-duo { flex-wrap: nowrap; align-items: stretch; }
+            .adv-duo > * { flex: 1 1 0; }
+        }
+        .adv-hero-card {
+            display: flex; flex-direction: column; gap: 10px;
+            border-radius: 18px; padding: 14px 16px; box-sizing: border-box;
+        }
+        .adv-hero-card.cap { background: linear-gradient(135deg,#fffdf5,#fff7e0); border: 2px solid #f5d576; }
+        .adv-hero-card.doc { background: linear-gradient(135deg,#eff6ff,#dbeafe); border: 2px solid #93c5fd; }
+        .adv-hero-head { display: flex; align-items: center; gap: 12px; }
+        .adv-hero-ava  { width: clamp(64px,13vw,96px); height: clamp(64px,13vw,96px); flex-shrink: 0; }
+        .adv-hero-ava img { width: 100%; height: 100%; object-fit: contain; animation: advFloat 3s ease-in-out infinite; }
+        @keyframes advFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @media (prefers-reduced-motion: reduce) { .adv-hero-ava img { animation: none; } }
+        .adv-hero-txt  { flex: 1; min-width: 0; text-align: left; }
+        .adv-hero-name { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1rem; color: var(--loc-deep); }
+        .adv-hero-card.doc .adv-hero-name { color: #1e40af; }
+        .adv-hero-line { font-size: 0.84rem; line-height: 1.6; color: #78350f; margin-top: 4px; }
+        .adv-hero-card.doc .adv-hero-line { color: #1e3a8a; }
+        .adv-voice-btn {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid var(--loc-border); background: #fff; cursor: pointer;
+            font-size: 0.9rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .adv-hero-card.doc .adv-voice-btn { border-color: #93c5fd; }
+        .adv-voice-btn:active { filter: brightness(0.9); }
+        .adv-pick-lbl { font-size: 0.82rem; font-weight: 800; color: #b45309; text-align: left; }
+        .adv-doc-tips { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .adv-doc-tips li {
+            font-size: 0.82rem; line-height: 1.5; color: #1e3a8a; text-align: left;
+            background: rgba(255,255,255,0.72); border-radius: 10px; padding: 7px 10px;
+        }
+        /* 卡片裡的角色格：四個並排、圓圈縮小，才塞得進半張卡 */
+        .adv-hero-card .adv-char-grid  { grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 0; }
+        .adv-hero-card .adv-co-circle  { width: clamp(50px,11vw,68px); height: clamp(50px,11vw,68px); border-width: 2px; font-size: 30px; }
+        .adv-hero-card .adv-co-name    { font-size: 0.8rem; }
+        .adv-hero-card .adv-student-bar { margin: 0; font-size: 0.84rem; padding: 7px 10px; }
+
+        /* ── 冒險路徑：方格由左至右，中間用彎曲斜線＋箭頭相連 ──────
+           節點用 HTML 排版（文字好縮放、換行交給 grid），連線是 JS 依實際座標畫的 SVG
+           （見 adventure.js 的 _drawRoad）——所以換幾行、縮放視窗都接得準。 */
+        /* 七關一律排成同一行（上下兩列的鋸齒），不換行——換行會多出一條「從最右繞回最左」的長虛線。
+           窄螢幕塞不下就橫向捲動：外層 .adv-road 負責捲，內層 .adv-road-inner 用 max-content 撐出實際寬度，
+           SVG 疊在 inner 上（不是疊在捲動容器上），捲動時連線才會跟著方格一起走。 */
+        .adv-road { position: relative; width: 100%; margin: 4px 0 20px; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; }
+        .adv-road-inner { position: relative; width: max-content; min-width: 100%; }
+        .adv-road-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+        .adv-road-grid {
+            position: relative; z-index: 1;
+            /* 欄寬寫死（不用 1fr）：inner 是 max-content，用 1fr 會讓欄寬跟著文字的不換行寬度跑，
+               整條路線被撐爆、最後一格掉到可視範圍外。固定欄寬＋space-between：
+               寬螢幕多出來的空間會平均加到欄距上，斜線只會更長，不會溢出。 */
+            display: grid; grid-template-columns: repeat(7, 96px);
+            justify-content: space-between; gap: 0 50px; align-items: start;
+        }
+        .adv-road-node { width: 100%; }
+        .adv-road-hint { font-size: 0.72rem; color: #b45309; text-align: center; margin: -12px 0 16px; display: none; }
+        .adv-road-node {
+            background: rgba(255,255,255,0.92); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 10px 6px 8px; text-align: center;
+            box-shadow: 0 3px 10px rgba(180,83,9,0.12);
+        }
+        /* 高低錯落成上下兩列：奇數格（第1、3、5、7關）在上、偶數格（第2、4、6關）在下 */
+        .adv-road-node:nth-child(even) { margin-top: 34px; }
+        .adv-road-num {
+            width: 22px; height: 22px; margin: 0 auto 4px; border-radius: 50%;
+            background: var(--loc-main); color: #fff; font-size: 12px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .adv-road-icon  { font-size: 26px; line-height: 1.1; }
+        .adv-road-title { font-size: 0.78rem; font-weight: 700; color: #78350f; line-height: 1.35; margin-top: 3px; }
+        @media (max-width: 700px) {
+            .adv-road-grid { grid-template-columns: repeat(7, 88px); gap: 0 38px; }
+            .adv-road-node:nth-child(even) { margin-top: 28px; }
+            .adv-road-title { font-size: 0.72rem; }
+            .adv-road-hint { display: block; }   /* 窄螢幕才提示可以左右滑 */
+        }
+
         /* ── 設定頁：章節標籤 ───────────────────────────────── */
         .adv-section-lbl {
             font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em;
@@ -671,6 +779,9 @@
     </style>
     <nav class="site-nav">
       <a href="../index.html">🏠 主頁</a>
+      <a href="../index.html?hero=chatdog">💬 日常對話練習</a>
+      <a href="../index.html?hero=doctor">🗺️ 一日金錢冒險</a>
+      <a href="../index.html?hero=detective">🎮 小遊戲</a>
       <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
       <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
       <a href="../teacher.html" class="nav-teacher">📊 學習歷程總覽</a>

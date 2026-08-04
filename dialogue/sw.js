@@ -1,5 +1,5 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v143';
+const CACHE_CORE  = 'shopping-practice-v145';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 // 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
