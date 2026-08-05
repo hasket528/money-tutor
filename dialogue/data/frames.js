@@ -14,6 +14,8 @@ window.FRAME_LIBRARY = window.FRAME_LIBRARY || {
   goodbye:      { template: "{bye}" },
   want_item:    { template: "我要 {item}",          grows_to: "want_two" },
   want_two:     { template: "我要 {item} 和 {item2}" },
+  exchange_money:     { template: "我要把 {money} 換成 {coins}",          grows_to: "exchange_money_use" },
+  exchange_money_use: { template: "我要投 {use}，請幫我把 {money} 換成 {coins}" },
   ask_price:    { template: "請問 {item} 多少錢？" },
   ask_location: { template: "請問 {item} 在哪裡？" },
   ask_way:      { template: "請問 {place} 怎麼走？" },

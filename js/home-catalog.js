@@ -55,7 +55,7 @@ window.HOME_CATALOG = {
       "icon": "🍳",
       "color": "#D97706",
       "part": 2,
-      "situations": 5,
+      "situations": 7,
       "scene": "dialogue/images/scenes/breakfast_shop.webp",
       "clerk": {
         "name": "阿香",

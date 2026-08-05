@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v145';
+const APP_VERSION = 'v146';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -4707,6 +4707,8 @@ const SCENARIO_RECOMMEND = {
   breakfast_shop: [
     { label: '🍔 A3 麥當勞點餐', url: '../html/a3_mcdonalds.html' },
     { label: '💵 C5 夠不夠',    url: '../html/c5_enough_or_not.html' },
+    { label: '🔄 C3 換錢練習',  url: '../html/c3_money_exchange.html' },
+    { label: '🏪 A1 販賣機',    url: '../html/a1_vending_machine.html' },
   ],
   supermarket: [
     { label: '🛒 A4 超市購物',   url: '../html/a4_supermarket.html' },
