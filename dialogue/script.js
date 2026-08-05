@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v146';
+const APP_VERSION = 'v148';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -139,6 +139,72 @@ function normalizePronunciation(text) {
     t = t.split(wrong).join(correct);
   }
   return t.trim();
+}
+
+// ─── 高級判定：必要成分（硬門檻）＋ 完整度（比例）─────────────────
+// 2026-08-05 改。原本是「整句逐字相等」（accepted_phrases 逐一比對），問題有二：
+//   ① 語音辨識本來就會聽錯字（零錢→零前），②同一個意思有無限多種說法，資料端窮舉不完。
+// 於是「我想把 100 元換成 10 個 10 元」只因為「要」講成「想」就判錯，難度高到不合理。
+//
+// 改成不列舉、不產生句子，直接量學生說出的那一句，三道關卡：
+//   ① 關鍵詞　step.keywords 任一命中即可——整組視為「同一個必要成分」，因為那多半是
+//      同義寫法（10個10元／十個十元／…），真要求全中會比舊版更嚴。
+//   ② 數字　　正解 options[0] 裡的數字必須全部講到。金額講錯＝內容錯，不可以靠比例放水：
+//      「我數好了剛好 10 元」與標準句只差一個字（重合度 90%），錯的卻正是金額。
+//      基準一律取 options[0]，不能取「命中的那句 accepted_phrases」——較短的說法會讓門檻自動放水。
+//   ③ 完整度　與最相近標準句的字元重合率（最長共同子序列，允許中間插字、語序微調）。
+//      達標＝全對；②過了但③未達＝部分對（重點抓對、句子沒說完整），這正是高級與中級的分界。
+// 回歸測試：tests/hard_mode.test.js（直接抽本段原始碼執行，不另外鏡像一份邏輯）。
+const HARD_COVERAGE = 0.70;
+
+const _CN_DIGIT = { 零:0, 一:1, 二:2, 兩:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9 };
+// 中文數字→阿拉伯，只轉「數字＋金錢單位」的組合（避免「一下」「一定」被誤改成「1下」）
+function cnNumToArabic(s) {
+  return String(s || '').replace(/([一二兩三四五六七八九十百]+)(?=[元個塊張枚])/g, (m) => {
+    if (m === '十') return '10';
+    let x = m.match(/^([一二兩三四五六七八九])?百([一二三四五六七八九])?十?([一二三四五六七八九])?$/);
+    if (x) return String((x[1] ? _CN_DIGIT[x[1]] : 1) * 100 + (x[2] ? _CN_DIGIT[x[2]] * 10 : 0) + (x[3] ? _CN_DIGIT[x[3]] : 0));
+    x = m.match(/^([一二兩三四五六七八九])?十([一二三四五六七八九])?$/);
+    if (x) return String((x[1] ? _CN_DIGIT[x[1]] : 1) * 10 + (x[2] ? _CN_DIGIT[x[2]] : 0));
+    return _CN_DIGIT[m] !== undefined ? String(_CN_DIGIT[m]) : m;
+  });
+}
+// 學生輸入與標準句都走這一套，兩邊必須對稱（否則標準句的「那裡」會對不上學生的「哪裡」）
+function normHard(s) {
+  return normalizePronunciation(cnNumToArabic(s))
+    .replace(/[！？。，、!?.,\s「」…]/g, '')
+    .replace(/[啊呢吧喔唷囉嗎耶欸呀哦哩]+$/, '');
+}
+// 最長共同子序列長度（字元層級）
+function _lcsLen(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+function judgeHardSentence(text, step) {
+  const t = normHard(text);
+  if (!t) return { score: 'failed', detected: [] };
+  // ① 關鍵詞（整組任一命中）
+  const kws = (step.keywords || []).map(normHard).filter(Boolean);
+  if (kws.length && !kws.some(k => t.includes(k))) return { score: 'failed', detected: [] };
+  // ② 數字（以正解全句為準）
+  const answer = step.options?.[0] || '';
+  const need = [...new Set(normHard(answer).match(/\d+/g) || [])];
+  const missing = need.filter(n => !t.includes(n));
+  if (missing.length) return { score: 'failed', detected: [], missingNums: missing };
+  // ③ 完整度（取最相近的標準句）
+  const demo = (step.feedback?.failed || '').match(/「([^」]+)」/)?.[1];
+  const accepts = [...(step.accepted_phrases || []), answer, demo].filter(Boolean);
+  let coverage = 0;
+  for (const p of accepts) {
+    const np = normHard(p);
+    if (np.length) coverage = Math.max(coverage, _lcsLen(t, np) / np.length);
+  }
+  return { score: coverage >= HARD_COVERAGE ? 'perfect' : 'partial', detected: [], coverage };
 }
 
 // ─── 語音輸入（Web Speech API）──────────────────────
@@ -3060,19 +3126,9 @@ function applyDifficultyRules(result, text, step) {
 }
 
 function evaluateInput(text, step) {
-  // 高級＝完整語句：需說出「完整標準答案」才算對（精確比對，不看關鍵字、不寬鬆）
-  if (state.difficulty === 'hard') {
-    // 去標點後再削句尾語助詞（嗎/喔/吧…），兩邊對稱——避免學生輸入被 normalizePronunciation
-    // 削掉尾綴「嗎」、標準答案卻因「嗎？」保留而誤判不符（例：請問有2B鉛筆嗎）
-    const norm = s => (s || '').replace(/[！？。，、!?.,\s「」]/g, '').replace(/[啊呢吧喔唷囉嗎耶欸呀哦哩]+$/, '');
-    const t = norm(text);
-    // 可接受答案＝accepted_phrases ＋ options[0] ＋ 回饋 failed 的示範句（「」內）。
-    // 納入示範句＝「app 叫學生怎麼說，就一定接受那個說法」，避免示範句漏列 accepted_phrases 而誤判。
-    const demo = (step.feedback?.failed || '').match(/「([^」]+)」/)?.[1];
-    const accepts = [...(step.accepted_phrases || []), step.options?.[0], demo].filter(Boolean);
-    const ok = !!t && accepts.some(p => norm(p) === t);
-    return { score: ok ? 'perfect' : 'failed', detected: [] };
-  }
+  // 高級＝完整語句：必要成分（關鍵詞＋數字）全中，再看與標準句的重合度決定全對／部分對。
+  // 判定細節與設計理由見上方 judgeHardSentence。教師的關鍵字覆寫在高級也生效（①要用到 keywords）。
+  if (state.difficulty === 'hard') return judgeHardSentence(text, withEffectiveKeywords(step));
   // 初級（有講就給部分對）/ 中級（關鍵字）：關鍵字比對 + 難度規則
   // 套用教師在設定頁修改的「內建關鍵字覆寫」（高級不看關鍵字，故上面已先 return）
   const kwStep = withEffectiveKeywords(step);
@@ -3146,11 +3202,20 @@ function handleResult(text, result) {
     if (state.failCount >= 3 && state.difficulty !== 'hard') showHint();  // 高級不自動提示，只能按「💡 提示」
 
   } else if (result.score === 'partial') {
+    // 高級專屬：必要成分（關鍵詞＋金額）都講對了，只是句子沒說完整。
+    // 這時該給的不是「再試一次」，而是**先肯定重點對了，再把整句示範出來**讓他照著說一次
+    //（資料裡的 feedback.partial 是為中級寫的，多半只提醒用詞、不含完整句）。
+    const hardPartial = state.difficulty === 'hard';
+    const partialMsg  = hardPartial ? `再把整句說完整：「${step.options[0]}」` : step.feedback.partial;
     resultEl.className   = 'feedback-result partial';
-    resultEl.innerHTML   = '<span class="result-icon">💪</span><span class="result-text">再試一次！</span>';
-    renderFeedbackMsg(msgEl, step.feedback.partial);
+    resultEl.innerHTML   = `<span class="result-icon">💪</span><span class="result-text">${hardPartial ? '重點說對了！' : '再試一次！'}</span>`;
+    renderFeedbackMsg(msgEl, partialMsg);
     sfx.partial();
-    playFeedbackAudio(step.feedback.partial, 'partial');
+    // ⚠️ playFeedbackAudio 依「{場景}_{情境}_{步驟}_{score}」取檔、**不看文字**：高級這句是
+    // 帶標準句動態組出來的，沒有對應預錄檔，照原路走會播到既有的 _partial.mp3（唸的是資料裡
+    // 的舊文字），畫面與聲音就對不上。故高級直接走即時 TTS。
+    if (hardPartial) { stopAllAudio(); tts.speak(partialMsg); }
+    else playFeedbackAudio(partialMsg, 'partial');
     state.failCount++;
     if (state.failCount >= 3 && state.difficulty !== 'hard') showHint();  // 高級不自動提示，只能按「💡 提示」
 

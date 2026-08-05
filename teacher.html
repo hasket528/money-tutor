@@ -536,6 +536,17 @@ function flawlessOf(r) {
   return (r.total || 0) > 0 && (r.score || 0) === r.total && wrongTriesOf(r) === 0;
 }
 
+// ── 🟡 部分對次數（對話練習專用；24 單元沒有這個中間態）──────────────────
+// 高級判定 2026-08-05 起是三態：必要成分（關鍵詞＋金額）全中、但句子沒說完整＝部分對。
+// **計分上它等同答錯**——score 只數 perfect，wrongTriesOf 也把它算進錯誤嘗試，這裡刻意
+// 不去動那些公式（動了改版前後的數字就不能比）。這一欄只是把它從「錯」裡面撈出來單獨呈現：
+// 「講錯內容」和「講對了但話沒說完整」對老師來說是兩件事，介入方式完全不同。
+// 設計理由同下方 🗣️ 開口／說對——把混在一個數字裡的訊號拆開，而不是改計分。
+function partialOf(r) {
+  if (isMain(r)) return 0;
+  return (r.steps || []).filter(st => st?.score === 'partial').length;
+}
+
 // ── 🗣️ 開口統計（對話練習・語音模式專用；重度障礙學生的參與度指標）────────
 // 為什麼要跟「嘗試正確率」分開看：正確率的分母是「所有作答次數」，把「沒收到聲音」
 // 也算成失敗，於是「不敢開口」「太小聲」「說了但說錯」三件事被混成同一個數字，
@@ -845,13 +856,14 @@ async function loadData() {
       scenarioName: r.scenarioName || r.scenarioId,
       situationName: r.situationName || r.situationId,
       count: 0, correct: 0, wrong: 0, wrongTries: 0, flawless: 0, dur: 0, diffs: {}, modes: {}, self: {}, list: [],
-      spoke: 0, noVoice: 0, spokeCorrect: 0, hasSpoke: false,
+      spoke: 0, noVoice: 0, spokeCorrect: 0, hasSpoke: false, partial: 0,
     };
     const s = byScenario[key];
     s.count++;
     s.correct += (r.score || 0);
     s.wrong   += Math.max(0, (r.total || 0) - (r.score || 0));
     s.wrongTries += wrongTriesOf(r);
+    s.partial += partialOf(r);   // 已含在 wrongTries 內，這裡只是額外拆出來看
     const sp = spokenOf(r);
     if (sp.has) { s.hasSpoke = true; s.spoke += sp.spoke; s.noVoice += sp.noVoice; s.spokeCorrect += sp.correct; }
     if (flawlessOf(r)) s.flawless++;   // 全步驟正確且沒重試過（判準與 24 單元一致）
@@ -870,7 +882,7 @@ async function loadData() {
   } else {
     const tbl = document.createElement('table');
     tbl.className = 'scenario-table';
-    tbl.innerHTML = `<tr><th>情境</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="語音模式專用。開口＝有收到聲音的作答次數（🔇＝沒收到聲音的次數）；說對＝靠語音答對的步驟數。與左側正確率對照：正確率把「沒開口」也算成失敗，這一欄把「參與度」和「準確度」拆開，重度障礙學生的進展常先反映在開口次數上。2026-08-03 之前的紀錄沒有這筆資料，顯示為 —">🗣️ 開口／說對</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
+    tbl.innerHTML = `<tr><th>情境</th><th title="各難度分開計算連續次數；整體＝最低難度門檻以上任一達精熟。淡化的難度標籤＝低於門檻，不列入整體">🎯 精熟</th><th title="累計作答步驟數；若有未答對的步驟，顯示為「答對／總步驟數」">📝 完成題數</th><th>難度</th><th>模式</th><th>🔁 錯誤嘗試</th><th title="高級模式的中間態：關鍵詞與金額都講對了，但句子沒說完整（例如只說「換零錢」而不是「老闆，不好意思，可以幫我換零錢嗎？」）。計分上仍計入錯誤嘗試、不算精熟，這一欄只是把它從「錯」裡拆出來——「講錯內容」和「話沒說完整」要用不同方式介入。2026-08-05 之前的紀錄沒有這個狀態，顯示 0">🟡 部分對</th><th title="答對題數 ÷（答對題數＋錯誤嘗試次數）">📊 嘗試正確率</th><th title="語音模式專用。開口＝有收到聲音的作答次數（🔇＝沒收到聲音的次數）；說對＝靠語音答對的步驟數。與左側正確率對照：正確率把「沒開口」也算成失敗，這一欄把「參與度」和「準確度」拆開，重度障礙學生的進展常先反映在開口次數上。2026-08-03 之前的紀錄沒有這筆資料，顯示為 —">🗣️ 開口／說對</th><th title="每次練習後學生自評（😀簡單／😐普通／😣好難）。與左側嘗試正確率對照，可看出自我覺察是否準確＝後設認知指標">😀 學生自評</th><th>累計時間</th><th>最近一次</th><th>趨勢</th></tr>`;
     Object.values(byScenario).forEach(s => {
       const attempts = s.correct + s.wrong;
       // 分子＝真正答對數（非總步驟數）：跳過的步驟不該算成正確操作。理由同主課程表。
@@ -890,6 +902,7 @@ async function loadData() {
         <td style="font-size:0.78rem">${fmtDiffs(s.diffs)}</td>
         <td style="font-size:0.78rem">${fmtModes(s.modes)}</td>
         <td class="${s.wrongTries > 0 ? 'acc-low' : 'acc-good'}" title="反覆練習過程中的答錯次數">${s.wrongTries}</td>
+        <td title="${s.partial > 0 ? `其中 ${s.partial} 次是「重點講對了，但句子沒說完整」（已含在左側錯誤嘗試內）` : '沒有出現過部分對'}">${s.partial}</td>
         <td class="${accClass(attemptAccPct)}" title="答對題數 ÷（答對題數＋錯誤嘗試次數）">${attemptAccPct}%</td>
         <td style="font-size:0.82rem;white-space:nowrap">${fmtSpoken(s)}</td>
         <td style="font-size:0.86rem;white-space:nowrap" title="${last.selfRating ? `最近一次自評：${SELF_ICON[last.selfRating]} ${SELF_LABEL[last.selfRating]}` : '最近一次未留下自評'}">${fmtSelf(s.self)}</td>
@@ -1065,7 +1078,7 @@ async function exportCSV() {
   if (records.length === 0) { alert('尚無學習紀錄'); return; }
   // ⚠️ 新欄位一律往後加：report/analysis/effect_stats.js 以欄位索引讀取（錯誤嘗試＝第 8 欄），
   //    在中間插欄會讓它靜默讀到錯的資料。
-  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)','開口次數','沒收到聲音']];
+  const rows = [['日期','學生','來源','課程/情境','單元/狀況','難度','答對','答錯','錯誤嘗試','嘗試正確率(%)','無錯通過','總計','星數','時長(秒)','開口次數','沒收到聲音','部分對']];
   records.forEach(r => {
     const d = new Date(r.ts).toLocaleString('zh-TW');
     const sc = r.score || 0, wa = wrongTriesOf(r);   // 分子＝答對數，單次作答模式才不失真
@@ -1076,7 +1089,7 @@ async function exportCSV() {
       DIFF[r.difficulty] || r.difficulty || '', r.score,
       Math.max(0, (r.total || 0) - (r.score || 0)), wa, attemptAccPct,
       flawlessOf(r) ? '🌟' : '', r.total, r.stars || 0, r.durationSec || 0,
-      sp.has ? sp.spoke : '', sp.has ? sp.noVoice : '']);
+      sp.has ? sp.spoke : '', sp.has ? sp.noVoice : '', partialOf(r)]);
   });
   const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
