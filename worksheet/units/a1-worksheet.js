@@ -1,6 +1,6 @@
-// A1 販賣機 作業單 — 使用專案飲料圖片
+// A1 自動飲料販賣機 作業單 — 使用專案飲料圖片
 WorksheetRegistry.register('a1', {
-    name: 'A1 販賣機',
+    name: 'A1 自動飲料販賣機',
     icon: '🥤',
     defaultCount: 20,
     subtitle() { return '投幣與找零計算'; },

@@ -1,6 +1,6 @@
-// F6 數的組成 作業單
+// F6 數的合成與分解 作業單
 WorksheetRegistry.register('f6', {
-    name: 'F6 數的組成',
+    name: 'F6 數的合成與分解',
     icon: '🧮',
     defaultCount: 20,
     subtitle(opts) {

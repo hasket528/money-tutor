@@ -1,6 +1,6 @@
-// F5 量比較 作業單 — 多種題型
+// F5 數量大小的比較 作業單 — 多種題型
 WorksheetRegistry.register('f5', {
-    name: 'F5 量比較',
+    name: 'F5 數量大小的比較',
     icon: '⚖️',
     defaultCount: 10,
     subtitle(opts) {

@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v148';
+const APP_VERSION = 'v150';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -92,6 +92,7 @@ const PRONUNCIATION_MAP = [
   ['多小', '多少'], ['多紹', '多少'],
   ['幾快', '幾塊'], ['機塊', '幾塊'],
   ['怎賣', '怎麼賣'],
+  ['零前', '零錢'], ['另錢', '零錢'], ['零千', '零錢'],   // 「換零錢」最常被聽成的三種
 
   // 付款
   ['付線', '付現'], ['付現今', '付現金'],
@@ -138,6 +139,14 @@ function normalizePronunciation(text) {
   for (const [wrong, correct] of PRONUNCIATION_MAP) {
     t = t.split(wrong).join(correct);
   }
+  // 金錢單位的口語／同音變體統一成「元」（對照表是字串替換，窮舉不了每一個數字，故用正則）：
+  //   10圓→10元（數字後面的「圓」幾乎只可能是錢）
+  //   5塊→5元（學生講「五塊」而標準句寫「5 元」是最常見的落差）
+  // ⚠️ 「塊」用負向斷言擋掉後面接中文字的情況，「一塊蛋糕」「三塊布」不會被誤轉成「1元蛋糕」。
+  //    殘留風險：「我要 3 塊」若指的是三塊點心仍會被轉成「3 元」——金錢教材語境下判斷划算。
+  // 放在對照表之後，讓對照表產生的結果也一併正規化。
+  t = t.replace(/(\d+)圓/g, '$1元')
+       .replace(/(\d+)塊(?![一-龥])/g, '$1元');
   return t.trim();
 }
 
@@ -149,20 +158,38 @@ function normalizePronunciation(text) {
 // 改成不列舉、不產生句子，直接量學生說出的那一句，三道關卡：
 //   ① 關鍵詞　step.keywords 任一命中即可——整組視為「同一個必要成分」，因為那多半是
 //      同義寫法（10個10元／十個十元／…），真要求全中會比舊版更嚴。
-//   ② 數字　　正解 options[0] 裡的數字必須全部講到。金額講錯＝內容錯，不可以靠比例放水：
-//      「我數好了剛好 10 元」與標準句只差一個字（重合度 90%），錯的卻正是金額。
-//      基準一律取 options[0]，不能取「命中的那句 accepted_phrases」——較短的說法會讓門檻自動放水。
+//   ② 數字　　(a) 任務敘述裡寫出來的數字必須講到；(b) 學生說出的數字不得與標準句集合矛盾。
+//      沒寫進任務、學生也沒講的數字不扣分，那交給 ③ 判完整度。
 //   ③ 完整度　與最相近標準句的字元重合率（最長共同子序列，允許中間插字、語序微調）。
 //      達標＝全對；②過了但③未達＝部分對（重點抓對、句子沒說完整），這正是高級與中級的分界。
+//
+// ⚠️ ② 在 2026-08-05 由「正解 options[0] 裡的數字必須全部講到」改成現在這兩條。舊版把兩件事
+//    混為一談：「說錯金額」（要擋）與「沒說次要數字」（不該擋）。實測全站 2056 個
+//    accepted_phrases 有 34 句被舊版判 failed——資料說「這樣講可以」，規則卻判錯，兩邊互相矛盾。
+//    絕大多數是任務根本沒要求那個數字（任務寫「說要加值」而正解是「好，我要加值一百元」；
+//    「算出總價確認」的重點是 597 而不是人數 3）。
+//    **必要數字改以 step.task 為準**，因為那是螢幕上給學生看的指示：要求學生講的東西必須先講給他聽。
+//    要讓某個數字變成必答，就把它寫進任務敘述。兩個動機案例都仍被擋：
+//      · say_combo 任務含 100 → 學生說「換成 10 個 10 元」缺 100 → failed
+//      · count_check 標準句集合只有 {100} → 學生說「我數好了剛好 10 元」→ 10 講錯 → failed
+//
+// 不變式：**accepted_phrases 裡的每一句，高級都必須判全對**（③ 對 accepts 自己恆為 1.0，
+//    所以只有 ①② 擋得住）。資料若認為某句只算「部分完整」，就不該放進 accepted_phrases。
+//    由 tests/hard_mode.test.js 的全站掃描守著。
 // 回歸測試：tests/hard_mode.test.js（直接抽本段原始碼執行，不另外鏡像一份邏輯）。
 const HARD_COVERAGE = 0.70;
 
 const _CN_DIGIT = { 零:0, 一:1, 二:2, 兩:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9 };
-// 中文數字→阿拉伯，只轉「數字＋金錢單位」的組合（避免「一下」「一定」被誤改成「1下」）
+// 中文數字→阿拉伯，只轉「數字＋單位」的組合（避免「一下」「一定」被誤改成「1下」）
 function cnNumToArabic(s) {
-  return String(s || '').replace(/([一二兩三四五六七八九十百]+)(?=[元個塊張枚])/g, (m) => {
+  // 單位含「圓」：學生說「十圓」時先轉成「10圓」，才輪得到 normalizePronunciation 把它正規化成「10元」
+  // 單位含「位／人」：訂位步驟的正解是「四個人」，學生說「四位」要能對得上（漏了會判 failed）
+  return String(s || '').replace(/([一二兩三四五六七八九十百千]+)(?=[元個塊張枚圓位人])/g, (m) => {
     if (m === '十') return '10';
-    let x = m.match(/^([一二兩三四五六七八九])?百([一二三四五六七八九])?十?([一二三四五六七八九])?$/);
+    // 「一千」「兩千」——只認整千，「一千五百」這種混合寫法原樣退回（資料裡沒有，寧可不轉也不要轉錯）
+    let x = m.match(/^([一二兩三四五六七八九])?千$/);
+    if (x) return String((x[1] ? _CN_DIGIT[x[1]] : 1) * 1000);
+    x = m.match(/^([一二兩三四五六七八九])?百([一二三四五六七八九])?十?([一二三四五六七八九])?$/);
     if (x) return String((x[1] ? _CN_DIGIT[x[1]] : 1) * 100 + (x[2] ? _CN_DIGIT[x[2]] * 10 : 0) + (x[3] ? _CN_DIGIT[x[3]] : 0));
     x = m.match(/^([一二兩三四五六七八九])?十([一二三四五六七八九])?$/);
     if (x) return String((x[1] ? _CN_DIGIT[x[1]] : 1) * 10 + (x[2] ? _CN_DIGIT[x[2]] : 0));
@@ -185,20 +212,40 @@ function _lcsLen(a, b) {
   }
   return dp[a.length][b.length];
 }
+// 關鍵字的比對形式。cnNumToArabic 只在「數字後面接單位」時才轉換，所以裸的中文數字關鍵字
+// （「一百」「二十」「四」）永遠轉不了，而學生話裡的「一百元」早就變成「100元」——兩邊永遠對不上。
+// 補上單位再轉一次、砍掉補的單位，就得到可比對的阿拉伯數字形式。非數字關鍵字不受影響（結果相同）。
+function _kwForms(k) {
+  const a = normHard(k);
+  const b = normHard(k + '元').replace(/元$/, '');
+  return b && b !== a ? [a, b] : [a];
+}
 function judgeHardSentence(text, step) {
   const t = normHard(text);
   if (!t) return { score: 'failed', detected: [] };
   // ① 關鍵詞（整組任一命中）
-  const kws = (step.keywords || []).map(normHard).filter(Boolean);
+  const kws = (step.keywords || []).flatMap(_kwForms).filter(Boolean);
   if (kws.length && !kws.some(k => t.includes(k))) return { score: 'failed', detected: [] };
-  // ② 數字（以正解全句為準）
+  // 這一步的標準句集合：正解 + accepted_phrases + failed 回饋裡的示範句（②③ 共用）
   const answer = step.options?.[0] || '';
-  const need = [...new Set(normHard(answer).match(/\d+/g) || [])];
-  const missing = need.filter(n => !t.includes(n));
-  if (missing.length) return { score: 'failed', detected: [], missingNums: missing };
-  // ③ 完整度（取最相近的標準句）
   const demo = (step.feedback?.failed || '').match(/「([^」]+)」/)?.[1];
   const accepts = [...(step.accepted_phrases || []), answer, demo].filter(Boolean);
+  // ② 數字，兩條各司其職：
+  //   (a) 必講　**任務敘述與正解都出現**的數字。任務是螢幕上給學生看的指示（要求他講的東西
+  //       得先講給他聽），正解是實際要說的話——只取交集，才不會把任務裡的情境說明也算成必答：
+  //       「請老闆幫你把 100 元換成零錢」的 100 沒出現在正解「可以幫我換零錢嗎？」裡，就不強求。
+  //       不變式：正解自己永遠通過（交集必為正解的子集）。
+  //   (b) 不得講錯　學生說出的數字必須出現在標準句集合裡，否則就是講錯內容（金額尤其）。
+  const inAnswer = new Set(normHard(answer).match(/\d+/g) || []);
+  const missing = [...new Set(normHard(step.task || '').match(/\d+/g) || [])]
+    .filter(n => inAnswer.has(n) && !t.includes(n));
+  if (missing.length) return { score: 'failed', detected: [], missingNums: missing };
+  const allowed = new Set(accepts.flatMap(p => normHard(p).match(/\d+/g) || []));
+  if (allowed.size) {
+    const wrong = [...new Set(t.match(/\d+/g) || [])].filter(n => !allowed.has(n));
+    if (wrong.length) return { score: 'failed', detected: [], wrongNums: wrong };
+  }
+  // ③ 完整度（取最相近的標準句）
   let coverage = 0;
   for (const p of accepts) {
     const np = normHard(p);
@@ -4765,41 +4812,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 const SCENARIO_RECOMMEND = {
   convenience_store: [
-    { label: '🛒 A4 超市購物', url: '../html/a4_supermarket.html' },
-    { label: '💰 C6 找零練習', url: '../html/c6_making_change.html' },
-    { label: '🏧 A5 ATM 操作', url: '../html/a5_atm_simulator.html' },
+    { label: '🛒 A4 模擬購物',           url: '../html/a4_simulated_shopping.html' },
+    { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
+    { label: '🏧 A5 ATM提款機',          url: '../html/a5_atm_simulator.html' },
   ],
   breakfast_shop: [
-    { label: '🍔 A3 麥當勞點餐', url: '../html/a3_mcdonalds.html' },
-    { label: '💵 C5 夠不夠',    url: '../html/c5_enough_or_not.html' },
-    { label: '🔄 C3 換錢練習',  url: '../html/c3_money_exchange.html' },
-    { label: '🏪 A1 販賣機',    url: '../html/a1_vending_machine.html' },
+    { label: '🍔 A3 美式速食自助點餐',   url: '../html/a3_mcdonalds_order.html' },
+    { label: '💵 C5 足額付款',           url: '../html/c5_sufficient_payment.html' },
+    { label: '🔄 C3 金錢面額的兌換',     url: '../html/c3_money_exchange.html' },
+    { label: '🏪 A1 自動飲料販賣機',     url: '../html/a1_vending_machine.html' },
   ],
   supermarket: [
-    { label: '🛒 A4 超市購物',   url: '../html/a4_supermarket.html' },
-    { label: '💰 C6 找零練習',   url: '../html/c6_making_change.html' },
-    { label: '🏪 A1 販賣機',    url: '../html/a1_vending_machine.html' },
+    { label: '🛒 A4 模擬購物',           url: '../html/a4_simulated_shopping.html' },
+    { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
+    { label: '🏪 A1 自動飲料販賣機',     url: '../html/a1_vending_machine.html' },
   ],
   night_market: [
-    { label: '💰 C6 找零練習',   url: '../html/c6_making_change.html' },
-    { label: '🏪 A1 販賣機',    url: '../html/a1_vending_machine.html' },
-    { label: '📊 B4 特賣比一比', url: '../html/b4_sale_compare.html' },
+    { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
+    { label: '🏪 A1 自動飲料販賣機',     url: '../html/a1_vending_machine.html' },
+    { label: '📊 B4 特賣比一比',         url: '../html/b4_sale_comparison.html' },
   ],
   pharmacy: [
-    { label: '💵 C5 夠不夠',    url: '../html/c5_enough_or_not.html' },
-    { label: '💰 C6 找零練習',   url: '../html/c6_making_change.html' },
+    { label: '💵 C5 足額付款',           url: '../html/c5_sufficient_payment.html' },
+    { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
   ],
   clothing_store: [
-    { label: '🛒 A4 超市購物',   url: '../html/a4_supermarket.html' },
-    { label: '📊 B4 特賣比一比', url: '../html/b4_sale_compare.html' },
+    { label: '🛒 A4 模擬購物',           url: '../html/a4_simulated_shopping.html' },
+    { label: '📊 B4 特賣比一比',         url: '../html/b4_sale_comparison.html' },
   ],
   fast_food: [
-    { label: '🍔 A3 麥當勞點餐', url: '../html/a3_mcdonalds.html' },
-    { label: '💵 C5 夠不夠',    url: '../html/c5_enough_or_not.html' },
+    { label: '🍔 A3 美式速食自助點餐',   url: '../html/a3_mcdonalds_order.html' },
+    { label: '💵 C5 足額付款',           url: '../html/c5_sufficient_payment.html' },
   ],
   stationery_store: [
-    { label: '🛒 A4 超市購物',   url: '../html/a4_supermarket.html' },
-    { label: '💰 C6 找零練習',   url: '../html/c6_making_change.html' },
+    { label: '🛒 A4 模擬購物',           url: '../html/a4_simulated_shopping.html' },
+    { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
   ],
 };
 

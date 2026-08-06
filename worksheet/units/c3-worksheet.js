@@ -1,6 +1,6 @@
-// C3 正確的金額 作業單
+// C3 金錢面額的兌換 作業單
 WorksheetRegistry.register('c3', {
-    name: 'C3 正確的金額',
+    name: 'C3 金錢面額的兌換',
     icon: '💱',
     defaultCount: 8,
     subtitle() { return ''; },

@@ -1,6 +1,6 @@
-// F1 一對一對應 作業單 — 連連看題型（黑點在圖示框外）
+// F1 數量與物品的對應 作業單 — 連連看題型（黑點在圖示框外）
 WorksheetRegistry.register('f1', {
-    name: 'F1 一對一對應',
+    name: 'F1 數量與物品的對應',
     icon: '🔢',
     defaultCount: 5,
     subtitle() {

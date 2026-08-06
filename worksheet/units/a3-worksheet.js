@@ -1,6 +1,6 @@
-// A3 美式速食店 作業單
+// A3 美式速食自助點餐 作業單
 WorksheetRegistry.register('a3', {
-    name: 'A3 美式速食店',
+    name: 'A3 美式速食自助點餐',
     icon: '🍔',
     defaultCount: 20,
     subtitle(opts) {

@@ -1,6 +1,6 @@
-// A2 理髮廳 作業單
+// A2 理髮店售票機 作業單
 WorksheetRegistry.register('a2', {
-    name: 'A2 理髮廳',
+    name: 'A2 理髮店售票機',
     icon: '💈',
     defaultCount: 20,
     subtitle() { return '服務計費與找零'; },

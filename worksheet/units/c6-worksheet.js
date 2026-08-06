@@ -1,6 +1,6 @@
-// C6 找零 作業單
+// C6 找零與計算 作業單
 WorksheetRegistry.register('c6', {
-    name: 'C6 找零',
+    name: 'C6 找零與計算',
     icon: '🧾',
     defaultCount: 30,
     subtitle(opts) {

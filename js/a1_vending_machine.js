@@ -6272,7 +6272,7 @@
             // 學習紀錄
             if (window.LearningTracker) {
                 LearningTracker.save({
-                    unit: 'a1', unitName: 'A1 販賣機', series: 'A',
+                    unit: 'a1', unitName: 'A1 自動飲料販賣機', series: 'A',
                     score: completedCount,
                     total: this.state.settings?.questionCount || completedCount,
                     difficulty: this.state.settings?.difficulty || 'normal',

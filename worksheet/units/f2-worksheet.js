@@ -1,6 +1,6 @@
-// F2 唱數 作業單 — 圖示不重複
+// F2 數量與點數 作業單 — 圖示不重複
 WorksheetRegistry.register('f2', {
-    name: 'F2 唱數',
+    name: 'F2 數量與點數',
     icon: '🔢',
     defaultCount: 10,
     subtitle(opts) {

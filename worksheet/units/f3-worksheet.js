@@ -1,6 +1,6 @@
-// F3 數字認讀 作業單 — 圈出正確數量（圖示不重複）
+// F3 認識數字與數量 作業單 — 圈出正確數量（圖示不重複）
 WorksheetRegistry.register('f3', {
-    name: 'F3 數字認讀',
+    name: 'F3 認識數字與數量',
     icon: '🔢',
     defaultCount: 8,
     subtitle() {

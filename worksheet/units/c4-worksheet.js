@@ -1,6 +1,6 @@
 // C4 正確的金額 作業單
 WorksheetRegistry.register('c4', {
-    name: '正確的金額',
+    name: 'C4 正確的金額',
     icon: '💰',
     defaultCount: 20,
     subtitle(opts) {

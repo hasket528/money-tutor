@@ -1,6 +1,6 @@
-// C1 認識錢幣 作業單 — 三種題型 + 金錢圖示類型
+// C1 金錢的種類與面額 作業單 — 三種題型 + 金錢圖示類型
 WorksheetRegistry.register('c1', {
-    name: 'C1 認識錢幣',
+    name: 'C1 金錢的種類與面額',
     icon: '🪙',
     defaultCount: 20,
     subtitle(opts) {

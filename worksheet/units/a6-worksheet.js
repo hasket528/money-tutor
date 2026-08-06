@@ -1,6 +1,6 @@
-// A6 火車票 作業單 — 付款金額 > 票價金額
+// A6 火車購票 作業單 — 付款金額 > 票價金額
 WorksheetRegistry.register('a6', {
-    name: 'A6 火車票',
+    name: 'A6 火車購票',
     icon: '🚂',
     defaultCount: 20,
     subtitle() { return '票價計算與找零'; },

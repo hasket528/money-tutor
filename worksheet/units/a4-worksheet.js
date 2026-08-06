@@ -1,6 +1,6 @@
-// A4 超市購物 作業單
+// A4 模擬購物 作業單
 WorksheetRegistry.register('a4', {
-    name: 'A4 超市購物',
+    name: 'A4 模擬購物',
     icon: '🛒',
     defaultCount: 20,
 
@@ -32,10 +32,11 @@ WorksheetRegistry.register('a4', {
         return `<span style="margin-right:2px;">${item.emoji || ''}</span>`;
     },
 
+    // 標題以單元名稱「A4 模擬購物」為主，商店類型放括號附註
     dynamicName(opts) {
-        if (opts.storeType === 'mixed') return 'A4 綜合商店購物';
+        if (opts.storeType === 'mixed') return 'A4 模擬購物（綜合商店）';
         const info = this.storeInfo && this.storeInfo[opts.storeType];
-        return info ? `A4 ${info.name}購物` : 'A4 超市購物';
+        return info ? `A4 模擬購物（${info.name}）` : 'A4 模擬購物';
     },
 
     subtitle(opts) {

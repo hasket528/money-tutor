@@ -1,6 +1,6 @@
-// C2 數錢 作業單 — 使用真實金錢圖片
+// C2 金錢的點數與加總 作業單 — 使用真實金錢圖片
 WorksheetRegistry.register('c2', {
-    name: 'C2 數錢',
+    name: 'C2 金錢的點數與加總',
     icon: '💰',
     defaultCount: 20,
     subtitle(opts) {

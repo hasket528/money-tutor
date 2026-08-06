@@ -1,6 +1,6 @@
-// A5 ATM 作業單
+// A5 ATM提款機 作業單
 WorksheetRegistry.register('a5', {
-    name: 'A5 ATM',
+    name: 'A5 ATM提款機',
     icon: '🏧',
     defaultCount: 2,  // 每頁2題
     subtitle(opts) {

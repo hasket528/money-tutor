@@ -1,6 +1,6 @@
-// C5 夠不夠 作業單 — 錢包用真實金錢圖片
+// C5 足額付款 作業單 — 錢包用真實金錢圖片
 WorksheetRegistry.register('c5', {
-    name: 'C5 夠不夠',
+    name: 'C5 足額付款',
     icon: '🤔',
     defaultCount: 30,
     subtitle(opts) {
