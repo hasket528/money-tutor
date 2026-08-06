@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v150';
+const APP_VERSION = 'v151';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -4830,7 +4830,7 @@ const SCENARIO_RECOMMEND = {
   night_market: [
     { label: '💰 C6 找零與計算',         url: '../html/c6_making_change.html' },
     { label: '🏪 A1 自動飲料販賣機',     url: '../html/a1_vending_machine.html' },
-    { label: '📊 B4 特賣比一比',         url: '../html/b4_sale_comparison.html' },
+    { label: '📊 B4 商品價格比較',         url: '../html/b4_sale_comparison.html' },
   ],
   pharmacy: [
     { label: '💵 C5 足額付款',           url: '../html/c5_sufficient_payment.html' },
@@ -4838,7 +4838,7 @@ const SCENARIO_RECOMMEND = {
   ],
   clothing_store: [
     { label: '🛒 A4 模擬購物',           url: '../html/a4_simulated_shopping.html' },
-    { label: '📊 B4 特賣比一比',         url: '../html/b4_sale_comparison.html' },
+    { label: '📊 B4 商品價格比較',         url: '../html/b4_sale_comparison.html' },
   ],
   fast_food: [
     { label: '🍔 A3 美式速食自助點餐',   url: '../html/a3_mcdonalds_order.html' },

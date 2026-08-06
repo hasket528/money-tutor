@@ -1,6 +1,6 @@
-// B4 特賣比一比 作業單
+// B4 商品價格比較 作業單
 WorksheetRegistry.register('b4', {
-    name: 'B4 特賣比一比',
+    name: 'B4 商品價格比較',
     icon: '🏷️',
     defaultCount: 10,
     subtitle(opts) {

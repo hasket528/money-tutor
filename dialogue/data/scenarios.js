@@ -182,7 +182,7 @@ const SCENARIOS_DATA = {
               task:"問有沒有其他飲料可以買",
               keywords:["其他","別的","還有","飲料","豆漿","果汁"], keywords_mode:'any',
               accepted_phrases:["好的，那有沒有其他飲料？","謝謝，那我看看其他的","知道了，有沒有豆漿？"],
-              options:["好的，那有沒有其他飲料？","謝謝，那我不買了","好的，我明天再來","那換成果汁可以嗎？"],
+              options:["好的，那有沒有其他飲料？","謝謝，那我不買了","好的，我明天再來","你好！"],
               feedback:{ perfect:"很好！懂得詢問替代方案！", partial:"說出了重點！可以問看看其他選擇", failed:"可以這樣說：「好的，那有沒有其他飲料？」" } },
             { id:"alternative", shopkeeper_prompt:"有的！我們有豆漿和果汁，在飲料櫃裡喔！", task:"說你要去看看，並道謝",
               keywords:["去看","看看","謝謝"], keywords_mode:'any',
@@ -192,7 +192,7 @@ const SCENARIOS_DATA = {
             { id:"goodbye", shopkeeper_prompt:"不客氣！需要幫忙隨時說喔！", task:"向店員道謝說再見",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！","好的，謝謝再見！"],
-              options:["謝謝！再見！","喂，我走了！","掰掰！","謝謝你幫忙！"],
+              options:["謝謝！再見！","喂，我走了！","你好！","謝謝你幫忙！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！可以再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         },
@@ -256,7 +256,7 @@ const SCENARIOS_DATA = {
               task:"請店員給你一個袋子",
               keywords:["袋子","袋","裝","打包","包裝","塑膠袋"], keywords_mode:'any',
               accepted_phrases:["請問可以給我袋子嗎？","不好意思，我需要袋子","可以給我一個袋子嗎？"],
-              options:["請問可以給我袋子嗎？","不用了，謝謝","謝謝再見","可以幫我裝袋嗎？"],
+              options:["請問可以給我袋子嗎？","不用了，謝謝","謝謝再見","好的，可以！"],
               feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！可以說：「請問可以給我袋子嗎？」", failed:"可以這樣說：「請問可以給我袋子嗎？」" } },
             { id:"bag_cost", shopkeeper_prompt:"好的！袋子要 2 元，可以嗎？", task:"說可以，你要袋子",
               keywords:["好","可以","行","OK","沒問題"], keywords_mode:'any',
@@ -631,7 +631,7 @@ const SCENARIOS_DATA = {
             { id:"goodbye", shopkeeper_prompt:"好的！請到收銀台結帳，謝謝！", task:"道謝說再見",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！再見！","好的，謝謝！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
-              options:["謝謝！再見！","謝謝你！","哼，不用你管！","掰掰！"],
+              options:["謝謝！再見！","好的，我要買！","哼，不用你管！","你好！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！很好！", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         },
@@ -665,7 +665,7 @@ const SCENARIOS_DATA = {
             { id:"goodbye", shopkeeper_prompt:"好的！那蘋果 48 元，找您 32 元，謝謝！", task:"道謝說再見",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！","好的，謝謝！"],
-              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","你好！"],
               feedback:{ perfect:"說得很有禮貌！下次多帶一點錢喔！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         },
@@ -689,12 +689,12 @@ const SCENARIOS_DATA = {
               task:"確認沒問題，道謝",
               keywords:["好","謝謝","沒問題","可以","OK","看過了"], keywords_mode:'any',
               accepted_phrases:["好的，謝謝！","沒問題，謝謝！","謝謝你！"],
-              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","我付現金"],
               feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「好的，謝謝！」" } },
             { id:"checkout", shopkeeper_prompt:"不客氣！請到收銀台結帳，謝謝！", task:"道謝說再見",
               keywords:["謝謝","再見","掰"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！再見！","好的，謝謝！","謝謝！掰！"],
-              options:["謝謝！再見！","謝謝你！","哼，不用你管！","我要退貨"],
+              options:["謝謝！再見！","你好！","哼，不用你管！","我要退貨"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         },
@@ -717,7 +717,7 @@ const SCENARIOS_DATA = {
               task:"說沒關係，謝謝",
               keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
               accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
-              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","謝謝再見！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
               feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
           ]
         },
@@ -745,7 +745,7 @@ const SCENARIOS_DATA = {
               task:"謝謝店員說再見",
               keywords:["謝謝","再見","掰"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！","好的，謝謝！"],
-              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","請問今天有沒有特賣？"],
               feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         }
@@ -860,12 +860,12 @@ const SCENARIOS_DATA = {
               task:"說沒關係，謝謝老闆",
               keywords:["沒關係","謝謝","好","沒事","OK","行"], keywords_mode:'any',
               accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝老闆！","OK，謝謝！","行，謝謝！"],
-              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","沒事！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我要冬瓜茶"],
               feedback:{ perfect:"很好！寬容地說「沒關係」很棒！", partial:"說出了重點！", failed:"可以這樣說：「沒關係，謝謝！」" } },
             { id:"checkout", shopkeeper_prompt:"這是冬瓜茶！45 元，謝謝！", task:"付錢並道謝",
               keywords:["謝謝"], keywords_mode:'any',
               accepted_phrases:["好的，謝謝！","謝謝！","謝謝，再見！"],
-              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","掰掰，謝謝！"],
+              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","我要冬瓜茶"],
               feedback:{ perfect:"太棒了！很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「好的，謝謝！」" } }
           ]
         },
@@ -883,7 +883,7 @@ const SCENARIOS_DATA = {
               task:"謝謝對方，說你知道了",
               keywords:["謝謝","知道","好","了解","找到了","OK","清楚"], keywords_mode:'any',
               accepted_phrases:["謝謝！我知道了！","謝謝你！","好的，謝謝！"],
-              options:["謝謝！我知道了！","哼，不用你管！","喂，我走了！","謝謝，掰掰！"],
+              options:["謝謝！我知道了！","哼，不用你管！","喂，我走了！","大杯！"],
               feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！我知道了！」" } },
             { id:"arrive", shopkeeper_prompt:"（你找到了！）你好！請問要什麼？", task:"打招呼並點珍珠奶茶大杯",
               keywords:["珍珠","奶茶"], keywords_mode:'any',
@@ -916,7 +916,7 @@ const SCENARIOS_DATA = {
               task:"說沒關係，謝謝",
               keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
               accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝老闆！","沒事，謝謝！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
-              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
               feedback:{ perfect:"說得很有禮貌！大度說「沒關係」很棒！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
           ]
         }
@@ -1050,7 +1050,7 @@ const SCENARIOS_DATA = {
               task:"謝謝藥師的說明，說你知道了",
               keywords:["謝謝","知道","好","了解","記住","OK","清楚"], keywords_mode:'any',
               accepted_phrases:["好的，謝謝！我知道了！","謝謝你說明！","了解，謝謝！"],
-              options:["好的，謝謝！我知道了！","哼，不用你管！","喂，我走了！","謝謝，我記住了！"],
+              options:["好的，謝謝！我知道了！","哼，不用你管！","喂，我走了！","請問這個藥有沒有副作用？"],
               feedback:{ perfect:"很好！記住這些注意事項很重要！", partial:"有說謝謝！", failed:"可以這樣說：「好的，謝謝！我知道了！」" } },
             { id:"checkout", shopkeeper_prompt:"好的！80 元，請問怎麼付款？", task:"付款並道謝",
               keywords:["現金","刷卡","悠遊卡","付現","信用卡","行動支付"], keywords_mode:'any',
@@ -1065,7 +1065,7 @@ const SCENARIOS_DATA = {
           steps: [
             { id:"checkout_done", shopkeeper_prompt:"好的！腸胃藥 120 元，找您 80 元，謝謝！",
               task:"請藥師給你收據",
-              keywords:["收據","發票","單","要收據"], keywords_mode:'any',
+              keywords:["收據","單","要收據"], keywords_mode:'any',
               accepted_phrases:["請問可以給我收據嗎？","不好意思，我需要收據","可以給我一張收據嗎？"],
               options:["請問可以給我收據嗎？","不用了，謝謝","謝謝再見","可以給我發票嗎？"],
               feedback:{ perfect:"很好！記得拿收據很重要！", partial:"說出了重點！", failed:"可以這樣說：「請問可以給我收據嗎？」" } },
@@ -1073,13 +1073,13 @@ const SCENARIOS_DATA = {
               task:"謝謝藥師",
               keywords:["謝謝","好","收到","感謝","OK","拿到"], keywords_mode:'any',
               accepted_phrases:["謝謝！","謝謝你！","好的，謝謝！","感謝！"],
-              options:["謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["謝謝！","哼，不用你管！","喂，我走了！","請問可以給我收據嗎？"],
               feedback:{ perfect:"很有禮貌！記得保存收據喔！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！」" } },
             { id:"goodbye", shopkeeper_prompt:"不客氣！請多休息，早日康復！",
               task:"向藥師道謝說再見",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["謝謝！再見！","謝謝你！再見！","謝謝，再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
-              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","謝謝您！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","請問可以給我收據嗎？"],
               feedback:{ perfect:"說得很有禮貌！保重喔！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
           ]
         }
@@ -1212,7 +1212,7 @@ const SCENARIOS_DATA = {
               task:"確認沒問題，道謝",
               keywords:["謝謝","再見","掰","感謝","謝","拜拜","bye","掰掰","謝囉"], keywords_mode:'any',
               accepted_phrases:["好的，謝謝！","沒問題，謝謝！","很好，謝謝！"],
-              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["好的，謝謝！","哼，不用你管！","喂，我走了！","有！這是收據"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「好的，謝謝！」" } }
           ]
         },
@@ -1267,7 +1267,7 @@ const SCENARIOS_DATA = {
               task:"說沒關係，謝謝店員",
               keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
               accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
-              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","謝謝再見！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 1000 元"],
               feedback:{ perfect:"說得很有禮貌！大度說「沒關係」很棒！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
           ]
         }
@@ -1409,7 +1409,7 @@ const SCENARIOS_DATA = {
               task:"說謝謝，並說沒關係",
               keywords:["謝謝","沒關係","好","沒事","還好","OK","了解"], keywords_mode:'any',
               accepted_phrases:["謝謝！沒關係！","謝謝，沒關係！","謝謝，我等到了！","謝謝！沒事！"],
-              options:["謝謝！沒關係！","哼，不用你管！","喂，我走了！","謝謝！"],
+              options:["謝謝！沒關係！","哼，不用你管！","喂，我走了！","我付現金"],
               feedback:{ perfect:"說得很有禮貌！寬容的態度很棒！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！沒關係！」" } }
           ]
         },
@@ -1427,7 +1427,7 @@ const SCENARIOS_DATA = {
               task:"謝謝店員",
               keywords:["謝謝","好","知道","了解","OK","找到了"], keywords_mode:'any',
               accepted_phrases:["謝謝！","好的，謝謝！","謝謝你！"],
-              options:["謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["謝謝！","哼，不用你管！","喂，我走了！","我付現金"],
               feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！」" } }
           ]
         }
@@ -1600,7 +1600,7 @@ const SCENARIOS_DATA = {
               task:"說沒關係，謝謝店員",
               keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
               accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
-              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","謝謝再見！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
           ]
         }
@@ -1677,7 +1677,7 @@ const SCENARIOS_DATA = {
             { id:"confirm", shopkeeper_prompt:"後天上午十點有空，可以嗎？", task:"確認時間，道謝",
               keywords:["好的","謝謝","沒問題","OK"], keywords_mode:'any',
               accepted_phrases:["好的，謝謝！","可以，謝謝！","沒問題，謝謝！","好！謝謝！","OK，謝謝！","行！謝謝！"],
-              options:["好的，謝謝！","不行，可以換個時間嗎？","哼，不用你管！","謝謝再見"],
+              options:["好的，謝謝！","不行，可以換個時間嗎？","哼，不用你管！","我要剪髮"],
               feedback:{ perfect:"確認時間說得很好！", partial:"有確認！加上謝謝更有禮貌", failed:"可以這樣說：「好的，謝謝！」" } },
             { id:"goodbye", shopkeeper_prompt:"好的，後天上午十點，請準時喔！", task:"道謝說再見",
               keywords:["謝謝","再見","掰","好","知道","收到","了解"], keywords_mode:'any',
@@ -1752,7 +1752,7 @@ const SCENARIOS_DATA = {
             { id:"confirm", shopkeeper_prompt:"好的！你知道是要左轉嗎？", task:"確認你記住方向，再次道謝",
               keywords:["知道","好","謝謝","了解","記住","對","清楚"], keywords_mode:'any',
               accepted_phrases:["知道了，謝謝！","好，我記住了！謝謝！","了解，謝謝你！","對，謝謝！","清楚了，謝謝！","記住了！謝謝你！"],
-              options:["知道了，謝謝！","哼，不用你管！","喂，我走了！","謝謝，再見！"],
+              options:["知道了，謝謝！","哼，不用你管！","喂，我走了！","請問捷運台北車站怎麼走？"],
               feedback:{ perfect:"說得很有禮貌！再次道謝很棒！", partial:"有說謝謝！", failed:"可以這樣說：「知道了，謝謝！」" } }
           ]
         },
@@ -1909,7 +1909,7 @@ const SCENARIOS_DATA = {
               options:["我要買兩個奶油餐包","我要一個就好","那我不買了","謝謝再見"], kw:["奶油餐包","兩個"],
               feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！兩個奶油餐包共 30 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","你好！","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         }
@@ -1970,7 +1970,7 @@ const SCENARIOS_DATA = {
               options:["好，我要這罐","那我再想想","我不需要了","謝謝再見"], kw:["我要買","要買","這罐"],
               feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！這罐防曬乳 150 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","你好！","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         },
@@ -2000,7 +2000,7 @@ const SCENARIOS_DATA = {
           desc: "詢問洗髮精買一送一的活動並完成購買",
           steps: [
             mkStep({ id:"greet_ask", say:"你好！請問需要幫忙嗎？", task:"打招呼並詢問有沒有特價活動",
-              options:["你好！請問有特價活動嗎？","你好，有沒有折扣？","請問有優惠嗎？","謝謝再見"], kw:["特價","折扣","優惠"],
+              options:["你好！請問有特價活動嗎？","我要花香的！","請問有優惠嗎？","謝謝再見"], kw:["特價","折扣","優惠"],
               feedback:{ perfect:"問得很好！懂得找優惠！", partial:"說出了重點！" } }),
             mkStep({ id:"answer", say:"有的！這款洗髮精本週買一送一喔！", task:"說你要買這款洗髮精",
               options:["好，我要買這款","那我再想想","我不需要了","謝謝再見"], kw:["我要買","要買","洗髮精"],
@@ -2009,7 +2009,7 @@ const SCENARIOS_DATA = {
               options:["我要花香的！","我要果香的！","我要無香的！","三種各一瓶！"], kw:["花香"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！買一送一共 199 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","我要花香的！","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！有利用到優惠！", partial:"有說謝謝！" } })
           ]
         }
@@ -2060,10 +2060,10 @@ const SCENARIOS_DATA = {
               options:["不是喔，我要綠茶","對，紅茶就好","謝謝再見","我要換飲料"], kw:["綠茶","不是"],
               feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
             mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯綠茶。", task:"說謝謝店員的更正",
-              options:["謝謝你！","沒關係！","再確認一次","謝謝再見"], kw:["謝謝"],
+              options:["謝謝你！","沒關係！","再確認一次","我要一杯綠茶"], kw:["謝謝"],
               feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！綠茶一杯 40 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","我要一杯綠茶","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         },
@@ -2100,7 +2100,7 @@ const SCENARIOS_DATA = {
               options:["微糖","全糖","無糖","半糖"], kw:["微糖"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！大杯微糖紅茶 50 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","微糖","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         }
@@ -2171,7 +2171,7 @@ const SCENARIOS_DATA = {
               options:["正常飯量","飯多一點","飯少一點","不要飯"], kw:["正常"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！特餐一份 70 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","正常飯量","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！有利用到特餐！", partial:"有說謝謝！" } })
           ]
         },
@@ -2257,13 +2257,13 @@ const SCENARIOS_DATA = {
               kw:["插座","位子"],
               feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！" } }),
             mkStep({ id:"answer", say:"有的！靠窗那一區都有插座喔！", task:"說謝謝店員的說明",
-              options:["謝謝你！","好的，我知道了","太好了！","謝謝再見"], kw:["謝謝"],
+              options:["謝謝你！","好的，我知道了","太好了！","我要一杯熱美式"], kw:["謝謝"],
               feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
             mkStep({ id:"order", say:"請問要點什麼飲料呢？", task:"說你要一杯熱美式",
               options:["我要一杯熱美式","我要拿鐵","謝謝再見","我再看看"], kw:["美式"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！熱美式一杯 50 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","我要一杯熱美式","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         },
@@ -2278,10 +2278,10 @@ const SCENARIOS_DATA = {
               options:["不是喔，我要焦糖的","對，香草就好","謝謝再見","我要換飲料"], kw:["焦糖","不是"],
               feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
             mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯焦糖拿鐵。", task:"說謝謝店員的更正",
-              options:["謝謝你！","沒關係！","再確認一次","謝謝再見"], kw:["謝謝"],
+              options:["謝謝你！","沒關係！","再確認一次","我要一杯焦糖拿鐵"], kw:["謝謝"],
               feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！焦糖拿鐵一杯 70 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","我要一杯焦糖拿鐵","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         }
@@ -2338,7 +2338,7 @@ const SCENARIOS_DATA = {
               options:["不用了，謝謝","我還要買包裹箱","再給我一張","謝謝再見"], kw:["不用","謝謝"],
               feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！兩張郵票共 10 元，謝謝！", task:"付款並道謝",
-              options:["好的，謝謝！","我不想付錢","謝謝！","掰掰！"], kw:["謝謝","現金"],
+              options:["好的，謝謝！","我不想付錢","我要兩張","掰掰！"], kw:["謝謝","現金"],
               feedback:{ perfect:"很棒！", partial:"有說謝謝！" } })
           ]
         },
@@ -2411,7 +2411,7 @@ const SCENARIOS_DATA = {
               options:["這是我的借書證","我沒有借書證","我要辦一張","謝謝再見"], kw:["借書證","這是"],
               feedback:{ perfect:"很好！配合度很高！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的！借閱期限是兩週，兩週後要記得還書喔！", task:"說謝謝",
-              options:["好的，謝謝！","謝謝，我會記得的！","知道了，謝謝！","謝謝再見"], kw:"bye",
+              options:["好的，謝謝！","這是我的借書證","你好！","我要借這本書"], kw:"bye",
               feedback:{ perfect:"說得很有禮貌！記得準時還書喔！", partial:"有說謝謝！" } })
           ]
         },
@@ -2450,7 +2450,7 @@ const SCENARIOS_DATA = {
               options:["好的，我付 6 元","太貴了，我不付","下次再付","謝謝再見"], kw:["好的","付"],
               feedback:{ perfect:"很好！懂得為自己的疏忽負責！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的，謝謝你！", task:"付款並道謝",
-              options:["謝謝你！","我不想付","不客氣","再見"], kw:"bye",
+              options:["謝謝你！","我不想付","不客氣","我要還這本書"], kw:"bye",
               accepted:["謝謝你！","感謝你！"],
               feedback:{ perfect:"很棒！有禮貌地完成了！", partial:"有說謝謝！" } })
           ]
@@ -2467,7 +2467,7 @@ const SCENARIOS_DATA = {
               options:["我是學生","我是居民","都不是","謝謝再見"], kw:["學生"],
               feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"confirm", say:"好的，請幫我填一下這張表格。", task:"說好的謝謝",
-              options:["好的，謝謝！","我不會填","可以幫我填嗎？","謝謝再見"], kw:["好的","謝謝"],
+              options:["好的，謝謝！","我不會填","可以幫我填嗎？","我是學生"], kw:["好的","謝謝"],
               feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"辦好了！這是你的借書證，歡迎常來！", task:"道謝說再見",
               options:["謝謝！再見！","哼，不用你管！","喂，我走了！","我要辦借書證"], kw:"bye",
@@ -2502,7 +2502,7 @@ const SCENARIOS_DATA = {
               options:["在公園弄丟的","在學校弄丟的","我不記得了","謝謝再見"], kw:["公園"],
               feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的，我幫你登記，如果找到會通知你！", task:"道謝",
-              options:["謝謝你！","快點找啦！","謝謝，再見！","太好了，謝謝！"], kw:"bye",
+              options:["謝謝你！","快點找啦！","你好！我想報案","在公園弄丟的"], kw:"bye",
               accepted:["謝謝你！","感謝你！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]
@@ -2522,7 +2522,7 @@ const SCENARIOS_DATA = {
               options:["謝謝你！","快一點啦！","太好了","不客氣"], kw:["謝謝"],
               feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
             mkStep({ id:"reunite", say:"太好了，找到你弟弟了！", task:"開心地道謝說再見",
-              options:["謝謝你！再見！","太好了！謝謝！","弟弟！","謝謝，掰掰！"], kw:"bye",
+              options:["謝謝你！再見！","我弟弟不見了","弟弟！","弟弟穿紅色的衣服"], kw:"bye",
               accepted:["謝謝你！再見！","謝謝你！掰！","謝謝你！拜拜！","謝謝你！bye！","謝謝你！掰掰！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]
@@ -2541,7 +2541,7 @@ const SCENARIOS_DATA = {
               options:["在公車站撿到的","在公園撿到的","我不記得了","謝謝再見"], kw:["公車站"],
               feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的，謝謝你的幫忙，你真是個好學生！", task:"道謝說再見",
-              options:["謝謝！再見！","不客氣，再見！","謝謝誇獎！","掰掰！"], kw:"bye",
+              options:["謝謝！再見！","我撿到一個錢包","謝謝誇獎！","在公車站撿到的"], kw:"bye",
               accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]
@@ -2561,7 +2561,7 @@ const SCENARIOS_DATA = {
               options:["可以，打給我媽媽","可以，打給我爸爸","我不知道電話","謝謝再見"], kw:["打給","媽媽","爸爸"],
               feedback:{ perfect:"很好！懂得配合警察！", partial:"說出了重點！" } }),
             mkStep({ id:"checkout", say:"好的，我們馬上聯絡你的家人，你先坐著休息。", task:"說謝謝",
-              options:["謝謝你！","我自己回家","謝謝，我在這裡等","太好了，謝謝！"], kw:"bye",
+              options:["謝謝你！","我自己回家","有人一直跟著我","請幫幫我！"], kw:"bye",
               accepted:["謝謝你！","感謝你！"],
               feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
           ]

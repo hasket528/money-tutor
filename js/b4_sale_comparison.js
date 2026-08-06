@@ -1,5 +1,5 @@
 ﻿// =============================================================
-// FILE: js/b4_sale_comparison.js — B4 特賣比一比
+// FILE: js/b4_sale_comparison.js — B4 商品價格比較
 // 建立日期：2026-03-14
 // =============================================================
 'use strict';
@@ -415,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="settings-title-row">
                         <img src="../images/common/hint_detective.png" alt="金錢小助手"
                              class="settings-mascot-img" onerror="this.style.display='none'">
-                        <h1>單元B4：特賣比一比</h1>
+                        <h1>單元B4：商品價格比較</h1>
                     </div>
                     <div class="game-settings">
                         <div class="b-setting-group">
@@ -1202,21 +1202,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 語音引導（afterClose pattern）
+            // 簡單/普通：進入題目時不報價格，只問哪一家便宜（金額由學生點金幣算出）
             let speechText;
             {
-                const s1 = left.store, p1 = left.price;
-                const s2 = right.store, p2 = right.price;
-                const intro = p1 === p2
-                    ? `${s1}跟${s2}都是${p1}元`
-                    : `${s1}${toTWD(p1)}，${s2}${toTWD(p2)}`;
+                const s1 = left.store;
+                const s2 = right.store;
+                const ask = `${curr.name}在${s1}和${s2}都有賣，請問哪一家店比較便宜？`;
                 const speechMap = {
-                    easy:   `${intro}，請問哪一個商店賣的比較便宜？`,
-                    normal: `${intro}，請問哪一個商店賣的比較便宜？`,
+                    easy:   ask,
+                    normal: ask,
                     hard:   `${s1}跟${s2}，請問哪一個商店賣的比較便宜？`,
                 };
                 speechText = speechMap[diff] || `哪個地方比較便宜？`;
             }
-            this.state.quiz.lastSpeechText = `${curr.name}，${speechText}`;
+            // easy/normal 的句子已含商品名，避免重播時唸兩次
+            this.state.quiz.lastSpeechText = (diff === 'hard')
+                ? `${curr.name}，${speechText}`
+                : speechText;
             this._showItemIntroModal(curr, () => {
                 if (diff === 'hard') {
                     // 困難：播完語音後在商店卡片中輸入金額
@@ -1343,7 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
             <div class="b-header">
                 <div class="b-header-left">
-                    <span class="b-header-unit">🏷️ 特賣比一比</span>
+                    <span class="b-header-unit">🏷️ 商品價格比較</span>
                 </div>
                 <div class="b-header-center">${centerTxt}</div>
                 <div class="b-header-right">
@@ -2102,12 +2104,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 語音引導（afterClose pattern）
-            const storeNames = curr.stores.map(s => s.store).join('、');
-            const prices = curr.stores.map(s => `${s.store}${toTWD(s.price)}`).join('，');
-            const tripleText = diff === 'easy'
-                ? `${prices}，哪家最便宜？`
-                : `在${storeNames}，哪一家比較便宜？從最便宜到最貴依序輸入金額。`;
-            this.state.quiz.lastSpeechText = `${curr.name}，${tripleText}`;
+            // 簡單/普通：進入題目時不報價格，只問三家店中哪一家便宜
+            const names     = curr.stores.map(s => s.store);
+            const storeList = names.length > 1
+                ? `${names.slice(0, -1).join('、')}和${names[names.length - 1]}`
+                : names[0];
+            const ask3 = `${curr.name}在${storeList}都有賣，請問哪一家店比較便宜？`;
+            let tripleText;
+            if (diff === 'easy')        tripleText = ask3;
+            else if (diff === 'normal') tripleText = `${ask3}從最便宜到最貴依序輸入金額。`;
+            else                        tripleText = `在${names.join('、')}，哪一家比較便宜？從最便宜到最貴依序輸入金額。`;
+            // easy/normal 的句子已含商品名，避免重播時唸兩次
+            this.state.quiz.lastSpeechText = (diff === 'hard')
+                ? `${curr.name}，${tripleText}`
+                : tripleText;
             this._showItemIntroModal(curr, () => {
                 if (diff === 'hard') {
                     this._activateTripleHardCardInputs(curr);
@@ -4655,7 +4665,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             app.innerHTML = `
 <div class="b-header">
-    <div class="b-header-left"><span class="b-header-unit">🏷️ 特賣比一比</span></div>
+    <div class="b-header-left"><span class="b-header-unit">🏷️ 商品價格比較</span></div>
     <div class="b-header-center">${diffLabel}模式 · 省錢清單</div>
     <div class="b-header-right">
         <button class="b-reward-btn" id="b4-sl-reward-btn">🎁 獎勵</button>
@@ -4759,7 +4769,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? Math.round((q.correctCount / q.totalQuestions) * 100) : 0;
 
             // 學習紀錄
-            window.LearningTracker?.save({ unit: 'b4', unitName: 'B4 特賣比一比', series: 'B',
+            window.LearningTracker?.save({ unit: 'b4', unitName: 'B4 商品價格比較', series: 'B',
                 score: q.correctCount, total: q.totalQuestions, difficulty: this.state.settings?.difficulty,
                 durationSec: Math.floor(elapsed / 1000) });
 
