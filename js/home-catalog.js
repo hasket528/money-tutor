@@ -145,7 +145,7 @@ window.HOME_CATALOG = {
       "icon": "✏️",
       "color": "#4F46E5",
       "part": 1,
-      "situations": 5,
+      "situations": 6,
       "scene": "dialogue/images/scenes/stationery_store.webp",
       "clerk": {
         "name": "阿宏",

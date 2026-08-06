@@ -3285,6 +3285,58 @@
 }
 
 /* ── 魔法商品設定面板（settings page）─────────────────────────── */
+/* ── 設定頁：商品價格自訂 ───────────────────────────────── */
+.b6-price-range-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.b6-price-range-label {
+    font-size: 13px;
+    color: #374151;
+}
+.b6-price-val-btn {
+    background: #fff;
+    border: 2px solid #10b981;
+    border-radius: 8px;
+    color: #059669;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 5px 12px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.b6-price-val-btn:hover { background: #d1fae5; }
+.b6-price-mode-desc {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+.b6-price-preview {
+    margin-top: 8px;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.7;
+}
+.b6-price-preview:empty {
+    display: none;
+}
+.b6-pp-line strong { color: #059669; }
+.b6-pp-warn {
+    color: #d97706;
+    font-weight: 600;
+}
+.b6-pp-good {
+    color: #047857;
+    font-weight: 600;
+}
+
 .b6-mp-add-box {
     background: #fafafa;
     border: 1.5px solid #e5e7eb;

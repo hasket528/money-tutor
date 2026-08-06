@@ -86,6 +86,9 @@ const B5_ROUND_CONFIG = {
     hard:   { countRange: [4, 6] },
 };
 
+// 老師能設的預算上限（避免金額大到脫離生活經驗）
+const B5_BUDGET_CAP = 2000;
+
 // ── 舊版情境資料（已棄用，保留供回溯參考）──────────────────────
 const _B5_SCENARIOS_DEPRECATED = {
     easy: [
@@ -372,7 +375,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ── 6. State ──────────────────────────────────────────
         state: {
-            settings: { difficulty: null, rounds: null, clickMode: 'off', partyTheme: null, customItemsEnabled: false, magicItems: [] },
+            settings: {
+                difficulty: null, rounds: null, clickMode: 'off', partyTheme: null,
+                customItemsEnabled: false, magicItems: [],
+                // 每關預算自訂（普通／困難模式）：先選教學效果，再在合法區間內指定固定金額
+                // 指定後改為「先定預算，再挑買得起的清單」
+                budgetCustom: false, budgetMode: null, budgetValue: 0,
+            },
             game: {
                 currentRound: 0,
                 totalRounds: 5,
@@ -478,6 +487,29 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div class="b-diff-desc" id="diff-desc"></div>
                         </div>
+                        <div class="b-setting-group" id="b5-price-wrap" style="display:none;">
+                            <label class="b-setting-label">💰 每關預算：</label>
+                            <div class="b-btn-group" id="b5-price-group">
+                                <button class="b-sel-btn${this.state.settings.budgetCustom ? '' : ' active'}" data-price="off">用原本的預算</button>
+                                <button class="b-sel-btn${this.state.settings.budgetCustom ? ' active' : ''}" data-price="on">自己設定預算</button>
+                            </div>
+                            <div id="b5-price-panel" style="display:${this.state.settings.budgetCustom ? '' : 'none'};margin-top:6px;">
+                                <label style="font-size:13px;color:#374151;font-weight:600;">① 要哪一種：</label>
+                                <div class="b-btn-group" id="b5-budget-mode-group" style="margin-top:4px;">
+                                    <button class="b-sel-btn${this.state.settings.budgetMode === 'control' ? ' active' : ''}" data-bmode="control">控制預算</button>
+                                    <button class="b-sel-btn${this.state.settings.budgetMode === 'always' ? ' active' : ''}" data-bmode="always">一定買得完</button>
+                                </div>
+                                <div class="b5-price-mode-desc" id="b5-budget-mode-desc"></div>
+                                <div id="b5-budget-value-block" style="display:${this.state.settings.budgetMode ? '' : 'none'};margin-top:10px;">
+                                    <label style="font-size:13px;color:#374151;font-weight:600;">② 每關給多少錢：</label>
+                                    <div class="b5-price-range-row" style="margin-top:4px;">
+                                        <button class="b5-price-val-btn" id="b5-budget-value-btn">${this.state.settings.budgetValue || '請設定'}</button>
+                                        <span class="b5-price-range-label" id="b5-budget-range-hint"></span>
+                                    </div>
+                                </div>
+                                <div class="b5-price-preview" id="b5-price-preview"></div>
+                            </div>
+                        </div>
                         <div class="b-setting-group" id="b5-custom-items-group-wrap">
                             <div id="b5-custom-items-toggle-row" style="display:none;">
                                 <label style="font-size:13px;color:#374151;font-weight:600;">✨ 魔法商品</label>
@@ -562,9 +594,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.querySelectorAll('#theme-group .b-sel-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     this.state.settings.partyTheme = btn.dataset.theme;
+                    this._b5UpdatePricePreview();
                     this._checkCanStart();
                 }, {}, 'settings');
             });
+
+            // ── 每關預算自訂 ──
+            document.querySelectorAll('#b5-price-group [data-price]').forEach(btn => {
+                Game.EventManager.on(btn, 'click', () => {
+                    document.querySelectorAll('#b5-price-group [data-price]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.state.settings.budgetCustom = btn.dataset.price === 'on';
+                    const panel = document.getElementById('b5-price-panel');
+                    if (panel) panel.style.display = this.state.settings.budgetCustom ? '' : 'none';
+                    this._b5UpdatePricePreview();
+                }, {}, 'settings');
+            });
+
+            document.querySelectorAll('#b5-budget-mode-group [data-bmode]').forEach(btn => {
+                Game.EventManager.on(btn, 'click', () => {
+                    document.querySelectorAll('#b5-budget-mode-group [data-bmode]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.state.settings.budgetMode = btn.dataset.bmode;
+                    // 換模式時把金額帶到該模式的建議值（原值若仍在合法區間內就保留）
+                    const range = this.state.settings.difficulty && this.state.settings.difficulty !== 'easy'
+                        ? this._b5BudgetRange(btn.dataset.bmode) : null;
+                    if (range) {
+                        const v = this.state.settings.budgetValue;
+                        if (!v || v < range.min || v > range.max) this.state.settings.budgetValue = range.suggest;
+                    }
+                    const block = document.getElementById('b5-budget-value-block');
+                    if (block) block.style.display = '';
+                    this._b5UpdatePricePreview();
+                    this._checkCanStart();
+                }, {}, 'settings');
+            });
+
+            const b5ValBtn = document.getElementById('b5-budget-value-btn');
+            if (b5ValBtn) {
+                Game.EventManager.on(b5ValBtn, 'click', () => {
+                    const s = this.state.settings;
+                    const range = (s.budgetMode && s.difficulty && s.difficulty !== 'easy')
+                        ? this._b5BudgetRange(s.budgetMode) : null;
+                    const hint = range ? `請輸入 ${range.min} ~ ${range.max} 元` : '請先選難度與派對主題';
+                    this._showMpPriceNumpad(s.budgetValue, (n) => {
+                        s.budgetValue = n;
+                        this._b5UpdatePricePreview();
+                        this._checkCanStart();
+                    }, { title: '💰 每關給多少錢', hint, max: range ? range.max : B5_BUDGET_CAP, min: range ? range.min : 1 });
+                }, {}, 'settings');
+            }
+
+            this._b5UpdatePricePreview();
 
             document.querySelectorAll('#diff-group .b-sel-btn').forEach(btn => {
                 Game.EventManager.on(btn, 'click', () => {
@@ -575,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (desc) { desc.textContent = this._diffDescriptions[btn.dataset.val]; desc.classList.add('show'); }
                     const assistGroup = document.getElementById('assist-click-group');
                     const customToggle = document.getElementById('b5-custom-items-toggle-row');
+                    const priceWrap = document.getElementById('b5-price-wrap');
                     if (assistGroup) {
                         if (btn.dataset.val === 'easy') {
                             assistGroup.style.display = '';
@@ -583,12 +665,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             document.querySelectorAll('#b5-custom-items-group [data-custom]').forEach(b => b.classList.toggle('active', b.dataset.custom === 'off'));
                             const panel = document.getElementById('b5-magic-panel');
                             if (panel) panel.style.display = 'none';
+                            // 簡單模式不開放自訂預算（維持原本熟悉的金額）
+                            if (priceWrap) priceWrap.style.display = 'none';
+                            this.state.settings.budgetCustom = false;
+                            document.querySelectorAll('#b5-price-group [data-price]').forEach(b => b.classList.toggle('active', b.dataset.price === 'off'));
+                            const pricePanel = document.getElementById('b5-price-panel');
+                            if (pricePanel) pricePanel.style.display = 'none';
                         } else {
                             assistGroup.style.display = 'none';
                             this.state.settings.clickMode = 'off';
                             if (customToggle) customToggle.style.display = '';
+                            if (priceWrap) priceWrap.style.display = '';
                         }
                     }
+                    this._b5UpdatePricePreview();
                     this._checkCanStart();
                 }, {}, 'settings');
             });
@@ -662,7 +752,9 @@ document.addEventListener('DOMContentLoaded', () => {
         _checkCanStart() {
             const btn = document.getElementById('start-btn');
             const s = this.state.settings;
-            if (btn) btn.disabled = !s.difficulty || !s.rounds || !s.partyTheme;
+            // 開了自訂預算就必須選完效果並設好金額，否則不知道每關要給多少
+            const budgetReady = !s.budgetCustom || (!!s.budgetMode && !!s.budgetValue);
+            if (btn) btn.disabled = !s.difficulty || !s.rounds || !s.partyTheme || !budgetReady;
         },
 
         _showSettingsCountNumpad(label, onConfirm) {
@@ -716,6 +808,107 @@ document.addEventListener('DOMContentLoaded', () => {
             return min + Math.floor(Math.random() * (steps + 1)) * 5;
         },
 
+        // 老師指定的固定預算（每關都是同一個金額）
+        _b5PickBudget() {
+            return Math.round(this.state.settings.budgetValue || 0);
+        },
+
+        // 設定頁試算：這個難度「最省的一組」與「最貴的一組」要多少錢
+        // ⚠️ 兩者都用 priceRange 的**上界**估：商品價格每關會在 priceRange 內浮動，
+        //    用下界算會太樂觀，老師設的金額就會常常被守門偷偷加高。
+        _b5BudgetFacts() {
+            const s = this.state.settings;
+            const [, maxC] = B5_ROUND_CONFIG[s.difficulty]?.countRange || [3, 4];
+            const themeKeys = (s.partyTheme && s.partyTheme !== 'random')
+                ? [s.partyTheme] : Object.keys(B5_THEMES);
+            const magic     = s.magicItems || [];
+            const magicSum  = magic.reduce((a, m) => a + m.price, 0);
+            const need      = Math.max(0, maxC - magic.length);   // 魔法商品必買，其餘名額才是一般商品
+
+            let maxCheap = 0, maxExpensive = 0;
+            themeKeys.forEach(k => {
+                const items = B5_THEMES[k]?.allItems || [];
+                const his   = items.map(i => (i.priceRange || [i.price, i.price])[1]);
+                const asc   = [...his].sort((a, b) => a - b);   // 最便宜那幾樣（照最貴情況算）
+                const desc  = [...his].sort((a, b) => b - a);   // 最貴那幾樣
+                const cheap = magicSum + asc.slice(0, need).reduce((a, b) => a + b, 0);
+                const exp   = magicSum + desc.slice(0, need).reduce((a, b) => a + b, 0);
+                if (cheap > maxCheap)     maxCheap = cheap;
+                if (exp   > maxExpensive) maxExpensive = exp;
+            });
+            return { maxCheap, maxExpensive };
+        },
+
+        // 所選教學效果對應的合法金額區間（需大於總額才有找零，故各留 10 元）
+        _b5BudgetRange(mode) {
+            const f = this._b5BudgetFacts();
+            const up10   = v => Math.ceil(v / 10) * 10;
+            const down10 = v => Math.floor(v / 10) * 10;
+            if (mode === 'always') {
+                const min = up10(f.maxExpensive + 10);
+                return { min, max: Math.max(min, B5_BUDGET_CAP), suggest: min, facts: f };
+            }
+            const min = up10(f.maxCheap + 10);
+            const max = Math.max(min, Math.min(B5_BUDGET_CAP, down10(f.maxExpensive)));
+            if (max < min) return null;
+            return { min, max, suggest: up10((min + max) / 2), facts: f };
+        },
+
+        // ── 設定頁：預算自訂的說明與試算 ────────────────────────
+        // B5 是「照清單買齊」，所以自訂預算後改成先定金額、再挑買得起的清單。
+        // 「控制預算」＝錢較少，系統會挑便宜的商品組清單；「一定買得完」＝清單完全隨機也買得起。
+        _b5UpdatePricePreview() {
+            const s = this.state.settings;
+
+            const descEl = document.getElementById('b5-budget-mode-desc');
+            if (descEl) {
+                descEl.textContent =
+                    s.budgetMode === 'control' ? '錢夠買完清單，但買不起最貴的組合——清單會挑便宜一點的商品。' :
+                    s.budgetMode === 'always'  ? '不管抽到哪些商品都買得起，適合剛開始練習。' :
+                    '請先選一種，系統才知道金額要抓在哪個範圍。';
+                descEl.classList.toggle('b5-pp-warn', !s.budgetMode);
+            }
+
+            const el     = document.getElementById('b5-price-preview');
+            const valBtn = document.getElementById('b5-budget-value-btn');
+            const hintEl = document.getElementById('b5-budget-range-hint');
+            if (!el) return;
+            if (!s.budgetCustom || !s.difficulty || s.difficulty === 'easy') { el.innerHTML = ''; return; }
+            if (!s.budgetMode) { el.innerHTML = ''; return; }
+
+            const range = this._b5BudgetRange(s.budgetMode);
+            if (!range) {
+                el.innerHTML = '<div class="b5-pp-warn">⚠️ 這個難度沒有「控制預算」的空間，請改選「一定買得完」</div>';
+                return;
+            }
+            if (valBtn) valBtn.textContent = s.budgetValue ? `${s.budgetValue} 元` : '請設定';
+            // 上限一定要一起講：只寫「N 元以上」會讓人以為可以無限往上設
+            if (hintEl) hintEl.textContent = range.min === range.max
+                ? `（只能設 ${range.min} 元）`
+                : `（${range.min} 元以上、${range.max} 元以下）`;
+
+            const [minC, maxC] = B5_ROUND_CONFIG[s.difficulty]?.countRange || [3, 4];
+            const magicSum = (s.magicItems || []).reduce((a, m) => a + m.price, 0);
+            const v = s.budgetValue;
+
+            let verdict;
+            if (!v) {
+                verdict = '<div class="b5-pp-warn">⚠️ 還沒設定金額</div>';
+            } else if (v < range.min) {
+                verdict = `<div class="b5-pp-warn">⚠️ ${v} 元可能買不完（最省也要 ${range.facts.maxCheap} 元），那幾關會自動加到買得完</div>`;
+            } else if (s.budgetMode === 'control' && v > range.max) {
+                verdict = `<div class="b5-pp-warn">⚠️ ${v} 元不管抽到什麼都買得起，等於不用控制預算了</div>`;
+            } else if (s.budgetMode === 'control') {
+                verdict = `<div class="b5-pp-good">✅ 每關固定給 ${v} 元：清單會挑買得起的商品</div>`;
+            } else {
+                verdict = `<div class="b5-pp-good">✅ 每關固定給 ${v} 元：抽到哪些都買得起</div>`;
+            }
+
+            el.innerHTML = `
+                <div class="b5-pp-line">🛍️ 這個難度每關買 <strong>${minC} ~ ${maxC} 樣</strong>${magicSum ? '（含魔法商品）' : ''}：最省 <strong>${range.facts.maxCheap} 元</strong>、最貴 <strong>${range.facts.maxExpensive} 元</strong></div>
+                ${verdict}`;
+        },
+
         // 動態生成一關資料：隨機選 N 件商品作為目標，預算=目標價格總和
         _generateRound(diff, themeKey) {
             const theme = B5_THEMES[themeKey] || B5_THEMES.birthday;
@@ -725,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 為本關所有商品隨機化價格
             const roundPrices = {};
             theme.allItems.forEach(item => {
-                roundPrices[item.id] = this._randomPrice(item);
+                roundPrices[item.id] = this._randomPrice(item, theme.allItems);
             });
 
             // 魔法商品（普通/困難模式）永遠列為必買目標，使用固定價格
@@ -734,17 +927,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 剩餘名額由一般商品隨機補齊
             const regularCount = Math.max(0, totalCount - magicTargets.length);
-            const shuffled = [...theme.allItems].sort(() => Math.random() - 0.5);
-            const regularTargets = shuffled.slice(0, regularCount).map(item => ({
-                ...item,
-                price: roundPrices[item.id],
-            }));
+            const magicSum     = magicTargets.reduce((s, i) => s + i.price, 0);
+            const priced = item => ({ ...item, price: roundPrices[item.id] });
+            const shuffle = () => [...theme.allItems].sort(() => Math.random() - 0.5);
+
+            let regularTargets, budget;
+
+            if (this.state.settings.budgetCustom) {
+                // 老師指定預算：先決定給多少錢，再挑一組買得起的清單（否則清單會超出預算買不完）
+                budget = this._b5PickBudget();
+                const fits = list => magicSum + list.reduce((s, i) => s + i.price, 0) < budget;
+                regularTargets = null;
+                for (let attempt = 0; attempt < 30 && !regularTargets; attempt++) {
+                    const cand = shuffle().slice(0, regularCount).map(priced);
+                    if (fits(cand)) regularTargets = cand;
+                }
+                if (!regularTargets) {
+                    // 隨機湊不出來就改用最便宜的一組
+                    regularTargets = [...theme.allItems].map(priced)
+                        .sort((a, b) => a.price - b.price).slice(0, regularCount);
+                }
+                // 守門：最便宜的一組仍買不起時，把預算提到買得完（否則這關無解）
+                const sum = magicSum + regularTargets.reduce((s, i) => s + i.price, 0);
+                if (budget <= sum) budget = Math.ceil((sum + 10) / 10) * 10;
+            } else {
+                regularTargets = shuffle().slice(0, regularCount).map(priced);
+                const targetSum = magicSum + regularTargets.reduce((s, i) => s + i.price, 0);
+                // 預算 = 大於目標總和的最小標準鈔票面額，確保找零 > 0
+                const stdDenoms = [100, 500, 1000, 2000, 5000];
+                budget = stdDenoms.find(d => d > targetSum) || Math.ceil((targetSum + 100) / 100) * 100;
+            }
 
             const targetItems = [...magicTargets, ...regularTargets];
-            const targetSum   = targetItems.reduce((s, i) => s + i.price, 0);
-            // 預算 = 大於目標總和的最小標準鈔票面額，確保找零 > 0
-            const stdDenoms = [100, 500, 1000, 2000, 5000];
-            const budget = stdDenoms.find(d => d > targetSum) || Math.ceil((targetSum + 100) / 100) * 100;
             return { targetItems, budget, themeKey, roundPrices };
         },
 
@@ -1562,7 +1776,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`).join('');
         },
 
-        _showMpPriceNumpad(currentPrice, onConfirm) {
+        _showMpPriceNumpad(currentPrice, onConfirm, opts = {}) {
+            const maxVal = opts.max || 500;   // 魔法商品沿用 500；預算設定會傳更大的上限
+            const minVal = opts.min || 1;
+            const title  = opts.title || '💰 輸入金額';
+            const hint   = opts.hint  || `上限 ${maxVal} 元（每件不超過 ${maxVal} 元）`;
             document.getElementById('b-mp-price-numpad')?.remove();
             let val = currentPrice > 0 ? String(currentPrice) : '';
             const overlay = document.createElement('div');
@@ -1570,8 +1788,8 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10200;display:flex;align-items:center;justify-content:center;';
             overlay.innerHTML = `
                 <div style="background:#fff;border-radius:16px;padding:20px 24px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-                    <div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:4px;">💰 輸入金額</div>
-                    <div style="font-size:11px;color:#d97706;margin-bottom:8px;">上限 500 元（每件不超過 500 元）</div>
+                    <div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:4px;">${title}</div>
+                    <div style="font-size:11px;color:#d97706;margin-bottom:8px;">${hint}</div>
                     <div id="b-mppnp-disp" style="font-size:2rem;font-weight:bold;text-align:center;padding:10px;background:#f3f4f6;border-radius:10px;margin-bottom:12px;">${currentPrice > 0 ? currentPrice : '---'}</div>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
                         ${[1,2,3,4,5,6,7,8,9,'⌫',0,'取消'].map(k => `<button style="padding:12px;font-size:1.1rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;cursor:pointer;font-weight:600;" data-mppnpk="${k}">${k}</button>`).join('')}
@@ -1589,15 +1807,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (k === '⌫') { val = val.slice(0, -1); }
                     else {
                         const next = val + k;
-                        if (parseInt(next) <= 500) val = next;
+                        if (parseInt(next) <= maxVal) val = next;
                     }
                     update();
                 });
             });
             overlay.querySelector('#b-mppnp-cancel').addEventListener('click', () => {
                 const n = parseInt(val);
-                if (n >= 1 && n <= 500) { overlay.remove(); onConfirm(n); return; }
-                disp.textContent = n > 500 ? '上限 500 元' : '請輸入 1~500';
+                if (n >= minVal && n <= maxVal) { overlay.remove(); onConfirm(n); return; }
+                disp.textContent = n > maxVal ? `上限 ${maxVal} 元` : `請輸入 ${minVal}~${maxVal}`;
                 disp.style.color = '#ef4444';
                 setTimeout(() => { disp.style.color = ''; update(); }, 800);
                 val = ''; update();
