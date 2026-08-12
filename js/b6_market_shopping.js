@@ -1474,6 +1474,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (ratio < 0.75) { label = '錢剩下一半';     emoji = '💸'; color = '#f59e0b'; }
             else if (ratio < 0.9)  { label = '錢剩下四分之一'; emoji = '⚠️'; color = '#f97316'; }
             else if (ratio < 1.0)  { label = '錢快花完了';     emoji = '🔴'; color = '#ef4444'; }
+            // 剛好花完＝這單元最理想的結果，不能跟超支共用紅色警報
+            else if (total === budget) { label = '錢剛好花完'; emoji = '🎯'; color = '#059669'; }
             else                   { label = '超出預算了';     emoji = '🚨'; color = '#dc2626'; }
             return { pct, label, emoji, color };
         },
@@ -1696,15 +1698,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeSelCount = (g.selectedItems || []).filter(i => i.stall === g.activeStall).length;
             const stallQuotaFull = activeSelCount >= activeQuota;
 
+            const cue = this._b6ShowShoppingCue();
+
             const stallItems = _currentStalls[g.activeStall].items;
             const productsHTML = stallItems.map(item => {
                 const isSelected = (g.selectedItems || []).some(si => si.stall === g.activeStall && si.id === item.id);
                 const wouldExceed = !isSelected && (total + item.price) > budget;
-                const isQuotaFull = !isSelected && stallQuotaFull;
+                const showOver    = wouldExceed && cue;
+                const showQuota   = !isSelected && stallQuotaFull && cue;
                 let extraClass = '';
                 if (isSelected)     extraClass = 'selected';
-                else if (wouldExceed) extraClass = 'over-budget';
-                else if (isQuotaFull) extraClass = 'quota-full';
+                else if (showOver)  extraClass = 'over-budget';
+                else if (showQuota) extraClass = 'quota-full';
                 return `
                 <button class="b6-product-btn${extraClass ? ' ' + extraClass : ''}"
                         data-item-id="${item.id}" data-stall="${g.activeStall}" data-price="${item.price}">
@@ -1713,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="b6-product-price">${item.price} 元</span>
                     <span class="b6-product-unit">/ ${item.unit}</span>
                     ${isSelected ? '<span class="b6-product-collected-mark">✅</span>' : ''}
-                    ${wouldExceed ? '<span class="b6-product-over-mark">💸</span>' : ''}
+                    ${showOver ? '<span class="b6-product-over-mark">💸</span>' : ''}
                 </button>`;
             }).join('');
 
@@ -2159,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
                         ${[1,2,3,4,5,6,7,8,9,'⌫',0,'取消'].map(k => `<button style="padding:12px;font-size:1.1rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;cursor:pointer;font-weight:600;" data-mppnpk="${k}">${k}</button>`).join('')}
                     </div>
-                    <button id="b-mppnp-cancel" style="width:100%;padding:8px;border:none;background:#f3f4f6;border-radius:8px;cursor:pointer;font-size:14px;color:#6b7280;">確定</button>
+                    <button id="b-mppnp-cancel" style="width:100%;padding:8px;border:none;background:#f3f4f6;border-radius:8px;cursor:pointer;font-size:1.1rem;font-weight:600;">確定</button>
                 </div>`;
             document.body.appendChild(overlay);
             const disp = overlay.querySelector('#b-mppnp-disp');
@@ -2254,22 +2259,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const activeSelCount = (g.selectedItems || []).filter(i => i.stall === g.activeStall).length;
                 const stallQuotaFull = activeSelCount >= activeQuota;
                 const stallItems     = _currentStalls[g.activeStall].items;
+                const cue            = this._b6ShowShoppingCue();
                 const productsHTML = stallItems.map(item => {
                     const isSelected  = (g.selectedItems || []).some(si => si.stall === g.activeStall && si.id === item.id);
                     const wouldExceed = !isSelected && (total + item.price) > budget;
-                    const isQuotaFull = !isSelected && stallQuotaFull;
+                    const showOver    = wouldExceed && cue;
+                    const showQuota   = !isSelected && stallQuotaFull && cue;
                     let extraClass = '';
                     if (isSelected)      extraClass = 'selected';
-                    else if (wouldExceed) extraClass = 'over-budget';
-                    else if (isQuotaFull) extraClass = 'quota-full';
+                    else if (showOver)   extraClass = 'over-budget';
+                    else if (showQuota)  extraClass = 'quota-full';
                     return `<button class="b6-product-btn${extraClass ? ' ' + extraClass : ''}"
                         data-item-id="${item.id}" data-stall="${g.activeStall}" data-price="${item.price}">
                         <span class="b6-product-icon">${b6IconHTML(item)}</span>
                         <span class="b6-product-name">${item.name}</span>
                         <span class="b6-product-price">${item.price} 元</span>
                         <span class="b6-product-unit">/ ${item.unit}</span>
-                        ${isSelected  ? '<span class="b6-product-collected-mark">✅</span>' : ''}
-                        ${wouldExceed ? '<span class="b6-product-over-mark">💸</span>' : ''}
+                        ${isSelected ? '<span class="b6-product-collected-mark">✅</span>' : ''}
+                        ${showOver  ? '<span class="b6-product-over-mark">💸</span>' : ''}
                     </button>`;
                 }).join('');
                 const panelEl = document.querySelector('.b6-stall-panel');
@@ -2667,24 +2674,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeQuota = activeStallReq ? activeStallReq.count : 0;
             const activeSelCount = (g.selectedItems || []).filter(i => i.stall === g.activeStall).length;
             const stallQuotaFull = activeSelCount >= activeQuota;
+            const cue = this._b6ShowShoppingCue();
             document.querySelectorAll('.b6-product-btn').forEach(btn => {
                 const itemId = btn.dataset.itemId;
                 const stall  = btn.dataset.stall;
                 const price  = parseInt(btn.dataset.price) || 0;
                 const isSelected = (g.selectedItems || []).some(si => si.stall === stall && si.id === itemId);
                 const wouldExceed = !isSelected && (total + price) > budget;
-                const isQuotaFull = !isSelected && stallQuotaFull;
-                btn.className = 'b6-product-btn' + (isSelected ? ' selected' : wouldExceed ? ' over-budget' : isQuotaFull ? ' quota-full' : '');
+                const showOver    = wouldExceed && cue;
+                const showQuota   = !isSelected && stallQuotaFull && cue;
+                btn.className = 'b6-product-btn' + (isSelected ? ' selected' : showOver ? ' over-budget' : showQuota ? ' quota-full' : '');
                 let mark = btn.querySelector('.b6-product-collected-mark');
                 let overMark = btn.querySelector('.b6-product-over-mark');
                 if (isSelected && !mark) {
                     mark = document.createElement('span'); mark.className = 'b6-product-collected-mark'; mark.textContent = '✅';
                     btn.appendChild(mark);
                 } else if (!isSelected && mark) mark.remove();
-                if (wouldExceed && !overMark) {
+                if (showOver && !overMark) {
                     overMark = document.createElement('span'); overMark.className = 'b6-product-over-mark'; overMark.textContent = '⚠️';
                     btn.appendChild(overMark);
-                } else if (!wouldExceed && overMark) overMark.remove();
+                } else if (!showOver && overMark) overMark.remove();
             });
 
             // 更新 nav dots
@@ -2883,6 +2892,16 @@ document.addEventListener('DOMContentLoaded', () => {
             tag.style.top  = (rect.top + rect.height / 2 - 12) + 'px';
             document.body.appendChild(tag);
             Game.TimerManager.setTimeout(() => tag.remove(), 1100, 'ui');
+        },
+
+        // 不能買的商品要不要先變灰？只有簡單模式要。涵蓋兩種灰階：
+        //   over-budget＝剩下的錢不夠買｜quota-full＝這攤已選滿／今天不用來這攤
+        // 普通／困難是「在預算內買到指定商品」的測驗，先幫學生把不能買的篩成灰色等於替他算好了；
+        // 收回的只是外觀提示——點下去照樣擋，照樣唸「超出預算 X 元」「只需要選 N 樣」，回饋一點沒少。
+        // ⚠️ 判斷只留這一份，三個商品渲染點（_renderShoppingUI／_refreshStallPanel／
+        //    _updateShoppingUIPartial）一律呼叫它，不要各自寫難度條件。
+        _b6ShowShoppingCue() {
+            return this.state.settings.difficulty === 'easy';
         },
 
         _calcMissionTotal() {

@@ -1794,7 +1794,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
                         ${[1,2,3,4,5,6,7,8,9,'⌫',0,'取消'].map(k => `<button style="padding:12px;font-size:1.1rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;cursor:pointer;font-weight:600;" data-mppnpk="${k}">${k}</button>`).join('')}
                     </div>
-                    <button id="b-mppnp-cancel" style="width:100%;padding:8px;border:none;background:#f3f4f6;border-radius:8px;cursor:pointer;font-size:14px;color:#6b7280;">確定</button>
+                    <button id="b-mppnp-cancel" style="width:100%;padding:8px;border:none;background:#f3f4f6;border-radius:8px;cursor:pointer;font-size:1.1rem;font-weight:600;">確定</button>
                 </div>`;
             document.body.appendChild(overlay);
             const disp = overlay.querySelector('#b-mppnp-disp');

@@ -1386,6 +1386,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 left:  { opt: left,  coins: this._getCoinsArray(left.price),  clickedCount: 0, done: false },
                 right: { opt: right, coins: this._getCoinsArray(right.price), clickedCount: 0, done: false }
             };
+            // 同 _setupNormalModeCoins：擋掉被 cancel() 打斷的舊回呼，避免漏唸最後一家店的金額
+            let lastDoneSide = null;
 
             ['left', 'right'].forEach(side => {
                 const card    = document.getElementById(`card-${side}`);
@@ -1438,8 +1440,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isLast = data.clickedCount >= data.coins.length;
                         if (isLast) {
                             data.done = true;
+                            lastDoneSide = side;
                             if (card) card.style.outline = '3px solid #10b981';
                             Game.Speech.speak(`${runningTotal}元`, () => {
+                                if (lastDoneSide !== side) return;   // 被 cancel 打斷的舊回呼，不推進
                                 const other = side === 'left' ? 'right' : 'left';
                                 if (coinsData[other].done) {
                                     this._handleEasyBothSidesDone(curr, correctSide, left, right);
@@ -1500,6 +1504,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 left:  { opt: left,  coins: this._getCoinsArray(left.price),  clickedCount: 0, done: false },
                 right: { opt: right, coins: this._getCoinsArray(right.price), clickedCount: 0, done: false }
             };
+            // 記錄「最後一個數完」的是哪一邊：Speech.speak() 開頭會 cancel()，
+            // 另一邊尚未回呼的總金額語音會被迫觸發它的 callback，若不擋就會在本邊
+            // 總金額還沒唸出來時就跳到下一段語音（等於漏唸最後一家店的金額）
+            let lastDoneSide = null;
 
             ['left', 'right'].forEach(side => {
                 const card = document.getElementById(`card-${side}`);
@@ -1555,8 +1563,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isLast = data.clickedCount >= data.coins.length;
                         if (isLast) {
                             data.done = true;
+                            lastDoneSide = side;
                             if (card) card.style.outline = '3px solid #10b981';
                             Game.Speech.speak(`${runningTotal}元`, () => {
+                                if (lastDoneSide !== side) return;   // 被 cancel 打斷的舊回呼，不推進
                                 const other = side === 'left' ? 'right' : 'left';
                                 if (coinsData[other].done) {
                                     this._showPriceInputSection(curr, left, right, correctSide);
@@ -2187,6 +2197,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 clickedCount: 0,
                 done: false
             }));
+            // 同 _setupNormalModeCoins：擋掉被 cancel() 打斷的舊回呼，避免漏唸最後一家店的金額
+            let lastDoneIdx = null;
 
             storesData.forEach(data => {
                 const card = document.getElementById(`tcard-${data.idx}`);
@@ -2238,8 +2250,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isLast = data.clickedCount >= data.coins.length;
                         if (isLast) {
                             data.done = true;
+                            lastDoneIdx = data.idx;
                             if (card) card.style.outline = '3px solid #10b981';
                             Game.Speech.speak(`${data.store.store}${runningTotal}元`, () => {
+                                if (lastDoneIdx !== data.idx) return;   // 被 cancel 打斷的舊回呼，不推進
                                 const allDone = storesData.every(d => d.done);
                                 if (allDone) {
                                     Game.Speech.speak('請輸入最貴和最便宜的商品金額', () => {
@@ -2262,6 +2276,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 coins: this._getCoinsArray(store.price),
                 clickedCount: 0, done: false
             }));
+            // 同 _setupNormalModeCoins：擋掉被 cancel() 打斷的舊回呼，避免漏唸最後一家店的金額
+            let lastDoneIdx = null;
 
             storesData.forEach(data => {
                 const card    = document.getElementById(`tcard-${data.idx}`);
@@ -2312,8 +2328,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isLast = data.clickedCount >= data.coins.length;
                         if (isLast) {
                             data.done = true;
+                            lastDoneIdx = data.idx;
                             if (card) card.style.outline = '3px solid #10b981';
                             Game.Speech.speak(`${runningTotal}元`, () => {
+                                if (lastDoneIdx !== data.idx) return;   // 被 cancel 打斷的舊回呼，不推進
                                 if (storesData.every(s => s.done)) {
                                     this._handleTripleEasyAllDone(curr);
                                 }
