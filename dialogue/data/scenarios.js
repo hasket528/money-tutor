@@ -1615,8 +1615,7 @@ const SCENARIOS_DATA = {
               feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
             mkStep({ id:"see_price", say:"（你拿了一支原子筆，一支 20 元；還拿了一個修正帶，一個 45 元。）",
               task:"算算看：兩樣東西總共多少錢",
-              // ⚠️ 站上沒有修正帶的圖素材，暫時只掛原子筆；補到圖之後把這裡改回兩張陣列即可
-              image:"images/a4/icon-a4-ballpoint-pen-shop.png",
+              image:["images/a4/icon-a4-ballpoint-pen-shop.png","images/a4/icon-a4-correction-tape-shop.png"],
               image_label:"原子筆 20 元 ＋ 修正帶 45 元",
               options:["總共 65 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["65"],
               accepted:["總共 65 元","兩樣是 65 元","20 元加 45 元是 65 元","65 元"],
