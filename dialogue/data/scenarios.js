@@ -699,7 +699,7 @@ const SCENARIOS_DATA = {
               accepted_phrases:["好的，我要買！","我要這 3 顆！","要買！"],
               options:["好的，我要買！","請問廁所在哪裡？","蘋果在哪裡？","謝謝再見"],
               feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說得更完整：「好的，我要買！」", failed:"可以這樣說：「好的，我要買！」" } },
-            { id:"checkout", shopkeeper_prompt:"好的！蘋果 105 元，請到收銀台結帳，請問怎麼付款？",
+            { id:"checkout", shopkeeper_prompt:"好的！蘋果 105 元，請問怎麼付款？",
               task:"告訴收銀員付款方式",
               keywords:["現金","刷卡","悠遊卡","付現","信用卡","行動支付"], keywords_mode:'any',
               accepted_phrases:["我付現金","我要刷卡","用悠遊卡","我用信用卡","我用行動支付"],
@@ -1245,12 +1245,37 @@ const SCENARIOS_DATA = {
               accepted_phrases:["好的，可以！","S 號好了，謝謝","可以，謝謝"],
               options:["好的，可以！","不要，再小一號","算了，不買了","還有其他顏色嗎？"],
               feedback:{ perfect:"回答得很好！", partial:"有回應！可以說完整：「好的，可以！」", failed:"可以這樣說：「好的，可以！」" } },
+            mkStep({ id:"see_price", say:"（你看了一下吊牌上的價格，這件外套 850 元。）",
+              task:"說出外套多少錢：850 元",
+              image:"images/a4/icon-a4-jacket-shop.png", image_label:"外套 850 元",
+              options:["外套是 850 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["850"],
+              accepted:["外套是 850 元","這件外套 850 元","850 元","吊牌上是 850 元"],
+              frame:{ template:"外套是 {price}", slots:{ price:{ answer:"850 元", choices:[
+                { text:"850 元", emoji:"💰" }, { text:"580 元", emoji:"💵" },
+                { text:"1000 元", emoji:"💵" }, { text:"150 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買之前先看清楚吊牌上的價格！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「外套是 850 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 1000 元，錢夠買。）",
+              task:"說出你有多少錢",
+              image:"images/money/1000_yuan_front.png", image_label:"1000 元",
+              options:["我有 1000 元","我沒有錢","我要買外套","請問廁所在哪裡？"], kw:["1000","一千"],
+              accepted:["我有 1000 元","我有一千元","我帶了 1000 元","錢包裡有 1000 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"1000 元", choices:[
+                { text:"1000 元", emoji:"💵" }, { text:"850 元", emoji:"💰" },
+                { text:"500 元", emoji:"💴" }, { text:"150 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買東西前先數清楚錢包裡有多少錢！", partial:"說出了重點！記得說清楚有多少錢", failed:"可以這樣說：「我有 1000 元」" } }),
             { id:"checkout", shopkeeper_prompt:"S 號很合身！這件外套 850 元，請問怎麼付款？",
               task:"告訴店員要購買並付款方式",
               keywords:["現金","刷卡","悠遊卡","付現","信用卡","行動支付"], keywords_mode:'any',
               accepted_phrases:["我要買！我付現金","好的，我要買，刷卡","我要買，現金","我要買！我用悠遊卡","我要買！我用信用卡","我要買！我用行動支付"],
               options:["我要買！我付現金","我不想付錢","太貴了，不買了","可以再便宜嗎？"],
-              feedback:{ perfect:"太棒了！說得很清楚！", partial:"說出了部分！可以同時說要買和付款方式", failed:"可以這樣說：「我要買！我付現金」" } }
+              feedback:{ perfect:"太棒了！說得很清楚！", partial:"說出了部分！可以同時說要買和付款方式", failed:"可以這樣說：「我要買！我付現金」" } },
+            mkStep({ id:"goodbye", say:"好的，找您 150 元，請拿好，謝謝光臨！", task:"跟店員道謝說再見",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
           ]
         },
         {
@@ -1992,9 +2017,9 @@ const SCENARIOS_DATA = {
       situations: [
         {
           id: "basic", name: "基本購買", icon: "🍞",
-          desc: "詢問麵包口味、確認價錢到結帳的完整購買流程",
+          desc: "詢問麵包位置、看標價算兩個的總價、確認錢包夠不夠的完整購買流程",
           steps: [
-            mkStep({ id:"greeting", say:"你好！歡迎光臨，請問要買什麼麵包呢？", task:"跟老闆打招呼",
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟老闆打招呼",
               options:["你好！","謝謝再見","多少錢？","有沒有奶油麵包？"], kw:"greetBoss",
               accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
               feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
@@ -2004,22 +2029,52 @@ const SCENARIOS_DATA = {
                 { text:"菠蘿麵包", emoji:"🍍" }, { text:"蛋糕", emoji:"🍰" },
                 { text:"三明治", emoji:"🥪" }, { text:"貝果", emoji:"🥯" } ] } },
               feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問菠蘿麵包在哪裡？」" } }),
-            mkStep({ id:"ask_price", say:"菠蘿麵包在你左手邊那一排喔！", task:"詢問這個多少錢",
-              options:["請問這個多少錢？","好的謝謝","我要買兩個","謝謝再見"], kw:"price",
-              frame_ref:"ask_price", slots:{ item:{ answer:"菠蘿麵包", choices:[
-                { text:"菠蘿麵包", emoji:"🍍" }, { text:"吐司", emoji:"🍞" },
-                { text:"貝果", emoji:"🥯" }, { text:"蛋糕", emoji:"🍰" } ] } },
-              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
-            mkStep({ id:"purchase", say:"這個菠蘿麵包 25 元，請問還需要別的嗎？", task:"告訴老闆你要買這個",
-              options:["我要買這個","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
-              frame_ref:"want_item", slots:{ item:{ answer:"菠蘿麵包", choices:[
-                { text:"菠蘿麵包", emoji:"🍍" }, { text:"吐司", emoji:"🍞" },
-                { text:"貝果", emoji:"🥯" }, { text:"蛋糕", emoji:"🍰" } ] } },
-              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「我要買這個！」" } }),
-            mkStep({ id:"checkout", say:"好的！25 元，請問怎麼付款？", task:"付款並道謝",
+            mkStep({ id:"no_more", say:"菠蘿麵包在你左手邊那一排喔！請問還需要別的嗎？", task:"回答老闆：不用了，謝謝",
+              options:["沒有，謝謝你！","我要買蛋糕","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買蛋糕", emoji:"🍰" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你走到左手邊那一排，看了一下標價，菠蘿麵包一個 25 元。你想要買 2 個。）",
+              // 不寫「兩個」：cnNumToArabic 會把「兩個」轉成「2 個」，高級判定就把 2 當必答數字，
+              //「總共 50 元」這種算對卻沒提數量的答法會被判失敗（數量已在旁白交代）
+              task:"算算看：菠蘿麵包總共多少錢",
+              image:"images/a4/icon-a4-bread-shop.png", image_label:"菠蘿麵包 一個 25 元",
+              options:["2 個菠蘿麵包是 50 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["50"],
+              accepted:["2 個菠蘿麵包是 50 元","2 個是 50 元","總共 50 元","50 元"],
+              frame:{ template:"2 個菠蘿麵包是 {price}", slots:{ price:{ answer:"50 元", choices:[
+                { text:"50 元", emoji:"💴" }, { text:"25 元", emoji:"🪙" },
+                { text:"70 元", emoji:"💰" }, { text:"20 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"算得很好！一個 25 元，2 個就是 50 元！", partial:"說出了重點！記得說清楚總共多少錢", failed:"25 加 25 等於 50，可以說：「2 個菠蘿麵包是 50 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 50 元和兩個 10 元，錢夠買。）",
+              task:"數數看：你的錢包裡有多少錢",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"],
+              image_label:"50 元 ＋ 10 元 ＋ 10 元",
+              options:["我有 70 元","我沒有錢","我要買麵包","請問廁所在哪裡？"], kw:["70","七十"],
+              accepted:["我有 70 元","我有七十元","錢包裡有 70 元","50 元加 20 元是 70 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"70 元", choices:[
+                { text:"70 元", emoji:"💰" }, { text:"50 元", emoji:"💴" },
+                { text:"20 元", emoji:"🪙" }, { text:"10 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"數得很好！50 元加兩個 10 元就是 70 元！", partial:"說出了重點！記得說清楚一共有多少錢", failed:"50 元加 10 元加 10 元等於 70 元，可以說：「我有 70 元」" } }),
+            mkStep({ id:"purchase", say:"菠蘿麵包一個 25 元，你買 2 個，總共 50 元，要買嗎？", task:"告訴老闆你要買這 2 個",
+              options:["好的，我要買！","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
+              accepted:["好的，我要買！","我要買這 2 個","我要買菠蘿麵包","要買！"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"好的，我要買！", choices:[
+                { text:"好的，我要買！", emoji:"🛒" }, { text:"你好！", emoji:"👋" },
+                { text:"請問廁所在哪裡？", emoji:"🚻" }, { text:"謝謝再見", emoji:"🙏" } ] } } },
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「好的，我要買！」", failed:"可以這樣說：「好的，我要買！」" } }),
+            mkStep({ id:"checkout", say:"好的！50 元，請問怎麼付款？", task:"付款並道謝",
               options:["我付現金，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:"pay",
               accepted:["我付現金，謝謝！","我要刷卡，謝謝！","我用悠遊卡，謝謝！","我用信用卡，謝謝！","我用行動支付，謝謝！"],
-              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } }),
+            mkStep({ id:"goodbye", say:"好的，找您 20 元，請拿好，謝謝光臨！", task:"跟老闆道謝說再見",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
           ]
         },
         {
@@ -2109,13 +2164,32 @@ const SCENARIOS_DATA = {
                 { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
                 { text:"香皂", emoji:"🧽" }, { text:"洗髮精", emoji:"🧴" } ] } },
               feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問乳液在哪裡？」" } }),
-            mkStep({ id:"ask_price", say:"乳液在這一排喔，請問還需要什麼嗎？", task:"詢問這罐多少錢",
-              options:["請問這罐多少錢？","好的謝謝","我要買兩罐","謝謝再見"], kw:"price",
-              frame_ref:"ask_price", slots:{ item:{ answer:"乳液", choices:[
-                { text:"乳液", emoji:"🧴" }, { text:"防曬乳", emoji:"🧴" },
-                { text:"洗面乳", emoji:"🧼" }, { text:"香皂", emoji:"🧽" } ] } },
-              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
-            mkStep({ id:"purchase", say:"這罐乳液 120 元，請問還需要別的嗎？", task:"告訴店員你要買這罐",
+            mkStep({ id:"no_more", say:"乳液在靠窗的架子上喔，請問還需要什麼嗎？", task:"回答店員：不用了，謝謝",
+              options:["沒有，謝謝你！","我要買洗面乳","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買洗面乳", emoji:"🧼" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你走到靠窗的架子，拿起一罐乳液，看了一下標價，一罐 120 元。）",
+              task:"說出乳液多少錢：120 元",
+              image:"images/a4/icon-a4-lotion-shop.png", image_label:"乳液 120 元",
+              options:["乳液是 120 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["120"],
+              accepted:["乳液是 120 元","乳液 120 元","一罐 120 元","120 元"],
+              frame:{ template:"乳液是 {price}", slots:{ price:{ answer:"120 元", choices:[
+                { text:"120 元", emoji:"💰" }, { text:"100 元", emoji:"💵" },
+                { text:"200 元", emoji:"💵" }, { text:"80 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買之前先看清楚標價！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「乳液是 120 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有兩張 100 元，錢夠買。）",
+              task:"數數看：你的錢包裡有多少錢",
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"100 元 ＋ 100 元",
+              options:["我有 200 元","我沒有錢","我要買乳液","請問廁所在哪裡？"], kw:["200","兩百","二百"],
+              accepted:["我有 200 元","我有兩百元","錢包裡有 200 元","100 元加 100 元是 200 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"200 元", choices:[
+                { text:"200 元", emoji:"💰" }, { text:"100 元", emoji:"💵" },
+                { text:"120 元", emoji:"🪙" }, { text:"80 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"數得很好！兩張 100 元就是 200 元！", partial:"說出了重點！記得說清楚一共有多少錢", failed:"100 元加 100 元等於 200 元，可以說：「我有 200 元」" } }),
+            mkStep({ id:"purchase", say:"這罐乳液 120 元，請問要買嗎？", task:"告訴店員你要買這罐",
               options:["我要買這罐","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
               frame_ref:"want_item", slots:{ item:{ answer:"乳液", choices:[
                 { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
@@ -2124,7 +2198,14 @@ const SCENARIOS_DATA = {
             mkStep({ id:"checkout", say:"好的！120 元，請問怎麼付款？", task:"付款並道謝",
               options:["我付現金，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:"pay",
               accepted:["我付現金，謝謝！","我要刷卡，謝謝！","我用悠遊卡，謝謝！","我用信用卡，謝謝！","我用行動支付，謝謝！"],
-              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } })
+              feedback:{ perfect:"太棒了！付款和道謝都說到了！", partial:"說出了部分！可以同時說付款方式和謝謝" } }),
+            mkStep({ id:"goodbye", say:"好的，找您 80 元，請拿好，謝謝光臨！", task:"跟店員道謝說再見",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
           ]
         },
         {

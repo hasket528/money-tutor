@@ -1,5 +1,5 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v156';
+const CACHE_CORE  = 'shopping-practice-v157';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 // 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
@@ -42,6 +42,11 @@ const STALE_AUDIO = [
   // 2026-08-14 文具店・基本購買：商品改原子筆 20 元＋修正帶 45 元（總價與規格詢問同步）
   'stationery_store_basic_ask_spec.mp3',
   'stationery_store_basic_checkout.mp3',
+  // 2026-08-14 麵包店／美妝店：加入看標價與數錢包兩步，商品數量與總價同步（檔名不變、內容已重錄）
+  'bakery_basic_purchase.mp3',
+  'bakery_basic_checkout.mp3',
+  'beauty_store_basic_purchase.mp3',
+  'bakery_basic_greeting.mp3',   // 開場白縮短為「你好！歡迎光臨！」，找麵包種類移到第 2 句
 ];
 
 const PRECACHE = [
