@@ -5397,22 +5397,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             Game.Debug.log('flow', '🎯 [A4-自選] 進入價格確認流程，已選商品:', itemNames);
 
-            // 播放音效和語音
-            const difficulty = this.state.settings.difficulty;
-            const speechText = difficulty === 'easy'
-                ? `你已選擇${itemNames}`
-                : `你已選擇${itemNames}，請確認商品總額`;
-
+            // 🔧 [修改] 第一步只播音效，「你已選擇…請確認商品總額」的語音取消，
+            //           商品與價格改由第二步整合播放（speakPriceConfirmation）
             this.audio.playSuccessSound(() => {
-                this.speech.speak(speechText, {
-                    callback: () => {
-                        Game.TimerManager.setTimeout(() => {
-                            this.state.isProcessing = false;
-                            // 使用 SceneManager 切換到價格確認場景
-                            Game.SceneManager.switchScene('priceConfirmation', Game);
-                        }, 1000, 'screenTransition');
-                    }
-                });
+                Game.TimerManager.setTimeout(() => {
+                    this.state.isProcessing = false;
+                    // 使用 SceneManager 切換到價格確認場景
+                    Game.SceneManager.switchScene('priceConfirmation', Game);
+                }, 500, 'screenTransition');
             });
         },
 
@@ -6421,43 +6413,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔧 [修正] 無論音效是否成功，都確保場景轉換正常進行
             const proceedWithSelection = () => {
                 const difficulty = this.state.settings.difficulty;
-                
-                // 🔧 [修正] 統一使用商品的描述名稱，與其他語音保持一致
-                const productInfo = this.parseProductDisplay(selectedItem, 1);
 
-                if (difficulty === 'easy') {
-                    // 簡單模式：進入價格確認場景（語音同普通模式）
-                    this.speech.speak(`你選擇了${productInfo.speechText}，請確認商品價格`, {
-                        callback: () => {
-                            // 🔧 [修復] 使用 TimerManager 追蹤計時器
-                            Game.TimerManager.setTimeout(() => {
-                                // 🔧 [修復] 驗證當前場景，防止在錯誤場景下切換
-                                const currentScene = Game.state.gameState.currentScene;
-                                if (currentScene === 'shopping') {
-                                    // 🔧 [修改] 使用SceneManager切換到價格確認場景
-                                    Game.SceneManager.switchScene('priceConfirmation', Game);
-                                } else {
-                                    context.Debug.warn('flow', `⚠️ [商品選擇回調] 在 ${currentScene} 場景下被調用，忽略場景切換`);
-                                }
-                            }, 1000, 'screenTransition');
-                        }
-                    });
-                } else {
-                    // 普通和困難模式：需要用戶確認價格
-                    this.speech.speak(`你選擇了${productInfo.speechText}，請確認商品價格`, {
-                        callback: () => {
-                            // 🔧 [修復] 使用 TimerManager 追蹤計時器
-                            Game.TimerManager.setTimeout(() => {
-                                const currentScene = Game.state.gameState.currentScene;
-                                if (currentScene === 'shopping') {
-                                    Game.showPriceInputScene(selectedItem);
-                                } else {
-                                    context.Debug.warn('flow', `⚠️ [商品選擇回調] 在 ${currentScene} 場景下被調用，忽略價格輸入`);
-                                }
-                            }, 1000, 'screenTransition');
-                        }
-                    });
-                }
+                // 🔧 [修改] 第一步不再播放「你選擇了…請確認商品價格」，
+                //           商品與價格改由第二步整合播放（speakPriceConfirmation）
+                // 🔧 [修復] 使用 TimerManager 追蹤計時器
+                Game.TimerManager.setTimeout(() => {
+                    // 🔧 [修復] 驗證當前場景，防止在錯誤場景下切換
+                    const currentScene = Game.state.gameState.currentScene;
+                    if (currentScene !== 'shopping') {
+                        Game.Debug.warn('flow', `⚠️ [商品選擇回調] 在 ${currentScene} 場景下被調用，忽略後續流程`);
+                        return;
+                    }
+
+                    if (difficulty === 'easy') {
+                        // 簡單模式：使用SceneManager切換到價格確認場景
+                        Game.SceneManager.switchScene('priceConfirmation', Game);
+                    } else {
+                        // 普通和困難模式：需要用戶確認價格
+                        Game.showPriceInputScene(selectedItem);
+                    }
+                }, 500, 'screenTransition');
             };
             
             // 嘗試播放音效，無論成功與否都執行場景轉換
@@ -6522,6 +6497,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+
+            // 🔧 [新增] 第二步整合語音：商品＋價格＋提問
+            this.speakPriceConfirmation([selectedItem]);
+        },
+
+        // 🔧 [新增] 產生第二步「確認商品價格」的整合語音
+        // 簡單模式（只要按確認購買）：「1包口香糖伍拾伍元，1包巧克力肆拾元，總共九十五元」
+        // 普通/困難模式（要自己輸入）：「1包口香糖伍拾伍元，1包巧克力肆拾元，請輸入商品的總額」
+        // 單一商品時簡單模式不重複唸總額（總額就是它自己）
+        buildPriceConfirmSpeech(items, difficulty) {
+            const list = (items || []).filter(Boolean);
+            if (list.length === 0) return '';
+
+            const itemsText = list
+                .map(item => `${this.parseProductDisplay(item, 1).speechText}${this.convertToTraditionalCurrency(item.price)}`)
+                .join('，');
+            const isMulti = list.length > 1;
+
+            if (difficulty === 'easy') {
+                if (!isMulti) return itemsText;
+                const totalPrice = list.reduce((sum, item) => sum + item.price, 0);
+                return `${itemsText}，總共${this.convertToTraditionalCurrency(totalPrice)}`;
+            }
+
+            return `${itemsText}，請輸入商品的總額`;
+        },
+
+        // 🔧 [新增] 第二步進場時播放整合語音（原本在第一步選完商品時播放）
+        speakPriceConfirmation(items) {
+            const speechText = this.buildPriceConfirmSpeech(items, this.state.settings.difficulty);
+            if (!speechText) return;
+
+            Game.Debug.log('speech', '🎙️ [A4-第二步] 播放商品價格語音:', speechText);
+            // 等畫面渲染完再開口，避免和選擇音效重疊
+            Game.TimerManager.setTimeout(() => {
+                this.speech.speak(speechText, { interrupt: true });
+            }, 300, 'speechDelay');
         },
 
         // 🔧 [新增] 顯示價格確認場景（自選模式第二步）
@@ -6667,6 +6679,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             Game.Debug.log('ui', '🎨 [A4-價格確認] 第二步UI已渲染');
+
+            // 🔧 [新增] 第二步整合語音：各商品價格＋提問總計
+            this.speakPriceConfirmation(selectedItems);
         },
 
         // 🔧 [新增] 顯示簡單模式的價格確認場景
@@ -6739,6 +6754,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             Game.Debug.log('ui', '🎨 [A4-簡單模式] 價格確認UI已渲染');
+
+            // 🔧 [新增] 第二步整合語音：各商品價格＋總額（簡單模式直接唸出總額）
+            this.speakPriceConfirmation(isSingleItem ? [selectedItem] : selectedItems);
         },
 
         // 顯示自訂商品價格數字輸入器
