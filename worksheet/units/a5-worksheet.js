@@ -7,12 +7,14 @@ WorksheetRegistry.register('a5', {
         const typeLabels = {
             'steps': '提款機步驟',
             'deposit-fill': '存款計算-數字填空',
+            'deposit-fill-formula': '存款計算-數字填空(含算式)',
             'deposit-img-fill': '存款計算-圖示填空',
             'deposit-fill-select': '存款計算-填空與選擇',
             'deposit-coin-select': '存款計算-圖示選擇',
             'deposit-hint-select': '存款計算-提示選擇',
             'deposit-hint-complete': '存款計算-提示完成',
             'withdraw-fill': '提款計算-數字填空',
+            'withdraw-fill-formula': '提款計算-數字填空(含算式)',
             'withdraw-img-fill': '提款計算-圖示填空',
             'withdraw-fill-select': '提款計算-填空與選擇',
             'withdraw-coin-select': '提款計算-圖示選擇',
@@ -56,6 +58,7 @@ WorksheetRegistry.register('a5', {
                 { label: '提款機步驟', value: 'steps' },
                 // 存款計算（6種）
                 { label: '數字填空(存款)', value: 'deposit-fill' },
+                { label: '數字填空(存款・含算式)', value: 'deposit-fill-formula' },
                 { label: '圖示填空(存款)', value: 'deposit-img-fill' },
                 { label: '填空與選擇(存款)', value: 'deposit-fill-select' },
                 { label: '圖示選擇(存款)', value: 'deposit-coin-select' },
@@ -63,6 +66,7 @@ WorksheetRegistry.register('a5', {
                 { label: '提示完成(存款)', value: 'deposit-hint-complete' },
                 // 提款計算（6種）
                 { label: '數字填空(提款)', value: 'withdraw-fill' },
+                { label: '數字填空(提款・含算式)', value: 'withdraw-fill-formula' },
                 { label: '圖示填空(提款)', value: 'withdraw-img-fill' },
                 { label: '填空與選擇(提款)', value: 'withdraw-fill-select' },
                 { label: '圖示選擇(提款)', value: 'withdraw-coin-select' },
@@ -191,9 +195,12 @@ WorksheetRegistry.register('a5', {
             const resultLabel = isDeposit ? '帳戶總共' : '帳戶餘額';
 
             // 依題型生成問題
-            const typeKey = questionType.replace('deposit-', '').replace('withdraw-', '');
+            const rawKey = questionType.replace('deposit-', '').replace('withdraw-', '');
+            const withFormula = rawKey.endsWith('-formula');
+            const typeKey = withFormula ? rawKey.replace(/-formula$/, '') : rawKey;
             questions.push(this._buildQuestionByType({
                 typeKey,
+                withFormula,
                 basePrompt,
                 result,
                 resultLabel,
@@ -215,17 +222,23 @@ WorksheetRegistry.register('a5', {
     },
 
     // 依題型建構問題
-    _buildQuestionByType({ typeKey, basePrompt, result, resultLabel, showAnswers, renderCoin, checkbox, account, transaction, isDeposit }) {
+    _buildQuestionByType({ typeKey, withFormula, basePrompt, result, resultLabel, showAnswers, renderCoin, checkbox, account, transaction, isDeposit }) {
         switch (typeKey) {
-            case 'fill':
+            case 'fill': {
+                // 含算式版：存款用加法、提款用減法
+                const formula = withFormula
+                    ? formulaLine([account, transaction], isDeposit ? '+' : '-', result, showAnswers)
+                    : '';
+                const answerText = showAnswers
+                    ? `${resultLabel} <span style="color:red;font-weight:bold;">${result}</span> 元`
+                    : `${resultLabel} ${blankLine()} 元`;
                 return {
                     prompt: `${basePrompt}：`,
                     visual: '',
-                    answerArea: showAnswers
-                        ? `${resultLabel} <span style="color:red;font-weight:bold;">${result}</span> 元`
-                        : `${resultLabel} ${blankLine()} 元`,
+                    answerArea: `${formula}${answerText}`,
                     answerDisplay: ''
                 };
+            }
 
             case 'img-fill': {
                 // 圖示填空：在帳戶金額和交易金額前顯示金錢圖示

@@ -12,6 +12,7 @@ WorksheetRegistry.register('b4', {
             'cheaper3-coin': '圖示填空(3家-找便宜)',
             'cheaper3-hint': '圈選完成(3家-找便宜)',
             'fill-num':      '數字填空(計算差額)',
+            'fill-num-formula': '數字填空(計算差額・含算式)',
             'fill-coin':     '圖示填空(計算差額)',
             'fill-hint':     '提示完成(計算差額)',
             'fill-select':   '圖示完成(計算差額)',
@@ -59,6 +60,7 @@ WorksheetRegistry.register('b4', {
                     { label: '圖示填空(3家店比較-找便宜)',   value: 'cheaper3-coin' },
                     { label: '圈選完成(3家店比較-找便宜)',   value: 'cheaper3-hint' },
                     { label: '數字填空(計算差額)',           value: 'fill-num'      },
+                    { label: '數字填空(計算差額・含算式)',   value: 'fill-num-formula' },
                     { label: '圖示填空(計算差額)',           value: 'fill-coin'     },
                     { label: '圖示完成(計算差額)',           value: 'fill-select'   },
                     { label: '提示完成(計算差額)',           value: 'fill-hint'     },
@@ -104,7 +106,9 @@ WorksheetRegistry.register('b4', {
     },
 
     generate(options) {
-        const questionType = options.questionType || 'cheaper-num';
+        const rawType      = options.questionType || 'cheaper-num';
+        const withFormula  = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle    = options.coinStyle     || 'real';
         const showAnswers  = options._showAnswers  || false;
         const usedKeys     = options._usedValues   || new Set();
@@ -366,11 +370,15 @@ WorksheetRegistry.register('b4', {
             const ans = showAnswers
                 ? `<span style="color:red;font-weight:bold;">${diff}</span>`
                 : blankLine();
+            // 含算式版：貴的價格 － 便宜的價格 ＝ 差額
+            const formula = withFormula
+                ? formulaLine([item.optA.price, item.optB.price], '-', diff, showAnswers)
+                : '';
             return {
                 _key: itemKey,
                 prompt: `${iconSpan(item.icon)}<strong>${item.name}</strong> 在兩家店的售價如下：`,
                 visual: priceRow,
-                answerArea: `${cheaperOpt.store}便宜了${ans} 元`,
+                answerArea: `${formula}${cheaperOpt.store}便宜了${ans} 元`,
                 answerDisplay: ''
             };
         });

@@ -40,7 +40,7 @@ window.HOME_CATALOG = {
       "icon": "🏪",
       "color": "#16A34A",
       "part": 1,
-      "situations": 6,
+      "situations": 7,
       "scene": "dialogue/images/scenes/convenience_store.webp",
       "clerk": {
         "name": "小美",

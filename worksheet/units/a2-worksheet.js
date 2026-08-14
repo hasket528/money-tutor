@@ -26,6 +26,7 @@ WorksheetRegistry.register('a2', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)', value: 'price-fill' },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)', value: 'price-img-fill' },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select' },
                 { label: '圖示選擇(價格計算)', value: 'price-coin-select' },
@@ -58,7 +59,9 @@ WorksheetRegistry.register('a2', {
 
     generate(options) {
         const { count = 8 } = options;
-        const questionType = options.questionType || 'price-fill';
+        const rawType = options.questionType || 'price-fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const renderCoin = (value) => {
@@ -80,12 +83,16 @@ WorksheetRegistry.register('a2', {
                 const svcList = selectedSvcs.map(s => `${this._serviceImg(s)} ${s.name}(${s.price}元)`).join(' + ');
 
                 if (questionType === 'price-fill') {
+                    const formula = withFormula
+                        ? formulaLine(selectedSvcs.map(s => s.price), '+', total, showAnswers)
+                        : '';
+                    const answerText = showAnswers
+                        ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
+                        : `總共費用 ${blankLine()} 元`;
                     questions.push({
                         prompt: `你選擇了：${svcList}`,
                         visual: '',
-                        answerArea: showAnswers
-                            ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                            : `總共費用 ${blankLine()} 元`,
+                        answerArea: `${formula}${answerText}`,
                         answerDisplay: ''
                     });
                 } else if (questionType === 'price-img-fill') {

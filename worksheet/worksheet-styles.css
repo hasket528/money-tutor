@@ -243,6 +243,19 @@ body {
     min-width: 100px;
 }
 
+/* === 算式行（數字填空(含算式)題型）=== */
+.formula-line {
+    display: inline-block;
+    font-size: 13pt;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.formula-answer {
+    color: red;
+    font-weight: bold;
+}
+
 /* === 錢幣圖示（文字版）=== */
 .coin-tag {
     display: inline-block;
@@ -691,6 +704,10 @@ body {
 }
 
 .worksheet-container .question-answer {
+    font-size: calc(var(--ws-font-scale) * 13pt);
+}
+
+.worksheet-container .formula-line {
     font-size: calc(var(--ws-font-scale) * 13pt);
 }
 

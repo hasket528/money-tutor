@@ -56,6 +56,7 @@ WorksheetRegistry.register('c4', {
                 type: 'dropdown',
                 options: [
                     { label: '數字填空', value: 'fill' },
+                    { label: '數字填空(含算式)', value: 'fill-formula' },
                     { label: '圖示選擇', value: 'coin-select' },
                     { label: '提示選擇', value: 'hint-select' },
                     { label: '提示完成', value: 'hint-complete' },
@@ -69,7 +70,9 @@ WorksheetRegistry.register('c4', {
     generate(options) {
         const { digits = '2', count = 20 } = options;
         const coinStyle = options.coinStyle || 'real';
-        const questionType = options.c4QuestionType || 'coin-select';
+        const rawType = options.c4QuestionType || 'coin-select';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const digitRanges = { '1': [1, 9], '2': [10, 99], '3': [100, 999], '4': [1000, 9999] };
         const [min, max] = digitRanges[digits] || digitRanges['2'];
         const showAnswers = options._showAnswers || false;
@@ -101,12 +104,16 @@ WorksheetRegistry.register('c4', {
             if (questionType === 'fill') {
                 if (!correctCombo) continue;
                 const coinsHtml = correctCombo.map(c => Array(c.count).fill(renderCoin(c.denom)).join('')).join(' ');
+                const formula = withFormula
+                    ? formulaLine(correctCombo.flatMap(c => Array(c.count).fill(c.denom)), '+', price, showAnswers)
+                    : '';
+                const answerText = showAnswers
+                    ? `答：共 <span style="color:red;font-weight:bold;">${price}</span> 元`
+                    : '答：共 ______ 元';
                 questions.push({
                     prompt: '數一數，總共有多少元？',
                     visual: `<div class="combo-coins">${coinsHtml}</div>`,
-                    answerArea: showAnswers
-                        ? `答：共 <span style="color:red;font-weight:bold;">${price}</span> 元`
-                        : '答：共 ______ 元',
+                    answerArea: `${formula}${answerText}`,
                     answerDisplay: ''
                 });
 

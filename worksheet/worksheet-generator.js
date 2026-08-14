@@ -22,6 +22,11 @@ const CHINESE_NUMBERS = ['一', '二', '三', '四', '五', '六', '七', '八',
     '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
     '二十一', '二十二', '二十三', '二十四', '二十五', '二十六', '二十七', '二十八', '二十九', '三十'];
 
+// 題號文字（超過中文數字表就退回阿拉伯數字）
+function questionLabel(index) {
+    return `${CHINESE_NUMBERS[index] || (index + 1)}、`;
+}
+
 // Seeded PRNG (Mulberry32)
 function createSeededRandom(seed) {
     let t = seed | 0;
@@ -60,6 +65,27 @@ function coinTag(value) {
 
 function blankLine(wide) {
     return `<span class="blank-line${wide ? ' wide' : ''}"></span>`;
+}
+
+// 算式行（「數字填空(含算式)」題型專用，全站唯一定義處）
+// terms  算式左側各項，如 [200, 33]
+// op     運算子：字串＝各項皆用同一個；陣列＝逐項指定（如 ['+', '-']）
+// answer 正解（答案卷顯示紅字，作業單留空格）
+// tail   算式後綴，預設「；」接後面的答句；不接答句時傳 ''
+function formulaLine(terms, op, answer, showAnswers, tail = '；') {
+    // 只有一項就沒有算式可寫（例：錢包裡只有一枚 50 元），直接省略算式行
+    if (!terms || terms.length < 2) return '';
+    const OP_SYMBOLS = { '+': '＋', '-': '－', '*': '×', '/': '÷' };
+    const symbolOf = (o) => OP_SYMBOLS[o] || o;
+    let expr = String(terms[0]);
+    for (let i = 1; i < terms.length; i++) {
+        const o = Array.isArray(op) ? op[i - 1] : op;
+        expr += ` ${symbolOf(o)} ${terms[i]}`;
+    }
+    const answerPart = showAnswers
+        ? `<span class="formula-answer">${answer}</span>`
+        : blankLine(true);
+    return `<span class="formula-line">${expr} ＝ ${answerPart}${tail}</span>`;
 }
 
 function coinImg(value) {
@@ -143,7 +169,8 @@ class WorksheetGenerator {
         // 題目
         questions.forEach((q, i) => {
             html += `<div class="question-block">`;
-            html += `<div class="question-number">${CHINESE_NUMBERS[i]}、${q.prompt}</div>`;
+            // 題號獨立成 span，超出頁尾的題目被裁掉後才能重新編號（見 index.html _trimOverflowQuestions）
+            html += `<div class="question-number"><span class="q-num">${questionLabel(i)}</span>${q.prompt}</div>`;
             if (q.visual) {
                 html += `<div class="question-visual">${q.visual}</div>`;
             }

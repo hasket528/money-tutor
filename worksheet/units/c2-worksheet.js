@@ -53,6 +53,7 @@ WorksheetRegistry.register('c2', {
             type: 'dropdown',
             options: [
                 { label: '數字填空', value: 'fill' },
+                { label: '數字填空(含算式)', value: 'fill-formula' },
                 { label: '提示完成', value: 'hint-complete' },
             ],
             getCurrentValue: (params) => params.c2QuestionType || 'fill',
@@ -65,7 +66,9 @@ WorksheetRegistry.register('c2', {
         const denomStr = options.denoms || '1,5,10,50,100,500,1000';
         const denoms = denomStr.split(',').map(Number);
         const coinStyle = options.coinStyle || 'real';
-        const questionType = options.c2QuestionType || 'fill';
+        const rawType = options.c2QuestionType || 'fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const showAnswers = options._showAnswers || false;
         const renderCoin = (value) => {
             if (coinStyle === 'symbol') return coinSymbol(value);
@@ -114,12 +117,16 @@ WorksheetRegistry.register('c2', {
                 });
             } else {
                 // fill (default)
+                const formula = withFormula
+                    ? formulaLine(selected, '+', total, showAnswers)
+                    : '';
+                const answerText = showAnswers
+                    ? `答：共 <span style="color:red;font-weight:bold;">${total}</span> 元`
+                    : `答：共 ${blankLine()} 元`;
                 questions.push({
                     prompt: '數一數，下面的錢共有多少元？',
                     visual: `<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">${selected.map(d => renderCoin(d)).join('')}</div>`,
-                    answerArea: showAnswers
-                        ? `答：共 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                        : `答：共 ${blankLine()} 元`,
+                    answerArea: `${formula}${answerText}`,
                     answerDisplay: ''
                 });
             }

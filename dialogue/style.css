@@ -737,11 +737,21 @@ body {
   padding: 14px 12px;
   animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
+.step-image-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .step-image-card img {
   width: 96px;
   height: 96px;
   object-fit: contain;
 }
+/* 多張並排（錢包內容：一張 100 元＋一個 50 元）：卡片放寬、單張縮小才排得下 */
+.step-image-card.multi { width: auto; max-width: 268px; }
+.step-image-card.multi img { width: 76px; height: 76px; }
 .step-image-label {
   font-size: 0.82rem;
   font-weight: 700;

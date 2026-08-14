@@ -26,12 +26,14 @@ WorksheetRegistry.register('a1', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)', value: 'price-fill' },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)', value: 'price-img-fill' },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select' },
                 { label: '圖示選擇(價格計算)', value: 'price-coin-select' },
                 { label: '提示選擇(價格計算)', value: 'price-hint-select' },
                 { label: '提示完成(價格計算)', value: 'price-hint-complete' },
                 { label: '數字填空(找零計算)', value: 'fill' },
+                { label: '數字填空(找零計算・含算式)', value: 'fill-formula' },
                 { label: '圖示填空(找零計算)', value: 'img-fill' },
                 { label: '填空與選擇(找零計算)', value: 'fill-select' },
                 { label: '圖示選擇(找零計算)', value: 'coin-select' },
@@ -123,7 +125,9 @@ WorksheetRegistry.register('a1', {
 
     generate(options) {
         const { count = 10 } = options;
-        const questionType = options.questionType || 'price-fill';
+        const rawType = options.questionType || 'price-fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const renderCoin = (value) => {
@@ -146,12 +150,16 @@ WorksheetRegistry.register('a1', {
                 const itemList = selectedDrinks.map(d => `${this._drinkImg(d)} ${d.name}(${d.price}元)`).join('、');
 
                 if (questionType === 'price-fill') {
+                    const formula = withFormula
+                        ? formulaLine(selectedDrinks.map(d => d.price), '+', total, showAnswers)
+                        : '';
+                    const answerText = showAnswers
+                        ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
+                        : `總共費用 ${blankLine()} 元`;
                     questions.push({
                         prompt: `你買了：${itemList}`,
                         visual: '',
-                        answerArea: showAnswers
-                            ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                            : `總共費用 ${blankLine()} 元`,
+                        answerArea: `${formula}${answerText}`,
                         answerDisplay: ''
                     });
                 } else if (questionType === 'price-img-fill') {
@@ -279,12 +287,16 @@ return `<div class="coin-choice-option" style="${style}">
             const basePrompt = `${drinkImg} ${drink.name}，價格 ${drink.price} 元，投入 ${paid} 元`;
 
             if (questionType === 'fill') {
+                const formula = withFormula
+                    ? formulaLine([paid, drink.price], '-', change, showAnswers)
+                    : '';
+                const answerText = showAnswers
+                    ? `答：找回 <span style="color:red;font-weight:bold;">${change}</span> 元`
+                    : `答：找回 ${blankLine()} 元`;
                 questions.push({
                     prompt: `${basePrompt}，應找回多少？`,
                     visual: '',
-                    answerArea: showAnswers
-                        ? `答：找回 <span style="color:red;font-weight:bold;">${change}</span> 元`
-                        : `答：找回 ${blankLine()} 元`,
+                    answerArea: `${formula}${answerText}`,
                     answerDisplay: ''
                 });
             } else if (questionType === 'img-fill') {

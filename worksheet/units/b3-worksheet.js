@@ -42,7 +42,7 @@ WorksheetRegistry.register('b3', {
                 type: 'dropdown',
                 options: [
                     { label: '數字填空（存幾天）',      value: 'fill' },
-                    { label: '填空與選擇（存幾天＋金額組合）', value: 'fill-select' },
+                    { label: '數字填空（存幾天・含算式）', value: 'fill-formula' },
                     { label: '圖示選擇（選出正確金額）', value: 'coin-select' },
                     { label: '提示選擇（有金額提示）',  value: 'hint-select' },
                     { label: '提示完成（填入幣值數量）', value: 'hint-complete' },
@@ -109,6 +109,22 @@ WorksheetRegistry.register('b3', {
         hard:   [25, 35, 50, 65, 80, 100, 125, 150, 175, 200],
     },
 
+    // 挑一個「除得盡售價」的每日存款金額：先找該難度的現成選項，
+    // 都除不盡才在同一金額區間內找售價的因數（取 5 的倍數，仍是生活化的金額）
+    _pickDivisibleWeekly(price, weeklyOpts) {
+        const exact = weeklyOpts.filter(w => price % w === 0);
+        if (exact.length) return exact[Math.floor(Math.random() * exact.length)];
+
+        const lo = Math.min(...weeklyOpts);
+        const hi = Math.max(...weeklyOpts);
+        const candidates = [];
+        for (let w = Math.ceil(lo / 5) * 5; w <= hi; w += 5) {
+            if (price % w === 0) candidates.push(w);
+        }
+        if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+        return weeklyOpts[Math.floor(Math.random() * weeklyOpts.length)];
+    },
+
     // 月曆模式：含每日存款金額的題目資料（商品與價格與 _items 對齊）
     // daysNeeded = ceil(price/daily)；設計使所有題目皆 ≤ 21 天（3 週內完成）
     _calItems: {
@@ -143,7 +159,9 @@ WorksheetRegistry.register('b3', {
 
     generate(options) {
         const diff        = options.difficulty   || 'easy';
-        const questionType = options.questionType || 'fill';
+        const rawType     = options.questionType || 'fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle   = options.coinStyle     || 'real';
         const showAnswers = options._showAnswers  || false;
         const count       = options.count         || 20;
@@ -316,7 +334,10 @@ WorksheetRegistry.register('b3', {
         while (questions.length < count && attempts < count * 4) {
             attempts++;
             const item   = items[Math.floor(Math.random() * items.length)];
-            const weekly = weeklyOpts[Math.floor(Math.random() * weeklyOpts.length)];
+            // 數字填空（存幾天）一律挑「除得盡」的每日金額，天數才不會是進位來的近似值
+            const weekly = (questionType === 'fill')
+                ? this._pickDivisibleWeekly(item.price, weeklyOpts)
+                : weeklyOpts[Math.floor(Math.random() * weeklyOpts.length)];
             const key    = `b3_${item.name}_${weekly}`;
             if (usedKeys.has(key) && usedKeys.size < items.length * weeklyOpts.length) continue;
             usedKeys.add(key);
@@ -329,47 +350,19 @@ WorksheetRegistry.register('b3', {
                 const ans = showAnswers
                     ? `<span style="color:red;font-weight:bold;">${days}</span>`
                     : blankLine();
+                // 每日金額已挑成除得盡（見 _pickDivisibleWeekly），算式直接寫除法
+                const formula = withFormula
+                    ? formulaLine([price, weekly], '/', days, showAnswers, '；')
+                    : '';
                 questions.push({
                     _key: key,
                     prompt: `想買「<span class="ws-emoji-icon">${item.icon}</span><strong>${item.name}</strong>」要 ${price} 元，每天存 <strong>${weekly}</strong> 元，要存幾天才夠？`,
                     visual: '',
-                    answerArea: `需存 ${ans} 天`,
+                    answerArea: `${formula}需存 ${ans} 天`,
                     answerDisplay: ''
                 });
 
-            // ── 2. 填空與選擇：填入天數 ＋ 選出總價的金額組合 ──────────
-            } else if (questionType === 'fill-select') {
-                const daysAns = showAnswers
-                    ? `<span style="color:red;font-weight:bold;">${days}</span>`
-                    : blankLine();
-                const correctCoins = walletToCoins(price);
-                const opts = this._generateCoinOptions(price, correctCoins);
-                const choicesHtml = opts.map((opt, idx) => {
-                    const label     = String.fromCharCode(9312 + idx);
-                    const isCorrect = opt.total === price;
-                    const style     = showAnswers && isCorrect ? 'border-color: red; border-width: 3px;' : '';
-                    const check     = (showAnswers && isCorrect)
-                        ? '<span style="display:inline-block;width:16px;height:16px;border:1.5px solid red;color:red;font-size:14px;line-height:16px;text-align:center;margin:0 4px;vertical-align:middle;">✓</span>'
-                        : checkbox;
-                    const answerTag = (showAnswers && isCorrect)
-                        ? `<span style="color:red;font-weight:bold;margin-left:6px;">答案：${price} 元</span>`
-                        : '';
-                    return `<div class="coin-choice-option" style="${style}">
-                        <span style="font-weight:bold; min-width:20px;">${label}</span>${check}
-                        <div class="combo-coins">${opt.coins.map(c => renderCoin(c)).join('')}</div>${answerTag}
-                    </div>`;
-                }).join('');
-                questions.push({
-                    _key: key,
-                    prompt: `想買「<span class="ws-emoji-icon">${item.icon}</span><strong>${item.name}</strong>」要 ${price} 元，每天存 <strong>${weekly}</strong> 元，要存幾天才夠？`,
-                    visual: `<div style="margin-bottom:6px;">需存 ${daysAns} 天</div>
-                             <div style="margin-bottom:4px;">請選出 <strong>${price} 元</strong> 的正確金額組合：</div>
-                             <div class="coin-choice-options">${choicesHtml}</div>`,
-                    answerArea: '',
-                    answerDisplay: ''
-                });
-
-            // ── 3. 圖示選擇：給出總價，從選項中選出正確金額組合 ────────
+            // ── 2. 圖示選擇：給出總價，從選項中選出正確金額組合 ────────
             } else if (questionType === 'coin-select') {
                 const correctCoins = walletToCoins(price);
                 const opts = this._generateCoinOptions(price, correctCoins);
@@ -439,7 +432,7 @@ WorksheetRegistry.register('b3', {
                 const totalHint  = `<span style="font-size:14pt;font-weight:bold;margin-left:6px;">共 <span style="${totalColor};font-weight:bold;">${price}</span> 元</span>`;
                 questions.push({
                     _key: key,
-                    prompt: `想買「<span class="ws-emoji-icon">${item.icon}</span><strong>${item.name}</strong>」，填入正確的幣值數量，湊出 ${price} 元：`,
+                    prompt: `想買「<span class="ws-emoji-icon">${item.icon}</span><strong>${item.name}</strong>」，需要 ${price} 元：`,
                     visual: `<div style="margin:4px 0;">${partsHtml} ${totalHint}</div>`,
                     answerArea: '',
                     answerDisplay: ''

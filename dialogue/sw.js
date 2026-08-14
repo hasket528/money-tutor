@@ -1,5 +1,5 @@
 // Service Worker — 購物練習
-const CACHE_CORE  = 'shopping-practice-v154';
+const CACHE_CORE  = 'shopping-practice-v156';
 const CACHE_AUDIO = 'shopping-audio-v3';
 
 // 重錄過的音檔：啟動時只把這幾支從音檔快取移除（cache-first 會自動再抓新檔）。
@@ -23,6 +23,25 @@ const STALE_AUDIO = [
   'swimming_pool_pool_locker_get_back.mp3',
   'swimming_pool_pool_lost_describe_item.mp3',
   'swimming_pool_pool_lost_thank_found.mp3',
+  // 2026-08-13 便利商店・基本購物：商品由餅乾改巧克力（檔名不變、內容已重錄）
+  'convenience_store_basic_ask_price.mp3',
+  'convenience_store_basic_purchase.mp3',
+  // 2026-08-14 便利商店：開場白統一「你好！歡迎光臨！」、基本購物巧克力改 50 元（找零同步）
+  'convenience_store_basic_greeting.mp3',
+  'convenience_store_basic_goodbye.mp3',
+  'convenience_store_not_enough_money_greeting.mp3',
+  // 2026-08-14 這批 greeting 的音檔內容自 7 月起就停在舊句「你好！請問有什麼需要幫忙的嗎？」
+  //（資料檔文字早已是「你好！歡迎光臨！」，稽核比對不到音檔實際唸的內容），已全部重錄
+  'convenience_store_cant_find_item_greeting.mp3',
+  'convenience_store_expired_product_greeting.mp3',
+  'convenience_store_unknown_greeting.mp3',
+  // 2026-08-14 超市・基本購物：蘋果改單顆計價（35 元 ×3＝105 元），總價與找零同步
+  'supermarket_basic_confirm_purchase.mp3',
+  'supermarket_basic_checkout.mp3',
+  'supermarket_basic_goodbye.mp3',
+  // 2026-08-14 文具店・基本購買：商品改原子筆 20 元＋修正帶 45 元（總價與規格詢問同步）
+  'stationery_store_basic_ask_spec.mp3',
+  'stationery_store_basic_checkout.mp3',
 ];
 
 const PRECACHE = [

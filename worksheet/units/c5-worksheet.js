@@ -56,6 +56,7 @@ WorksheetRegistry.register('c5', {
             type: 'dropdown',
             options: [
                 { label: '數字填空', value: 'fill' },
+                { label: '數字填空(含算式)', value: 'fill-formula' },
                 { label: '圖示選擇', value: 'coin-select' },
                 { label: '提示選擇', value: 'coin-text' },
                 { label: '提示完成', value: 'hint-complete' },
@@ -102,7 +103,9 @@ WorksheetRegistry.register('c5', {
     generate(options) {
         const { digits = '2', count = 30 } = options;
         const coinStyle = options.coinStyle || 'real';
-        const questionType = options.c5QuestionType || 'fill';
+        const rawType = options.c5QuestionType || 'fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const digitRanges = { '1': [1, 9], '2': [10, 99], '3': [100, 999], '4': [1000, 9999] };
         const [min, max] = digitRanges[digits] || digitRanges['2'];
         const itemPool = this.items[digits] || this.items['2'];
@@ -151,10 +154,15 @@ WorksheetRegistry.register('c5', {
                 const totalDisplay = showAnswers
                     ? `<span style="color:red;font-weight:bold;">${wallet}</span>`
                     : blankLine();
-                const walletVisual = `<div style="display:flex; flex-wrap:wrap; gap:3px; align-items:center; margin:4px 0;">
-                    ${coins.map(c => renderCoin(c)).join('')}
-                    <span style="font-size:14pt; font-weight:bold; margin-left:6px;">= ${totalDisplay} 元</span>
-                </div>`;
+                const coinsRow = `<div style="display:flex; flex-wrap:wrap; gap:3px; align-items:center; margin:4px 0;">
+                    ${coins.map(c => renderCoin(c)).join('')}</div>`;
+                // 含算式版：金錢圖示自成一列，錢包各枚相加的算式排在圖示下方
+                const walletVisual = (withFormula && coins.length > 1)
+                    ? `${coinsRow}<div style="margin:2px 0 4px;">${formulaLine(coins, '+', wallet, showAnswers, ' 元')}</div>`
+                    : `<div style="display:flex; flex-wrap:wrap; gap:3px; align-items:center; margin:4px 0;">
+                        ${coins.map(c => renderCoin(c)).join('')}
+                        <span style="font-size:14pt; font-weight:bold; margin-left:6px;">= ${totalDisplay} 元</span>
+                    </div>`;
 
                 const enoughCheck = showAnswers && answer === '夠'
                     ? '<span style="color:red;font-weight:bold;font-size:14pt;">✓</span>'

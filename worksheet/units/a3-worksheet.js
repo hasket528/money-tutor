@@ -31,12 +31,14 @@ WorksheetRegistry.register('a3', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)', value: 'price-fill' },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)', value: 'price-img-fill' },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select' },
                 { label: '圖示選擇(價格計算)', value: 'price-coin-select' },
                 { label: '提示選擇(價格計算)', value: 'price-hint-select' },
                 { label: '提示完成(價格計算)', value: 'price-hint-complete' },
                 { label: '數字填空(找零計算)', value: 'fill' },
+                { label: '數字填空(找零計算・含算式)', value: 'fill-formula' },
                 { label: '圖示填空(找零計算)', value: 'img-fill' },
                 { label: '填空與選擇(找零計算)', value: 'fill-select' },
                 { label: '圖示選擇(找零計算)', value: 'coin-select' },
@@ -153,7 +155,9 @@ WorksheetRegistry.register('a3', {
 
     generate(options) {
         const { count = 8 } = options;
-        const questionType = options.questionType || 'price-fill';
+        const rawType = options.questionType || 'price-fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const diff = options.difficulty || 'easy';
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
@@ -263,12 +267,16 @@ WorksheetRegistry.register('a3', {
             const itemList = selected.map(it => `${it.img ? this._itemImg(it) : it.emoji} ${it.name}(${it.price}元)`).join('、');
 
             if (questionType === 'price-fill') {
+                const formula = withFormula
+                    ? formulaLine(selected.map(it => it.price), '+', total, showAnswers)
+                    : '';
+                const answerText = showAnswers
+                    ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
+                    : `總共費用 ${blankLine()} 元`;
                 questions.push({
                     prompt: `你點了：${itemList}`,
                     visual: '',
-                    answerArea: showAnswers
-                        ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                        : `總共費用 ${blankLine()} 元`,
+                    answerArea: `${formula}${answerText}`,
                     answerDisplay: ''
                 });
             } else if (questionType === 'price-img-fill') {
@@ -381,12 +389,24 @@ return `<div class="coin-choice-option" style="${style}">
                     answerDisplay: ''
                 });
             } else if (questionType === 'fill') {
+                const totalDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${total}</span>`
+                    : blankLine();
+                const changeDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${change}</span>`
+                    : blankLine();
+                // 含算式版：①先加總費用 ②再用付款金額減總費用求找零
+                const totalTerm = showAnswers
+                    ? `<span class="formula-answer">${total}</span>`
+                    : blankLine();
+                const answerArea = withFormula
+                    ? `<div>${formulaLine(selected.map(it => it.price), '+', total, showAnswers)}總共費用 ${totalDisplay} 元</div>
+                       <div>${formulaLine([paid, totalTerm], '-', change, showAnswers)}你付 ${paid} 元，找回 ${changeDisplay} 元</div>`
+                    : `總共費用 ${totalDisplay} 元　你付 ${paid} 元，找回 ${changeDisplay} 元`;
                 questions.push({
                     prompt: `你點了：${itemList}`,
                     visual: '',
-                    answerArea: showAnswers
-                        ? `總共費用 <span style="color:red;font-weight:bold;">${total}</span> 元　你付 ${paid} 元，找回 <span style="color:red;font-weight:bold;">${change}</span> 元`
-                        : `總共費用 ${blankLine()} 元　你付 ${paid} 元，找回 ${blankLine()} 元`,
+                    answerArea,
                     answerDisplay: ''
                 });
             } else if (questionType === 'img-fill') {

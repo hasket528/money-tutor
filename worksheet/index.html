@@ -206,6 +206,11 @@ const WorksheetApp = {
                     block.remove();
                 }
             });
+            // 裁掉的可能是中間某題（刪了它之後，後面的題目往上移就放得下），
+            // 題號是產生時寫死的，這裡依實際剩下的題目重新編號，避免出現「一、二、六」
+            page.querySelectorAll('.question-block .q-num').forEach((el, i) => {
+                el.textContent = questionLabel(i);
+            });
         });
     },
 

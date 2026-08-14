@@ -6,9 +6,10 @@ WorksheetRegistry.register('b1', {
     subtitle(opts) {
         const diff = { easy:'簡單', normal:'普通', hard:'困難' };
         const typeLabels = {
-            'steps':         '數字填空：計算每次費用',
-            'img-fill':      '圖示填空：計算每次費用',
+            'steps':         '數字填空：計算累計費用',
+            'steps-formula': '數字填空(含算式)：計算累計費用',
             'fill':          '數字填空：計算最終費用',
+            'fill-formula':  '數字填空(含算式)：計算最終費用',
             'fill-select':   '圖示填空：計算最終費用',
             'coin-select':   '圖示選擇：計算最終費用',
             'hint-select':   '提示選擇：計算最終費用',
@@ -22,11 +23,12 @@ WorksheetRegistry.register('b1', {
             label: '📝 題型',
             type: 'dropdown',
             options: [
-                { type: 'group',  label: '計算每次費用' },
+                { type: 'group',  label: '計算累計費用' },
                 { label: '數字填空', value: 'steps'    },
-                { label: '圖示填空', value: 'img-fill' },
+                { label: '數字填空(含算式)', value: 'steps-formula' },
                 { type: 'group',  label: '計算最終費用' },
                 { label: '數字填空',   value: 'fill'          },
+                { label: '數字填空(含算式)', value: 'fill-formula' },
                 { label: '圖示填空',   value: 'fill-select'   },
                 { label: '圖示選擇',   value: 'coin-select'   },
                 { label: '提示選擇',   value: 'hint-select'   },
@@ -78,16 +80,16 @@ WorksheetRegistry.register('b1', {
             { icon:'🐟', label:'買魚飼料', items:[{ name:'飼料費', cost:45  }, { name:'水草費', cost:20  }] },
         ],
         normal: [
-            { icon:'🏫', label:'上學日',   items:[{ name:'午餐費', cost:60  }, { name:'公車費', cost:20  }] },
-            { icon:'🎨', label:'才藝課',   items:[{ name:'課程費', cost:150 }, { name:'材料費', cost:50  }] },
-            { icon:'🏥', label:'看醫生',   items:[{ name:'掛號費', cost:150 }, { name:'藥費',   cost:80  }] },
-            { icon:'🎬', label:'看電影',   items:[{ name:'電影票', cost:280 }, { name:'爆米花', cost:90  }] },
-            { icon:'🚂', label:'搭火車',   items:[{ name:'火車票', cost:250 }, { name:'便當費', cost:75  }] },
-            { icon:'🏊', label:'游泳池',   items:[{ name:'入場費', cost:80  }, { name:'飲料費', cost:25  }] },
-            { icon:'📖', label:'買書',     items:[{ name:'故事書費', cost:180 }, { name:'文具費', cost:45 }] },
-            { icon:'🌄', label:'爬山',     items:[{ name:'門票費', cost:100 }, { name:'食物費', cost:120 }] },
-            { icon:'🎮', label:'遊樂場',   items:[{ name:'門票費', cost:200 }, { name:'遊戲費', cost:50  }] },
-            { icon:'🍜', label:'吃午飯',   items:[{ name:'午餐費', cost:85  }, { name:'飲料費', cost:30  }] },
+            { icon:'🏫', label:'上學日',   items:[{ name:'午餐費', cost:60  }, { name:'公車費', cost:20  }, { name:'文具費', cost:40  }] },
+            { icon:'🎨', label:'才藝課',   items:[{ name:'課程費', cost:150 }, { name:'材料費', cost:50  }, { name:'飲料費', cost:25  }] },
+            { icon:'🏥', label:'看醫生',   items:[{ name:'掛號費', cost:150 }, { name:'藥費',   cost:80  }, { name:'車資',   cost:30  }] },
+            { icon:'🎬', label:'看電影',   items:[{ name:'電影票', cost:280 }, { name:'爆米花', cost:90  }, { name:'飲料費', cost:45  }] },
+            { icon:'🚂', label:'搭火車',   items:[{ name:'火車票', cost:250 }, { name:'便當費', cost:75  }, { name:'飲料費', cost:25  }] },
+            { icon:'🏊', label:'游泳池',   items:[{ name:'入場費', cost:80  }, { name:'飲料費', cost:25  }, { name:'泳帽費', cost:60  }] },
+            { icon:'📖', label:'買書',     items:[{ name:'故事書費', cost:180 }, { name:'文具費', cost:45 }, { name:'書套費', cost:30  }] },
+            { icon:'🌄', label:'爬山',     items:[{ name:'門票費', cost:100 }, { name:'食物費', cost:120 }, { name:'飲料費', cost:40  }] },
+            { icon:'🎮', label:'遊樂場',   items:[{ name:'門票費', cost:200 }, { name:'遊戲費', cost:50  }, { name:'點心費', cost:45  }] },
+            { icon:'🍜', label:'吃午飯',   items:[{ name:'午餐費', cost:85  }, { name:'飲料費', cost:30  }, { name:'甜點費', cost:55  }] },
         ],
         hard: [
             { icon:'🛒', label:'大採購',   items:[{ name:'衣服費',  cost:350 }, { name:'鞋子費', cost:490 }, { name:'書費',    cost:180 }] },
@@ -111,7 +113,9 @@ WorksheetRegistry.register('b1', {
 
     generate(options) {
         const diff = options.difficulty || 'easy';
-        const questionType = options.questionType || 'steps';
+        const rawType = options.questionType || 'steps';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const usedLabels = options._usedValues || new Set();
@@ -139,22 +143,58 @@ WorksheetRegistry.register('b1', {
             const itemsText = scenario.items.map(it => `${it.name} <strong>${it.cost}</strong> 元`).join('、');
             const basePrompt = `要去<span class="ws-emoji-icon">${scenario.icon}</span><strong>${scenario.label}</strong>，需要花：${itemsText}`;
 
-            if (questionType === 'steps') {
-                // 計算每次費用：四欄（同 B2），上次費用與本次費用填空，費用已揭露
+            if (questionType === 'steps' && withFormula) {
+                // 含算式版：三欄，累計金額改以「上次費用 ＋ 本次費用 ＝ 累計費用」算式呈現
                 let running = 0;
-                const rows = scenario.items.map(it => {
+                const rows = scenario.items.map((it, idx) => {
                     const prev = running;
                     running += it.cost;
-                    const prevAns = showAnswers
-                        ? `<span style="color:red;font-weight:bold;">${prev}</span>`
-                        : blankLine(true);
+                    // 第一項的上次費用一定是 0，直接印出來不留空
+                    const prevTerm = (idx === 0)
+                        ? '0'
+                        : showAnswers
+                            ? `<span class="formula-answer">${prev}</span>`
+                            : blankLine();
+                    return `<tr>
+                        <td style="${TD}">${it.name}</td>
+                        <td style="text-align:center;${TD}font-weight:bold;">${idx === 0 ? '' : '＋'}${it.cost}</td>
+                        <td style="${TD}">${formulaLine([prevTerm, it.cost], '+', running, showAnswers, ' 元')}</td>
+                    </tr>`;
+                }).join('');
+                return {
+                    _key: `b1_${scenario.label}`,
+                    prompt: `要去<span class="ws-emoji-icon">${scenario.icon}</span><strong>${scenario.label}</strong>，用算式算出各項費用後的累計金額：`,
+                    visual: `<table style="${TABLE}">
+                        <tr style="background:#f3f4f6;">
+                            <th style="${TH}text-align:left;">項目</th>
+                            <th style="${TH}">本次費用</th>
+                            <th style="${TH}text-align:left;">算式（上次費用 ＋ 本次費用 ＝ 累計費用）</th>
+                        </tr>
+                        ${rows}
+                    </table>`,
+                    answerArea: '',
+                    answerDisplay: ''
+                };
+
+            } else if (questionType === 'steps') {
+                // 計算累計費用：四欄，上次費用與累計費用填空，本次費用已揭露
+                let running = 0;
+                const rows = scenario.items.map((it, idx) => {
+                    const prev = running;
+                    running += it.cost;
+                    // 第一項沒有「上次費用」，用橫線代替填空；第二項起本次費用前加 ＋
+                    const prevAns = (idx === 0)
+                        ? '－'
+                        : showAnswers
+                            ? `<span style="color:red;font-weight:bold;">${prev}</span> 元`
+                            : `${blankLine(true)} 元`;
                     const newAns = showAnswers
                         ? `<span style="color:red;font-weight:bold;">${running}</span>`
                         : blankLine(true);
                     return `<tr>
                         <td style="${TD}">${it.name}</td>
-                        <td style="text-align:center;${TD}">${prevAns} 元</td>
-                        <td style="text-align:center;${TD}font-weight:bold;">${it.cost}</td>
+                        <td style="text-align:center;${TD}">${prevAns}</td>
+                        <td style="text-align:center;${TD}font-weight:bold;">${idx === 0 ? '' : '＋'}${it.cost}</td>
                         <td style="text-align:center;${TD}">${newAns} 元</td>
                     </tr>`;
                 }).join('');
@@ -167,39 +207,6 @@ WorksheetRegistry.register('b1', {
                             <th style="${TH}">上次費用</th>
                             <th style="${TH}">本次費用</th>
                             <th style="${TH}">累計費用</th>
-                        </tr>
-                        ${rows}
-                    </table>`,
-                    answerArea: '',
-                    answerDisplay: ''
-                };
-
-            } else if (questionType === 'img-fill') {
-                // 圖示填空：同數字填空三欄結構，費用欄與累計欄前均加金錢圖示提示
-                let running = 0;
-                const mkCoinHintCell = (amount, wide) => {
-                    const coins = this._coinsDisplay(amount, renderCoin);
-                    const ans   = showAnswers
-                        ? `<span style="color:red;font-weight:bold;">${amount}</span>`
-                        : blankLine(wide);
-                    return `<td style="${TD}"><span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;">${coins}<span style="margin-left:2px;">${ans} 元</span></span></td>`;
-                };
-                const rows = scenario.items.map(it => {
-                    running += it.cost;
-                    return `<tr>
-                        <td style="${TD}">${it.name}</td>
-                        ${mkCoinHintCell(it.cost, false)}
-                        ${mkCoinHintCell(running, true)}
-                    </tr>`;
-                }).join('');
-                return {
-                    _key: `b1_${scenario.label}`,
-                    prompt: `要去<span class="ws-emoji-icon">${scenario.icon}</span><strong>${scenario.label}</strong>，看金錢圖示，填入各項費用和累計金額：`,
-                    visual: `<table style="${TABLE}">
-                        <tr style="background:#f3f4f6;">
-                            <th style="${TH}text-align:left;">項目</th>
-                            <th style="${TH}">費用</th>
-                            <th style="${TH}">累計（元）</th>
                         </tr>
                         ${rows}
                     </table>`,
@@ -230,7 +237,9 @@ WorksheetRegistry.register('b1', {
                             <td style="text-align:right;${TD}">${ans} 元</td>
                         </tr>
                     </table>`,
-                    answerArea: '',
+                    answerArea: withFormula
+                        ? formulaLine(scenario.items.map(it => it.cost), '+', total, showAnswers, ' 元')
+                        : '',
                     answerDisplay: ''
                 };
 

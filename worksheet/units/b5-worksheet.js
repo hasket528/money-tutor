@@ -6,12 +6,14 @@ WorksheetRegistry.register('b5', {
     subtitle(opts) {
         const qt = {
             'price-fill':          '數字填空(價格計算)',
+            'price-fill-formula':  '數字填空(價格計算・含算式)',
             'price-img-fill':      '圖示填空(價格計算)',
             'price-fill-select':   '填空與選擇(價格計算)',
             'price-coin-select':   '圖示選擇(價格計算)',
             'price-hint-select':   '提示選擇(價格計算)',
             'price-hint-complete': '提示完成(價格計算)',
             'fill':                '數字填空(找零計算)',
+            'fill-formula':        '數字填空(找零計算・含算式)',
             'img-fill':            '圖示填空(找零計算)',
             'fill-select':         '填空與選擇(找零計算)',
             'coin-select':         '圖示選擇(找零計算)',
@@ -29,12 +31,14 @@ WorksheetRegistry.register('b5', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)',   value: 'price-fill'          },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)',   value: 'price-img-fill'      },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select'   },
                 { label: '圖示選擇(價格計算)',   value: 'price-coin-select'   },
                 { label: '提示選擇(價格計算)',   value: 'price-hint-select'   },
                 { label: '提示完成(價格計算)',   value: 'price-hint-complete' },
                 { label: '數字填空(找零計算)',   value: 'fill'                },
+                { label: '數字填空(找零計算・含算式)', value: 'fill-formula'   },
                 { label: '圖示填空(找零計算)',   value: 'img-fill'            },
                 { label: '填空與選擇(找零計算)', value: 'fill-select'         },
                 { label: '圖示選擇(找零計算)',   value: 'coin-select'         },
@@ -172,7 +176,9 @@ WorksheetRegistry.register('b5', {
 
     generate(options) {
         const diff         = options.difficulty    || 'easy';
-        const questionType = options.questionType  || 'price-fill';
+        const rawType      = options.questionType  || 'price-fill';
+        const withFormula  = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle    = options.coinStyle     || 'real';
         const showAnswers  = options._showAnswers  || false;
         const usedLabels   = options._usedValues   || new Set();
@@ -315,11 +321,14 @@ WorksheetRegistry.register('b5', {
                 const ans = showAnswers
                     ? `<span style="color:red;font-weight:bold;">${total}</span>`
                     : blankLine();
+                const formula = withFormula
+                    ? formulaLine(scenario.items.map(it => it.cost), '+', total, showAnswers)
+                    : '';
                 return {
                     _key: `b5_${scenario.label}`,
                     prompt: basePrompt,
                     visual: '',
-                    answerArea: `答：${ans} 元`,
+                    answerArea: `${formula}答：${ans} 元`,
                     answerDisplay: ''
                 };
 
@@ -441,13 +450,24 @@ WorksheetRegistry.register('b5', {
 
             // ── 找零計算：數字填空 ─────────────────────────────────────
             } else if (questionType === 'fill') {
+                const totalDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${total}</span>`
+                    : blankLine();
+                const changeDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${change}</span>`
+                    : blankLine();
+                // 含算式版：①先加總各項費用 ②再用付款金額減總費用求找零
+                const totalTerm = showAnswers
+                    ? `<span class="formula-answer">${total}</span>`
+                    : blankLine();
                 return {
                     _key: `b5_${scenario.label}`,
                     prompt: `${basePromptFact}，付 ${paid} 元，應找回多少錢？`,
                     visual: '',
-                    answerArea: showAnswers
-                        ? `共需 <span style="color:red;font-weight:bold;">${total}</span> 元　付 ${paid} 元，找回 <span style="color:red;font-weight:bold;">${change}</span> 元`
-                        : `共需 ${blankLine()} 元　付 ${paid} 元，找回 ${blankLine()} 元`,
+                    answerArea: withFormula
+                        ? `<div>${formulaLine(scenario.items.map(it => it.cost), '+', total, showAnswers)}共需 ${totalDisplay} 元</div>
+                           <div>${formulaLine([paid, totalTerm], '-', change, showAnswers)}付 ${paid} 元，找回 ${changeDisplay} 元</div>`
+                        : `共需 ${totalDisplay} 元　付 ${paid} 元，找回 ${changeDisplay} 元`,
                     answerDisplay: ''
                 };
 

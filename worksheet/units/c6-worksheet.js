@@ -51,6 +51,7 @@ WorksheetRegistry.register('c6', {
                 type: 'dropdown',
                 options: [
                     { label: '數字填空', value: 'fill' },
+                    { label: '數字填空(含算式)', value: 'fill-formula' },
                     { label: '圖示選擇', value: 'coin-select' },
                     { label: '提示選擇', value: 'hint-select' },
                     { label: '提示完成', value: 'hint-complete' },
@@ -89,7 +90,9 @@ WorksheetRegistry.register('c6', {
     generate(options) {
         const { count = 30 } = options;
         const walletOptionStrs = (options.walletAmount || '50,100,200,500').split(',');
-        const questionType = options.questionType || 'fill';
+        const rawType = options.questionType || 'fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const renderCoin = (value) => {
@@ -122,10 +125,13 @@ WorksheetRegistry.register('c6', {
                 const changeDisplay = showAnswers
                     ? `<span style="color:red;font-weight:bold;">${change}</span>`
                     : blankLine();
+                const formula = withFormula
+                    ? formulaLine([wallet, price], '-', change, showAnswers)
+                    : '';
                 questions.push({
                     prompt: `${bigEmoji} ${item.name}的價格是 ${price} 元，付了 ${wallet} 元，應該找回多少元？`,
                     visual: '',
-                    answerArea: `答：找回 ${changeDisplay} 元`,
+                    answerArea: `${formula}答：找回 ${changeDisplay} 元`,
                     answerDisplay: ''
                 });
             } else if (questionType === 'coin-select') {

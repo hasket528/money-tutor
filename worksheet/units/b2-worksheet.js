@@ -7,8 +7,8 @@ WorksheetRegistry.register('b2', {
         const diff = { easy:'簡單', normal:'普通', hard:'困難' };
         const typeLabels = {
             'steps':         '數字填空：計算每次餘額',
-            'img-fill':      '圖示填空：計算每次餘額',
             'fill':          '數字填空：計算最終餘額',
+            'fill-formula':  '數字填空(含算式)：計算最終餘額',
             'fill-select':   '圖示填空：計算最終餘額',
             'coin-select':   '圖示選擇：計算最終餘額',
             'hint-select':   '提示選擇：計算最終餘額',
@@ -24,9 +24,9 @@ WorksheetRegistry.register('b2', {
             options: [
                 { type: 'group',  label: '計算每次餘額' },
                 { label: '數字填空', value: 'steps'    },
-                { label: '圖示填空', value: 'img-fill' },
                 { type: 'group',  label: '計算最終餘額' },
                 { label: '數字填空', value: 'fill'          },
+                { label: '數字填空(含算式)', value: 'fill-formula' },
                 { label: '圖示填空', value: 'fill-select' },
                 { label: '圖示選擇',   value: 'coin-select' },
                 { label: '提示選擇',   value: 'hint-select' },
@@ -62,6 +62,13 @@ WorksheetRegistry.register('b2', {
                 onChange: (val, app) => { app.params.coinStyle = val; app.generate(); }
             }
         ],
+    },
+
+    // 每題顯示幾個項目（含「💰 一開始有」那一列）
+    _rowRange: {
+        easy:   [2, 2],
+        normal: [3, 4],
+        hard:   [5, 6],
     },
 
     _templates: {
@@ -175,7 +182,9 @@ WorksheetRegistry.register('b2', {
 
     generate(options) {
         const diff = options.difficulty || 'easy';
-        const type = options.questionType || 'steps';
+        const rawType = options.questionType || 'steps';
+        const withFormula = rawType.endsWith('-formula');
+        const type = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const usedKeys = options._usedValues || new Set();
@@ -198,7 +207,11 @@ WorksheetRegistry.register('b2', {
         const TABLE = 'border-collapse:collapse;font-size:12pt;width:100%;margin-top:4px;';
 
         return idxList.map(idx => {
-            const { startAmount, events } = pool[idx];
+            const { startAmount, events: allEvents } = pool[idx];
+            // 每題的項目數（含「💰 一開始有」那列）：簡單 2 項、普通 3~4 項、困難 5~6 項
+            const [minRows, maxRows] = this._rowRange[diff] || this._rowRange.easy;
+            const eventCount = Math.min(allEvents.length, randomInt(minRows - 1, maxRows - 1));
+            const events = allEvents.slice(0, eventCount);
             const finalBalance = events.reduce(
                 (b, e) => e.type === 'income' ? b + e.amount : b - e.amount, startAmount);
 
@@ -256,7 +269,12 @@ WorksheetRegistry.register('b2', {
                             <td style="text-align:right;${TD}">${ans} 元</td>
                         </tr>
                     </table>`,
-                    answerArea: '',
+                    answerArea: withFormula
+                        ? formulaLine(
+                            [startAmount, ...events.map(e => e.amount)],
+                            events.map(e => e.type === 'income' ? '+' : '-'),
+                            finalBalance, showAnswers, ' 元')
+                        : '',
                     answerDisplay: ''
                 };
 
@@ -289,50 +307,6 @@ WorksheetRegistry.register('b2', {
                             <th style="${TH}text-align:left;">項目</th>
                             <th style="${TH}">上次餘額</th>
                             <th style="${TH}">本次金額</th>
-                            <th style="${TH}">這次餘額</th>
-                        </tr>
-                        <tr>
-                            <td style="${TD}">💰 一開始有</td>
-                            <td style="text-align:center;${TD}color:#9ca3af;">—</td>
-                            <td style="text-align:center;${TD}color:#9ca3af;">—</td>
-                            <td style="text-align:center;${TD}font-weight:bold;">${startAmount} 元</td>
-                        </tr>
-                        ${rows}
-                    </table>`,
-                    answerArea: '',
-                    answerDisplay: ''
-                };
-
-            } else if (type === 'img-fill') {
-                // 圖示填空：四欄表格（同數字填空），各餘額欄前加金錢圖示作為提示
-                const mkCoinHintCell = (amount) => {
-                    const coins = this._coinsDisplay(amount, renderCoin);
-                    const ans   = showAnswers
-                        ? `<span style="color:red;font-weight:bold;">${amount}</span>`
-                        : blankLine(true);
-                    return `<td style="text-align:center;${TD}"><span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;">${coins}<span style="margin-left:2px;">${ans} 元</span></span></td>`;
-                };
-                let running = startAmount;
-                const rows = events.map(e => {
-                    const prevBalance = running;
-                    running = e.type === 'income' ? running + e.amount : running - e.amount;
-                    const sign     = e.type === 'income' ? '+' : '−';
-                    const amtColor = e.type === 'income' ? '#059669' : '#dc2626';
-                    return `<tr>
-                        <td style="${TD}"><span class="ws-emoji-icon">${e.icon}</span> ${e.name}</td>
-                        ${mkCoinHintCell(prevBalance)}
-                        <td style="text-align:center;${TD}color:${amtColor};font-weight:bold;">${sign} ${e.amount}</td>
-                        ${mkCoinHintCell(running)}
-                    </tr>`;
-                }).join('');
-                return {
-                    _key: `b2_${diff}_${idx}`,
-                    prompt: '看金錢圖示，填入每次的餘額：',
-                    visual: `<table style="${TABLE}">
-                        <tr style="background:#f3f4f6;">
-                            <th style="${TH}text-align:left;">項目</th>
-                            <th style="${TH}">上次餘額</th>
-                            <th style="${TH}">金額</th>
                             <th style="${TH}">這次餘額</th>
                         </tr>
                         <tr>

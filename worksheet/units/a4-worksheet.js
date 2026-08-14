@@ -106,12 +106,14 @@ WorksheetRegistry.register('a4', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)', value: 'price-fill' },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)', value: 'price-img-fill' },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select' },
                 { label: '圖示選擇(價格計算)', value: 'price-coin-select' },
                 { label: '提示選擇(價格計算)', value: 'price-hint-select' },
                 { label: '提示完成(價格計算)', value: 'price-hint-complete' },
                 { label: '數字填空(找零計算)', value: 'fill' },
+                { label: '數字填空(找零計算・含算式)', value: 'fill-formula' },
                 { label: '圖示填空(找零計算)', value: 'img-fill' },
                 { label: '填空與選擇(找零計算)', value: 'fill-select' },
                 { label: '圖示選擇(找零計算)', value: 'coin-select' },
@@ -311,7 +313,9 @@ WorksheetRegistry.register('a4', {
         const store = options.storeType || 'convenience';
         const isMixed = store === 'mixed';
         const storeKeys = Object.keys(this.stores);
-        const questionType = options.questionType || 'price-fill';
+        const rawType = options.questionType || 'price-fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const diff = options.difficulty || 'easy';
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
@@ -493,12 +497,16 @@ WorksheetRegistry.register('a4', {
 
             if (isPrice) {
                 if (questionType === 'price-fill') {
+                    const formula = withFormula
+                        ? formulaLine(items.map(it => it.price * it.qty), '+', total, showAnswers)
+                        : '';
+                    const answerText = showAnswers
+                        ? `總共 <span style="color:red;font-weight:bold;">${total}</span> 元`
+                        : `總共 ${blankLine()} 元`;
                     questions.push({
                         prompt: '🛒 購物清單如下，請計算總金額：',
                         visual: listHtml,
-                        answerArea: showAnswers
-                            ? `總共 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                            : `總共 ${blankLine()} 元`,
+                        answerArea: `${formula}${answerText}`,
                         answerDisplay: ''
                     });
                 } else if (questionType === 'price-img-fill') {
@@ -612,12 +620,25 @@ return `<div class="coin-choice-option" style="${style}">
             }
 
             if (questionType === 'fill') {
+                const changeText = change >= 0 ? change : '不夠';
+                const totalDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${total}</span>`
+                    : blankLine();
+                const changeDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${changeText}</span>`
+                    : blankLine();
+                // 含算式版：①先加總各項小計 ②再用付款金額減總金額求找零
+                const totalTerm = showAnswers
+                    ? `<span class="formula-answer">${total}</span>`
+                    : blankLine();
+                const answerArea = withFormula
+                    ? `<div>(1) ${formulaLine(items.map(it => it.price * it.qty), '+', total, showAnswers)}總共 ${totalDisplay} 元</div>
+                       <div>(2) ${formulaLine([paid, totalTerm], '-', changeText, showAnswers)}付 ${paid} 元，找回 ${changeDisplay} 元</div>`
+                    : `(1) 總共 ${totalDisplay} 元　(2) 付 ${paid} 元，找回 ${changeDisplay} 元`;
                 questions.push({
                     prompt: '🛒 購物清單如下，請計算總金額與找零：',
                     visual: listHtml,
-                    answerArea: showAnswers
-                        ? `(1) 總共 <span style="color:red;font-weight:bold;">${total}</span> 元　(2) 付 ${paid} 元，找回 <span style="color:red;font-weight:bold;">${change >= 0 ? change : '不夠'}</span> 元`
-                        : `(1) 總共 ${blankLine()} 元　(2) 付 ${paid} 元，找回 ${blankLine()} 元`,
+                    answerArea,
                     answerDisplay: ''
                 });
             } else if (questionType === 'img-fill') {

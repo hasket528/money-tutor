@@ -26,12 +26,14 @@ WorksheetRegistry.register('a6', {
             type: 'dropdown',
             options: [
                 { label: '數字填空(價格計算)', value: 'price-fill' },
+                { label: '數字填空(價格計算・含算式)', value: 'price-fill-formula' },
                 { label: '圖示填空(價格計算)', value: 'price-img-fill' },
                 { label: '填空與選擇(價格計算)', value: 'price-fill-select' },
                 { label: '圖示選擇(價格計算)', value: 'price-coin-select' },
                 { label: '提示選擇(價格計算)', value: 'price-hint-select' },
                 { label: '提示完成(價格計算)', value: 'price-hint-complete' },
                 { label: '數字填空(找零計算)', value: 'fill' },
+                { label: '數字填空(找零計算・含算式)', value: 'fill-formula' },
                 { label: '圖示填空(找零計算)', value: 'img-fill' },
                 { label: '填空與選擇(找零計算)', value: 'fill-select' },
                 { label: '圖示選擇(找零計算)', value: 'coin-select' },
@@ -72,7 +74,9 @@ WorksheetRegistry.register('a6', {
 
     generate(options) {
         const { count = 8 } = options;
-        const questionType = options.questionType || 'price-fill';
+        const rawType = options.questionType || 'price-fill';
+        const withFormula = rawType.endsWith('-formula');
+        const questionType = withFormula ? rawType.replace(/-formula$/, '') : rawType;
         const coinStyle = options.coinStyle || 'real';
         const showAnswers = options._showAnswers || false;
         const renderCoin = (value) => {
@@ -102,16 +106,21 @@ WorksheetRegistry.register('a6', {
             const priceVisualFill = showAnswers
                 ? `<div>算式：${unitPrice} 元 × ${tickets} 張 = <span style="color:red;font-weight:bold;">${total}</span> 元</div>`
                 : `<div>算式：${unitPrice} 元 × ${tickets} 張 = ？？？ 元</div>`;
+            // 含算式版：票價算式改為填空底線（由學生自己算），並與答句同一行
+            const priceFormula = formulaLine(
+                [`${unitPrice} 元`, `${tickets} 張`], '*', total, showAnswers, ' 元；');
 
             if (isPrice) {
                 // 價格計算題型（只問總票價，不涉及找零）
                 if (questionType === 'price-fill') {
+                    const totalDisplay = showAnswers
+                        ? `<span style="color:red;font-weight:bold;">${total}</span>`
+                        : blankLine();
                     questions.push({
                         prompt: pricePrompt,
-                        visual: priceVisualFill,
-                        answerArea: showAnswers
-                            ? `總票價 <span style="color:red;font-weight:bold;">${total}</span> 元`
-                            : `總票價 ${blankLine()} 元`,
+                        // 數字填空不給「算式：X 元 × N 張 = ？？？ 元」提示（要算式請改用含算式題型）
+                        visual: '',
+                        answerArea: `${withFormula ? priceFormula : ''}總票價 ${totalDisplay} 元`,
                         answerDisplay: ''
                     });
                 } else if (questionType === 'price-img-fill') {
@@ -228,12 +237,25 @@ return `<div class="coin-choice-option" style="${style}">
             }
 
             if (questionType === 'fill') {
+                const totalDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${total}</span>`
+                    : blankLine();
+                const changeDisplay = showAnswers
+                    ? `<span style="color:red;font-weight:bold;">${change}</span>`
+                    : blankLine();
+                // 含算式版：第一行是票價乘法算式，第二行補找零的減法算式
+                const totalTerm = showAnswers
+                    ? `<span class="formula-answer">${total}</span>`
+                    : blankLine();
+                const answerArea = withFormula
+                    ? `<div>${priceFormula}總票價 ${totalDisplay} 元</div>
+                       <div>${formulaLine([paid, totalTerm], '-', change, showAnswers)}答：找回 ${changeDisplay} 元</div>`
+                    : `總票價 ${totalDisplay} 元　你付 ${paid} 元，找回 ${changeDisplay} 元`;
                 questions.push({
                     prompt: changePrompt,
-                    visual: priceVisualFill,
-                    answerArea: showAnswers
-                        ? `總票價 <span style="color:red;font-weight:bold;">${total}</span> 元　你付 ${paid} 元，找回 <span style="color:red;font-weight:bold;">${change}</span> 元`
-                        : `總票價 ${blankLine()} 元　你付 ${paid} 元，找回 ${blankLine()} 元`,
+                    // 數字填空不給「算式：X 元 × N 張 = ？？？ 元」提示（要算式請改用含算式題型）
+                    visual: '',
+                    answerArea,
                     answerDisplay: ''
                 });
             } else if (questionType === 'img-fill') {

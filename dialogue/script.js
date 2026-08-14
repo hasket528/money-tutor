@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v154';
+const APP_VERSION = 'v156';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -2452,6 +2452,28 @@ function startWithDifficulty(difficulty) {
 
 // ─── 渲染步驟 ────────────────────────────────────────
 
+// 步驟圖卡：支援單張與多張並排。多張用於錢包內容（100 元＋50 元＝看得到兩張鈔票）。
+// 第一張沿用 id="step-image"，教師自訂照片與既有樣式仍靠這個 id 定位。
+function renderStepImages(srcs, alt, label) {
+  const card = document.getElementById('step-image-card');
+  const row  = document.getElementById('step-image-row');
+  const lbl  = document.getElementById('step-image-label');
+  row.innerHTML = '';
+  if (!srcs.length) { card.hidden = true; lbl.textContent = ''; card.classList.remove('multi'); return; }
+  srcs.forEach((src, i) => {
+    const im = document.createElement('img');
+    if (i === 0) im.id = 'step-image';
+    im.src = src;
+    im.alt = alt;
+    // 單張載入失敗＝整張卡收掉；多張時只收掉壞的那張，其餘照顯示
+    im.onerror = () => { im.remove(); if (!row.children.length) card.hidden = true; };
+    row.appendChild(im);
+  });
+  lbl.textContent = label;
+  card.hidden = false;
+  card.classList.toggle('multi', srcs.length > 1);
+}
+
 function renderStep() {
   const step  = state.situation.steps[state.stepIndex];
   const total = state.situation.steps.length;
@@ -2498,30 +2520,15 @@ function renderStep() {
   document.getElementById('shopkeeper-speech-text').textContent = step.shopkeeper_prompt;
 
   // 商品圖片：教師自訂照片(IndexedDB) ＞ scenarios.js 內建 image
-  const imgCard = document.getElementById('step-image-card');
-  const imgEl   = document.getElementById('step-image');
-  const lblEl   = document.getElementById('step-image-label');
-  if (step.image) {
-    imgEl.src         = step.image;
-    imgEl.alt         = step.image_label || step.task || '商品圖示';
-    lblEl.textContent = step.image_label || '';
-    imgCard.hidden    = false;
-    imgEl.onerror     = () => { imgCard.hidden = true; };
-  } else {
-    imgCard.hidden    = true;
-    imgEl.src         = '';
-    imgEl.alt         = '';
-    lblEl.textContent = '';
-  }
+  // step.image 可以是字串（單張）或**陣列**（多張並排）。陣列用於「錢包裡有什麼」——
+  // 一張 100 元＋一個 50 元要看得到兩張實體鈔票，學生才數得出 150 元（合成圖的話每種組合都得另外生一張）。
+  renderStepImages(Array.isArray(step.image) ? step.image : (step.image ? [step.image] : []),
+                   step.image_label || step.task || '商品圖示', step.image_label || '');
   // 教師自訂步驟照片（IndexedDB）優先顯示（即使沒有內建 image 也會出現）
   if (_rScId && step.id) {
     resolveCustomImageURL(`${_rScId}::${step.id}::img`).then(url => {
       if (!url || state.scenario?.id !== _rScId || state.stepIndex !== _rIdx) return;
-      imgEl.onerror     = null;
-      imgEl.src         = url;
-      imgEl.alt         = step.image_label || step.task || '照片';
-      lblEl.textContent = step.image_label || '';
-      imgCard.hidden    = false;
+      renderStepImages([url], step.image_label || step.task || '照片', step.image_label || '');
     });
   }
 
