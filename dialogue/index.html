@@ -729,7 +729,8 @@
         <ol>
           <li><strong>取名字</strong>：填情境名稱（例：合作社買午餐）、挑個圖示與顏色。</li>
           <li><strong>選位置</strong>：「要出現在哪個場所底下」可以掛在某個場所（例：便利商店），學生點進那個場所就會在情境清單看到它；不掛就只出現在首頁的「⭐ 自訂」分部。掛了之後，「⭐ 自訂」分部裡一樣找得到。</li>
-          <li><strong>加步驟</strong>：每一步填「店員說的話」＋「學生要說的標準答案」。錯誤選項留空會自動補。</li>
+          <li><strong>加步驟</strong>：每一步填「對方說的話」＋「學生要說的標準答案」。錯誤選項留空會自動補。<br>
+              不知道怎麼開始？選好類型後按「📝 用 3 步範本開始」，改字就能用。</li>
           <li><strong>加聲音（可選）</strong>：每步驟可按 🎙️ 錄下老師自己的聲音；不錄也沒關係，電腦會自動朗讀。</li>
           <li><strong>儲存</strong>：回到首頁就能看到新卡片，學生立刻可以練習（說話／選項／打字三種模式都通用）。</li>
         </ol>
@@ -751,6 +752,14 @@
             <div class="color-swatches" id="edit-color" role="group" aria-label="主題色選擇"></div>
           </div>
         </div>
+        <div class="form-group" id="topic-category-group">
+          <label class="form-label" for="edit-category">這是哪一類的練習</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="form-input" id="edit-category" style="flex:1;min-width:180px"></select>
+            <button type="button" class="btn-vs" id="btn-topic-template" style="white-space:nowrap">📝 用 3 步範本開始</button>
+          </div>
+          <p class="form-hint" id="edit-category-hint"></p>
+        </div>
         <div class="form-group" id="parent-scenario-group">
           <label class="form-label" for="edit-parent">要出現在哪個場所底下</label>
           <select class="form-input" id="edit-parent"></select>
@@ -759,12 +768,12 @@
           <p class="form-hint" id="edit-parent-hint">不掛在任何場所：只出現在首頁的「⭐ 自訂」分部。</p>
         </div>
         <div class="form-group" id="clerk-role-group">
-          <label class="form-label">店員角色</label>
-          <div class="clerk-role-picker" id="edit-clerk-role" role="radiogroup" aria-label="選擇店員角色"></div>
+          <label class="form-label">對話角色</label>
+          <div class="clerk-role-picker" id="edit-clerk-role" role="radiogroup" aria-label="選擇對話角色"></div>
           <!-- 「這台電腦會用 X 唸台詞／剛才是 X 唸的」診斷文字：語音已排查完成，2026-08-02 依教師端要求先隱藏
                （曝露引擎細節如「Google 國語（臺灣）」對老師是雜訊）。JS 仍會寫入內容，只是不顯示。 -->
           <p class="form-hint" id="clerk-role-voice" style="margin-top:2px" hidden></p>
-          <p class="form-hint" id="clerk-role-hint">學生在練習畫面看到、也是唸台詞的那位店員。沒有上傳場景照片時就顯示他。</p>
+          <p class="form-hint" id="clerk-role-hint">學生在練習畫面看到、也是唸台詞的那位對話角色（店員、老師、醫師…都用這兩個形象）。沒有上傳場景照片時就顯示他。</p>
         </div>
         <div class="form-group" id="scene-photo-group">
           <label class="form-label">場景照片（可選）</label>
@@ -774,7 +783,7 @@
             <button type="button" class="btn-vs danger" id="btn-scene-photo-del" hidden>🗑️ 移除照片</button>
           </div>
           <img id="edit-scene-photo-preview" class="photo-preview" alt="場景照片預覽" hidden>
-          <p class="form-hint" id="scene-photo-status">上傳這個情境的實景照片（例如學校合作社招牌、店員本人）取代店員頭像；不上傳則用內建店員圖。照片只存這台裝置。</p>
+          <p class="form-hint" id="scene-photo-status">上傳這個情境的實景照片（例如學校合作社招牌、對話角色本人）取代角色頭像；不上傳則用內建角色圖。照片只存這台裝置。</p>
         </div>
       </div>
 
@@ -785,13 +794,15 @@
         </div>
         <p class="form-hint" style="margin-bottom:8px">回答下面問題 → 複製提示詞，貼到 Gemini 或 ChatGPT 網頁 → 把 AI 的回答貼回來匯入。</p>
 
-        <!-- 對方性別：與上面「店員角色」是同一份設定（selectedClerkGender），這裡切換上面也會跟著換，
+        <!-- 對方性別：與上面「對話角色」是同一份設定（selectedClerkGender），這裡切換上面也會跟著換，
              不是另一份獨立設定——放在這裡是因為老師填 AI 問題時常常沒往上滑去注意到已經選了誰。 -->
         <div class="ai-gen-gender-row">
-          <span class="form-hint" style="margin:0">店員角色：</span>
-          <div class="clerk-role-picker clerk-role-picker--compact" id="ai-gen-clerk-role" role="radiogroup" aria-label="選擇店員角色"></div>
+          <span class="form-hint" style="margin:0">對話角色：</span>
+          <div class="clerk-role-picker clerk-role-picker--compact" id="ai-gen-clerk-role" role="radiogroup" aria-label="選擇對話角色"></div>
         </div>
         <p class="form-hint" id="ai-gen-gender-note" style="margin-bottom:8px"></p>
+
+        <p class="form-hint" id="ai-gen-topic-note" style="margin-bottom:8px"></p>
 
         <label class="form-hint" for="ai-gen-topic" style="display:block;margin-bottom:2px">① 要練習的情境是什麼？（必填）</label>
         <input id="ai-gen-topic" class="form-input" type="text" placeholder="例如：在麵包店詢問今日特價" style="margin-bottom:8px">
@@ -853,20 +864,20 @@
     <div class="editor-body">
 
       <div class="form-group">
-        <label class="form-label" for="edit-prompt">店員說的話 <span class="required">*</span></label>
+        <label class="form-label" for="edit-prompt">對方說的話 <span class="required">*</span></label>
         <textarea class="form-input form-textarea" id="edit-prompt" rows="3"
           placeholder="例如：你好！請問有什麼需要幫忙的嗎？"></textarea>
       </div>
 
       <div class="form-group" id="voice-studio-group">
-        <label class="form-label">店員語音（可選）</label>
+        <label class="form-label">對方的語音（可選）</label>
         <div class="voice-studio-row">
           <button type="button" class="btn-vs" id="btn-vs-tts">🔊 試聽電腦語音</button>
           <button type="button" class="btn-vs" id="btn-vs-rec">🎙️ 錄音</button>
           <button type="button" class="btn-vs" id="btn-vs-play" hidden>▶️ 播放錄音</button>
           <button type="button" class="btn-vs danger" id="btn-vs-del" hidden>🗑️ 刪除錄音</button>
         </div>
-        <p class="form-hint" id="vs-status">沒有錄音時，練習會用電腦語音朗讀「店員說的話」。按 🎙️ 錄下您的聲音，學生就會聽到老師親自說的話（錄音立即儲存）。</p>
+        <p class="form-hint" id="vs-status">沒有錄音時，練習會用電腦語音朗讀「對方說的話」。按 🎙️ 錄下您的聲音，學生就會聽到老師親自說的話（錄音立即儲存）。</p>
       </div>
 
       <div class="form-group" id="step-photo-group">
@@ -882,7 +893,7 @@
 
       <div class="form-group">
         <label class="form-label" for="edit-task">學生的任務說明 <span class="required">*</span></label>
-        <input class="form-input" id="edit-task" type="text" placeholder="例如：跟店員打招呼" autocomplete="off">
+        <input class="form-input" id="edit-task" type="text" placeholder="例如：跟對方打招呼" autocomplete="off">
       </div>
 
       <div class="form-group">
@@ -1058,6 +1069,8 @@
   <script src="db.js"></script>
   <!-- 步驟規則（單一真相）：情境編輯器的就地檢查與 tests/_audit_schema.js 共用同一份判準 -->
   <script src="js/step_rules.js"></script>
+  <!-- 情境類型與空白範本（一份定義同時餵下拉、AI 提示詞、用範本開始） -->
+  <script src="data/topic_presets.js"></script>
   <script src="../js/nav-auth.js"></script>
   <!-- 行動瀏覽器：首次觸控時喚醒 speechSynthesis（否則非手勢當下觸發的即時 TTS 在手機不出聲），
        並統一把中文語句導到最佳中文語音。預錄音檔不經此層。 -->

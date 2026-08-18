@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v163';
+const APP_VERSION = 'v164';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -3828,6 +3828,7 @@ let editingSteps       = [];
 let selectedTheme      = THEME_PRESETS[0];
 let selectedClerkGender = 'female';   // 泛用店員性別（GENERIC_CLERKS 的鍵）
 let editingParentId    = null;        // 掛在哪個內建場所底下（null＝獨立，只在 ⭐ 自訂分部）
+let selectedCategory   = 'shopping';  // 情境類型（data/topic_presets.js 的 key；舊資料缺欄＝shopping）
 
 // ─── AI 輔助情境生成（免 API Key，2026-07-23 改版）──────────────────
 // 舊流程要使用者自備 Gemini API Key 直接打 API，門檻高；改為三段式：
@@ -3845,19 +3846,24 @@ function buildAiPrompt() {
   const clerk      = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
   const genderText = clerk.gender === 'male' ? '男生' : '女生';
   const callText   = clerk.gender === 'male' ? '哥哥、老闆、先生' : '姊姊、老闆娘、小姐';
-  return `你是特殊教育「生活對話練習」的課程設計師。請為以下情境設計 ${count} 個對話步驟，讓國中特教學生練習開口表達。
+  // 依情境類型換三段：身分敘述、對象敘述、關鍵字建議。
+  // 沒換的話，社交／醫療／求助類產出的台詞會滿是購物語彙（「請問多少錢」）。
+  const preset = topicPreset(selectedCategory);
+  const partnerDefault = preset.partner || '一位大人';
+  return `你是特殊教育「${preset.designer}」課程的設計師。請為以下情境設計 ${count} 個對話步驟，讓國中特教學生練習開口表達。
 
 情境主題：${topic}
-對話對象：${partner || `一位${genderText}店員`}（${genderText}）
+情境類型：${preset.label.replace(/^[^一-龥]+/, '')}${preset.focus ? `（練習重點通常是：${preset.focus}）` : ''}
+對話對象：${partner || `一位${genderText}${partnerDefault}`}（${genderText}）
 ⚠️ 對方是${genderText}：畫面上的角色圖與唸台詞的語音都是${genderText}。台詞的自稱語氣，以及學生答句裡對他的稱呼（例如${callText}），都必須符合這個性別，不可出現相反性別的稱呼。
 ${focus ? `練習重點：${focus}\n` : ''}
 每個步驟包含（全部繁體中文、台灣日常口語、句子簡短）：
 - id: 英文小寫底線識別碼（如 greeting、ask_price）
 - shopkeeper_prompt: 對方說的一句話（自然口語）
-- task: 學生的任務說明（簡短祈使句，如「跟老闆打招呼」）
+- task: 學生的任務說明（簡短祈使句，如「跟對方打招呼」）
 - accepted_phrases: 3-5 個學生可被接受的答句，第 1 個是最標準的答案
 - options: 恰好 4 個選項。第 1 個必須與 accepted_phrases 的第 1 個完全相同；後 3 個是明顯不合適的干擾選項，且不可以是 accepted_phrases 裡的任何一句
-- keywords: 3-6 個判斷答對的關鍵詞（要用能區分這一步的詞，如「多少錢」「菠蘿麵包」；不要用「好」「要」「謝謝」這種每步都會出現的萬用詞）
+- keywords: 3-6 個判斷答對的關鍵詞（要用能區分這一步的詞，如 ${preset.kwExample}；不要用「好」「要」這種每步都會出現的萬用詞）
 - feedback: { "perfect": "稱讚語", "partial": "部分正確時的鼓勵", "failed": "可以這樣說：「第1個標準答案」" }
 
 只回傳 JSON 陣列（以 [ 開頭、以 ] 結尾），不要 markdown 圍欄、不要任何說明文字：
@@ -3994,6 +4000,7 @@ function openScenarioEditor(idx, opts = {}) {
   selectedClerkGender = GENERIC_CLERKS[sc?.clerkGender] ? sc.clerkGender : 'female';
   // 舊資料與別台匯進來的舊版對話包都沒有這一欄 → 一律 ?? null（缺欄＝獨立情境）
   editingParentId = sc ? (sc.parentId ?? null) : (opts.parentId ?? null);
+  selectedCategory = topicPreset(sc?.category).key;   // 缺欄／未知值都退回日常購物
 
   document.getElementById('scenario-editor-title').textContent = sc ? '編輯情境' : '新增情境';
   document.getElementById('edit-name').value  = sc?.name  ?? '';
@@ -4001,10 +4008,69 @@ function openScenarioEditor(idx, opts = {}) {
 
   renderColorSwatches();
   renderParentPicker();
+  renderCategoryPicker();
   renderClerkRolePicker();
   renderStepList();
   scenePhoto.init(`${editingScenarioId}::__scene::img`);
   nav.push('screen-scenario-editor');
+}
+
+// ─── 情境類型（B：主題不限購物）──────────────────────
+// 類型定義在 `data/topic_presets.js`（一份定義同時餵下拉、AI 提示詞、空白範本），
+// 這裡只做畫面。⚠️ 資料欄名 `shopkeeper_prompt` 不動，但**畫面措辭一律去店員化**——
+// 社交／醫療／求助類的情境裡沒有「店員」，寫成「對方」老師才不會覺得這工具只能做購物。
+
+function topicPreset(key) {
+  // 規則檔沒載到時（舊 SW 快取）退回一組最小的購物預設，不讓編輯器整個壞掉
+  if (typeof TopicPresets === 'undefined') {
+    return { key: 'shopping', label: '日常購物', designer: '生活自理與金錢使用',
+             partner: '店員或老闆', focus: '點餐、詢價、結帳、找零',
+             topicHint: '例如：在麵包店詢問今日特價', kwExample: '「多少錢」「菠蘿麵包」', template: [] };
+  }
+  return TopicPresets.get(key);
+}
+
+function renderCategoryPicker() {
+  const sel = document.getElementById('edit-category');
+  if (!sel) return;
+  if (typeof TopicPresets !== 'undefined') {
+    sel.innerHTML = TopicPresets.PRESETS
+      .map(p => `<option value="${p.key}">${p.label}</option>`).join('');
+  }
+  sel.value = selectedCategory;
+  sel.onchange = () => { selectedCategory = topicPreset(sel.value).key; renderCategoryHint(); };
+  renderCategoryHint();
+}
+
+// 換類型時，AI 問答的三個提示文字跟著換——老師才知道這一類該填什麼
+function renderCategoryHint() {
+  const p = topicPreset(selectedCategory);
+  const hint = document.getElementById('edit-category-hint');
+  if (hint) hint.innerHTML = p.focus
+    ? `這一類的練習重點通常是：<b>${p.focus}</b>。AI 提示詞與「用範本開始」都會跟著這個類型走。`
+    : '自己決定練習內容。AI 提示詞與「用範本開始」都會跟著這個類型走。';
+
+  const topic = document.getElementById('ai-gen-topic');
+  if (topic)   topic.placeholder = p.topicHint;
+  const partner = document.getElementById('ai-gen-partner');
+  if (partner) partner.placeholder = p.partner ? `例如：${p.partner}` : '例如：圖書館櫃檯人員';
+  const focus = document.getElementById('ai-gen-focus');
+  if (focus)   focus.placeholder = p.focus ? `例如：${p.focus}；句子要短一點` : '例如：練習開口求助；句子要短一點';
+  const note = document.getElementById('ai-gen-topic-note');
+  if (note)    note.innerHTML = `提示詞會依情境類型<b>${p.label}</b>產生（要改到上面「這是哪一類的練習」）。`;
+}
+
+// 「用 3 步範本開始」：開場 → 主要任務 → 收尾，老師改字就能用。
+// 理由見計畫 B-2：AI 那條路要離開 App 去貼提示詞，不是每位老師都願意。
+function applyTopicTemplate() {
+  if (typeof TopicPresets === 'undefined') return;
+  const p = topicPreset(selectedCategory);
+  if (editingSteps.length && !confirm(`要用「${p.label}」的 3 步範本取代目前的 ${editingSteps.length} 個步驟嗎？`)) return;
+  editingSteps = TopicPresets.expandTemplate(p.key, 'tpl' + Date.now().toString().slice(-5));
+  sfx.click();
+  renderStepList();
+  const st = document.getElementById('ai-gen-status');
+  if (st) st.textContent = `✅ 已填入「${p.label}」的 3 步範本——點每一步的「編輯」改成你要的內容`;
 }
 
 // 「要出現在哪個場所底下」下拉：獨立 ＋ 依分部分組的 42 個內建場所。
@@ -4092,7 +4158,7 @@ function renderClerkRolePicker() {
       btn.disabled  = !usable;
       btn.setAttribute('role', 'radio');
       btn.setAttribute('aria-checked', String(isActive));
-      btn.setAttribute('aria-label', c.name + (usable ? '' : '（這台裝置沒有中文男聲，無法選擇）'));
+      btn.setAttribute('aria-label', c.name + (usable ? '' : '（這台裝置沒有中文男聲，無法選擇）'));   // 男生角色停用時說明原因
       btn.innerHTML = compact
         ? `<img class="clerk-role-img" src="${c.image}" alt="">
            <span class="clerk-role-name">${c.name}</span>`
@@ -4114,8 +4180,8 @@ function renderClerkRolePicker() {
   });
 
   if (hint) hint.innerHTML = maleOK
-    ? '學生在練習畫面看到、也是唸台詞的那位店員。沒有上傳場景照片時就顯示他。'
-    : '學生在練習畫面看到、也是唸台詞的那位店員。<br><b>這台裝置沒有中文男聲，男店員暫時不能選</b>——'
+    ? '學生在練習畫面看到、也是唸台詞的那位對話角色（店員、老師、醫師…都用這兩個形象）。沒有上傳場景照片時就顯示他。'
+    : '學生在練習畫面看到、也是唸台詞的那位對話角色。<br><b>這台裝置沒有中文男聲，男生角色暫時不能選</b>——'
       + '可到 Windows「設定 → 時間與語言 → 語音」加裝中文（繁體）語音，或改用 Microsoft Edge 開啟。';
 
   // 如實顯示「這台裝置實際會用哪支聲音」。台詞好不好聽取決於裝置裝了什麼語音，
@@ -4275,6 +4341,7 @@ function saveScenario() {
     icon:        icon || '💬',
     theme:       selectedTheme,
     parentId:    editingParentId,       // 掛在哪個內建場所底下；null＝獨立（只在 ⭐ 自訂分部）
+    category:    selectedCategory,      // 情境類型（提示詞與範本跟著它換）；舊資料缺欄＝shopping
     clerkGender: selectedClerkGender,   // 泛用店員（頭像＋唸台詞的聲音）；舊資料沒這欄＝女
     available:   true,
     steps:       editingSteps,
@@ -4560,7 +4627,7 @@ function saveStep() {
   const task    = document.getElementById('edit-task').value.trim();
   const answer  = document.getElementById('edit-answer').value.trim();
 
-  if (!prompt) { alert('請填寫店員說的話');    document.getElementById('edit-prompt').focus(); return; }
+  if (!prompt) { alert('請填寫對方說的話');    document.getElementById('edit-prompt').focus(); return; }
   if (!task)   { alert('請填寫學生的任務說明'); document.getElementById('edit-task').focus();   return; }
   if (!answer) { alert('請填寫標準答案');       document.getElementById('edit-answer').focus(); return; }
 
@@ -4908,6 +4975,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-save-scenario').addEventListener('click', saveScenario);
   document.getElementById('btn-add-step').addEventListener('click', () => openStepEditor(-1));
+  document.getElementById('btn-topic-template')?.addEventListener('click', applyTopicTemplate);
   document.getElementById('btn-ai-copy-prompt').addEventListener('click', copyAiPrompt);
   document.getElementById('btn-ai-import').addEventListener('click', importAiSteps);
 
