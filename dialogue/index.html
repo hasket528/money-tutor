@@ -357,8 +357,13 @@
       </div>
 
       <!-- 初級模式：內嵌提示（不用彈窗，避免蓋住店員對話） -->
+      <!-- 小金探只在提示區露臉，不佔對話主區——學生的注意力要留給對話角色與任務
+           （見 docs/開發計畫_日常對話練習精進.md 六、D 與第九節第 3 點） -->
       <div class="easy-hint-box" id="easy-hint-box" hidden role="status">
-        <span class="easy-hint-label">💡 你可以這樣說</span>
+        <span class="easy-hint-label">
+          <img class="hero-mini" src="../images/common/hint_detective.png" alt="" onerror="this.remove()">
+          🔍 小金探偷偷告訴你
+        </span>
         <div class="hint-text-row" style="margin-bottom:0">
           <button class="btn-hint-speak" id="btn-easy-hint-speak" aria-label="朗讀提示">🔊</button>
           <p class="easy-hint-text" id="easy-hint-text"></p>
@@ -479,7 +484,10 @@
             </div>
           </div>
 
-          <div class="dlg-perf-badge" id="complete-msg"></div>
+          <div class="complete-encourage">
+            <img class="hero-mini hero-mini-lg" src="../images/common/money_chat_dog.png" alt="金好聊" onerror="this.remove()">
+            <div class="dlg-perf-badge" id="complete-msg"></div>
+          </div>
           <p class="complete-reward" id="complete-reward" aria-live="polite"></p>
 
           <div class="dlg-summary-block">
@@ -733,7 +741,10 @@
     <div class="editor-body">
 
       <details class="editor-quickstart">
-        <summary>📖 三分鐘上手：怎麼做一個自己的練習？</summary>
+        <summary>
+          <img class="hero-mini" src="../images/common/money_chat_dog.png" alt="" onerror="this.remove()">
+          金好聊帶你三分鐘上手：怎麼做一個自己的練習？
+        </summary>
         <ol>
           <li><strong>取名字</strong>：填情境名稱（例：合作社買午餐）、挑個圖示與顏色。</li>
           <li><strong>選位置</strong>：「要出現在哪個場所底下」可以掛在某個場所（例：便利商店），學生點進那個場所就會在情境清單看到它；不掛就只出現在首頁的「⭐ 自訂」分部。掛了之後，「⭐ 自訂」分部裡一樣找得到。</li>
@@ -805,7 +816,11 @@
       <!-- AI 輔助生成（免 API Key：引導問答→複製提示詞→貼到 Gemini/ChatGPT→回答貼回匯入） -->
       <div class="form-section ai-gen-section">
         <div class="form-section-header">
-          <span class="section-label">✨ AI 幫我寫步驟（免 API Key）</span>
+          <!-- 頭像放在 label 裡：這一列是 space-between，放外面會被推到另一端 -->
+          <span class="section-label">
+            <img class="hero-mini" src="../images/common/money_chat_dog.png" alt="" onerror="this.remove()">
+            ✨ AI 幫我寫步驟（免 API Key）
+          </span>
         </div>
         <p class="form-hint" style="margin-bottom:8px">回答下面問題 → 複製提示詞，貼到 Gemini 或 ChatGPT 網頁 → 把 AI 的回答貼回來匯入。</p>
 
@@ -1023,8 +1038,8 @@
     <div class="modal-backdrop" id="hint-backdrop"></div>
     <div class="modal-card hint-modal-card">
       <div class="hint-modal-header">
-        <span aria-hidden="true">💡</span>
-        <span id="hint-modal-title">提示</span>
+        <img class="hero-mini" src="../images/common/hint_detective.png" alt="" onerror="this.remove()">
+        <span id="hint-modal-title">小金探偷偷告訴你</span>
       </div>
       <div class="hint-text-row">
         <p class="hint-text" id="hint-text"></p>

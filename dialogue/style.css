@@ -928,8 +928,34 @@ body {
   color: var(--orange);
   font-weight: 700;
   letter-spacing: 0.06em;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
+}
+
+/* 小金探／金好聊的小頭像（D：角色出場）。
+   刻意只出現在提示區、完成頁與編輯器——對話主區留給對話角色與任務，
+   學生的注意力不該被分散（見 docs/開發計畫_日常對話練習精進.md 第九節第 3 點）。
+   圖檔缺失時 inline onerror 會把 img 移掉，不留破圖。 */
+.hero-mini {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.6);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.hero-mini-lg { width: 44px; height: 44px; }
+
+.complete-encourage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .easy-hint-text {
   font-size: 1.25rem;
@@ -2168,6 +2194,21 @@ body {
   border-radius: 8px;
   padding-left: 6px;
   padding-right: 6px;
+}
+
+/* 語音角色頭像（一支語音＝一個角色）：老師挑聲音時看得到形象。
+   圖缺了 inline onerror 會移掉 img，退回只有名字的樣子，不留破圖。 */
+.voice-role-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.voice-role-name {
+  margin-left: 6px;
+  color: var(--gray-600, #4b5563);
+  font-size: 0.92em;
 }
 
 /* 「設為這個情境的聲音」：編輯器內嵌的精簡版才有 */

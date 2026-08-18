@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v165';
+const APP_VERSION = 'v166';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -369,27 +369,84 @@ const sfx = {
 
 // 已知語音的顯示名稱與性別對應表（用於比對 getVoices() 回傳的完整名稱）
 const VOICE_INFO = [
-  { keyword: 'Yating',      name: '小美', gender: 'female', isDefault: true, image: 'images/clerk-yating.jpg',     role: '便利商店' },
-  { keyword: 'Zhiwei',      name: '阿豪', gender: 'male',                    image: 'images/clerk-zhiwei.jpg',     role: '速食店' },
-  { keyword: '曉臻',        name: '阿芬', gender: 'female',                  image: 'images/clerk-xiaozheng.jpg',  role: '超市' },
-  { keyword: '雲哲',        name: '阿宏', gender: 'male',                    image: 'images/clerk-yunzhe.jpg',     role: '文具店' },
-  { keyword: '曉雨',        name: '小雅', gender: 'female',                  image: 'images/clerk-xiaoyu.jpg',     role: '服飾店' },
-  { keyword: 'Google 國語', name: 'Google', gender: 'neutral' },
-  { keyword: 'Google',      name: 'Google', gender: 'neutral' },
-  { keyword: '晓晓',        name: '阿香', gender: 'female',                  image: 'images/clerk-xiaoxiao.png',   role: '早餐店' },
-  { keyword: '云希',        name: '阿財', gender: 'male',                    image: 'images/clerk-yunxi.jpg',      role: '夜市' },
-  { keyword: '云健',        name: '阿祥', gender: 'male',                    image: 'images/clerk-yunjian.jpg',    role: '超市' }, // 專屬「超市收銀員」圖待生成（見 clerk-avatar-prompts.md #9）；未生成前語音選擇器退回 emoji
-  { keyword: '晓伊',        name: '淑惠', gender: 'female',                  image: 'images/clerk-xiaoyi.jpg',     role: '藥局' },
-  { keyword: '云扬',        name: '阿義', gender: 'male',                    image: 'images/clerk-yunyang.jpg',    role: '早餐店' },
-  { keyword: '晓辰',        name: '阿柔', gender: 'female',                  image: 'images/clerk-bakery.png',     role: '麵包店' },
-  { keyword: '晓梦',        name: '萱萱', gender: 'female',                  image: 'images/clerk-beauty.png',     role: '美妝雜貨店' },
-  { keyword: '晓睿',        name: '小茜', gender: 'female',                  image: 'images/clerk-drink.png',      role: '手搖飲料店' },
-  { keyword: '云枫',        name: '老王', gender: 'male',                    image: 'images/clerk-lunchbox.png',   role: '便當店' },
-  { keyword: '云野',        name: '阿澄', gender: 'male',                    image: 'images/clerk-coffee.png',     role: '咖啡店' },
-  { keyword: '晓涵',        name: '阿珍', gender: 'female',                  image: 'images/clerk-postoffice.png', role: '郵局櫃臺' },
-  { keyword: '晓墨',        name: '靜姐', gender: 'female',                  image: 'images/clerk-library.png',    role: '圖書館' },
-  { keyword: '云泽',        name: '阿凱', gender: 'male',                    image: 'images/clerk-police.png',     role: '警察局' },
+  // 語音角色目錄：**一支語音＝一個角色**（keyword＝聲音鍵、name＝顯示名、gender、image、role）。
+  // ⚠️ `keyword` 是聲音鍵，改顯示名時不要動它。
+  // ⚠️ 這份表同時被 `tools/gen_home_catalog.js` 用 `const VOICE_INFO = [...]` 正則抽去產主頁快照
+  //    （它用 new Function 執行整段，所以**加欄位不會壞**，但陣列的起訖格式不要動）。
+  // `engineHint`：這個角色配的是哪一版音色（online＝Edge 雲端、local＝系統本機、google＝Google TTS、
+  //    any＝都可以）。程式推導不出來，所以記在這裡；畫面上的引擎標籤仍以實際語音為準。
+  // 「有沒有角色圖」不另設欄位——真相是檔案在不在，圖缺了 onerror 會退回泛用頭像（多存一份會不同步）。
+  { keyword: 'Yating',      name: '小美', gender: 'female', isDefault: true, engineHint: 'local',  image: 'images/clerk-yating.jpg',     role: '便利商店' },
+  { keyword: 'Zhiwei',      name: '阿豪', gender: 'male',                    engineHint: 'local',  image: 'images/clerk-zhiwei.jpg',     role: '速食店' },
+  { keyword: '曉臻',        name: '阿芬', gender: 'female',                  engineHint: 'online', image: 'images/clerk-xiaozheng.jpg',  role: '超市' },
+  { keyword: '雲哲',        name: '阿宏', gender: 'male',                    engineHint: 'online', image: 'images/clerk-yunzhe.jpg',     role: '文具店' },
+  { keyword: '曉雨',        name: '小雅', gender: 'female',                  engineHint: 'online', image: 'images/clerk-xiaoyu.jpg',     role: '服飾店' },
+  // Chrome 上只有這三支（實機盤點）；最後一條是總括後備，比對順序由上而下
+  { keyword: 'Google 國語',   name: 'Google', persona: 'neutral',            engineHint: 'google', role: 'zh-TW 合成語音' },
+  { keyword: 'Google 普通话', name: 'Google', persona: 'neutral',            engineHint: 'google', role: 'zh-CN 合成語音' },
+  { keyword: 'Google 粤語',   name: 'Google', persona: 'neutral',            engineHint: 'google', role: 'zh-HK 合成語音' },
+  { keyword: 'Google',        name: 'Google', persona: 'neutral',            engineHint: 'google', role: '合成語音' },
+  { keyword: '晓晓',        name: '阿香', gender: 'female',                  engineHint: 'online', image: 'images/clerk-xiaoxiao.png',   role: '早餐店' },
+  { keyword: '云希',        name: '阿財', gender: 'male',                    engineHint: 'online', image: 'images/clerk-yunxi.jpg',      role: '夜市' },
+  { keyword: '云健',        name: '阿祥', gender: 'male',                    engineHint: 'online', image: 'images/clerk-yunjian.png',    role: '超市' },
+  { keyword: '晓伊',        name: '淑惠', gender: 'female',                  engineHint: 'online', image: 'images/clerk-xiaoyi.jpg',     role: '藥局' },
+  { keyword: '云扬',        name: '阿義', gender: 'male',                    engineHint: 'online', image: 'images/clerk-yunyang.jpg',    role: '早餐店' },
+  { keyword: '晓辰',        name: '阿柔', gender: 'female',                  engineHint: 'online', image: 'images/clerk-bakery.png',     role: '麵包店' },
+  { keyword: '晓梦',        name: '萱萱', gender: 'female',                  engineHint: 'online', image: 'images/clerk-beauty.png',     role: '美妝雜貨店' },
+  { keyword: '晓睿',        name: '小茜', gender: 'female',                  engineHint: 'online', image: 'images/clerk-drink.png',      role: '手搖飲料店' },
+  { keyword: '云枫',        name: '老王', gender: 'male',                    engineHint: 'online', image: 'images/clerk-lunchbox.png',   role: '便當店' },
+  { keyword: '云野',        name: '阿澄', gender: 'male',                    engineHint: 'online', image: 'images/clerk-coffee.png',     role: '咖啡店' },
+  { keyword: '晓涵',        name: '阿珍', gender: 'female',                  engineHint: 'online', image: 'images/clerk-postoffice.png', role: '郵局櫃臺' },
+  { keyword: '晓墨',        name: '靜姐', gender: 'female',                  engineHint: 'online', image: 'images/clerk-library.png',    role: '圖書館' },
+  { keyword: '云泽',        name: '阿凱', gender: 'male',                    engineHint: 'online', image: 'images/clerk-police.png',     role: '警察局' },
+
+  // ── 2026-08-18 依**實機盤點**修正（來源：docs/語音盤點_各瀏覽器.md）──
+  // 這些音色**不綁任何內建場所**，老師只是拿它們當自訂情境的聲音，所以不給職業角色，
+  // 而是依「這支聲音聽起來像誰」對應到一張**通用形象**（見上方 VOICE_PERSONAS）：
+  // 同一種語音性質共用一張圖，換性別判定只要改 persona，不必重生圖。
+  // ⚠️ 先前憑微軟文件猜的 晓秋／晓双／晓萱／晓颜／晓悠／晓甄／云皓 七支，**實機 Edge 上根本不存在**，
+  //    已全部移除——這就是計畫 C-4 ① 要求「先盤點再生成」的原因。
+  // ⚠️ persona 目前只是依名稱與語系推定，**還沒逐支用耳朵確認**（云希掛 Male 但 F0 比女聲高、
+  //    云夏是卡通童聲，都是前車之鑑）。要修正只改這一欄，不必重生圖。
+  { keyword: '晓北', persona: 'female_adult',  engineHint: 'online', role: 'zh-CN 東北官話・女聲' },
+  { keyword: '晓妮', persona: 'female_adult',  engineHint: 'online', role: 'zh-CN 陝西官話・女聲' },
+  { keyword: '云夏', persona: 'boy',           engineHint: 'online', role: 'zh-CN 童聲' },
+  { keyword: '曉佳', persona: 'female_adult',  engineHint: 'online', role: 'zh-HK 粵語・女聲' },
+  { keyword: '曉曼', persona: 'female_adult',  engineHint: 'online', role: 'zh-HK 粵語・女聲' },
+  { keyword: '雲龍', persona: 'male_mature',   engineHint: 'online', role: 'zh-HK 粵語・男聲' },
+  { keyword: 'Hanhan', persona: 'female_adult', engineHint: 'local', role: 'zh-TW 本機・女聲' },
+
 ];
+
+// ─── 通用形象庫（依「語音性質」而不是職業）──────────────────
+// 為什麼不給每支語音一個職業角色：這些音色沒有綁場所，老師的情境可能是合作社、診所批價、
+// 導師談話……任何場所。**硬規定：不能有任何場所識別特徵**（延續 GENERIC_CLERKS 小雯／小宇的
+// 二版原則：素色 T 恤＋牛仔褲、單一純色背景、無制服無道具，見 docs/clerk-avatar-prompts.md）。
+// 好處：同一種語音性質共用一張圖，之後用耳朵修正某支語音的性別／年齡感，只要改它的 persona。
+const VOICE_PERSONAS = {
+  female_adult:  { name: '女生（大人）', gender: 'female',  image: 'images/clerk-generic-female.jpg' },
+  male_adult:    { name: '男生（大人）', gender: 'male',    image: 'images/clerk-generic-male.jpg' },
+  female_mature: { name: '女生（成熟）', gender: 'female',  image: 'images/voice-roles/female-mature.png' },
+  male_mature:   { name: '男生（成熟）', gender: 'male',    image: 'images/voice-roles/male-mature.png' },
+  girl:          { name: '女生（小孩）', gender: 'female',  image: 'images/voice-roles/girl.png' },
+  boy:           { name: '男生（小孩）', gender: 'male',    image: 'images/voice-roles/boy.png' },
+  neutral:       { name: '中性聲音',     gender: 'neutral', image: 'images/voice-roles/neutral.png' },
+};
+
+// VOICE_INFO 的一筆 → 補上 persona 的顯示資訊（條目自己寫的欄位優先）。
+// 讀 VOICE_INFO 的地方一律經過這裡，才不會有的地方看得到形象、有的地方看不到。
+function expandVoiceRole(entry) {
+  if (!entry) return null;
+  const p = entry.persona ? VOICE_PERSONAS[entry.persona] : null;
+  if (!p) return entry;
+  return { ...entry, name: entry.name || p.name, gender: entry.gender || p.gender, image: entry.image || p.image };
+}
+
+// keyword 比對（＝聲音鍵）：語音名稱含哪個 keyword 就是哪個角色
+function voiceRoleFor(voiceName) {
+  const n = String(voiceName || '');
+  return expandVoiceRole(VOICE_INFO.find(i => n.includes(i.keyword)) || null);
+}
 
 const GENDER_AVATAR = { female: '👩', male: '👨', neutral: '🧑' };
 
@@ -404,9 +461,22 @@ const GENERIC_CLERKS = {
 };
 const CUSTOM_SCENE_IMAGE = 'images/scenes/custom.webp';
 
-// 自訂情境的店員角色（舊資料沒有這欄 → 預設女店員，與過去 emoji 預設的女性形象一致）
+// 自訂情境的對話角色形象。優先序：
+//   ① 老師指定的語音若有專屬角色圖 → 用那個角色（C-3：一支語音＝一個角色，形象與聲音一致）
+//   ② 否則用泛用角色小雯／小宇（舊資料沒有 clerkGender 這欄 → 預設女生，與過去 emoji 的預設一致）
+// ⚠️ 老師上傳的場景照片仍然蓋在最上層（見 renderStep），這裡只決定「沒有照片時顯示誰」。
 function getCustomClerk(scenario) {
+  const info = voiceRoleOf(scenario?.role?.voiceRef);
+  if (info?.image) {
+    return { key: info.keyword, name: info.name, gender: info.gender, image: info.image, role: info.role };
+  }
   return GENERIC_CLERKS[scenario?.clerkGender] || GENERIC_CLERKS.female;
+}
+
+// voiceRef → 語音角色目錄裡的那個角色（找不到回 null）。
+// 比對走 keyword（＝聲音鍵），與 voiceManager.getInfo 同一套規則。
+function voiceRoleOf(ref) {
+  return ref?.name ? voiceRoleFor(ref.name) : null;
 }
 
 // 場所 → 店員對應（含開場介紹詞）
@@ -544,9 +614,9 @@ const voiceManager = {
     });
   },
 
-  // 取得語音的顯示資訊
+  // 取得語音的顯示資訊（persona 會在這裡展開成 name/gender/image）
   getInfo(voice) {
-    const info = VOICE_INFO.find(i => voice.name.includes(i.keyword));
+    const info = voiceRoleFor(voice.name);
     if (info) return info;
     // 找不到就從完整名稱萃取簡稱
     const shortName = voice.name.split(' - ')[0].replace('Microsoft ', '').trim();
@@ -637,8 +707,10 @@ const MALE_VOICE_PAT   = /yunjhe|云哲|雲哲|zhiwei|智威|yunxi(?!a)|云希|y
 const FEMALE_VOICE_PAT = /yating|雅婷|hsiaochen|曉臻|hsiaoyu|曉雨|hsiaochi|曉琪|xiaoxiao|晓晓|xiaoyi|晓伊|xiaochen|晓辰|xiaomeng|晓梦|xiaorui|晓睿|xiaohan|晓涵|xiaomo|晓墨|hanhan|涵涵|huihui|慧慧|yaoyao|瑤瑤|google 國語|google 普通话/i;
 
 function voiceGenderOf(v) {
-  const info = VOICE_INFO.find(i => v.name.includes(i.keyword));
-  if (info && info.gender !== 'neutral') return info.gender;   // 專案已聽過確認的音色最優先
+  // ⚠️ 要走展開後的資料：只寫 persona 的條目本身沒有 gender 欄，
+  //    直接讀 info.gender 會拿到 undefined（不是 'neutral'），畫面性別標籤就空掉了。
+  const info = voiceRoleFor(v.name);
+  if (info && info.gender && info.gender !== 'neutral') return info.gender;   // 專案已聽過確認的音色最優先
   if (MALE_VOICE_PAT.test(v.name))   return 'male';
   if (FEMALE_VOICE_PAT.test(v.name)) return 'female';
   return 'neutral';
@@ -853,6 +925,7 @@ function renderVoiceInventory(containerId, opts) {
   box.innerHTML = head + zh.map((v, i) => {
     const g       = voiceGenderOf(v);
     const label   = g === 'male' ? '♂ 男' : g === 'female' ? '♀ 女' : '－ 未知';
+    const role    = voiceRoleFor(v.name);
     const active  = sel && voiceBaseName(v.name) === sel && v.name === o.selectedRef.name;
     return `<div class="voice-diag-row${active ? ' selected' : ''}">`
          + `<button class="voice-diag-play" data-i="${i}" aria-label="用 App 的方式試聽 ${v.name}">🔊</button>`
@@ -860,7 +933,12 @@ function renderVoiceInventory(containerId, opts) {
          + `<span class="voice-diag-tag">${label}</span>`
          + `<span class="voice-diag-tag">${voiceEngineTag(v)}</span>`
          + `<span class="voice-diag-tag">${voiceLangTag(v)}</span>`
-         + `<span class="voice-diag-name" title="${v.name}">${voiceShortName(v)}</span>`
+         + (role?.image
+             ? `<img class="voice-role-avatar" src="${role.image}" alt="" title="${role.name}${role.role ? '｜' + role.role : ''}" onerror="this.remove()">`
+             : '')
+         + `<span class="voice-diag-name" title="${v.name}">${voiceShortName(v)}`
+         + (role?.name && role.name !== 'Google' ? `<span class="voice-role-name">${role.name}</span>` : '')
+         + `</span>`
          + (o.compact
              ? `<button class="voice-pick-btn" data-pick="${i}">${active ? '✓ 使用中' : '設為這個情境的聲音'}</button>`
              : '')
@@ -3633,7 +3711,9 @@ function showHint() {
   state.stepHintUsed = true;
   document.getElementById('easy-hint-text').textContent = `「${step.accepted_phrases[0]}」`;
   document.getElementById('easy-hint-box').hidden = false;
-  // 點提示時直接朗讀完整提示（含「你可以這樣說」引導語，與畫面標籤一致）
+  // 點提示時直接朗讀完整提示。⚠️ 唸的是「你可以這樣說」而不是畫面上的「小金探偷偷告訴你」：
+  // 畫面標籤是角色框（小金探是「提示的人」，D），語音則要維持明確的指令語——
+  // 對特教學生來說，聽到要做什麼比聽到誰在說話重要。提示語音走品質優先，不是角色台詞。
   speakHint(`你可以這樣說，${step.accepted_phrases[0]}`);
 }
 
