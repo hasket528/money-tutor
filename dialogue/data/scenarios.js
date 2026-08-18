@@ -202,7 +202,7 @@ const SCENARIOS_DATA = {
               feedback:{ perfect:"說得很清楚！店員知道要幫你微波了！", partial:"說出了重點！試著說完整：「我的便當要微波」", failed:"可以這樣說：「我的便當要微波」" } }),
             mkStep({ id:"ask_total", say:"好的，我幫你微波，要等一下下喔。叮——便當好了，很燙喔！", task:"問店員總共多少錢",
               options:["請問總共多少錢？","我的便當要微波","謝謝再見","請問廁所在哪裡？"], kw:'price',
-              accepted:["請問總共多少錢？","總共多少錢？","請問一共多少錢？","多少錢？"],
+              accepted:["請問總共多少錢？","總共多少錢？","請問一共多少錢？","多少錢？","總共多少元？","多少元？"],
               frame:{ template:"請問總共 {q}？", slots:{ q:{ answer:"多少錢", choices:[
                 { text:"多少錢", emoji:"💰" }, { text:"在哪裡", emoji:"❓" },
                 { text:"要微波", emoji:"♨️" }, { text:"要袋子", emoji:"🛍️" } ] } } },
@@ -236,7 +236,7 @@ const SCENARIOS_DATA = {
             { id:"ask_price", shopkeeper_prompt:"請問要找什麼呢？", task:"詢問餅乾的價格",
               image:"images/a4/icon-a4-cookies-shop.png", image_label:"餅乾",
               keywords:["怎麼賣","多少錢","多少元","費多少"], keywords_mode:'any',
-              accepted_phrases:["請問餅乾多少錢？","請問這個多少錢？","餅乾多少錢？","多少錢？"],
+              accepted_phrases:["請問餅乾多少錢？","請問這個多少錢？","餅乾多少錢？","多少錢？","餅乾多少元？","多少元？"],
               options:["請問餅乾多少錢？","我要買這個","有沒有飲料？","謝謝"],
               feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌", failed:"可以這樣說：「請問這個多少錢？」" } },
             { id:"want_buy", shopkeeper_prompt:"這包餅乾是 60 元喔！", task:"告訴店員你要買",
@@ -954,7 +954,7 @@ const SCENARIOS_DATA = {
               feedback:{ perfect:"說得很清楚！", partial:"有說出重點！可以說：「大杯！」", failed:"可以這樣說：「大杯！」" } },
             { id:"ask_price", shopkeeper_prompt:"好的！大杯珍珠奶茶，請問還需要什麼嗎？", task:"詢問珍珠奶茶多少錢",
               keywords:["多少","幾塊","幾元","幾錢","怎麼賣","多少錢","幾塊錢","價格","多少元","賣多少"], keywords_mode:'any',
-              accepted_phrases:["請問多少錢？","這杯多少錢？","多少錢？"],
+              accepted_phrases:["請問多少錢？","這杯多少錢？","多少錢？","這杯多少元？","多少元？"],
               options:["請問多少錢？","謝謝再見","我要再一杯","好的"],
               frame_ref:"ask_price",
               slots:{ item:{ answer:"珍珠奶茶", choices:[
@@ -2775,6 +2775,7 @@ const SCENARIOS_DATA = {
               feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
             mkStep({ id:"ask_price", say:"這個包裹重 1 公斤，請問還需要什麼嗎？", task:"詢問這樣要多少錢",
               options:["請問這樣要多少錢？","好的謝謝","我要寄兩個","謝謝再見"], kw:"price",
+              accepted:["請問這樣要多少錢？","這樣多少錢？","多少錢？","請問多少元？","多少元？"],
               frame_ref:"ask_price", slots:{ item:{ answer:"包裹", choices:[
                 { text:"包裹", emoji:"📦" }, { text:"信件", emoji:"✉️" } ] } },
               feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
