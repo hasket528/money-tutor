@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v164';
+const APP_VERSION = 'v165';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -514,6 +514,7 @@ const voiceManager = {
     this._loadVoices();
     renderUserVoiceSelector();
     renderClerkRolePicker();   // 男聲是否可用取決於清單，載入後要重判
+    refreshVoiceInventories();
   },
 
   init() {
@@ -527,6 +528,7 @@ const voiceManager = {
         if (!userVoiceManager.selected) userVoiceManager.init();
         renderUserVoiceSelector();
         renderClerkRolePicker();
+        refreshVoiceInventories();
       };
       speechSynthesis.addEventListener('voiceschanged', onChanged);
 
@@ -684,6 +686,80 @@ function bestVoiceByGender(gender) {
 // 這台裝置有沒有該性別的中文語音（編輯器用來決定男店員能不能選）
 function hasVoiceForGender(gender) { return !!bestVoiceByGender(gender); }
 
+
+// ─── 老師指定的語音：存三件一組，換裝置時逐級退回（C-2）──────────────
+// 存 `{ name, lang, voiceURI }` 而不是只存名字：`Microsoft Yating` 與
+// `Microsoft Yating Online (Natural)` 在畫面上長得幾乎一樣，只存名字會挑錯版本。
+// ⚠️ **退回幾級要如實回報**（只給老師看，練習畫面不顯示——學生不需要知道音源降級）。
+// ⚠️ 挑好就直接指定，**不驗證瀏覽器有沒有照做**（見上方那段血淚說明）。
+
+// 人聲基底名：把引擎與語系的差異洗掉，只留「這是誰的聲音」。
+// Microsoft Yating Online (Natural) - Chinese (Taiwan) → yating
+function voiceBaseName(name) {
+  return String(name || '')
+    .split(' - ')[0]
+    .replace(/microsoft\s*/i, '')
+    .replace(/\((natural[^)]*)\)/i, '')
+    .replace(/\bonline\b/i, '')
+    .replace(/[\s_]+/g, '')
+    .toLowerCase();
+}
+
+// 畫面顯示用的短名：Microsoft Yating Online (Natural) - Chinese (Taiwan) → Yating。
+// 引擎（☁️/💻/🌐）與語系（zh-TW…）已經各自有標籤，名稱重複那些字只會在手機上佔三行。
+// ⚠️ 完整名稱仍放進 title，老師要回報問題時才有完整識別資訊。
+function voiceShortName(v) {
+  const n = String((v && v.name) || v || '');
+  return n.split(' - ')[0]
+          .replace(/^Microsoft\s+/i, '')
+          .replace(/\s*Online\s*\(Natural[^)]*\)/i, '')
+          .replace(/\s*\(Natural[^)]*\)/i, '')
+          .trim() || n;
+}
+
+const voiceLangTag = v => {
+  const l = String(v?.lang || '').toLowerCase().replace('_', '-');
+  if (l.includes('tw')) return 'zh-TW';
+  if (l.includes('hk')) return 'zh-HK';
+  if (l.includes('cn')) return 'zh-CN';
+  return v?.lang || 'zh';
+};
+
+// 引擎三態：Google／雲端（Edge Online、Natural）／本機系統音。
+// 兩支同名語音的差別就在這裡，畫面一定要標出來。
+function voiceEngineTag(v) {
+  const n = String(v?.name || '');
+  if (/google/i.test(n)) return '🌐 Google';
+  if (/online|natural/i.test(n)) return '☁️ 雲端';
+  return '💻 本機';
+}
+
+function voiceRefOf(voice) {
+  if (!voice) return null;
+  return { name: voice.name, lang: voice.lang, voiceURI: voice.voiceURI || '' };
+}
+
+// 把存下來的 voiceRef 在這台找回語音。
+// 回傳 { voice, status, wanted }；status＝none／exact／same-name／downgraded／missing
+function resolveVoiceRef(ref, fallbackGender) {
+  const all = voiceManager.all || [];
+  if (!ref || !ref.name) return { voice: null, status: 'none', wanted: null };
+
+  const exact = all.find(v => (ref.voiceURI && v.voiceURI === ref.voiceURI)
+                           || (v.name === ref.name && v.lang === ref.lang));
+  if (exact) return { voice: exact, status: 'exact', wanted: ref };
+
+  const sameName = all.find(v => v.name === ref.name);
+  if (sameName) return { voice: sameName, status: 'same-name', wanted: ref };
+
+  // 同一個人聲的其他引擎版本（雲端 ⇄ 本機）：音質會不一樣，但至少還是同一個人
+  const base = voiceBaseName(ref.name);
+  const sameVoice = base && all.find(v => voiceBaseName(v.name) === base);
+  if (sameVoice) return { voice: sameVoice, status: 'downgraded', wanted: ref };
+
+  return { voice: bestVoiceByGender(fallbackGender || 'female'), status: 'missing', wanted: ref };
+}
+
 // ⚠️ Chromium 的坑（2026-08-02 由使用者的裝置診斷出來）：
 // `getVoices()` 每次可能回傳**全新的物件實例**，而雲端 Online 語音是非同步載入的
 // （那台 17 支語音裡有 14 支雲端）。頁面載入時存進 voiceManager.all 的物件，等到要唸的時候
@@ -744,48 +820,65 @@ async function renderVersionInfo() {
 // 語音診斷：列出這台實際有哪些中文語音、程式判定的性別、以及「點下去真的唸得出來嗎」。
 // 存在的理由：語音清單每台電腦都不一樣（有沒有雲端 Online 語音差最多），
 // 開發機測到的結果不能代表老師的電腦——與其猜，不如讓這台自己講。
-function renderVoiceDiag() {
-  const box = document.getElementById('voice-diag');
+// ─── 這台可以用的聲音（語音盤點，C-1）──────────────────
+// 同一支渲染函式，兩個地方用：
+//   ① 設定頁「🔊 這台可以用的聲音」——完整版，含 🔊／🅰️ 雙鈕對照試聽（診斷用）
+//   ② 情境編輯器內嵌——精簡版（compact），每列可「設為這個情境的聲音」
+// 老師不必在兩頁之間來回切；清單**只列這台實際有的語音**，所以不會選到不存在的音色。
+// ⚠️ 兩顆試聽鈕的意義：🔊＝App 平常的播放方式，🅰️＝最原始的 Web Speech 呼叫。
+//    兩顆聽起來不一樣＝App 播放鏈有問題；一樣＝瀏覽器或系統層的限制（別再往 App 裡找）。
+
+function renderVoiceInventory(containerId, opts) {
+  const o   = opts || {};
+  const box = document.getElementById(containerId);
   if (!box) return;
   box.hidden = false;
 
   const zh = (voiceManager.all || []);
   if (!zh.length) {
-    box.innerHTML = '<p class="form-hint">找不到任何中文語音。這台可能沒安裝中文語音套件。</p>';
+    box.innerHTML = '<p class="form-hint">這台裝置找不到任何中文語音。可到 Windows「設定 → 時間與語言 → 語音」加裝中文（繁體）語音，或改用 Microsoft Edge 開啟。</p>';
     return;
   }
-  const male   = bestVoiceByGender('male');
-  const female = bestVoiceByGender('female');
-  const head = `<p class="form-hint" style="margin-bottom:8px">共 ${zh.length} 支中文語音。`
-    + `目前<b>男店員</b>會用：<b>${male ? male.name : '（無，男店員停用）'}</b>；`
-    + `<b>女店員</b>會用：<b>${female ? female.name : '（無）'}</b>。<br>`
-    + `每一列有兩顆試聽鈕：<b>🔊</b>＝App 平常的播放方式，<b>🅰️</b>＝最原始的 Web Speech 呼叫。<br>`
-    + `<b>如果兩顆聽起來不一樣，就是 App 的播放鏈有問題</b>（請把這個結果告訴我）；一樣則是瀏覽器或系統層的限制。</p>`;
 
+  const head = o.compact
+    ? `<p class="form-hint" style="margin-bottom:6px">這台裝置有 ${zh.length} 支中文語音。點 🔊 試聽，按「設為這個情境的聲音」就會固定用它唸台詞。</p>`
+    : `<p class="form-hint" style="margin-bottom:8px">這台裝置有 ${zh.length} 支中文語音；`
+      + `目前<b>女生角色</b>會用 <b>${bestVoiceByGender('female') ? voiceShortName(bestVoiceByGender('female')) : '（無）'}</b>、`
+      + `<b>男生角色</b>會用 <b>${bestVoiceByGender('male') ? voiceShortName(bestVoiceByGender('male')) : '（無，男生角色停用）'}</b>。<br>`
+      + `每一列有兩顆試聽鈕：<b>🔊</b>＝App 平常的播放方式，<b>🅰️</b>＝最原始的 Web Speech 呼叫。`
+      + `<b>兩顆聽起來不一樣就是 App 的播放鏈有問題</b>；一樣則是瀏覽器或系統層的限制。<br>`
+      + `⚠️ 換一台電腦或換瀏覽器，這份清單就不一樣——自訂情境指定的聲音在別台可能要換人唸。</p>`;
+
+  const sel = o.selectedRef ? voiceBaseName(o.selectedRef.name) : null;
   box.innerHTML = head + zh.map((v, i) => {
-    const g      = voiceGenderOf(v);
-    const label  = g === 'male' ? '♂ 男' : g === 'female' ? '♀ 女' : '－ 未知';
-    const cloud  = /online|natural/i.test(v.name) ? '☁️ 雲端' : '💻 本機';
-    return `<div class="voice-diag-row">`
+    const g       = voiceGenderOf(v);
+    const label   = g === 'male' ? '♂ 男' : g === 'female' ? '♀ 女' : '－ 未知';
+    const active  = sel && voiceBaseName(v.name) === sel && v.name === o.selectedRef.name;
+    return `<div class="voice-diag-row${active ? ' selected' : ''}">`
          + `<button class="voice-diag-play" data-i="${i}" aria-label="用 App 的方式試聽 ${v.name}">🔊</button>`
-         + `<button class="voice-diag-play voice-diag-raw" data-i="${i}" aria-label="用最原始的方式試聽 ${v.name}">🅰️</button>`
+         + (o.compact ? '' : `<button class="voice-diag-play voice-diag-raw" data-i="${i}" aria-label="用最原始的方式試聽 ${v.name}">🅰️</button>`)
          + `<span class="voice-diag-tag">${label}</span>`
-         + `<span class="voice-diag-tag">${cloud}</span>`
-         + `<span class="voice-diag-name">${v.name}</span></div>`;
-  }).join('') + '<p id="voice-diag-result" class="form-hint" style="margin-top:8px"></p>';
+         + `<span class="voice-diag-tag">${voiceEngineTag(v)}</span>`
+         + `<span class="voice-diag-tag">${voiceLangTag(v)}</span>`
+         + `<span class="voice-diag-name" title="${v.name}">${voiceShortName(v)}</span>`
+         + (o.compact
+             ? `<button class="voice-pick-btn" data-pick="${i}">${active ? '✓ 使用中' : '設為這個情境的聲音'}</button>`
+             : '')
+         + `</div>`;
+  }).join('') + `<p id="${containerId}-result" class="form-hint" style="margin-top:8px"></p>`;
 
-  // 🅰️ ＝完全繞過 App 的播放鏈，用最原始的三行 Web Speech 呼叫（與 voice-audition.html 相同）。
-  // 兩顆按鈕聽起來不一樣時，問題就在 App 的播放鏈；一樣時就是瀏覽器／系統層的事。
+  const sayLine = '你好，請問要說什麼呢？';   // 中性試聽句（這裡的語音不只用在店員）
+
   box.querySelectorAll('.voice-diag-raw').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const v = zh[Number(btn.dataset.i)];
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance('你好，我是店員，請問要買什麼？');
+      const u = new SpeechSynthesisUtterance(sayLine);
       if (v) { u.voice = v; u.lang = v.lang; }
       u.rate = 0.9; u.pitch = 1;
       u.onstart = () => {
-        const res = document.getElementById('voice-diag-result');
+        const res = document.getElementById(`${containerId}-result`);
         const got = u.voice?.name || '(瀏覽器預設)';
         if (res) res.innerHTML = (got === v?.name)
           ? `🅰️ 原始方式：確實是 <b>${got}</b> 唸的`
@@ -798,19 +891,61 @@ function renderVoiceDiag() {
   box.querySelectorAll('.voice-diag-play:not(.voice-diag-raw)').forEach(btn => {
     btn.addEventListener('click', () => {
       const v = zh[Number(btn.dataset.i)];
-      tts.speak('你好，我是店員，請問要買什麼？', 0.9, null, v);
+      tts.speak(sayLine, 0.9, null, v);
+      // 只是如實顯示「剛才誰在唸」給老師看，**不據此判定語音壞掉**（見血淚說明）
       setTimeout(() => {
         const actual = tts.lastVoiceName || '(未知)';
-        const msg = actual === v.name
+        const res = document.getElementById(`${containerId}-result`);
+        if (res) res.innerHTML = actual === v.name
           ? `🔊 App 方式：確實是 <b>${v.name}</b> 唸的`
           : `⚠️ App 方式：指定 <b>${v.name}</b>，實際唸的卻是 <b>${actual}</b>`
-            + `——請按同一列的 <b>🅰️</b> 再聽一次，兩者若不同就是 App 的播放鏈有問題`;
-        renderVoiceDiag();   // 先重繪（更新黑名單標記），再寫結果，否則結果會被蓋掉
-        const res = document.getElementById('voice-diag-result');
-        if (res) res.innerHTML = msg;
+            + (o.compact ? '' : `——請按同一列的 <b>🅰️</b> 再聽一次，兩者若不同就是 App 的播放鏈有問題`);
       }, 900);
     });
   });
+
+  box.querySelectorAll('.voice-pick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = zh[Number(btn.dataset.pick)];
+      if (typeof o.onPick === 'function') o.onPick(v);
+    });
+  });
+}
+
+// 語音清單非同步載入完成後，把畫面上已經開著的盤點重繪一次
+function refreshVoiceInventories() {
+  if (document.getElementById('voice-inventory')?.innerHTML) renderVoiceInventory('voice-inventory');
+  if (document.getElementById('screen-scenario-editor')?.classList.contains('active')) renderVoicePicker();
+}
+
+// 舊名保留：版本資訊區塊的「🔍 檢查這台的語音」仍可呼叫（其入口已移到設定頁的語音盤點區）
+function renderVoiceDiag() { renderVoiceInventory('voice-diag'); }
+
+// 「複製這台的語音清單」：各裝置實況盤點用（C-4 生角色圖前要先知道每台實際有哪些音色）
+async function copyVoiceList() {
+  const zh = voiceManager.all || [];
+  const text = [
+    `語音清單（${zh.length} 支中文語音）`,
+    `瀏覽器：${navigator.userAgent}`,
+    `網址：${location.href}`,
+    '',
+    ...zh.map(v => `${voiceEngineTag(v)}\t${voiceLangTag(v)}\t${voiceGenderOf(v) === 'male' ? '男' : voiceGenderOf(v) === 'female' ? '女' : '未知'}\t${v.name}\t${v.voiceURI || ''}`),
+  ].join('\n');
+
+  const status = document.getElementById('voice-copy-status');
+  let copied = false;
+  try { await navigator.clipboard.writeText(text); copied = true; }
+  catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { copied = document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  if (status) status.textContent = copied
+    ? `✅ 已複製 ${zh.length} 支語音的清單，可貼進文件或訊息裡`
+    : '❌ 複製失敗，請改用截圖';
 }
 
 function showFileProtocolWarning() {
@@ -842,6 +977,13 @@ function clerkGenderOf(scenario) {
 // 於是男角色全部用女聲說話（2026-08-02 回報「男生頭像卻是 Yating 的聲音」的真因）。
 function voiceForClerk(scenario) {
   const g = clerkGenderOf(scenario);
+  // 自訂情境：老師若指定過某支語音（role.voiceRef），優先照他的意思——
+  // 換裝置時 resolveVoiceRef 會逐級退回，最後才落回「依性別自動挑」。
+  const ref = scenario?.role?.voiceRef;
+  if (ref) {
+    const r = resolveVoiceRef(ref, g);
+    if (r.voice) return r.voice;
+  }
   return g ? bestVoiceByGender(g) : null;
 }
 
@@ -3773,6 +3915,7 @@ function stopListeningUI() {
 function renderSettings() {
   renderUserVoiceSelector();
   renderVersionInfo();
+  renderVoiceInventory('voice-inventory');   // 🔊 這台可以用的聲音（C-1：從版本資訊區塊獨立出來）
   const list   = document.getElementById('custom-scenario-list');
   const empty  = document.getElementById('custom-empty');
   const customs = loadCustom();
@@ -3829,6 +3972,7 @@ let selectedTheme      = THEME_PRESETS[0];
 let selectedClerkGender = 'female';   // 泛用店員性別（GENERIC_CLERKS 的鍵）
 let editingParentId    = null;        // 掛在哪個內建場所底下（null＝獨立，只在 ⭐ 自訂分部）
 let selectedCategory   = 'shopping';  // 情境類型（data/topic_presets.js 的 key；舊資料缺欄＝shopping）
+let selectedVoiceRef   = null;        // 老師指定的語音 { name, lang, voiceURI }；null＝依角色性別自動挑
 
 // ─── AI 輔助情境生成（免 API Key，2026-07-23 改版）──────────────────
 // 舊流程要使用者自備 Gemini API Key 直接打 API，門檻高；改為三段式：
@@ -4001,6 +4145,7 @@ function openScenarioEditor(idx, opts = {}) {
   // 舊資料與別台匯進來的舊版對話包都沒有這一欄 → 一律 ?? null（缺欄＝獨立情境）
   editingParentId = sc ? (sc.parentId ?? null) : (opts.parentId ?? null);
   selectedCategory = topicPreset(sc?.category).key;   // 缺欄／未知值都退回日常購物
+  selectedVoiceRef = sc?.role?.voiceRef ?? null;     // 舊資料沒有 role 欄＝沒指定，自動挑
 
   document.getElementById('scenario-editor-title').textContent = sc ? '編輯情境' : '新增情境';
   document.getElementById('edit-name').value  = sc?.name  ?? '';
@@ -4009,6 +4154,7 @@ function openScenarioEditor(idx, opts = {}) {
   renderColorSwatches();
   renderParentPicker();
   renderCategoryPicker();
+  renderVoicePicker();
   renderClerkRolePicker();
   renderStepList();
   scenePhoto.init(`${editingScenarioId}::__scene::img`);
@@ -4071,6 +4217,61 @@ function applyTopicTemplate() {
   renderStepList();
   const st = document.getElementById('ai-gen-status');
   if (st) st.textContent = `✅ 已填入「${p.label}」的 3 步範本——點每一步的「編輯」改成你要的內容`;
+}
+
+// 情境編輯器內嵌的語音挑選（C-1 ④）＋ 降級如實回報（C-2）。
+// ⚠️ 回報**只給老師看**：練習畫面一個字都不顯示，學生不需要知道音源降級。
+function renderVoicePicker() {
+  renderVoiceInventory('voice-inventory-compact', {
+    compact: true,
+    selectedRef: selectedVoiceRef,
+    onPick: (v) => {
+      selectedVoiceRef = voiceRefOf(v);
+      renderVoicePicker();
+      // 選了就唸一句：老師當場聽到的就是學生之後會聽到的
+      tts.speak('你好，等一下就用這個聲音跟你說話。', 0.85, null, v);
+    },
+  });
+  renderVoicePickerStatus();
+}
+
+function renderVoicePickerStatus() {
+  const el = document.getElementById('voice-picker-current');
+  if (!el) return;
+  const gender = (GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female).gender;
+
+  if (!selectedVoiceRef) {
+    const auto = bestVoiceByGender(gender);
+    el.innerHTML = `目前是<b>自動挑選</b>：這台會用 <b>${auto ? `${voiceShortName(auto)}（${voiceEngineTag(auto)}）` : '（找不到中文語音）'}</b> 唸台詞。`
+                 + '想固定用某一支，就從下面的清單選。';
+    return;
+  }
+
+  const r = resolveVoiceRef(selectedVoiceRef, gender);
+  const named = r.voice ? `${voiceShortName(r.voice)}（${voiceEngineTag(r.voice)}）` : '（無）';
+  const wantedName = voiceShortName(selectedVoiceRef.name);
+  const msg = {
+    exact:        `已指定 <b>${named}</b> 唸這個情境的台詞。`,
+    'same-name':  `已指定 <b>${named}</b> 唸這個情境的台詞。`,
+    downgraded:   `這個瀏覽器沒有你當初選的 <b>${wantedName}</b> 的那個版本，`
+                + `改用同一個人聲的另一個版本 <b>${named}</b>——<b>音質會不一樣</b>。`,
+    missing:      `這台裝置沒有 <b>${wantedName}</b>，已改用同性別的 <b>${named}</b>；`
+                + '可以從下面重新指定一支這台有的。',
+  }[r.status] || '';
+
+  // 選到的語音性別與角色形象不同時如實說出來（不擋，老師可能就是要這樣）
+  const vg = r.voice ? voiceGenderOf(r.voice) : null;
+  const mismatch = (vg === 'male' || vg === 'female') && vg !== gender
+    ? `<br>⚠️ 這支聲音聽起來是<b>${vg === 'male' ? '男生' : '女生'}</b>，和角色形象（${
+        gender === 'male' ? '男生' : '女生'}）不一樣。`
+    : '';
+
+  el.innerHTML = msg + mismatch
+    + ' <button type="button" class="btn-vs" id="btn-voice-auto" style="margin-top:6px">改回自動挑選</button>';
+  document.getElementById('btn-voice-auto')?.addEventListener('click', () => {
+    selectedVoiceRef = null;
+    renderVoicePicker();
+  });
 }
 
 // 「要出現在哪個場所底下」下拉：獨立 ＋ 依分部分組的 42 個內建場所。
@@ -4170,7 +4371,10 @@ function renderClerkRolePicker() {
       if (usable) btn.addEventListener('click', () => {
         selectedClerkGender = c.key;
         renderClerkRolePicker();
-        tts.speak(`你好，我是${c.name}。`, 0.85, null, bestVoiceByGender(c.gender));
+        renderVoicePickerStatus();   // 換角色形象後，「自動挑選」會挑到不同的聲音
+        // 老師指定過語音就用他指定的那支（換角色形象不該把指定洗掉）
+        const picked = selectedVoiceRef ? resolveVoiceRef(selectedVoiceRef, c.gender).voice : null;
+        tts.speak(`你好，我是${c.name}。`, 0.85, null, picked || bestVoiceByGender(c.gender));
         // 唸完後如實回報實際發聲的語音：老師覺得聲音不對時，一眼就能分辨是
         // 「這台只有這支音色」還是「開啟方式/快取讓指定失效」。
         setTimeout(reportSpokenVoice, 700);
@@ -4342,6 +4546,9 @@ function saveScenario() {
     theme:       selectedTheme,
     parentId:    editingParentId,       // 掛在哪個內建場所底下；null＝獨立（只在 ⭐ 自訂分部）
     category:    selectedCategory,      // 情境類型（提示詞與範本跟著它換）；舊資料缺欄＝shopping
+    // 老師指定的語音；沒指定就整個欄位不寫（缺欄＝依角色性別自動挑）。
+    // `role.key`（語音角色目錄）留給 C-3，這期只有 voiceRef。
+    ...(selectedVoiceRef ? { role: { voiceRef: selectedVoiceRef } } : {}),
     clerkGender: selectedClerkGender,   // 泛用店員（頭像＋唸台詞的聲音）；舊資料沒這欄＝女
     available:   true,
     steps:       editingSteps,
@@ -4975,6 +5182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-save-scenario').addEventListener('click', saveScenario);
   document.getElementById('btn-add-step').addEventListener('click', () => openStepEditor(-1));
+  document.getElementById('btn-voice-copy')?.addEventListener('click', copyVoiceList);
   document.getElementById('btn-topic-template')?.addEventListener('click', applyTopicTemplate);
   document.getElementById('btn-ai-copy-prompt').addEventListener('click', copyAiPrompt);
   document.getElementById('btn-ai-import').addEventListener('click', importAiSteps);

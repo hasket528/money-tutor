@@ -2159,7 +2159,32 @@ body {
 }
 .voice-diag-play:hover { background: #EFF6FF; border-color: var(--blue); }
 .voice-diag-tag  { flex-shrink: 0; color: var(--gray-600, #4b5563); white-space: nowrap; }
-.voice-diag-name { flex: 1; word-break: break-all; }
+.voice-diag-name { flex: 1; word-break: break-all; min-width: 120px; }
+
+/* 語音盤點：手機一列塞不下（試聽鈕＋三個標籤＋名稱＋設定鈕）→ 允許換行 */
+.voice-diag-row { flex-wrap: wrap; }
+.voice-diag-row.selected {
+  background: #EFF6FF;
+  border-radius: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* 「設為這個情境的聲音」：編輯器內嵌的精簡版才有 */
+.voice-pick-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--gray-300, #CBD5E1);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.voice-pick-btn:hover,
+.voice-pick-btn:focus-visible { background: #EFF6FF; border-color: var(--blue); outline: none; }
+.voice-diag-row.selected .voice-pick-btn { border-color: var(--blue); color: var(--blue); font-weight: 700; }
 
 /* 儲存情境：步驟卡片下方的大按鈕（取代原本標題列的小按鈕） */
 .save-section { text-align: center; }
