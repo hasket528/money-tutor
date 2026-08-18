@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v162';
+const APP_VERSION = 'v163';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -1398,9 +1398,11 @@ function saveCustom(arr) {
 }
 
 // ─── 對話包匯出/匯入（自訂情境＋老師錄音＋照片打包分享）──────────
-// 格式：{ version:2, type:'dialogue-pack', exported, scenarios:[…], audio:{ key: dataURL } }
+// 格式：{ version:3, type:'dialogue-pack', exported, scenarios:[…], audio:{ key: dataURL } }
 // v2 起 audio map 一併含照片 blob（key 尾 ::img、__scene::img）；匯入以 `${sc.id}::`
 // 前綴通用再映射，故 v1 舊包（無照片）仍可匯入，向下相容。
+// v3 起情境帶 `parentId`（掛在哪個內建場所底下）；匯入時父場所不存在會降級成獨立情境。
+// 版本號只是給人看的標記——匯入端一律看欄位在不在，不靠版本號分支。
 
 function blobToDataURL(blob) {
   return new Promise((resolve, reject) => {
@@ -1432,12 +1434,13 @@ async function exportDialoguePack() {
     }
   }
   return JSON.stringify({
-    version: 2, type: 'dialogue-pack', exported: Date.now(),
+    version: 3, type: 'dialogue-pack', exported: Date.now(),
     scenarios: customs, audio,
   });
 }
 
-// 回傳 { scenarios, audios }（匯入數量）。id 撞號自動重編，錄音 key 跟著改。
+// 回傳 { scenarios, audios, orphaned, flawed }（匯入數量＋被降級成獨立的情境名＋步驟不合規則的情境名）。
+// id 撞號自動重編，錄音 key 跟著改。
 async function importDialoguePack(jsonText) {
   const data = JSON.parse(jsonText);
   if (data.type !== 'dialogue-pack' || !Array.isArray(data.scenarios)) {
@@ -1447,6 +1450,8 @@ async function importDialoguePack(jsonText) {
   const usedIds  = new Set([...existing.map(s => s.id), ...SCENARIOS_DATA.scenarios.map(s => s.id)]);
   const audioMap = data.audio || {};
   let audios = 0;
+  const orphaned = [];   // 父場所在這台找不到、已降級成獨立的情境名
+  const flawed   = [];   // 步驟不合規則的情境名（照樣匯入，只是說出來）
 
   for (let i = 0; i < data.scenarios.length; i++) {
     const sc = data.scenarios[i];
@@ -1463,10 +1468,25 @@ async function importDialoguePack(jsonText) {
         audios++;
       } catch {}
     }
-    existing.push({ ...sc, id: newId, available: true });
+    // 父場所不存在（別台的舊版場所、或未來場所改名）→ 降級成獨立自訂情境並回報，
+    // 不能讓情境整個不見：老師的教材比「掛在哪裡」重要。
+    let parentId = sc.parentId ?? null;
+    if (parentId && !SCENARIOS_DATA.scenarios.some(s => s.id === parentId)) {
+      orphaned.push(sc.name || newId);
+      parentId = null;
+    }
+    // 匯入**不擋**——別台老師的教材再怎麼不合規則也不能弄不見；
+    // 只是如實說出來，進編輯器儲存時就地檢查會再指出是哪一步。
+    if (typeof StepRules !== 'undefined') {
+      const bad = StepRules.checkSteps(sc.steps, { profile: 'custom' })
+        .filter(r => StepRules.hasError(r.issues));
+      if (bad.length) flawed.push(`${sc.name || newId}（${bad.length} 步）`);
+    }
+
+    existing.push({ ...sc, id: newId, parentId, available: true });
   }
   saveCustom(existing);
-  return { scenarios: data.scenarios.length, audios };
+  return { scenarios: data.scenarios.length, audios, orphaned, flawed };
 }
 
 // ─── 內建情境對話覆寫（關鍵字／完整語句／選項）───────────────────
@@ -1712,6 +1732,32 @@ function getAllScenarios() {
 }
 
 
+// ─── 自訂情境掛進場所（parentId）────────────────────
+// `parentId` 只是「這張卡片要出現在哪個場所底下」的**入口標籤**，不改變資料從屬：
+// 點進去練習時 `state.scenario` 仍是自訂情境自己，所以全站 14 處 `isCustom` 判斷
+// （店員頭像鏈、音檔路徑、教師覆寫、學習紀錄…）本來就成立，一處都不用改。
+// 代價只有兩個，在這裡補：標題補上父場所名、場景圖與主題色讀父場所的。
+// 判讀一律走這三支函式，不要在各處自己 find（見主 CLAUDE.md 的單一真相紀律）。
+
+function getParentScenario(sc) {
+  if (!sc?.parentId) return null;
+  return SCENARIOS_DATA.scenarios.find(s => s.id === sc.parentId) || null;
+}
+
+// 掛在某場所底下的自訂情境（保留在 loadCustom() 陣列中的索引，✏️ 編輯要用）
+function customsOfParent(parentId) {
+  return loadCustom()
+    .map((sc, idx) => ({ sc, idx }))
+    .filter(({ sc }) => sc.parentId === parentId);
+}
+
+// 畫面標題／學習紀錄的單元名：掛在場所下就補成「便利商店・合作社買午餐」
+function scenarioDisplayName(sc) {
+  const parent = getParentScenario(sc);
+  return parent ? `${parent.name}・${sc.name}` : (sc?.name || '');
+}
+
+
 // ─── 學生名冊（與 reward/ 獎勵系統共用）──────────────
 // 名冊來源：localStorage 'rewardSystemStudents'（reward/ 系統維護）
 // 目前學生：localStorage 'sp_currentStudent'（{id, name}；null = 訪客）
@@ -1815,6 +1861,7 @@ function shuffle(arr) {
 
 const state = {
   scenario:    null,
+  parentScenario: null, // 自訂情境掛在哪個內建場所底下（parentId 對應的場所物件；null＝獨立）
   situation:   null,    // 目前選取的情境（含 steps）
   simpleMode:  false,   // 簡易版：只練前 3 步
   stepIndex:   0,
@@ -2207,6 +2254,13 @@ function renderHome() {
   const grid = document.getElementById('scenario-grid');
   grid.innerHTML = '';
 
+  // 掛在各場所底下的自訂情境（parentId）：場所卡要標「＋N 自訂」。
+  // 先一次算好，別讓 42 張卡各自去 loadCustom() 一次。
+  const customByParent = {};
+  loadCustom().forEach(sc => {
+    if (sc.parentId) (customByParent[sc.parentId] ||= []).push(sc);
+  });
+
   getAllScenarios().filter(sc =>
     homePart === 'custom' ? sc.isCustom : (!sc.isCustom && (SCENARIO_PART[sc.id] || 1) === Number(homePart))
   ).forEach(scenario => {
@@ -2230,19 +2284,26 @@ function renderHome() {
     card.disabled = (scenario.available === false);
     card.setAttribute('aria-label', scenario.name);
 
-    const theme = scenario.theme || { color: '#2563EB', bg: '#EFF6FF' };
+    // ⭐ 自訂分部仍列出**全部**自訂情境（含掛在場所下的）——老師的總覽入口只有這裡。
+    // 掛著的那些標出來源場所，並沿用父場所的主題色與場景圖，看起來就是同一家店。
+    const parentSc = scenario.isCustom ? getParentScenario(scenario) : null;
+    const theme = (parentSc?.theme) || scenario.theme || { color: '#2563EB', bg: '#EFF6FF' };
     wrap.style.setProperty('--card-color', theme.color);
     wrap.style.setProperty('--card-bg', theme.bg);
     card.style.setProperty('--card-color', theme.color);
     card.style.setProperty('--card-bg', theme.bg);
 
-    const stepLabel = scenario.situations
+    const attachedCount = customByParent[scenario.id]?.length || 0;
+    const stepLabel = (scenario.situations
       ? `${scenario.situations.length} 種情境`
-      : ((scenario.steps?.length ?? 0) > 0 ? `${scenario.steps.length} 個對話步驟` : '即將推出');
+      : ((scenario.steps?.length ?? 0) > 0 ? `${scenario.steps.length} 個對話步驟` : '即將推出'))
+      + (attachedCount ? ` ＋${attachedCount} 自訂` : '');
     const isCustom = scenario.isCustom;
     // 商店場景圖：鋪在卡片最底層當背景，載入失敗則移除→退回 emoji 圖示。
-    // 自訂情境沒有專屬場景，用泛用櫃檯圖（男女店員共用同一張）。
-    const sceneImg = isCustom ? CUSTOM_SCENE_IMAGE : `images/scenes/${scenario.id}.webp`;
+    // 自訂情境沒有專屬場景，用泛用櫃檯圖（男女店員共用同一張）；掛在場所下的用父場所的實景。
+    const sceneImg = isCustom
+      ? (parentSc ? `images/scenes/${parentSc.id}.webp` : CUSTOM_SCENE_IMAGE)
+      : `images/scenes/${scenario.id}.webp`;
 
     card.innerHTML = `
       ${sceneImg ? `<img class="card-bg-img" src="${sceneImg}" alt="" aria-hidden="true">` : ''}
@@ -2254,6 +2315,7 @@ function renderHome() {
           <span class="card-name">${scenario.name}</span>
           <span class="card-steps">📝 ${stepLabel}</span>
         </div>
+        ${parentSc ? `<span class="card-parent">${parentSc.icon || '🏪'} ${parentSc.name} · 自訂</span>` : ''}
         <span class="card-badge ${scenario.available === false ? 'coming-soon' : ''}">
           ${isCustom ? '自訂情境 →' : scenario.available === false ? '即將推出' : '開始練習 →'}
         </span>
@@ -2328,13 +2390,18 @@ function startScenario(scenario) {
   }
 
   state.scenario  = scenario;
+  // 掛在場所底下的自訂情境：state.scenario 仍是自訂情境自己（做法二），
+  // 父場所只用於標題、主題色與「上一頁」要回哪裡。
+  state.parentScenario = getParentScenario(scenario);
   state.situation = null;
   state.results   = [];
   state.scaffoldMode = false;   // 選新場景時先歸零，只有走鷹架入口才啟用
   // 瀏覽器不支援語音輸入（如部分 iPad Safari）時，預設改用選項模式
   state.inputMode = recognizer.supported ? 'voice' : 'options';
 
-  const theme = scenario.theme || { color: '#2563EB', bg: '#EFF6FF', accent: '#1D4ED8' };
+  const theme = state.parentScenario?.theme
+             || scenario.theme
+             || { color: '#2563EB', bg: '#EFF6FF', accent: '#1D4ED8' };
   for (const id of ['screen-practice', 'screen-difficulty', 'screen-situation']) {
     const el = document.getElementById(id);
     el.style.setProperty('--scene-color',  theme.color);
@@ -2385,6 +2452,75 @@ function renderSituationOptions() {
     card.addEventListener('click', () => { sfx.click(); startWithSituation(sit); });
     container.appendChild(card);
   });
+
+  renderAttachedCustomSituations(container);
+}
+
+// 內建情境之後，接上掛在這個場所底下的自訂情境，最後一張是「➕ 自訂情境」入口卡。
+// ⚠️ 絕不可把自訂情境 push 進 `state.scenario.situations`——那是 SCENARIOS_DATA 常數裡的
+//    陣列，push 進去會永久污染記憶體中的內建資料，症狀是切出去再切回來卡片越積越多
+//    （同型事故：B6 `_pickMissions` 忘了淺拷貝而污染 B6_MISSIONS，見主 CLAUDE.md）。
+//    這裡只是「另外再接一段 DOM」，原陣列一個字都沒碰。
+function renderAttachedCustomSituations(container) {
+  const scenario = state.scenario;
+  if (!scenario || scenario.isCustom) return;   // 自訂情境本身沒有這一層
+
+  customsOfParent(scenario.id).forEach(({ sc, idx }) => {
+    const total     = sc.steps?.length || 0;
+    const stepCount = state.simpleMode ? Math.min(3, total) : total;
+    const badge = state.simpleMode && total > 3
+      ? '<span class="sit-card-mode-badge">簡易 3 步</span>'
+      : '';
+
+    // 卡片本身是 <button>，✏️ 不能巢狀在裡面（HTML 不合法）→ 同 renderHome 的店員鈕，
+    // 用 wrapper 包起來、✏️ 絕對定位浮在右上角。
+    const wrap = document.createElement('div');
+    wrap.className = 'sit-card-wrap';
+
+    const card = document.createElement('button');
+    card.className = 'situation-card situation-card-custom';
+    card.innerHTML = `
+      <div class="sit-card-header">
+        <span class="sit-icon">${sc.icon || '💬'}</span>
+        <span class="sit-name">${sc.name || '未命名情境'}${badge}</span>
+      </div>
+      <p class="sit-desc">老師自編的練習 <span style="color:var(--gray-600);font-size:0.8em">（${stepCount} 步驟）</span></p>
+    `;
+    // 點進去練習的是自訂情境**自己**（state.scenario 換成它），
+    // 所以 isCustom 要補上——loadCustom() 存的資料沒有這個旗標，是 getAllScenarios 才加的。
+    card.addEventListener('click', () => { sfx.click(); startScenario({ ...sc, isCustom: true }); });
+    wrap.appendChild(card);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'sit-edit-btn';
+    editBtn.type = 'button';
+    editBtn.title = '編輯這個自訂情境';
+    editBtn.setAttribute('aria-label', `編輯 ${sc.name || '自訂情境'}`);
+    editBtn.textContent = '✏️';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sfx.click();
+      openScenarioEditor(idx);
+    });
+    wrap.appendChild(editBtn);
+
+    container.appendChild(wrap);
+  });
+
+  const addCard = document.createElement('button');
+  addCard.className = 'situation-card situation-card-add';
+  addCard.innerHTML = `
+    <div class="sit-card-header">
+      <span class="sit-icon">➕</span>
+      <span class="sit-name">自訂情境</span>
+    </div>
+    <p class="sit-desc">在【${scenario.name}】底下自己編一段對話（老師用）</p>
+  `;
+  addCard.addEventListener('click', () => {
+    sfx.click();
+    openScenarioEditor(-1, { parentId: scenario.id });
+  });
+  container.appendChild(addCard);
 }
 
 // 鷹架模式總開關：目前先關閉（功能尚未成熟，只開放初/中/高級難度）。
@@ -2409,7 +2545,10 @@ function startWithSituation(situation) {
     ? { ...effective, steps: effective.steps.slice(0, 3) }
     : effective;
   state.situation = steps;
-  const label = `${state.scenario.name}・${situation.name}${state.simpleMode ? '（簡易）' : ''}`;
+  const label = (state.parentScenario
+    ? scenarioDisplayName(state.scenario)                       // 便利商店・合作社買午餐
+    : `${state.scenario.name}・${situation.name}`)              // 便利商店・基本購物
+    + (state.simpleMode ? '（簡易）' : '');
 
   // 難度選擇頁（鷹架卡置頂＋初/中/高級）。鷹架模式只在各場所「主情境」顯示。
   document.getElementById('diff-icon').textContent = state.scenario.icon || '💬';
@@ -2547,8 +2686,9 @@ function renderStep() {
 
   // 標題列：場景圖示 + 「場景・練習情境」，例如「早餐店・基本點餐」（不再顯示難度）
   document.getElementById('ph-scene-icon').textContent = state.scenario?.icon || '💬';
-  document.getElementById('ph-scene-name').textContent =
-    `${state.scenario?.name || ''}・${state.situation?.name || ''}`;
+  document.getElementById('ph-scene-name').textContent = state.parentScenario
+    ? scenarioDisplayName(state.scenario)
+    : `${state.scenario?.name || ''}・${state.situation?.name || ''}`;
 
   // 初級：隱藏「你的任務」框，直接在畫面內顯示「你可以這樣說」提示句
   // （不用彈窗，避免和店員語音同時出現；也不讓任務框與提示框同時佔版面）
@@ -3488,7 +3628,7 @@ function showComplete() {
     try {
       const pending = JSON.parse(localStorage.getItem('pendingRewards') || '[]');
       const who = curStudent ? `（${curStudent.name}）` : '';
-      pending.push({ points: rewardPoints, studentId: curStudent?.id ?? null, source: `購物練習：${state.scenario.name}・${state.situation.name}${who}` });
+      pending.push({ points: rewardPoints, studentId: curStudent?.id ?? null, source: `購物練習：${scenarioDisplayName(state.scenario)}・${state.situation.name}${who}` });
       localStorage.setItem('pendingRewards', JSON.stringify(pending));
     } catch (_) {}
   }
@@ -3507,7 +3647,7 @@ function showComplete() {
     studentId:    curStudent?.id ?? null,
     studentName:  curStudent?.name || '',
     scenarioId:   state.scenario.id,
-    scenarioName: state.scenario.name,
+    scenarioName: scenarioDisplayName(state.scenario),   // 掛在場所下時＝「便利商店・合作社買午餐」
     situationId:  state.situation.id,
     situationName: state.situation.name,
     difficulty:   state.difficulty,
@@ -3656,7 +3796,8 @@ function renderSettings() {
       </div>
       <div class="custom-card-info">
         <div class="custom-card-name">${sc.name || '未命名情境'}</div>
-        <div class="custom-card-steps">${sc.steps.length} 個步驟</div>
+        <div class="custom-card-steps">${sc.steps.length} 個步驟${
+          getParentScenario(sc) ? ` · 掛在【${getParentScenario(sc).name}】底下` : ''}</div>
       </div>
       <div class="custom-card-actions">
         <button class="btn-card-action" data-action="edit">✏️ 編輯</button>
@@ -3686,6 +3827,7 @@ let editingScenarioId  = null;   // 進編輯器即固定（新情境預產）�
 let editingSteps       = [];
 let selectedTheme      = THEME_PRESETS[0];
 let selectedClerkGender = 'female';   // 泛用店員性別（GENERIC_CLERKS 的鍵）
+let editingParentId    = null;        // 掛在哪個內建場所底下（null＝獨立，只在 ⭐ 自訂分部）
 
 // ─── AI 輔助情境生成（免 API Key，2026-07-23 改版）──────────────────
 // 舊流程要使用者自備 Gemini API Key 直接打 API，門檻高；改為三段式：
@@ -3775,11 +3917,14 @@ function normalizeAiStep(raw, i) {
   if (!prompt || !task || !answer) return null;
   if (!accepted.includes(answer)) accepted.unshift(answer);
 
+  // 干擾項不得 ∈ accepted（唯一正解）。比對走規則檔的正規化——標點不算差異，
+  // 否則「我不知道。」會漏過這裡，等老師按儲存時才被就地檢查擋下（同一件事兩套判準）。
+  const isAccepted = o => accepted.some(a => stepNorm(a) === stepNorm(o));
+  const wrong = options.filter(o => stepNorm(o) !== stepNorm(answer) && !isAccepted(o));
   const FALLBACK_WRONG = ['我不知道', '沒關係', '好的謝謝'];
-  const wrong = options.filter(o => o !== answer && !accepted.includes(o));
   for (const fb of FALLBACK_WRONG) {
     if (wrong.length >= 3) break;
-    if (fb !== answer && !wrong.includes(fb) && !accepted.includes(fb)) wrong.push(fb);
+    if (stepNorm(fb) !== stepNorm(answer) && !wrong.some(w => stepNorm(w) === stepNorm(fb)) && !isAccepted(fb)) wrong.push(fb);
   }
 
   let keywords = (Array.isArray(raw.keywords) ? raw.keywords : [])
@@ -3837,7 +3982,8 @@ function importAiSteps() {
 }
 
 
-function openScenarioEditor(idx) {
+// opts.parentId：從某個場所的情境頁按「➕ 自訂情境」進來時帶入，預先掛在那個場所底下。
+function openScenarioEditor(idx, opts = {}) {
   editingScenarioIdx = idx;
   const customs = loadCustom();
   const sc      = idx >= 0 ? customs[idx] : null;
@@ -3846,16 +3992,56 @@ function openScenarioEditor(idx) {
   selectedTheme     = sc?.theme ?? THEME_PRESETS[0];
   editingScenarioId = sc?.id ?? ('custom_' + Date.now());
   selectedClerkGender = GENERIC_CLERKS[sc?.clerkGender] ? sc.clerkGender : 'female';
+  // 舊資料與別台匯進來的舊版對話包都沒有這一欄 → 一律 ?? null（缺欄＝獨立情境）
+  editingParentId = sc ? (sc.parentId ?? null) : (opts.parentId ?? null);
 
   document.getElementById('scenario-editor-title').textContent = sc ? '編輯情境' : '新增情境';
   document.getElementById('edit-name').value  = sc?.name  ?? '';
   document.getElementById('edit-icon').value  = sc?.icon  ?? '';
 
   renderColorSwatches();
+  renderParentPicker();
   renderClerkRolePicker();
   renderStepList();
   scenePhoto.init(`${editingScenarioId}::__scene::img`);
   nav.push('screen-scenario-editor');
+}
+
+// 「要出現在哪個場所底下」下拉：獨立 ＋ 依分部分組的 42 個內建場所。
+// 分部標籤直接讀首頁那排 tab 的文字，不在這裡再抄一份（改了 index.html 這裡自動跟著）。
+function renderParentPicker() {
+  const sel = document.getElementById('edit-parent');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">⭐ 獨立情境（只放在「⭐ 自訂」分部）</option>';
+
+  const byPart = {};
+  SCENARIOS_DATA.scenarios.forEach(s => { (byPart[SCENARIO_PART[s.id] || 1] ||= []).push(s); });
+  Object.keys(byPart).sort((a, b) => a - b).forEach(part => {
+    const g = document.createElement('optgroup');
+    g.label = document.querySelector(`.home-part-btn[data-part="${part}"]`)?.textContent.trim()
+           || `第 ${part} 部分`;
+    byPart[part].forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = `${s.icon || '🏪'} ${s.name}`;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  });
+
+  sel.value = editingParentId || '';
+  sel.onchange = () => { editingParentId = sel.value || null; renderParentHint(); };
+  renderParentHint();
+}
+
+function renderParentHint() {
+  const el = document.getElementById('edit-parent-hint');
+  if (!el) return;
+  const parent = getParentScenario({ parentId: editingParentId });
+  el.innerHTML = parent
+    ? `建立在【<b>${parent.name}</b>】底下：學生點進${parent.name}，就會在情境清單看到這一個。`
+      + '<br>「⭐ 自訂」分部裡也還是找得到（老師的總覽入口）。'
+    : '不掛在任何場所：只出現在首頁的「⭐ 自訂」分部。';
 }
 
 function renderColorSwatches() {
@@ -4034,6 +4220,34 @@ function renderStepList() {
   });
 }
 
+// ─── 自訂情境的就地檢查（唯一的守門員）──────────────────
+// 自訂情境存在 localStorage，**六支稽核一支都照不到**（它們只讀 data/scenarios.js），
+// 所以老師按下儲存的那一刻就是唯一能擋住壞資料的時機。
+// 判準不在這裡，在 `js/step_rules.js`——那一份 `tests/_audit_schema.js` 也在用，
+// 規則只能有一份。這裡只負責「怎麼把問題講給老師聽」。
+// ⚠️ 規則檔沒載到時（舊 SW 快取的 index.html）一律放行，不能因為守門員缺席就不讓老師存檔。
+
+// 與規則檔同一套正規化（標點與空白不算差異）；規則檔沒載到時退回原字串比對
+const stepNorm = s => (typeof StepRules !== 'undefined' ? StepRules.norm(s) : String(s == null ? '' : s));
+
+function stepErrorsOf(step, otherIds) {
+  if (typeof StepRules === 'undefined') return [];
+  return StepRules.checkStep(step, { profile: 'custom', otherIds }).filter(i => i.level === 'error');
+}
+
+// 回傳給人看的說明；沒問題回 null
+function describeStepProblems(steps) {
+  if (typeof StepRules === 'undefined') return null;
+  const bad = StepRules.checkSteps(steps, { profile: 'custom' })
+    .filter(r => StepRules.hasError(r.issues));
+  if (!bad.length) return null;
+  return bad.map(({ index, step, issues }) => {
+    const title = step?.task || step?.shopkeeper_prompt || '(還沒填內容)';
+    const lines = issues.filter(i => i.level === 'error').map(i => `　・${i.msg}`).join('\n');
+    return `第 ${index + 1} 步「${title}」\n${lines}`;
+  }).join('\n\n');
+}
+
 function saveScenario() {
   const name = document.getElementById('edit-name').value.trim();
   const icon = document.getElementById('edit-icon').value.trim();
@@ -4048,12 +4262,19 @@ function saveScenario() {
     return;
   }
 
+  const problems = describeStepProblems(editingSteps);
+  if (problems) {
+    alert(`這個情境還不能儲存，請先修正：\n\n${problems}`);
+    return;
+  }
+
   const arr = loadCustom();
   const sc  = {
     id:          editingScenarioId || ('custom_' + Date.now()),
     name,
     icon:        icon || '💬',
     theme:       selectedTheme,
+    parentId:    editingParentId,       // 掛在哪個內建場所底下；null＝獨立（只在 ⭐ 自訂分部）
     clerkGender: selectedClerkGender,   // 泛用店員（頭像＋唸台詞的聲音）；舊資料沒這欄＝女
     available:   true,
     steps:       editingSteps,
@@ -4070,6 +4291,8 @@ function saveScenario() {
   renderSettings();
   // 從首頁 ➕ 卡進來時，pop 回首頁需重繪卡片列表
   if (document.getElementById('screen-home').classList.contains('active')) renderHome();
+  // 從某場所情境頁的 ➕／✏️ 進來時，pop 回情境頁也要重繪（新卡片才會出現、改掛走的才會消失）
+  else if (document.getElementById('screen-situation').classList.contains('active')) renderSituationOptions();
 }
 
 
@@ -4390,6 +4613,15 @@ function saveStep() {
     }
   }
 
+  const otherIds = editingSteps
+    .filter((_, i) => i !== editingStepIdx)
+    .map(s => s.id).filter(Boolean);
+  const errs = stepErrorsOf(step, otherIds);
+  if (errs.length) {
+    alert(`這一步還不能存，請先修正：\n\n${errs.map(e => `・${e.msg}`).join('\n')}`);
+    return;
+  }
+
   if (editingStepIdx >= 0) editingSteps[editingStepIdx] = step;
   else editingSteps.push(step);
 
@@ -4422,7 +4654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 「🏠 返回主頁」＝回**站台主頁**（不是本模組首頁），並讓主頁直接停在金好聊＋這個場所所屬的分部。
   // 「← 上一頁」才是回本模組首頁。
   const goSiteHome = () => {
-    const part = SCENARIO_PART[state.scenario?.id];
+    const part = SCENARIO_PART[state.scenario?.id] ?? SCENARIO_PART[state.scenario?.parentId];
     location.href = '../index.html?hero=chatdog' + (part ? '&part=' + part : '');
   };
 
@@ -4442,6 +4674,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 難度選擇頁：上一頁（=情境選擇；自訂情境無此層 → 回主頁）+ 返回主頁
   document.getElementById('btn-diff-back').addEventListener('click', () => {
     if (state.scenario?.situations) showScreen('screen-situation');
+    // 掛在場所底下的自訂情境是從父場所的情境頁進來的，回那一頁才對得上路徑
+    else if (state.parentScenario) startScenario(state.parentScenario);
     else renderHome();
   });
   document.getElementById('btn-diff-home').addEventListener('click', goSiteHome);
@@ -4577,8 +4811,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statusEl = document.getElementById('pack-status');
     statusEl.textContent = '⏳ 匯入中…';
     try {
-      const { scenarios, audios } = await importDialoguePack(await file.text());
-      statusEl.textContent = `✅ 已匯入 ${scenarios} 個情境、${audios} 段錄音`;
+      const { scenarios, audios, orphaned, flawed } = await importDialoguePack(await file.text());
+      statusEl.textContent = `✅ 已匯入 ${scenarios} 個情境、${audios} 段錄音`
+        + (orphaned?.length
+            ? `（${orphaned.join('、')}：原本掛的場所在這台找不到，已改成獨立的自訂情境，可在編輯器重新指定）`
+            : '')
+        + (flawed?.length
+            ? `　⚠️ ${flawed.join('、')}的步驟不符規則（例如一步有兩個正解、缺關鍵字），練習可以跑，但進編輯器儲存時會要求先修正。`
+            : '');
       renderSettings();
     } catch (err) {
       statusEl.textContent = `❌ 匯入失敗：${err.message || '請確認是對話包檔案'}`;
@@ -4799,6 +5039,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const sid = q.get('scenario');
     const sc  = sid ? getAllScenarios().find(s => s.id === sid && s.available !== false) : null;
+    // 掛在場所底下的自訂情境直接用 ?scenario= 進來時，首頁分部先切到父場所那一部分——
+    // 難度頁「上一頁」會回父場所的情境頁，首頁分部也要對得上，返回才不會跳回第一部分。
+    if (sc?.parentId && !sp) {
+      const pPart = SCENARIO_PART[sc.parentId];
+      if (pPart) {
+        homePart = String(pPart);
+        document.querySelectorAll('.home-part-btn').forEach(b => b.classList.toggle('active', b.dataset.part === homePart));
+      }
+    }
     // renderHome() 結尾會 showScreen('screen-home')，直接跳情境時會先閃一下首頁 →
     // 先建好首頁內容（返回時要用），再立刻切到情境頁，中間不讓首頁露臉
     renderHome();

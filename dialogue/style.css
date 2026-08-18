@@ -261,6 +261,17 @@ body {
   color: var(--gray-600, #475569);
 }
 
+/* 自訂情境掛在場所底下時，卡片上標出來源（⭐ 自訂分部仍列出全部自訂情境） */
+.card-parent {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gray-600, #475569);
+  background: rgba(255, 255, 255, 0.78);
+  border-radius: 99px;
+  padding: 2px 10px;
+  width: fit-content;
+}
+
 /* 店員介紹按鈕（浮在卡片右上角） */
 .clerk-intro-btn {
   position: absolute;
@@ -2421,6 +2432,64 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* 情境選擇頁：掛在這個場所底下的自訂情境（左緣加粗＋「自訂」徽章），
+   以及最後一張「➕ 自訂情境」入口卡。卡片本身是 <button>，✏️ 不能巢狀其中 →
+   包一層 .sit-card-wrap，✏️ 絕對定位浮上去（同首頁店員鈕的做法）。 */
+.sit-card-wrap {
+  position: relative;
+  display: flex;
+}
+.sit-card-wrap > .situation-card { flex: 1; }
+
+.situation-card-custom {
+  border-left: 6px solid var(--scene-color, var(--blue));
+  padding-right: 56px;
+}
+.situation-card-custom .sit-name::after {
+  content: '自訂';
+  margin-left: 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--gray-600, #475569);
+  background: var(--gray-100, #F1F5F9);
+  border-radius: 99px;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+
+/* 命中區 44×44（手機手指點得到，見主 CLAUDE.md 的手機觸控規範） */
+.sit-edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sit-edit-btn:hover,
+.sit-edit-btn:focus-visible {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--gray-100, #F1F5F9);
+  outline: none;
+}
+
+.situation-card-add {
+  border: 2px dashed var(--gray-300, #CBD5E1);
+  background: transparent;
+  box-shadow: none;
+}
+.situation-card-add:hover {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--white);
 }
 
 .sit-icon {

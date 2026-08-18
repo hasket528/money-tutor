@@ -122,6 +122,7 @@
         .dlg-card-row { position: relative; width: 100%; display: flex; align-items: center; min-height: 1.6em; padding-right: 4.6rem; }
         .dlg-card-name { font-size: 1.08em; font-weight: 800; }
         .dlg-card-steps { position: absolute; right: 0; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 0.78em; color: #64748b; }
+        .dlg-card-parent { font-size: 0.76em; font-weight: 700; color: #475569; background: #f1f5f9; border-radius: 99px; padding: 2px 10px; }
         .dlg-card-badge { font-size: 0.86em; font-weight: 700; color: #fff; border-radius: 20px; padding: 6px 16px; background: var(--c, var(--primary-color)); }
         .dlg-clerk-btn {
             position: absolute; top: 0; right: 14px; width: 64px; height: 64px; z-index: 2;
@@ -3173,8 +3174,9 @@
                     <div class="dlg-card-body">
                         <div class="dlg-card-row">
                             <span class="dlg-card-name">${s.name}</span>
-                            <span class="dlg-card-steps">📝 ${s.situations} 種情境</span>
+                            <span class="dlg-card-steps">📝 ${s.metaLabel || `${s.situations} 種情境`}</span>
                         </div>
+                        ${s.parentName ? `<span class="dlg-card-parent">🏪 ${s.parentName} · 自訂</span>` : ''}
                         <span class="dlg-card-badge">開始練習 →</span>
                     </div>
                 </a>${clerk}
@@ -3193,12 +3195,19 @@
                 if (dlgPart === 'custom') {
                     const list = loadCustomScenarios();
                     grid.innerHTML = list.length
-                        ? list.map(s => scenarioCard({
-                            id: s.id, name: s.name || '自訂情境', icon: s.icon || '⭐',
-                            color: s.theme?.color || '#f59e0b',
-                            situations: s.situations?.length || 0,
-                            scene: 'dialogue/images/scenes/custom.webp', clerk: null,
-                          })).join('')
+                        ? list.map(s => {
+                            // 自訂情境可以掛在某個內建場所底下（dialogue 的 parentId，只是入口標籤）。
+                            // 掛著的沿用父場所的實景圖與主題色並標出來源，但**仍列在這一頁**——
+                            // 老師的自訂情境總覽入口只有這裡，不能因為掛進場所就從這裡消失。
+                            const parent = s.parentId ? CAT.scenarios.find(x => x.id === s.parentId) : null;
+                            return scenarioCard({
+                              id: s.id, name: s.name || '自訂情境', icon: s.icon || '⭐',
+                              color: parent?.color || s.theme?.color || '#f59e0b',
+                              metaLabel: `${s.steps?.length || 0} 個對話步驟`,
+                              parentName: parent?.name || '',
+                              scene: parent?.scene || 'dialogue/images/scenes/custom.webp', clerk: null,
+                            });
+                          }).join('')
                         : `<div class="dlg-empty">還沒有自訂情境。<br>到「日常對話練習」的 ⚙️ 設定裡就能自己建立一個。<br>
                              <a class="hero-go" style="background:#0ea5e9" href="dialogue/index.html?editor=new">去建立自訂情境 →</a></div>`;
                 } else {

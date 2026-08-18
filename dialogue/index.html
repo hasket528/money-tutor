@@ -728,6 +728,7 @@
         <summary>📖 三分鐘上手：怎麼做一個自己的練習？</summary>
         <ol>
           <li><strong>取名字</strong>：填情境名稱（例：合作社買午餐）、挑個圖示與顏色。</li>
+          <li><strong>選位置</strong>：「要出現在哪個場所底下」可以掛在某個場所（例：便利商店），學生點進那個場所就會在情境清單看到它；不掛就只出現在首頁的「⭐ 自訂」分部。掛了之後，「⭐ 自訂」分部裡一樣找得到。</li>
           <li><strong>加步驟</strong>：每一步填「店員說的話」＋「學生要說的標準答案」。錯誤選項留空會自動補。</li>
           <li><strong>加聲音（可選）</strong>：每步驟可按 🎙️ 錄下老師自己的聲音；不錄也沒關係，電腦會自動朗讀。</li>
           <li><strong>儲存</strong>：回到首頁就能看到新卡片，學生立刻可以練習（說話／選項／打字三種模式都通用）。</li>
@@ -749,6 +750,13 @@
             <label class="form-label">主題色</label>
             <div class="color-swatches" id="edit-color" role="group" aria-label="主題色選擇"></div>
           </div>
+        </div>
+        <div class="form-group" id="parent-scenario-group">
+          <label class="form-label" for="edit-parent">要出現在哪個場所底下</label>
+          <select class="form-input" id="edit-parent"></select>
+          <!-- 掛進場所只是「這張卡片的入口位置」，資料仍是獨立的自訂情境（見
+               docs/開發計畫_日常對話練習精進.md 三、A-0 做法二）。 -->
+          <p class="form-hint" id="edit-parent-hint">不掛在任何場所：只出現在首頁的「⭐ 自訂」分部。</p>
         </div>
         <div class="form-group" id="clerk-role-group">
           <label class="form-label">店員角色</label>
@@ -1048,6 +1056,8 @@
   <script src="data/clerk_gender.js"></script>
   <script src="data/student_audio_map.js"></script>
   <script src="db.js"></script>
+  <!-- 步驟規則（單一真相）：情境編輯器的就地檢查與 tests/_audit_schema.js 共用同一份判準 -->
+  <script src="js/step_rules.js"></script>
   <script src="../js/nav-auth.js"></script>
   <!-- 行動瀏覽器：首次觸控時喚醒 speechSynthesis（否則非手勢當下觸發的即時 TTS 在手機不出聲），
        並統一把中文語句導到最佳中文語音。預錄音檔不經此層。 -->
