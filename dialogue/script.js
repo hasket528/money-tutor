@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v171';
+const APP_VERSION = 'v172';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -119,11 +119,27 @@ const PRONUNCIATION_MAP = [
   // 時間口語變體（「晚上六點」≈「今晚六點」；順序重要：先處理帶「明天」的組合，再處理單獨「晚上」）
   ['今天晚上', '今晚'], ['明天晚上', '明晚'], ['晚上', '今晚'],
 
+  // 同音誤聽（2026-08-19 補，來源：stt_probe 掃描教材高頻詞）
+  // 錢/前/千 同音，是最常被打錯的一組——「多少錢」出現在 20+ 步
+  ['多少前', '多少錢'], ['多少千', '多少錢'], ['幾前', '幾錢'],
+  ['線金', '現金'], ['現斤', '現金'], ['副現', '付現'],
+  ['悠游卡', '悠遊卡'], ['心用卡', '信用卡'],
+  ['行動之付', '行動支付'], ['形動支付', '行動支付'],
+  ['收具', '收據'], ['收劇', '收據'], ['發飄', '發票'],
+  ['推貨', '退貨'], ['四穿', '試穿'], ['是穿', '試穿'],
+  ['過旗', '過期'], ['東瓜茶', '冬瓜茶'], ['巧客力', '巧克力'],
+  ['土司', '吐司'], ['洗麵乳', '洗面乳'],
+  ['包果', '包裹'], ['包過', '包裹'], ['刮號', '掛號'],
+
   // STT 常加上的贅詞
   ['請問一下', '請問'],
   ['謝謝你', '謝謝'], ['謝謝您', '謝謝'],
   ['好的好的', '好的'], ['可以可以', '可以'],
   ['頭疼', '頭痛'],
+
+  // ⚠️ 收尾：上面 ['悠遊','悠遊卡'] 是字串替換，碰到本來就完整的「悠遊卡」會疊成「悠遊卡卡」
+  //（既有 bug，2026-08-19 發現）。放在最後把疊出來的字收掉——順序有意義，別往上搬。
+  ['悠遊卡卡', '悠遊卡'],
 ];
 
 // 阿拉伯數字時間 → 中文（如 STT 的「6點」→「六點」；時間用「兩點」不用「二點」）
@@ -1225,7 +1241,7 @@ function playNarration(step, fp) {
     if (i >= cands.length) { speakInnerOS(narrationSpeechText(fp)); return; }
     const a = new Audio(cands[i++]);
     _shopkeeperAudio = a;
-    a.onended = () => { if (_shopkeeperAudio === a) _shopkeeperAudio = null; };
+    a.onended = () => { if (_shopkeeperAudio === a) _shopkeeperAudio = null; releaseAudio(a); };
     a.onerror = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } };
     a.play().catch(() => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } });
   };
@@ -1244,13 +1260,22 @@ function playInnerOS(step, osText, onDone) {
     if (i >= cands.length) { speakInnerOS(osText, onDone); return; }
     const a = new Audio(cands[i++]);
     _shopkeeperAudio = a;
-    a.onended = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; onDone?.(); } };
+    a.onended = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; releaseAudio(a); onDone?.(); } };
     a.onerror = () => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } };
     a.play().catch(() => { if (_shopkeeperAudio === a) { _shopkeeperAudio = null; tryNext(); } });
   };
   tryNext();
 }
 
+
+// 徹底卸載一個 <audio>：只把變數設 null 不夠——Audio 物件還握著 src，
+// Android Chrome 通知欄的媒體卡會留到分頁關閉（2026-08-19 實機回報，先在 adventure 修）。
+// ⚠️ **播完（onended）也要走這裡**，不是只有被打斷時才卸載。
+function releaseAudio(a) {
+  if (!a) return;
+  a.onended = a.onerror = null;
+  try { a.pause(); a.src = ''; a.load(); } catch (_) {}
+}
 
 // ─── 店員語音播放（優先預錄音檔，無檔案時 fallback TTS）────────────
 // 查找順序：
@@ -1307,7 +1332,7 @@ function speakHomeCharacter(key) {
     let advanced = false;
     const fail = () => { if (advanced) return; advanced = true; tryNext(); };
     audio.onerror = fail;
-    audio.onended = () => { if (_homeCharAudio === audio) _homeCharAudio = null; };
+    audio.onended = () => { if (_homeCharAudio === audio) _homeCharAudio = null; releaseAudio(audio); };
     audio.play().catch(fail);
   };
   tryNext();
@@ -1396,7 +1421,7 @@ function playShopkeeperAudio(step) {
     _shopkeeperAudio = audio;
     audio.onplay  = () => avatar?.classList.add('speaking');
     // 店員預錄台詞播完 → 接續唸心理 OS（OS 無預錄檔，走即時 TTS）
-    audio.onended = () => { if (_shopkeeperAudio === audio) { done = true; avatar?.classList.remove('speaking'); speakOS(); } };
+    audio.onended = () => { releaseAudio(audio); if (_shopkeeperAudio === audio) { done = true; avatar?.classList.remove('speaking'); speakOS(); } };
     // onerror 與 play().catch 對同一個失敗檔案會「雙重觸發」；用 _shopkeeperAudio===audio
     // 守門，確保每個候選只前進一次，避免同時播放兩個音檔（依優先順序只播第一個可用的）
     audio.onerror = () => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; tryNext(); } };
@@ -1444,6 +1469,7 @@ function playCustomStepAudio(step, avatar) {
         audio.onplay  = () => avatar?.classList.add('speaking');
         audio.onended = () => {
           URL.revokeObjectURL(url);
+          releaseAudio(audio);
           if (_shopkeeperAudio === audio) { avatar?.classList.remove('speaking'); speakOS(); }
         };
         audio.onerror = () => { URL.revokeObjectURL(url); if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; doTTS(); } };
@@ -1476,7 +1502,7 @@ function speakAsUser(text, onEnd) {
       if (idx >= candidates.length) { speakAsUserLive(text, onEnd); return; }
       const audio = new Audio(candidates[idx++]);
       _userAudio = audio;
-      audio.onended = () => { if (_userAudio === audio) _userAudio = null; if (onEnd) onEnd(); };
+      audio.onended = () => { if (_userAudio === audio) _userAudio = null; releaseAudio(audio); if (onEnd) onEnd(); };
       audio.onerror = () => { if (_userAudio === audio) { _userAudio = null; tryNext(); } };
       audio.play().catch(() => { if (_userAudio === audio) { _userAudio = null; tryNext(); } });
     };
@@ -1504,7 +1530,7 @@ function speakAsUserLive(text, onEnd) {
       if (_userAudio === audio) _userAudio = null;
       browserSpeakAsUser(text, onEnd);         // 退回瀏覽器 TTS
     };
-    audio.onended = () => { if (_userAudio === audio) _userAudio = null; if (onEnd) onEnd(); };
+    audio.onended = () => { if (_userAudio === audio) _userAudio = null; releaseAudio(audio); if (onEnd) onEnd(); };
     audio.onerror = fallback;
     audio.play().catch(fallback);
     return;
@@ -2431,7 +2457,7 @@ function playClerkIntro(scenario) {
     if (idx >= candidates.length) { tts.speak(clerkData.intro, 0.85, null, introVoice); return; }
     const audio = new Audio(candidates[idx++]);
     _shopkeeperAudio = audio;
-    audio.onended = () => { if (_shopkeeperAudio === audio) _shopkeeperAudio = null; };
+    audio.onended = () => { if (_shopkeeperAudio === audio) _shopkeeperAudio = null; releaseAudio(audio); };
     audio.onerror = () => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; tryNext(); } };
     audio.play().catch(() => { if (_shopkeeperAudio === audio) { _shopkeeperAudio = null; tryNext(); } });
   };

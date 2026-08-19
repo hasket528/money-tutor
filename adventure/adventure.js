@@ -103,6 +103,15 @@ const AdvSpeech = (() => {
     };
 
     let _audio   = null;   // 目前播放中的預錄音檔（供 cancel 停止）
+    // 徹底卸載一個 <audio>：只 pause 會留下「暫停中」的媒體工作階段，
+    // Android Chrome 通知欄那張媒體卡就會一直在（要關掉分頁才消失）。
+    // ⚠️ **播完（onended）和被打斷（cancel）都要走這裡**——2026-08-19 實機回報就是
+    //    播完那條路徑漏了，卡片停在 00:06/00:06 關不掉。
+    const _release = (a) => {
+        if (!a) return;
+        a.onended = a.onerror = null;
+        try { a.pause(); a.src = ''; a.load(); } catch {}
+    };
     let _fbTimer = null;   // 兜底計時器：部分瀏覽器 onend/onended 不穩，靠它保證流程一定往下走
     const _clearFb = () => { if (_fbTimer) { clearTimeout(_fbTimer); _fbTimer = null; } };
 
@@ -156,6 +165,7 @@ const AdvSpeech = (() => {
                     if (done) return; done = true;
                     _clearFb();
                     if (_audio === a) _audio = null;
+                    _release(a);   // 播完也要卸載，否則通知欄的媒體卡留著
                     if (needTts) _tts(text, cb, who);   // 缺檔/播放失敗 → 即時補念並推進
                     else if (cb) cb();
                 };
@@ -184,7 +194,7 @@ const AdvSpeech = (() => {
             _clearFb();
             // pause 之外還要卸載媒體資源（src=''+load）：只 pause 會留下「暫停中」的
             // 媒體工作階段，Android Chrome 通知欄的媒體控制卡會一直殘留到分頁關閉。
-            if (_audio) { _audio.onended = _audio.onerror = null; try { _audio.pause(); _audio.src = ''; _audio.load(); } catch {} _audio = null; }
+            if (_audio) { _release(_audio); _audio = null; }
             window.speechSynthesis?.cancel();
             _pending = null;
         }
