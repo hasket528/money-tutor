@@ -977,7 +977,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "議價後仍然錢不夠，誠實向老闆說明",
           steps: [
-            { id:"order_ask", shopkeeper_prompt:"你好！請問要什麼？", task:"點珍珠奶茶並詢問價格",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟攤販老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","晚安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","廁所在哪裡？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整一點","failed":"可以這樣說：「你好！」"} },
+            { id:"order_ask", shopkeeper_prompt:"請問要什麼？", task:"點珍珠奶茶並詢問價格",
               keywords:["珍珠","奶茶"], keywords_mode:'any',
               accepted_phrases:["我要珍珠奶茶，請問多少錢？","珍珠奶茶多少錢？","我要珍珠奶茶，多少錢？"],
               options:["我要珍珠奶茶，請問多少錢？","謝謝再見","我要冬瓜茶","請問你們有什麼？"],
@@ -1027,7 +1033,17 @@ const SCENARIOS_DATA = {
           id: "wrong_flavor", name: "點錯口味了", icon: "🔄",
           desc: "發現拿到的飲料口味不對，如何禮貌地請老闆更換",
           steps: [
-            { id:"order", shopkeeper_prompt:"你好！請問要什麼？", task:"點一杯冬瓜茶",
+            // 2026-08-19：特殊情境也要先有基本對話（老闆招呼→學生打招呼）再切入主題，
+            // 否則學生一進來就被要求點餐，少了每次進店都該做的第一件事。
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟攤販老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","晚安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整一點", failed:"可以這樣說：「你好！」" } },
+            { id:"order", shopkeeper_prompt:"請問要什麼？", task:"點一杯冬瓜茶",
               keywords:["冬瓜"], keywords_mode:'any',
               accepted_phrases:["我要冬瓜茶","給我冬瓜茶","一杯冬瓜茶"],
               options:["我要冬瓜茶","我要珍珠奶茶","我要檸檬汁","謝謝再見"],
@@ -1194,7 +1210,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "買藥時發現錢不夠，如何向藥師說明",
           steps: [
-            { id:"describe", shopkeeper_prompt:"你好！請問有什麼不舒服嗎？", task:"告訴藥師你肚子痛",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟藥師打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","藥師好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！","藥師好！"],
+              options:["你好！","謝謝再見","我要買東西","多少錢？"],
+              feedback:{"perfect":"打招呼打得很有禮貌！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            { id:"describe", shopkeeper_prompt:"請問有什麼不舒服嗎？", task:"告訴藥師你肚子痛",
               keywords:["肚子","胃"], keywords_mode:'any',
               accepted_phrases:["我肚子痛","我肚子不舒服","肚子痛"],
               options:["我肚子痛","我頭痛","我發燒","我很不舒服"],
@@ -1588,7 +1610,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "結帳時發現錢不夠，決定改點便宜一點的餐點",
           steps: [
-            { id:"order", shopkeeper_prompt:"你好！歡迎光臨，請問要點什麼？", task:"點漢堡套餐",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"打招呼並說你要點餐",
+              keywords:["點餐","點東西","你好","您好"], keywords_mode:'any',
+              accepted_phrases:["你好！我要點餐","你好，我要點東西","我要點餐"],
+              options:["你好！我要點餐","謝謝再見","請問廁所在哪裡？","多少錢？"],
+              feedback:{"perfect":"說得很好！既打招呼又說要點餐！","partial":"說出了部分！可以說：「你好！我要點餐」","failed":"可以這樣說：「你好！我要點餐」"} },
+            { id:"order", shopkeeper_prompt:"請問要點什麼？", task:"點漢堡套餐",
               keywords:["漢堡"], keywords_mode:'any',
               accepted_phrases:["我要漢堡套餐","給我漢堡套餐","一個漢堡套餐"],
               options:["我要漢堡套餐","我要薯條","謝謝再見","什麼最好吃？"],
@@ -1788,7 +1816,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "買文具時錢不夠，選擇只買需要的商品",
           steps: [
-            { id:"select_items", shopkeeper_prompt:"你好！請問找到你要的東西了嗎？", task:"告訴店員你要買鉛筆和尺",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            { id:"select_items", shopkeeper_prompt:"請問找到你要的東西了嗎？", task:"告訴店員你要買鉛筆和尺",
               keywords:["鉛筆","尺"], keywords_mode:'any',
               accepted_phrases:["我要買鉛筆和尺","給我鉛筆和尺","我要這個鉛筆和這把尺"],
               options:["我要買鉛筆和尺","我要買橡皮擦","謝謝再見","我再找找"],
@@ -2204,7 +2238,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "買吐司時發現錢不夠，改買便宜的替代品",
           steps: [
-            mkStep({ id:"select", say:"你好！請問想要買什麼？", task:"告訴老闆你要買一條吐司",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有奶油麵包？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問想要買什麼？", task:"告訴老闆你要買一條吐司",
               options:["我要買一條吐司","我要買蛋糕","謝謝再見","我再看看"], kw:["吐司"],
               frame_ref:"want_item", slots:{ item:{ answer:"吐司", choices:[
                 { text:"吐司", emoji:"🍞" }, { text:"蛋糕", emoji:"🍰" }, { text:"貝果", emoji:"🥯" } ] } },
@@ -2371,7 +2411,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "買洗面乳時發現錢不夠，改買便宜的香皂",
           steps: [
-            mkStep({ id:"select", say:"你好！請問想要買什麼？", task:"告訴店員你要買洗面乳",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有試用包？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問想要買什麼？", task:"告訴店員你要買洗面乳",
               options:["我要買洗面乳","我要買乳液","謝謝再見","我再看看"], kw:["洗面乳"],
               frame_ref:"want_item", slots:{ item:{ answer:"洗面乳", choices:[
                 { text:"洗面乳", emoji:"🧼" }, { text:"乳液", emoji:"🧴" }, { text:"香皂", emoji:"🧽" } ] } },
@@ -2463,7 +2509,13 @@ const SCENARIOS_DATA = {
           id: "wrong_order", name: "點錯了要改", icon: "🔄",
           desc: "店員複誦飲料弄錯了，禮貌地更正",
           steps: [
-            mkStep({ id:"order", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯綠茶",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"order", say:"請問要喝什麼呢？", task:"告訴店員你要一杯綠茶",
               options:["我要一杯綠茶","我要珍珠奶茶","謝謝再見","有什麼推薦？"], kw:["綠茶"],
               feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"clerk_mistake", say:"好的，一杯紅茶對嗎？", task:"告訴店員你點的是綠茶不是紅茶",
@@ -2481,7 +2533,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "點大杯飲料時發現錢不夠，改點小杯",
           steps: [
-            mkStep({ id:"select", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯大杯奶茶",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要喝什麼呢？", task:"告訴店員你要一杯大杯奶茶",
               options:["我要一杯大杯奶茶","我要小杯就好","謝謝再見","我再看看"], kw:["大杯","奶茶"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"hear_total", say:"好的！大杯奶茶 50 元。", task:"告訴店員你要付現金",
@@ -2568,7 +2626,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "點雞腿便當時發現錢不夠，改點便宜的滷蛋便當",
           steps: [
-            mkStep({ id:"select", say:"你好！請問要吃什麼呢？", task:"告訴老闆你要雞腿便當",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","今天有什麼菜？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要吃什麼呢？", task:"告訴老闆你要雞腿便當",
               options:["我要雞腿便當","我要滷蛋便當","謝謝再見","我再看看"], kw:["雞腿"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"hear_total", say:"好的！雞腿便當 90 元。", task:"告訴老闆你要付現金",
@@ -2677,7 +2741,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "點拿鐵時發現錢不夠，改點便宜的美式咖啡",
           steps: [
-            mkStep({ id:"select", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯拿鐵",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要喝什麼呢？", task:"告訴店員你要一杯拿鐵",
               options:["我要一杯拿鐵","我要美式咖啡","謝謝再見","我再看看"], kw:["拿鐵"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"hear_total", say:"好的！拿鐵一杯 65 元。", task:"告訴店員你要付現金",
@@ -2732,7 +2802,13 @@ const SCENARIOS_DATA = {
           id: "wrong_order", name: "點錯口味了", icon: "🔄",
           desc: "店員複誦口味弄錯了，禮貌地更正",
           steps: [
-            mkStep({ id:"order", say:"你好！請問要喝什麼呢？", task:"告訴店員你要一杯焦糖拿鐵",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"order", say:"請問要喝什麼呢？", task:"告訴店員你要一杯焦糖拿鐵",
               options:["我要一杯焦糖拿鐵","我要美式咖啡","謝謝再見","有什麼推薦？"], kw:["焦糖"],
               feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"clerk_mistake", say:"好的，一杯香草拿鐵對嗎？", task:"告訴店員你點的是焦糖不是香草",
@@ -2808,7 +2884,13 @@ const SCENARIOS_DATA = {
           id: "not_enough_money", name: "錢不夠", icon: "💸",
           desc: "寄包裹時發現錢不夠，改用比較便宜的寄送方式",
           steps: [
-            mkStep({ id:"select", say:"你好！請問要辦理什麼呢？", task:"告訴櫃檯人員你要寄包裹",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟櫃檯人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","請問怎麼寄信？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要辦理什麼呢？", task:"告訴櫃檯人員你要寄包裹",
               options:["我要寄包裹","我要買郵票","謝謝再見","我再想想"], kw:["包裹"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"hear_total", say:"好的！這個包裹用宅配寄送要 150 元。", task:"告訴櫃檯人員你要付現金",
@@ -2919,7 +3001,13 @@ const SCENARIOS_DATA = {
           id: "overdue_book", name: "還書逾期", icon: "⏰",
           desc: "還書時發現逾期，禮貌道歉並確認罰款",
           steps: [
-            mkStep({ id:"return", say:"你好！請問要還書嗎？", task:"說你要還這本書",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟館員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","這本書多少錢？","廁所在哪裡？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"return", say:"請問要還書嗎？", task:"說你要還這本書",
               options:["我要還這本書","我要借書","謝謝再見","我要辦借書證"], kw:["還書","我要還"],
               feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
             mkStep({ id:"overdue_notice", say:"（系統顯示這本書已經逾期 3 天）", task:"為逾期向館員道歉",
@@ -3537,7 +3625,16 @@ const SCENARIOS_DATA = {
           id: "bus_basic", name: "基本搭車", icon: "🚌", clerkName: "公車司機",
           desc: "上車確認路線、刷卡付車資、請司機提醒下車",
           steps: [
-            mkStep({ id:"ask_route", say:"（公車來了，車門打開）你好！", task:"問司機有沒有到目的地",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（公車來了，車門打開）你好！", task:"跟公車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_route", say:"要上車嗎？", task:"問司機有沒有到目的地",
               options:["請問有到火車站嗎？","司機好帥","我要坐車","多少錢啊"],
               accepted:["請問有到火車站嗎？","有到火車站嗎","請問這班有到火車站嗎"], kw:["有到","火車站"],
               feedback:{ failed:"先確認路線再上車。可以說：「請問有到火車站嗎？」" } }),
@@ -3695,7 +3792,16 @@ const SCENARIOS_DATA = {
           id: "train_buy", name: "買車票", icon: "🎫", clerkName: "售票員",
           desc: "到售票口買票：說目的地、選車種、付錢、問月台",
           steps: [
-            mkStep({ id:"say_dest", say:"你好，請問要到哪裡？", task:"說目的地和張數",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_dest", say:"請問要到哪裡？", task:"說目的地和張數",
               options:["我要一張到台中的票","坐火車","便宜的那種","你推薦哪裡"],
               accepted:["我要一張到台中的票","一張到台中","到台中一張"], kw:["台中"],
               feedback:{ failed:"說清楚目的地和張數。可以說：「我要一張到台中的票」" } }),
@@ -3772,7 +3878,16 @@ const SCENARIOS_DATA = {
           id: "taxi_basic", name: "基本搭車", icon: "🚕", clerkName: "計程車司機",
           desc: "說清楚目的地，下車付錢、確認找零",
           steps: [
-            mkStep({ id:"say_dest", say:"你好！請問要到哪裡？", task:"說目的地",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟計程車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_dest", say:"請問要到哪裡？", task:"說目的地",
               options:["請到中山醫院，謝謝","隨便開","前面那邊","跟著前面的車"],
               accepted:["請到中山醫院，謝謝","到中山醫院","我要到中山醫院"], kw:["中山醫院"],
               feedback:{ failed:"說清楚目的地。可以說：「請到中山醫院，謝謝」" } }),
@@ -3799,7 +3914,16 @@ const SCENARIOS_DATA = {
           id: "taxi_ask_price", name: "先問車資", icon: "💰", clerkName: "計程車司機",
           desc: "上車前先問大概多少錢，確認預算夠不夠",
           steps: [
-            mkStep({ id:"ask_price", say:"你好，要搭車嗎？", task:"先問到目的地多少錢",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟計程車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_price", say:"要搭車嗎？", task:"先問到目的地多少錢",
               options:["請問到火車站大概多少錢？","算便宜一點啦","你們會亂喊價嗎","上車再說"],
               accepted:["請問到火車站大概多少錢？","到火車站多少錢","大概多少錢"], kw:["多少錢"],
               feedback:{ failed:"上車前先問價錢。可以說：「請問到火車站大概多少錢？」" } }),
@@ -3846,7 +3970,16 @@ const SCENARIOS_DATA = {
           id: "card_topup", name: "加值悠遊卡", icon: "💰", clerkName: "服務台人員",
           desc: "到服務台加值，完成後確認餘額",
           steps: [
-            mkStep({ id:"say_add", say:"你好！這裡是悠遊卡服務台～", task:"說要加值",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_add", say:"請問需要什麼服務呢？", task:"說要加值",
               options:["你好，我要加值悠遊卡","卡片給你","我要買新卡","幫我弄一下"],
               accepted:["你好，我要加值悠遊卡","我要加值","幫我加值"], kw:["加值"],
               feedback:{ failed:"說清楚需求。可以說：「你好，我要加值悠遊卡」" } }),
@@ -3890,7 +4023,16 @@ const SCENARIOS_DATA = {
           id: "card_student", name: "辦學生卡", icon: "🎓", clerkName: "服務台人員",
           desc: "詢問怎麼辦學生悠遊卡、要帶什麼",
           steps: [
-            mkStep({ id:"ask_student", say:"你好，需要什麼服務嗎？", task:"問怎麼辦學生卡",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_student", say:"需要什麼服務嗎？", task:"問怎麼辦學生卡",
               options:["請問怎麼辦學生悠遊卡？","給我一張最好的卡","有優惠嗎快說","辦卡送什麼"],
               accepted:["請問怎麼辦學生悠遊卡？","怎麼辦學生卡","辦學生悠遊卡"], kw:["學生"],
               feedback:{ failed:"說清楚要辦什麼。可以說：「請問怎麼辦學生悠遊卡？」" } }),
@@ -3985,7 +4127,16 @@ const SCENARIOS_DATA = {
           id: "cinema_buy", name: "買電影票", icon: "🎬", clerkName: "電影院店員",
           desc: "選場次、用學生證買優惠票",
           steps: [
-            mkStep({ id:"say_movie", say:"你好！請問要看哪一部電影？", task:"說片名和張數",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_movie", say:"請問要看哪一部電影？", task:"說片名和張數",
               options:["我要一張《海洋總動員》的票","隨便一部","最好看的那部","你幫我選"],
               accepted:["我要一張《海洋總動員》的票","一張海洋總動員","海洋總動員一張"], kw:["海洋總動員"],
               feedback:{ failed:"說清楚片名和張數。可以說：「我要一張《海洋總動員》的票」" } }),
@@ -4054,7 +4205,16 @@ const SCENARIOS_DATA = {
           id: "ktv_book", name: "訂包廂問計費", icon: "🎤", clerkName: "KTV店員",
           desc: "問清楚怎麼計費、算出總價再消費",
           steps: [
-            mkStep({ id:"ask_fee", say:"歡迎光臨！請問幾位？", task:"說人數並問計費",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"歡迎光臨！", task:"跟櫃檯人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_fee", say:"請問幾位？", task:"說人數並問計費",
               options:["三位，請問怎麼計費？","很多人","先進去再說","有得唱就好"],
               accepted:["三位，請問怎麼計費？","三位怎麼計費","請問怎麼計費"], kw:["計費"],
               feedback:{ failed:"先問清楚怎麼算錢。可以說：「三位，請問怎麼計費？」" } }),
@@ -4123,7 +4283,16 @@ const SCENARIOS_DATA = {
           id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "小藍",
           desc: "買學生優惠票、問場地規則",
           steps: [
-            mkStep({ id:"buy_ticket", say:"你好！游泳池門票全票80元、學生票50元！", task:"買學生票",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"buy_ticket", say:"游泳池門票全票80元、學生票50元！", task:"買學生票",
               options:["一張學生票，這是我的學生證","全票吧沒差","我用看的不用票","多少錢都行"],
               accepted:["一張學生票，這是我的學生證","一張學生票","學生票一張"], kw:["學生票"],
               feedback:{ failed:"記得用學生證買優惠票。可以說：「一張學生票，這是我的學生證」" } }),
@@ -4214,7 +4383,16 @@ const SCENARIOS_DATA = {
           id: "park_height", name: "設施安全詢問", icon: "📏", clerkName: "遊樂園工作人員",
           desc: "先問限制、誠實回答，安全第一",
           steps: [
-            mkStep({ id:"ask_limit", say:"（雲霄飛車入口）你好！", task:"問設施限制",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟工作人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_limit", say:"要玩這個嗎？", task:"在雲霄飛車入口，問工作人員有沒有身高限制",
               options:["請問這個設施有什麼限制嗎？","直接排隊就對了","小孩都能玩吧","不用問啦"],
               accepted:["請問這個設施有什麼限制嗎？","有什麼限制嗎","有限制嗎"], kw:["限制"],
               feedback:{ failed:"玩之前先問限制。可以說：「請問這個設施有什麼限制嗎？」" } }),
@@ -4261,7 +4439,16 @@ const SCENARIOS_DATA = {
           id: "arcade_token", name: "換代幣", icon: "🪙", clerkName: "遊樂場店員",
           desc: "換代幣前先設預算，換剛好就好",
           steps: [
-            mkStep({ id:"ask_token", say:"歡迎光臨！這裡玩遊戲要用代幣喔！", task:"問怎麼換",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_token", say:"這裡玩遊戲要用代幣喔！", task:"問怎麼換",
               options:["請問代幣怎麼換？","機器直接投鈔票吧","先玩再換","送我幾個"],
               accepted:["請問代幣怎麼換？","代幣怎麼換","怎麼換代幣"], kw:["代幣"],
               feedback:{ failed:"先問清楚。可以說：「請問代幣怎麼換？」" } }),
@@ -4326,7 +4513,16 @@ const SCENARIOS_DATA = {
           id: "comic_rent", name: "租漫畫", icon: "📖", clerkName: "漫畫店店員",
           desc: "認識「租」：要歸還、有押金、比較便宜",
           steps: [
-            mkStep({ id:"ask_rent", say:"歡迎光臨！想找什麼書呢？", task:"問租書規則",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_rent", say:"想找什麼書呢？", task:"問租書規則",
               options:["請問租漫畫怎麼算錢？","白看可以嗎","這裡是圖書館吧","隨便逛逛"],
               accepted:["請問租漫畫怎麼算錢？","租漫畫怎麼算錢","租書怎麼算"], kw:["怎麼算"],
               feedback:{ failed:"先問規則。可以說：「請問租漫畫怎麼算錢？」" } }),
@@ -4395,7 +4591,16 @@ const SCENARIOS_DATA = {
           id: "interview_intro", name: "自我介紹", icon: "🙋", clerkName: "店長",
           desc: "面試時說清楚名字、會什麼、為什麼想來",
           steps: [
-            mkStep({ id:"greet_intro", say:"你好，請坐！先自我介紹一下吧！", task:"說名字和應徵職位",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好，請坐！", task:"跟面試官問好",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"greet_intro", say:"先自我介紹一下吧！", task:"說名字和應徵職位",
               options:["店長好，我是小安，來應徵假日工讀","（低頭不說話）","你先說","履歷上都有寫啊"],
               accepted:["店長好，我是小安，來應徵假日工讀","我是小安來應徵工讀","我是小安"], kw:["小安"],
               feedback:{ failed:"面試先報名字和來意。可以說：「店長好，我是小安，來應徵假日工讀」" } }),
@@ -4594,7 +4799,16 @@ const SCENARIOS_DATA = {
           id: "sick_leave", name: "生病請假", icon: "🤒", clerkName: "店長",
           desc: "提早打電話、說清楚原因",
           steps: [
-            mkStep({ id:"call_sick", say:"（你發燒了，明天要上班…打電話給店長）喂，你好！", task:"表明身分說明請假",
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你發燒了，明天要上班…打電話給店長）喂，你好！", task:"在電話裡跟店長問好",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"call_sick", say:"請問是哪位？", task:"表明身分說明請假",
               options:["店長好，我是小安，我發燒了，明天想請病假","明天我不去了喔（掛斷）","（傳貼圖就好）","不去就知道了吧"],
               accepted:["店長好，我是小安，我發燒了，明天想請病假","我是小安發燒了想請病假","我發燒了想請假"], kw:["請病假","請假"],
               feedback:{ failed:"請假要說清楚。可以說：「店長好，我是小安，我發燒了，明天想請病假」" } }),
