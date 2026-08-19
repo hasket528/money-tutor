@@ -457,7 +457,8 @@
 .b-res-header { position: relative; z-index: 2; margin-bottom: 20px; }
 .b-res-trophy { font-size: 4em; margin-bottom: 10px; animation: bResBounce 2s infinite; }
 .b-res-title-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.b-res-mascot { width: 52px; height: 52px; object-fit: contain; }
+/* 金隊長是直式人物圖（600×734）：鎖高度、寬度自動，contain 才不會把他縮成一小塊 */
+.b-res-mascot { width: auto; height: 72px; object-fit: contain; }
 .b-res-mascot-spacer { width: 52px; }
 .b-res-title {
     font-size: 2em; color: #fff; margin: 0;
@@ -517,6 +518,7 @@
 @media (max-width: 600px) {
     .b-res-screen { padding: 20px; }
     .b-res-title { font-size: 1.5em; }
+    .b-res-mascot { height: 56px; }
     .b-res-grid { grid-template-columns: 1fr; gap: 12px; }
     .b-res-btns { flex-direction: column; align-items: center; }
     .b-res-play-btn, .b-res-back-btn { width: 100%; max-width: 250px; }

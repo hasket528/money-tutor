@@ -960,12 +960,33 @@ body {
 .easy-hint-label .hero-mini,
 .hint-modal-header .hero-mini { width: 44px; height: 44px; }
 
+/* 完成頁的金好聊：這裡是他的舞台，給完整角色圖，不套 .hero-mini 的圓形裁切。
+   ⚠️ `.hero-mini` 是 `object-fit: cover` 的圓形小頭像——那是給提示區的小金探用的
+   （小、不搶戲）。把直式全身圖塞進圓框只會剩一顆頭，所以完成頁另開一個 class，
+   兩邊互不影響。圖仍可點（script.js 綁 `.complete-encourage img` 重聽鼓勵語）。 */
 .complete-encourage {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 14px;
+  flex-wrap: nowrap;   /* 角色與鼓勵語同一列：他是在「對學生說這句話」，拆兩行就不成立 */
+}
+.complete-hero {
+  width: auto;
+  height: 140px;
+  object-fit: contain;
+  flex-shrink: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.28));
+}
+.complete-encourage .dlg-perf-badge {
+  align-self: center;
+  text-align: center;
+}
+@media (max-width: 520px) {
+  .complete-hero { height: 108px; }
+  .complete-encourage { gap: 10px; }
+  .complete-encourage .dlg-perf-badge { padding: 10px 16px; font-size: 1rem; }
 }
 .easy-hint-text {
   font-size: 1.25rem;

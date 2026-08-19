@@ -4745,9 +4745,10 @@ a.selection-btn {
 .results-title-row .results-title {
     margin: 0;
 }
+/* 金隊長是直式人物圖（600×734）：鎖高度、寬度自動，contain 才不會把他縮成一小塊 */
 .results-mascot-img {
-    width: 64px;
-    height: 64px;
+    width: auto;
+    height: 76px;
     object-fit: contain;
     flex-shrink: 0;
     animation: settingsBounce 2.5s ease-in-out infinite;
@@ -4758,7 +4759,7 @@ a.selection-btn {
     visibility: hidden;
 }
 @media (max-width: 600px) {
-    .results-mascot-img  { width: 44px; height: 44px; }
+    .results-mascot-img  { width: auto; height: 56px; }
     .results-mascot-spacer { width: 44px; }
 }
 

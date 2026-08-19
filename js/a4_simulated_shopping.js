@@ -14326,7 +14326,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="results-header">
                             <div class="trophy-icon">🏆</div>
                             <div class="results-title-row">
-                                <img src="../images/common/hint_detective.png" class="results-mascot-img" alt="金錢小助手">
+                                <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長">
                                 <h1 class="results-title">🎉 完成挑戰 🎉</h1>
                                 <span class="results-mascot-spacer"></span>
                             </div>

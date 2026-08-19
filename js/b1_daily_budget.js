@@ -3120,8 +3120,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="b-res-header">
             <div class="b-res-trophy">🏆</div>
             <div class="b-res-title-row">
-                <img src="../images/common/hint_detective.png"
-                     class="b-res-mascot" alt="金錢小助手" onerror="this.style.display='none'">
+                <img src="../images/common/captain_gold.png"
+                     class="b-res-mascot" alt="金隊長" onerror="this.style.display='none'">
                 <h1 class="b-res-title">🎉 帶錢小達人 🎉</h1>
                 <span class="b-res-mascot-spacer"></span>
             </div>

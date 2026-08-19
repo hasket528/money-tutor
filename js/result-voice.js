@@ -17,6 +17,9 @@
  *    原句「完成挑戰！共完成 5 題，用時 3 分 20 秒」帶題數與時間，同樣整句錄不起來，
  *    預錄改成不帶數字的「完成挑戰！你做到了，很棒喔！」——題數與用時畫面上是大字卡。
  *
+ * ⚠️ **會先等結算的成功音效播完再開口**（見 `_afterSfx`）——所以呼叫要排在音效
+ *    `play()` 之後，排在前面它會判定「沒有音效在播」而搶先開口。
+ *
  * 用法（單元裡原本是 `Game.Speech.speak(msg)`）：
  *     ResultVoice.speak(accuracy, () => Game.Speech.speak(msg));   // B/C/F 系列
  *     ResultVoice.speakDone(() => this.speech.speak(msg));         // A 系列
@@ -32,6 +35,7 @@ window.ResultVoice = (() => {
   const DONE = 'captain_result_done';                // 完成挑戰！你做到了，很棒喔！（A 系列用）
 
   let _audio = null;
+  let _waitTimer = null;   // 等成功音效播完的計時器（stop 要清掉，否則下一局開頭會冒出上一局的鼓勵語）
 
   // 單元 html 在 /html/ 底下，站台根目錄在上一層；其他頁（assessment.html）就在根目錄
   function _prefix() {
@@ -46,7 +50,36 @@ window.ResultVoice = (() => {
   }
 
   function stop() {
+    if (_waitTimer) { clearTimeout(_waitTimer); _waitTimer = null; }
     if (_audio) { _release(_audio); _audio = null; }
+  }
+
+  /**
+   * 等結算的成功音效播完再開口——兩個一起響會蓋掉鼓勵語，特教學生更聽不清楚。
+   *
+   * ⚠️ **不能用固定延遲**：音效被瀏覽器擋掉或缺檔時就會白等一段安靜。
+   *    改成先讓出 150ms 給 `play()` 生效，再看頁面上有沒有真的在播的 <audio>：
+   *    有就等它的 `ended`，沒有就直接開口。
+   * ⚠️ 因此**呼叫端一定要排在音效 `play()` 之後**（A6 原本排在前面，已調位）。
+   */
+  function _afterSfx(cb) {
+    if (_waitTimer) { clearTimeout(_waitTimer); _waitTimer = null; }
+    _waitTimer = setTimeout(() => {
+      _waitTimer = null;
+      const sfx = Array.prototype.slice.call(document.querySelectorAll('audio'))
+        .find(a => !a.paused && !a.ended && a.currentTime > 0);
+      if (!sfx) { cb(); return; }          // 音效沒播（被擋／缺檔）→ 不必等
+      let done = false;
+      const go = () => {
+        if (done) return;
+        done = true;
+        if (_waitTimer) { clearTimeout(_waitTimer); _waitTimer = null; }
+        sfx.removeEventListener('ended', go);
+        cb();
+      };
+      sfx.addEventListener('ended', go);
+      _waitTimer = setTimeout(go, 4000);   // 兜底：ended 沒來也要開口
+    }, 150);
   }
 
   /**
@@ -69,7 +102,10 @@ window.ResultVoice = (() => {
 
   function _play(file, fallback) {
     stop();
+    _afterSfx(() => _playNow(file, fallback));
+  }
 
+  function _playNow(file, fallback) {
     const exts = ['mp3', 'wav'];
     let i = 0;
     const tryNext = () => {

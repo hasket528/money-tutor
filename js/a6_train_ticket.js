@@ -11068,7 +11068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="results-header">
                             <div class="trophy-icon">🏆</div>
                             <div class="results-title-row">
-                                <img src="../images/common/hint_detective.png" class="results-mascot-img" alt="金錢小助手">
+                                <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長">
                                 <h1 class="results-title">🎉 完成挑戰 🎉</h1>
                                 <span class="results-mascot-spacer"></span>
                             </div>
@@ -11367,13 +11367,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, {}, 'completion');
             }
 
-            // 結算鼓勵語由金隊長唸（預錄）。A6 原本完成畫面沒有語音，
-            // 這次補上；沒有預錄檔時不出聲（維持原本行為，不硬塞機械音）
-            window.ResultVoice?.speakDone();
-
             // 播放成功音效和煙火（Phase 2：遷移至 TimerManager）
             this.TimerManager.setTimeout(() => {
                 document.getElementById('success-sound')?.play();
+                // 結算鼓勵語由金隊長唸（預錄）。A6 原本完成畫面沒有語音，這次補上；
+                // 沒有預錄檔時不出聲。⚠️ 一定要放在音效 play() 之後——ResultVoice 是
+                // 「看有沒有音效正在播」來決定要不要等，排在前面它會判定沒有而搶著開口。
+                window.ResultVoice?.speakDone();
                 if (typeof confetti === 'function') {
                     const duration = 3 * 1000;
                     const animationEnd = Date.now() + duration;

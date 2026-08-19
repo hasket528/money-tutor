@@ -3939,7 +3939,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="complete-header">
                         <div class="complete-icon">✅</div>
                         <div class="results-title-row">
-                            <img src="../images/common/hint_detective.png" class="results-mascot-img" alt="金錢小助手">
+                            <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長">
                             <h2 style="color: white;">交易完成</h2>
                             <span class="results-mascot-spacer"></span>
                         </div>
@@ -12163,7 +12163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="results-header">
                             <div class="trophy-icon">🏆</div>
                             <div class="results-title-row">
-                                <img src="../images/common/hint_detective.png" class="results-mascot-img" alt="金錢小助手">
+                                <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長">
                                 <h1 class="results-title">🎉 完成挑戰 🎉</h1>
                                 <span class="results-mascot-spacer"></span>
                             </div>
@@ -12447,11 +12447,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             const countSpeech = NumberSpeechUtils.convertToQuantitySpeech(completedCount, '題');
-            // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的即時語音
-            const _a5Msg = `完成挑戰！共完成 ${countSpeech}，用時 ${timeDisplay}`;
-            window.ResultVoice
-                ? ResultVoice.speakDone(() => this.speech.speak(_a5Msg))
-                : this.speech.speak(_a5Msg);
 
             // 🎁 獎勵系統連結事件
             const endgameRewardLink = document.getElementById('endgame-reward-link');
@@ -12470,6 +12465,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🔧 [Phase 3] 遷移至 TimerManager
             this.TimerManager.setTimeout(() => {
                 document.getElementById('success-sound')?.play();
+                // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的即時語音。
+                // ⚠️ 一定要排在音效 play() 之後——ResultVoice 是「看有沒有音效正在播」
+                // 來決定要不要等，排在前面它會判定沒有而搶著開口，兩個聲音就疊在一起。
+                const _a5Msg = `完成挑戰！共完成 ${countSpeech}，用時 ${timeDisplay}`;
+                window.ResultVoice
+                    ? ResultVoice.speakDone(() => this.speech.speak(_a5Msg))
+                    : this.speech.speak(_a5Msg);
+
                 if (typeof confetti === 'function') {
                     const duration = 3 * 1000;
                     const animationEnd = Date.now() + duration;
