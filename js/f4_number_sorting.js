@@ -4072,6 +4072,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalQuestions = this.state.totalLevels;
             const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+            // 結算鼓勵語由金隊長唸（預錄）。本單元原本結算沒有語音，
+            // 這次補上；沒有預錄檔時不出聲（維持原本行為）
+            window.ResultVoice?.speak(percentage);
+
             // 學習紀錄
             window.LearningTracker?.save({ unit: 'f4', unitName: 'F4 數字排序', series: 'F',
                 score: correctAnswers, total: totalQuestions, difficulty: this.state.settings?.difficulty,

@@ -10800,10 +10800,12 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             // 播放完成語音
-            this.speech.speak('completeChallenge', {
+            // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的模板語音
+            const _a3Say = () => this.speech.speak('completeChallenge', {
                 completedCount: completedCount,
                 timeDisplay: timeDisplay
             });
+            window.ResultVoice ? ResultVoice.speakDone(_a3Say) : _a3Say();
 
             // 🎁 獎勵系統連結事件
             const endgameRewardLink = document.getElementById('endgame-reward-link');

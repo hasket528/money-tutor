@@ -6159,6 +6159,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalQuestions = this.state.totalQuestions;
             const percentage = Math.round((totalScore / totalQuestions) * 100);
 
+            // 結算鼓勵語由金隊長唸（預錄）。本單元原本結算沒有語音，
+            // 這次補上；沒有預錄檔時不出聲（維持原本行為）
+            window.ResultVoice?.speak(percentage);
+
             // 學習紀錄
             window.LearningTracker?.save({ unit: 'c3', unitName: 'C3 金錢面額的兌換', series: 'C',
                 score: totalScore, total: totalQuestions, difficulty,

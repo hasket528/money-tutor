@@ -4982,8 +4982,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const speechText = `恭喜你完成全部測驗，答對${correctAnswers}題，${performanceText}`;
             Game.Debug.log('speech', '語音播報:', speechText);
 
-            // 使用已有的語音系統播報
-            this.speech.speak(speechText, { interrupt: true });
+            // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的即時語音
+            const _say = () => this.speech.speak(speechText, { interrupt: true });
+            window.ResultVoice ? ResultVoice.speak(percentage, _say) : _say();
         },
 
         showResults() {

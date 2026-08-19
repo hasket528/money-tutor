@@ -5255,7 +5255,9 @@ const Game = {
         }
 
         this.Audio.play('successSound');
-        this.Speech.speak(NumberCompositionConfig.speech.complete);
+        // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的模板語音
+        const _f6Say = () => this.Speech.speak(NumberCompositionConfig.speech.complete);
+        window.ResultVoice ? ResultVoice.speak(percentage, _f6Say) : _f6Say();
 
         if (typeof confetti !== 'undefined') {
             confetti({

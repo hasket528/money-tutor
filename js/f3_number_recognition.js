@@ -2851,13 +2851,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.triggerConfetti();
 
-            this.Speech.speak('gameComplete', difficulty, config, {
-                score: this.state.score
-            });
-
             const totalQuestions = this.state.totalTurns;
             const correctAnswers = Math.floor(this.state.score / 10);
             const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+
+            // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的模板語音
+            const _f3Say = () => this.Speech.speak('gameComplete', difficulty, config, {
+                score: this.state.score
+            });
+            window.ResultVoice ? ResultVoice.speak(percentage, _f3Say) : _f3Say();
 
             // 學習紀錄
             window.LearningTracker?.save({ unit: 'f3', unitName: 'F3 認識數字與數量', series: 'F',

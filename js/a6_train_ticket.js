@@ -11367,6 +11367,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, {}, 'completion');
             }
 
+            // 結算鼓勵語由金隊長唸（預錄）。A6 原本完成畫面沒有語音，
+            // 這次補上；沒有預錄檔時不出聲（維持原本行為，不硬塞機械音）
+            window.ResultVoice?.speakDone();
+
             // 播放成功音效和煙火（Phase 2：遷移至 TimerManager）
             this.TimerManager.setTimeout(() => {
                 document.getElementById('success-sound')?.play();

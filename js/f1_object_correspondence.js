@@ -5290,6 +5290,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const correctAnswers = Math.floor(score / 10); // 每答對一題得10分
             const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+            // 結算鼓勵語由金隊長唸（預錄）。本單元原本結算沒有語音，
+            // 這次補上；沒有預錄檔時不出聲（維持原本行為）
+            window.ResultVoice?.speak(percentage);
+
             // 學習紀錄
             window.LearningTracker?.save({ unit: 'f1', unitName: 'F1 數量與物品的對應', series: 'F',
                 score: correctAnswers, total: totalQuestions, difficulty,

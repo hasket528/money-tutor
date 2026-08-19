@@ -5854,6 +5854,10 @@ class QuantityComparisonGame {
         const accuracy = this.totalAnswers > 0 ?
             Math.round((this.correctAnswers / this.totalAnswers) * 100) : 0;
 
+        // 結算鼓勵語由金隊長唸（預錄）。本單元原本結算沒有語音，
+        // 這次補上；沒有預錄檔時不出聲（維持原本行為）
+        window.ResultVoice?.speak(accuracy);
+
         // 學習紀錄
         window.LearningTracker?.save({ unit: 'f5', unitName: 'F5 數量大小的比較', series: 'F',
             score: this.correctAnswers, total: this.totalAnswers, difficulty: this.state?.settings?.difficulty,

@@ -3049,7 +3049,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 this.Audio.playSound('success', null, { audioFeedback: true });
                 this.triggerConfetti();
-                this.Speech.speak('encouragement', difficulty, this.ModeConfig[difficulty] || {}, {});
+                // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的模板語音
+                const _f2Say = () => this.Speech.speak('encouragement', difficulty, this.ModeConfig[difficulty] || {}, {});
+                window.ResultVoice ? ResultVoice.speak(percentage, _f2Say) : _f2Say();
 
                 Game.Debug.logGameFlow('遊戲結束處理完成');
             });

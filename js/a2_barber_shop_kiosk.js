@@ -7895,7 +7895,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 播放完成語音
             const countSpeech = NumberSpeechUtils.convertToQuantitySpeech(completedCount, '題');
-            this.speech.speakCustom(`完成挑戰！共完成 ${countSpeech}，用時 ${timeDisplay}`);
+            // 結算鼓勵語由金隊長唸（預錄）；缺檔／被擋自動播放時退回原本的即時語音
+            const _a2Msg = `完成挑戰！共完成 ${countSpeech}，用時 ${timeDisplay}`;
+            window.ResultVoice
+                ? ResultVoice.speakDone(() => this.speech.speakCustom(_a2Msg))
+                : this.speech.speakCustom(_a2Msg);
 
             // 🎁 獎勵系統連結事件
             const endgameRewardLink = document.getElementById('endgame-reward-link');
