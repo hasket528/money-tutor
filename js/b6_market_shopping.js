@@ -3355,7 +3355,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (diff === 'normal' && nowEnough) {
                             // 普通模式：金額足夠 → 播提示語音（按鈕已由 _b6P2UpdateStatusOnly 啟用）
                             const msg = walletNow === req ? '剛好！可以確認付款了！' : '金額足夠，可以確認付款了！';
-                            Game.TimerManager.setTimeout(() => Game.Speech.speak(msg), 100, 'ui');
+                            Game.TimerManager.setTimeout(() => ResultVoice.speak(accuracy, () => Game.Speech.speak(msg)), 100, 'ui');
                         }
                     });
                 }, 80, 'ui');
@@ -4913,7 +4913,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (accuracy >= 80) msg = `很棒喔，完成了${g.correctCount}關！`;
                 else if (accuracy >= 60) msg = '不錯喔，繼續加油！';
                 else                     msg = '要再加油喔，多練習幾次！';
-                Game.Speech.speak(msg);
+                // 結算鼓勵語由金隊長唸（預錄）；缺檔或被擋就退回原本的即時語音
+                ResultVoice.speak(accuracy, () => Game.Speech.speak(msg));
             }, 300, 'speech');
 
         },

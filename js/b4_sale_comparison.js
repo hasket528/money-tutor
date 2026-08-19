@@ -4895,7 +4895,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (accuracy >= 80) msg = `很棒喔，答對了${cntWord(q.correctCount)}題！`;
                 else if (accuracy >= 60) msg = '不錯喔，繼續加油！';
                 else                     msg = '要再加油喔，多練習幾次！';
-                Game.Speech.speak(msg);
+                // 結算鼓勵語由金隊長唸（預錄）；缺檔或被擋就退回原本的即時語音
+                ResultVoice.speak(accuracy, () => Game.Speech.speak(msg));
             }, 800, 'speech');
         },
 

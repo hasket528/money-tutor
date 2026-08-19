@@ -1776,7 +1776,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     finalText = `要再加油喔，答對了${correctAnswers}題。`;
                 }
-                this.speak(finalText);
+                // 結算鼓勵語由金隊長唸（預錄）；缺檔或被擋就退回原本的即時語音
+                ResultVoice.speak(percentage, () => this.speak(finalText));
             }, 100, 'speech')
         },
 

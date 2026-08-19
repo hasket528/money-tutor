@@ -2759,7 +2759,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             Game.TimerManager.setTimeout(() => this._b5P2HandleConfirm(g.p2Total), 300, 'ui');
                         } else if (diff === 'normal' && nowEnough) {
                             const msg = walletNow === req ? '剛好！可以確認付款了！' : '金額足夠，可以確認付款了！';
-                            Game.TimerManager.setTimeout(() => Game.Speech.speak(msg), 100, 'ui');
+                            Game.TimerManager.setTimeout(() => ResultVoice.speak(accuracy, () => Game.Speech.speak(msg)), 100, 'ui');
                         }
                     });
                 }, 80, 'ui');
@@ -4024,7 +4024,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (accuracy >= 80) msg = `很棒喔，答對了${g.correctCount}關！`;
                     else if (accuracy >= 60) msg = '不錯喔，繼續加油！';
                     else                     msg = '要再加油喔，多練習幾次！';
-                    Game.Speech.speak(msg);
+                    // 結算鼓勵語由金隊長唸（預錄）；缺檔或被擋就退回原本的即時語音
+                    ResultVoice.speak(accuracy, () => Game.Speech.speak(msg));
                 }, 300, 'speech');
             }, {}, 'gameUI');
         },
