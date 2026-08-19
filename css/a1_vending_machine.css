@@ -1027,13 +1027,19 @@ a.selection-btn {
     flex-shrink: 0;
     animation: settingsBounce 2.5s ease-in-out infinite;
 }
+/* 寬度對齊圖的實際寬度（高 76 × 0.817 ≈ 62），否則標題偏一邊 */
 .results-mascot-spacer {
-    width: 64px;
+    width: 62px;
     flex-shrink: 0;
     visibility: hidden;
 }
 @media (max-width: 600px) {
-    .results-mascot-img { width: auto; height: 56px; }
+    /* 手機改直排：同一列擠不下「圖＋長標題＋配重」三個東西——實測 390px 時
+       金隊長被推到最左角、與置中的標題中間空一大段，看起來像誤放的裝飾而不是在講話。
+       直排後他在標題正上方、還能放大，才像個角色。配重在直排時沒有意義，隱藏。 */
+    .results-title-row { flex-direction: column; gap: 4px; }
+    .results-mascot-img { width: auto; height: 80px; }
+    .results-mascot-spacer { display: none; }
 }
 
 /* ═════════════════════════════════════════════════════════════════

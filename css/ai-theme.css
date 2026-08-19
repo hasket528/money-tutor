@@ -2091,13 +2091,19 @@ a:not(.selection-btn):not(.choice-btn):hover {
     flex-shrink: 0;
     animation: settingsBounce 2.5s ease-in-out infinite;
 }
-/* 右側無形佔位元素，讓 h1 視覺上真正置中 */
+/* 右側無形佔位元素，讓 h1 視覺上真正置中。
+   ⚠️ 寬度要對齊圖的**實際**寬度：圖是 width:auto + 鎖高度，寬 = 高 × 0.817（600÷734），
+   高 92 → 約 75。沿用舊的正方形寬度（84）會讓標題偏一邊。 */
 .results-mascot-spacer {
-    width: 84px;
+    width: 75px;
     flex-shrink: 0;
     visibility: hidden;
 }
 @media (max-width: 600px) {
-    .results-mascot-img  { width: auto; height: 64px; }
-    .results-mascot-spacer { width: 52px; }
+    /* 手機改直排：同一列擠不下「圖＋長標題＋配重」三個東西——實測 390px 時
+       金隊長被推到最左角、與置中的標題中間空一大段，看起來像誤放的裝飾而不是在講話。
+       直排後他在標題正上方、還能放大，才像個角色。配重在直排時沒有意義，隱藏。 */
+    .results-title-row { flex-direction: column; gap: 4px; }
+    .results-mascot-img  { width: auto; height: 88px; }
+    .results-mascot-spacer { display: none; }
 }
