@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v172';
+const APP_VERSION = 'v173';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -1319,6 +1319,36 @@ const HOME_CHAR_SPEECH = {
   captain: { audio: '../audio/chatbot/index_captain_intro', text: '大家好，我是金隊長！你的努力，我都會記錄下來。跟我一起完成今天的任務，每天比昨天更進步！' },
   chatdog: { audio: '../audio/chatbot/index_chatdog_intro', text: '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！' },
 };
+// 完成頁的鼓勵語由**金好聊**唸（他就在鼓勵語旁邊，聲音要跟形象一致）。
+// 音檔與站台主頁的金好聊同一個音色（Puck），清單在 voicegen/lists/jinhaoliao_list.csv。
+// ⚠️ key 是畫面上顯示的那句話——改文字就要一起改這裡並重生音檔，否則會唸到別句。
+const COMPLETE_SPEECH = {
+  '表現得很棒！繼續加油！':       '../audio/chatbot/chatdog_complete_great',
+  '不錯喔！再多練習幾次會更好！': '../audio/chatbot/chatdog_complete_good',
+  '沒關係，多練習幾次就會進步！': '../audio/chatbot/chatdog_complete_try',
+};
+
+// 播一段預錄（mp3 → wav → 即時 TTS 逐級後備，與其他語音同一套規則）
+function playChatdogLine(text) {
+  const base = COMPLETE_SPEECH[text];
+  if (!base) { tts.speak(text, 1); return; }
+  stopAllAudio();
+  const exts = ['mp3', 'wav'];
+  let i = 0;
+  const tryNext = () => {
+    if (i >= exts.length) { tts.speak(text, 1); return; }
+    const audio = new Audio(`${base}.${exts[i++]}`);
+    _homeCharAudio = audio;
+    let advanced = false;
+    const fail = () => { if (advanced) return; advanced = true; tryNext(); };
+    audio.onerror = fail;
+    audio.onended = () => { if (_homeCharAudio === audio) _homeCharAudio = null; releaseAudio(audio); };
+    // ⚠️ 手機可能擋掉脫離手勢脈絡的自動播放——被擋就安靜結束，學生可以點金好聊頭像再聽
+    audio.play().catch(fail);
+  };
+  tryNext();
+}
+
 function speakHomeCharacter(key) {
   const c = HOME_CHAR_SPEECH[key];
   if (!c) return;
@@ -3835,6 +3865,14 @@ function showComplete() {
   ).join('') + `<span class="sr-only">${starCount} 顆星</span>`;
 
   document.getElementById('complete-msg').textContent = msg;
+  // 金好聊唸出鼓勵語；點他的頭像可以再聽一次
+  setTimeout(() => playChatdogLine(msg), 400);
+  const encImg = document.querySelector('.complete-encourage img');
+  if (encImg) {
+    encImg.style.cursor = 'pointer';
+    encImg.title = '點我再聽一次';
+    encImg.onclick = () => playChatdogLine(msg);
+  }
 
   document.getElementById('complete-title').textContent = '練習完成！';
 
