@@ -10,7 +10,7 @@
 //    純靜態不受影響」是錯的，2026-08-19 因此誤判過一輪：冒險的媒體卡修正明明已上線，
 //    實機卻仍是舊行為，因為 adventure.js 走「快取優先」而 mt-runtime 跨版不清。
 // 註：發版時把 SW_VERSION 與根目錄 version.txt、index.html 的 BUILD_VERSION 一起遞增。
-const SW_VERSION    = '20260819a';
+const SW_VERSION    = '20260819b';
 const CACHE_CORE    = 'mt-core-' + SW_VERSION;
 const CACHE_RUNTIME = 'mt-runtime';
 

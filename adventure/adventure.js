@@ -23,6 +23,13 @@ const ADV_AUDIO_MAP = {
     '再算算！':                'adv_retry_calc',
     '再看看！':                'adv_retry_look',
     '再想想，這樣安全嗎？':     'adv_retry_safe',
+    // 金博士的結算講評（Gemini Charon，與站台主頁的金博士同一個聲音）。
+    // 刻意不含角色名與數字 → 整句錄得起來（同 adventure 既有的教訓：動態內容不能預錄）。
+    '太厲害了！你是真正的金錢小達人！':                       'adv_doc_genius',
+    '非常好！每一關都難不倒你，繼續保持！':                   'adv_doc_perfect',
+    '很棒喔！你答得又快又好，繼續加油！':                     'adv_doc_fast',
+    '不錯喔！你很認真完成了整趟冒險，再多練習會更好！':       'adv_doc_good',
+    '沒關係，多冒險幾次就會越來越熟練，我們下次再挑戰！':     'adv_doc_try',
     // 角色自我介紹（各角色聲）
     [ADV_HELLO.boy]:  'adv_hello_boy',
     [ADV_HELLO.girl]: 'adv_hello_girl',
@@ -61,6 +68,7 @@ const AdvSpeech = (() => {
         teen:     { pitch: 0.8,  rate: 1.0  },  // 小凱・低沉大男孩
         girl:     { pitch: 1.3,  rate: 1.05 },  // 小花・清亮女生
         kid:      { pitch: 1.15, rate: 0.95 },  // 小芮・細心稍高
+        doctor:   { pitch: 0.9,  rate: 0.9  },  // 金博士・穩重講評（預錄是 Charon，這裡只是後備）
     };
 
     const _load = () => {
@@ -2300,7 +2308,14 @@ ${storesHTML}`;
                 weak.map(d => { const u = SKILL_UNIT[d.skill]; return `<a class="adv-diag-link" href="${u.url}">${d.icon} 去練「${u.name}」　→</a>`; }).join('')
               }</div>`
             : `<div class="adv-diag-allok">🌟 七項金錢技能全部一次過關，太厲害了！</div>`;
-        return `<div class="adv-diag"><div class="adv-diag-title">🎯 今天的七項金錢技能</div><div class="adv-diag-grid">${cells}</div>${weakHTML}</div>`;
+        // 這一區是「分析今天的表現」——本來就是金博士的工作，所以他出現在這裡而不是隨便找個角落。
+        // 主角的臉在上方的獎盃位（那是玩家自己），兩者不搶。缺圖時 inline onerror 移掉，不留破圖。
+        return `<div class="adv-diag">
+            <div class="adv-diag-title">
+              <img class="adv-doc-avatar" src="../images/common/money_doctor.png" alt="金博士" onerror="this.remove()">
+              <span>金博士看你今天的七項金錢技能</span>
+            </div>
+            <div class="adv-diag-grid">${cells}</div>${weakHTML}</div>`;
     },
 
     _victory() {
@@ -2367,13 +2382,43 @@ ${storesHTML}`;
             if (this._recapText) AdvSpeech.speak(this._recapText);
         });
 
-        document.getElementById('success-sound')?.play();
+        // 音效 → 主角的勝利結語 → 金博士的講評，三段依序不重疊。
+        // ⚠️ 原本音效與語音同時發，鼓勵語被音效蓋掉；且兩句語音要用 speak 的回呼串接，
+        //    不能各自 setTimeout 猜時間（句子長度不一樣，一定會撞上）。
+        const _speakVictory = () => {
+            AdvSpeech.speak(
+                this._victorySpeech(perf.label, char.name),
+                () => AdvSpeech.speak(this._doctorLine(perf.label), null, 'doctor'),
+                char.id
+            );
+        };
+        const _sfx = document.getElementById('success-sound');
+        if (_sfx) {
+            let _went = false;
+            const _go = () => { if (_went) return; _went = true; _sfx.onended = null; _speakVictory(); };
+            _sfx.onended = _go;
+            const _pr = _sfx.play();
+            if (_pr && _pr.catch) _pr.catch(_go);   // 音效被擋（沒有使用者手勢）→ 別跟著卡住
+            AdvTimer.set(_go, 4000);                // 兜底：onended 沒來也要開口
+        } else {
+            _speakVictory();
+        }
         if (typeof confetti === 'function') {
             confetti({ particleCount:100, spread:70, origin:{y:0.6}, zIndex:9999 });
             AdvTimer.set(() => confetti({ particleCount:50, angle:60,  spread:55, origin:{x:0}, zIndex:9999 }), 400);
             AdvTimer.set(() => confetti({ particleCount:50, angle:120, spread:55, origin:{x:1}, zIndex:9999 }), 700);
         }
-        AdvSpeech.speak(this._victorySpeech(perf.label, char.name), null, char.id);
+    },
+
+    // 金博士的結算講評：接在主角的勝利結語之後（主角先為自己歡呼，導師再講評）。
+    // ⚠️ 改字要同步 ADV_AUDIO_MAP 的鍵並重生 adv_doc_* 音檔——那張表是以「文字」當鍵，
+    //    改了字就查不到預錄，會靜靜退回即時 TTS 的機械音，畫面上看不出來。
+    _doctorLine(label) {
+        if (label === '金錢天才') return '太厲害了！你是真正的金錢小達人！';
+        if (label === '完美通關') return '非常好！每一關都難不倒你，繼續保持！';
+        if (label === '快手玩家') return '很棒喔！你答得又快又好，繼續加油！';
+        if (label === '認真完成') return '不錯喔！你很認真完成了整趟冒險，再多練習會更好！';
+        return '沒關係，多冒險幾次就會越來越熟練，我們下次再挑戰！';
     },
 
     // 勝利結語（含角色名 → 屬第二期預錄 ADV_AUDIO_MAP2，由 voicegen/_gen_adv_list2.js 枚舉；

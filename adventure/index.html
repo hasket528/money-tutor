@@ -285,8 +285,14 @@
         /* ── 結算：統整診斷（七項金錢技能檢核＋弱項導引） ──────── */
         .adv-diag { width: 100%; background: rgba(255,255,255,0.78); border: 2px solid var(--loc-border);
             border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 16px; }
+        /* 金博士在這一區講評，圖與標題同一列：他是在「看你的表現」，不是擺飾。
+           money_doctor.png 是直式人物圖 → 鎖高度、寬度自動，contain 才不會把他壓扁。 */
         .adv-diag-title { font-size: 0.95rem; font-weight: 900; color: var(--loc-deep);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
             text-align: center; margin-bottom: 11px; }
+        .adv-doc-avatar { width: auto; height: 56px; object-fit: contain; flex-shrink: 0;
+            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.22)); }
+        @media (max-width: 520px) { .adv-doc-avatar { height: 44px; } }
         .adv-diag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 11px; }
         .adv-diag-cell { display: flex; flex-direction: column; align-items: center; gap: 2px;
             background: #d1fae5; border: 1.5px solid #34d399; border-radius: 11px; padding: 7px 3px; }
