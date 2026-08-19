@@ -6199,9 +6199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="results-header">
                         <div class="trophy-icon">🏆</div>
                         <div class="results-title-row">
-                            <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長">
                             <h1 class="results-title">🎉 測驗結束 🎉</h1>
-                            <span class="results-mascot-spacer"></span>
                         </div>
                     </div>
 
@@ -6234,6 +6232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <!-- 表現評價 -->
                         <div class="performance-section">
                             <h3>📊 表現評價</h3>
+                            <img src="../images/common/captain_gold.png" class="results-mascot-img" alt="金隊長" onerror="this.remove()">
                             <div class="performance-badge">${performanceMessage}</div>
                         </div>
 

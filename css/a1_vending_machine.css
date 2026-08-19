@@ -1019,27 +1019,38 @@ a.selection-btn {
 .results-title-row .results-title {
     margin: 0;
 }
-/* 金隊長是直式人物圖（600×734）：鎖高度、寬度自動，contain 才不會把他縮成一小塊 */
+/* ⚠️ A1 不載入 ai-theme.css（見 CLAUDE.md），所以這一份是它自己的副本——
+   數值必須與 ai-theme.css 的同名規則一致，改尺寸要兩邊一起動。 */
+.performance-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+.performance-section h3 { flex-basis: 100%; }
 .results-mascot-img {
-    width: auto;
-    height: 76px;
+    width: clamp(80px, 16vw, 120px);
+    height: clamp(80px, 16vw, 120px);
     object-fit: contain;
     flex-shrink: 0;
     animation: settingsBounce 2.5s ease-in-out infinite;
 }
-/* 寬度對齊圖的實際寬度（高 76 × 0.817 ≈ 62），否則標題偏一邊 */
-.results-mascot-spacer {
-    width: 62px;
-    flex-shrink: 0;
-    visibility: hidden;
+/* 窄螢幕要讓金隊長與評價徽章**留在同一列**（比照對話完成頁的金好聊：
+   他是在「對這個成績說話」，拆成上下兩行就不成立了）。
+   實測 390px 差 7px 就換行：區塊內容寬 230，而 圖80 + gap14 + 徽章143 = 237。
+   所以窄螢幕縮 gap 並把徽章的內距與字級調小——圖本身不縮（clamp 下限 80 是可讀性底線）。
+   ⚠️ 徽章的 padding/font-size 定義在**各單元 JS 內嵌的 <style>**（innerHTML 注入晚於外部 CSS），
+      所以這裡非用 !important 不可，否則蓋不過去。 */
+@media (max-width: 480px) {
+    .performance-section { gap: 8px; }
+    .performance-badge {
+        padding: 10px 16px !important;
+        font-size: 1.05em !important;
+    }
 }
+
 @media (max-width: 600px) {
-    /* 手機改直排：同一列擠不下「圖＋長標題＋配重」三個東西——實測 390px 時
-       金隊長被推到最左角、與置中的標題中間空一大段，看起來像誤放的裝飾而不是在講話。
-       直排後他在標題正上方、還能放大，才像個角色。配重在直排時沒有意義，隱藏。 */
-    .results-title-row { flex-direction: column; gap: 4px; }
-    .results-mascot-img { width: auto; height: 80px; }
-    .results-mascot-spacer { display: none; }
 }
 
 /* ═════════════════════════════════════════════════════════════════

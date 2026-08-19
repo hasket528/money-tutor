@@ -4811,10 +4811,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="b-res-header">
             <div class="b-res-trophy">🏆</div>
             <div class="b-res-title-row">
-                <img src="../images/common/captain_gold.png"
-                     class="b-res-mascot" alt="金隊長" onerror="this.style.display='none'">
                 <h1 class="b-res-title">🎉 比價達人 🎉</h1>
-                <span class="b-res-mascot-spacer"></span>
             </div>
         </div>
 
@@ -4845,6 +4842,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="b-res-perf-section">
                 <h3>📊 表現評價</h3>
+                <img src="../images/common/captain_gold.png" class="b-res-mascot" alt="金隊長" onerror="this.remove()">
                 <div class="b-res-perf-badge">${badge}</div>
             </div>
 
