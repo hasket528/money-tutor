@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v170';
+const APP_VERSION = 'v171';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -244,6 +244,15 @@ function judgeHardSentence(text, step) {
   if (allowed.size) {
     const wrong = [...new Set(t.match(/\d+/g) || [])].filter(n => !allowed.has(n));
     if (wrong.length) return { score: 'failed', detected: [], wrongNums: wrong };
+  }
+  // ②之二 否定意圖：學生明說「我不知道／我不要／我沒有要…」，卻因為句子裡含著標準句的字
+  //   而拿到高完整度（③ 的 LCS 只看「標準句被覆蓋多少」，學生多講的字不扣分）。
+  //   例：任務「告訴店員你要買巧克力」，學生說「我不知道要買什麼」——沒完成任務卻 100%。
+  // ⚠️ **標準句自己就是否定句的步驟不套用**（藥局「我沒有過敏」、「我不要袋子」、
+  //   婉拒類的「不用了，謝謝」）——那些步驟的任務本來就是講否定，否則會誤傷正解。
+  const NEG_START = /^我?(不|沒)/;
+  if (NEG_START.test(t) && !accepts.some(p => NEG_START.test(normHard(p)))) {
+    return { score: 'partial', detected: [], negated: true };
   }
   // ③ 完整度（取最相近的標準句）
   let coverage = 0;
