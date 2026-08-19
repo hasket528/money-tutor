@@ -922,7 +922,13 @@ body {
   padding: 14px 18px;
   border-left: 5px solid var(--orange);
   animation: slideUp 0.3s ease-out;
+  /* 小金探那一行與提示句同列，中間留一段距離；手機窄的時候自動換行 */
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
 }
+.easy-hint-box > .hint-text-row { flex: 1; min-width: 180px; }
 .easy-hint-label {
   font-size: 0.85rem;
   color: var(--orange);
@@ -931,7 +937,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 /* 小金探／金好聊的小頭像（D：角色出場）。
@@ -949,6 +955,10 @@ body {
   margin-right: 4px;
 }
 .hero-mini-lg { width: 44px; height: 44px; }
+
+/* 小金探在提示區是「提示的人」，不是裝飾——比編輯器裡的金好聊大一號才看得清楚 */
+.easy-hint-label .hero-mini,
+.hint-modal-header .hero-mini { width: 44px; height: 44px; }
 
 .complete-encourage {
   display: flex;
@@ -2287,6 +2297,30 @@ body {
 }
 .clerk-role-name { font-size: 0.9rem; font-weight: 700; }
 .clerk-role-na   { font-size: 0.72rem; color: var(--gray-600, #4b5563); }
+
+/* 對話角色列：頭像鈕＋語音下拉＋試聽鈕（2026-08-18 改版，取代小雯／小宇兩張卡片） */
+.role-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.role-select-row > select { flex: 1; min-width: 160px; }
+.role-avatar-btn {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid var(--gray-200);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--white);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.role-avatar-btn:hover,
+.role-avatar-btn:focus-visible { border-color: var(--blue); outline: none; }
+.role-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* AI 區塊裡的精簡版店員角色選擇（同一份 selectedClerkGender，見 renderClerkRolePicker） */
 .ai-gen-gender-row {

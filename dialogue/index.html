@@ -213,9 +213,11 @@
   ════════════════════════════════════════ -->
   <div id="screen-situation" class="screen">
     <header class="app-header">
-      <!-- 情境選擇是進來的第一頁，「上一頁」沒有意義（要離開就按右邊的返回主頁），
-           左側留一塊等寬佔位讓標題維持置中 -->
-      <div class="ah-left" aria-hidden="true"></div>
+      <!-- 「上一頁」＝回本模組首頁的場所清單（右邊的「返回主頁」是回站台主頁，兩個不一樣）。
+           2026-08-18 補上：從首頁點場所進來後，本來只能整個跳回站台主頁才換場所。 -->
+      <div class="ah-left">
+        <button class="btn-back-text" id="btn-sit-back">← 上一頁</button>
+      </div>
       <div class="ah-center">
         <div class="ah-ctitle">
           <span class="ah-icon" id="sit-icon" aria-hidden="true"></span>
@@ -787,29 +789,29 @@
           <p class="form-hint" id="edit-parent-hint">不掛在任何場所：只出現在首頁的「⭐ 自訂」分部。</p>
         </div>
         <div class="form-group" id="clerk-role-group">
-          <label class="form-label">對話角色</label>
-          <div class="clerk-role-picker" id="edit-clerk-role" role="radiogroup" aria-label="選擇對話角色"></div>
-          <!-- 「這台電腦會用 X 唸台詞／剛才是 X 唸的」診斷文字：語音已排查完成，2026-08-02 依教師端要求先隱藏
-               （曝露引擎細節如「Google 國語（臺灣）」對老師是雜訊）。JS 仍會寫入內容，只是不顯示。 -->
-          <p class="form-hint" id="clerk-role-voice" style="margin-top:2px" hidden></p>
-          <p class="form-hint" id="clerk-role-hint">學生在練習畫面看到、也是唸台詞的那位對話角色（店員、老師、醫師…都用這兩個形象）。沒有上傳場景照片時就顯示他。</p>
-          <details class="editor-quickstart" id="voice-picker-details" style="margin-top:8px">
-            <summary>🔊 這個情境要用哪一支聲音？（進階）</summary>
-            <p class="form-hint" id="voice-picker-current" style="margin-bottom:6px"></p>
-            <!-- 清單只列這台實際有的語音，所以不會選到不存在的音色；
-                 換裝置時由 resolveVoiceRef 逐級退回並如實回報（見 script.js C-2 段）。 -->
-            <div id="voice-inventory-compact" class="voice-diag"></div>
-          </details>
+          <label class="form-label" for="edit-voice-select">對話角色（聲音）</label>
+          <!-- 一個下拉決定「誰跟學生說話」：選的是這台實際有的語音，形象跟著語音走
+               （見 script.js voicePersonaFor：自訂情境一律用通用形象，不用場所店員圖）。 -->
+          <div class="role-select-row">
+            <button type="button" class="role-avatar-btn" id="btn-role-avatar" aria-label="放大看這個角色">
+              <img id="role-avatar-img" src="" alt="">
+            </button>
+            <select class="form-input" id="edit-voice-select"></select>
+            <button type="button" class="btn-vs" id="btn-role-preview">🔊 試聽</button>
+          </div>
+          <p class="form-hint" id="voice-picker-current"></p>
         </div>
         <div class="form-group" id="scene-photo-group">
-          <label class="form-label">場景照片（可選）</label>
+          <!-- 這張圖實際上就是**角色照片**：練習畫面會用它蓋掉角色頭像（見 script.js renderStep
+               的 `__scene::img`）。資料 key 沿用 `__scene::img` 不改名——改了老師既有的照片會消失。 -->
+          <label class="form-label">對話角色照片（可選）</label>
           <div class="voice-studio-row">
-            <label class="btn-vs" for="edit-scene-photo-input" style="cursor:pointer">📷 上傳照片</label>
+            <label class="btn-vs" for="edit-scene-photo-input" style="cursor:pointer">📷 上傳角色照片</label>
             <input type="file" id="edit-scene-photo-input" accept="image/*" hidden>
             <button type="button" class="btn-vs danger" id="btn-scene-photo-del" hidden>🗑️ 移除照片</button>
           </div>
           <img id="edit-scene-photo-preview" class="photo-preview" alt="場景照片預覽" hidden>
-          <p class="form-hint" id="scene-photo-status">上傳這個情境的實景照片（例如學校合作社招牌、對話角色本人）取代角色頭像；不上傳則用內建角色圖。照片只存這台裝置。</p>
+          <p class="form-hint" id="scene-photo-status">上傳真人或實景照片<b>取代上面的角色頭像</b>（例如合作社的阿姨本人、學校的護理師）。不上傳就用上面那個形象。照片只存這台裝置，不會上傳到網路。</p>
         </div>
       </div>
 
@@ -824,12 +826,7 @@
         </div>
         <p class="form-hint" style="margin-bottom:8px">回答下面問題 → 複製提示詞，貼到 Gemini 或 ChatGPT 網頁 → 把 AI 的回答貼回來匯入。</p>
 
-        <!-- 對方性別：與上面「對話角色」是同一份設定（selectedClerkGender），這裡切換上面也會跟著換，
-             不是另一份獨立設定——放在這裡是因為老師填 AI 問題時常常沒往上滑去注意到已經選了誰。 -->
-        <div class="ai-gen-gender-row">
-          <span class="form-hint" style="margin:0">對話角色：</span>
-          <div class="clerk-role-picker clerk-role-picker--compact" id="ai-gen-clerk-role" role="radiogroup" aria-label="選擇對話角色"></div>
-        </div>
+        <!-- 對話角色改由上面的下拉決定（一支語音＝一個形象），這裡只提醒目前選了誰 -->
         <p class="form-hint" id="ai-gen-gender-note" style="margin-bottom:8px"></p>
 
         <p class="form-hint" id="ai-gen-topic-note" style="margin-bottom:8px"></p>

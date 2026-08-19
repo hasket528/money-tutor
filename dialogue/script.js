@@ -2,7 +2,7 @@
 // 否則 Service Worker 會繼續餵舊程式（核心資源是快取優先）。
 // 設定頁最下方會顯示「程式版本 vs 快取版本 vs 開啟方式」，不一致就知道是快取沒更新。
 // `node tests/_audit_version.js` 會擋下兩處對不上的情況。
-const APP_VERSION = 'v167';
+const APP_VERSION = 'v168';
 
 // ─── 對話引擎（抽象層）────────────────────────────
 // 這個介面設計讓未來可以直接替換成 LLM 引擎，前端不用改動
@@ -442,6 +442,20 @@ function expandVoiceRole(entry) {
   return { ...entry, name: entry.name || p.name, gender: entry.gender || p.gender, image: entry.image || p.image };
 }
 
+// **自訂情境專用**：任何語音都對應到一張通用形象，**絕不用 42 場所的店員圖**。
+// 為什麼：那些圖綁死了場所（曉臻＝超市阿芬、曉雨＝服飾店小雅…），老師的情境可能是
+// 合作社、診所批價、導師談話……用場所店員圖等於把情境綁進那家店——這正是
+// clerk-generic 二版拿掉圍裙與木質櫃檯的同一個理由。
+// 對應順序：目錄裡標的 persona → 目錄裡的性別 → 音色名單判性別 → 中性。
+function voicePersonaFor(voiceName) {
+  const entry = VOICE_INFO.find(i => String(voiceName || '').includes(i.keyword));
+  if (entry?.persona && VOICE_PERSONAS[entry.persona]) return VOICE_PERSONAS[entry.persona];
+  const g = entry?.gender || voiceGenderOf({ name: String(voiceName || '') });
+  if (g === 'male')   return VOICE_PERSONAS.male_adult;
+  if (g === 'female') return VOICE_PERSONAS.female_adult;
+  return VOICE_PERSONAS.neutral;
+}
+
 // keyword 比對（＝聲音鍵）：語音名稱含哪個 keyword 就是哪個角色
 function voiceRoleFor(voiceName) {
   const n = String(voiceName || '');
@@ -466,9 +480,10 @@ const CUSTOM_SCENE_IMAGE = 'images/scenes/custom.webp';
 //   ② 否則用泛用角色小雯／小宇（舊資料沒有 clerkGender 這欄 → 預設女生，與過去 emoji 的預設一致）
 // ⚠️ 老師上傳的場景照片仍然蓋在最上層（見 renderStep），這裡只決定「沒有照片時顯示誰」。
 function getCustomClerk(scenario) {
-  const info = voiceRoleOf(scenario?.role?.voiceRef);
-  if (info?.image) {
-    return { key: info.keyword, name: info.name, gender: info.gender, image: info.image, role: info.role };
+  const ref = scenario?.role?.voiceRef;
+  if (ref?.name) {
+    const p = voicePersonaFor(ref.name);
+    return { key: ref.name, name: p.name, gender: p.gender, image: p.image };
   }
   return GENERIC_CLERKS[scenario?.clerkGender] || GENERIC_CLERKS.female;
 }
@@ -583,7 +598,6 @@ const voiceManager = {
   refresh() {
     this._loadVoices();
     renderUserVoiceSelector();
-    renderClerkRolePicker();   // 男聲是否可用取決於清單，載入後要重判
     refreshVoiceInventories();
   },
 
@@ -597,7 +611,6 @@ const voiceManager = {
         this._loadVoices();
         if (!userVoiceManager.selected) userVoiceManager.init();
         renderUserVoiceSelector();
-        renderClerkRolePicker();
         refreshVoiceInventories();
       };
       speechSynthesis.addEventListener('voiceschanged', onChanged);
@@ -925,7 +938,8 @@ function renderVoiceInventory(containerId, opts) {
   box.innerHTML = head + zh.map((v, i) => {
     const g       = voiceGenderOf(v);
     const label   = g === 'male' ? '♂ 男' : g === 'female' ? '♀ 女' : '－ 未知';
-    const role    = voiceRoleFor(v.name);
+    // compact＝情境編輯器：顯示通用形象，免得老師以為選了曉臻就會得到「超市阿芬」
+    const role    = o.compact ? voicePersonaFor(v.name) : voiceRoleFor(v.name);
     const active  = sel && voiceBaseName(v.name) === sel && v.name === o.selectedRef.name;
     return `<div class="voice-diag-row${active ? ' selected' : ''}">`
          + `<button class="voice-diag-play" data-i="${i}" aria-label="用 App 的方式試聽 ${v.name}">🔊</button>`
@@ -969,7 +983,7 @@ function renderVoiceInventory(containerId, opts) {
   box.querySelectorAll('.voice-diag-play:not(.voice-diag-raw)').forEach(btn => {
     btn.addEventListener('click', () => {
       const v = zh[Number(btn.dataset.i)];
-      tts.speak(sayLine, 0.9, null, v);
+      tts.speak(sayLine, 1, null, v);
       // 只是如實顯示「剛才誰在唸」給老師看，**不據此判定語音壞掉**（見血淚說明）
       setTimeout(() => {
         const actual = tts.lastVoiceName || '(未知)';
@@ -993,7 +1007,7 @@ function renderVoiceInventory(containerId, opts) {
 // 語音清單非同步載入完成後，把畫面上已經開著的盤點重繪一次
 function refreshVoiceInventories() {
   if (document.getElementById('voice-inventory')?.innerHTML) renderVoiceInventory('voice-inventory');
-  if (document.getElementById('screen-scenario-editor')?.classList.contains('active')) renderVoicePicker();
+  if (document.getElementById('screen-scenario-editor')?.classList.contains('active')) renderVoiceSelect();
 }
 
 // 舊名保留：版本資訊區塊的「🔍 檢查這台的語音」仍可呼叫（其入口已移到設定頁的語音盤點區）
@@ -1402,10 +1416,12 @@ function playCustomStepAudio(step, avatar) {
   // 圖是男生但聲音是女生——編輯器已在選擇時就把不可用的性別擋掉，這裡只是最後一道保險
   // （舊資料存了 male、之後換到沒有男聲的裝置上開，仍要唸得出來）。
   const clerkVoice = voiceForClerk(state.scenario);
+  // ⚠️ 語速 1（正常）：內建教材放慢到 0.85 是教學設計，老師自編的情境沒有那個前提，
+  //    放慢聽起來反而不自然（2026-08-18 使用者要求）。
   const doTTS      = () => {
-    if (clerkLine) tts.speak(clerkLine, 0.85, speakOS, clerkVoice);
+    if (clerkLine) tts.speak(clerkLine, 1, speakOS, clerkVoice);
     else if (osText && !osLeading) playInnerOS(step, osText);   // 句首旁白已在 start 前唸過，不重複
-    else if (!osText) tts.speak(fullPrompt, 0.85, null, clerkVoice);
+    else if (!osText) tts.speak(fullPrompt, 1, null, clerkVoice);
   };
 
   const start = () => {
@@ -2347,6 +2363,7 @@ function hideClerkPopup() {
   modal.hidden = true;
   modal._scenario = null;
   modal._practiceStep = null;
+  modal._rolePreview = false;
 }
 
 // ─── 練習頁店員彈窗（點頭像／進入練習自動迎接）─────────
@@ -4067,7 +4084,8 @@ function buildAiPrompt() {
   const count   = document.getElementById('ai-gen-count').value || '5';
   // 店員角色的性別要進提示詞：畫面上的角色圖與唸台詞的語音都跟著這個設定走，
   // 若 AI 寫出「謝謝姊姊」配男店員圖，學生看到聽到的會互相矛盾。
-  const clerk      = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
+  // 對話角色的性別＝目前選的那支語音對應的形象（一支語音＝一個形象）
+  const clerk      = currentRolePersona();
   const genderText = clerk.gender === 'male' ? '男生' : '女生';
   const callText   = clerk.gender === 'male' ? '哥哥、老闆、先生' : '姊姊、老闆娘、小姐';
   // 依情境類型換三段：身分敘述、對象敘述、關鍵字建議。
@@ -4234,8 +4252,7 @@ function openScenarioEditor(idx, opts = {}) {
   renderColorSwatches();
   renderParentPicker();
   renderCategoryPicker();
-  renderVoicePicker();
-  renderClerkRolePicker();
+  renderVoiceSelect();
   renderStepList();
   scenePhoto.init(`${editingScenarioId}::__scene::img`);
   nav.push('screen-scenario-editor');
@@ -4301,20 +4318,6 @@ function applyTopicTemplate() {
 
 // 情境編輯器內嵌的語音挑選（C-1 ④）＋ 降級如實回報（C-2）。
 // ⚠️ 回報**只給老師看**：練習畫面一個字都不顯示，學生不需要知道音源降級。
-function renderVoicePicker() {
-  renderVoiceInventory('voice-inventory-compact', {
-    compact: true,
-    selectedRef: selectedVoiceRef,
-    onPick: (v) => {
-      selectedVoiceRef = voiceRefOf(v);
-      renderVoicePicker();
-      // 選了就唸一句：老師當場聽到的就是學生之後會聽到的
-      tts.speak('你好，等一下就用這個聲音跟你說話。', 0.85, null, v);
-    },
-  });
-  renderVoicePickerStatus();
-}
-
 function renderVoicePickerStatus() {
   const el = document.getElementById('voice-picker-current');
   if (!el) return;
@@ -4323,7 +4326,7 @@ function renderVoicePickerStatus() {
   if (!selectedVoiceRef) {
     const auto = bestVoiceByGender(gender);
     el.innerHTML = `目前是<b>自動挑選</b>：這台會用 <b>${auto ? `${voiceShortName(auto)}（${voiceEngineTag(auto)}）` : '（找不到中文語音）'}</b> 唸台詞。`
-                 + '想固定用某一支，就從下面的清單選。';
+                 + '想固定用某一支，就從上面的下拉選。';
     return;
   }
 
@@ -4346,12 +4349,7 @@ function renderVoicePickerStatus() {
         gender === 'male' ? '男生' : '女生'}）不一樣。`
     : '';
 
-  el.innerHTML = msg + mismatch
-    + ' <button type="button" class="btn-vs" id="btn-voice-auto" style="margin-top:6px">改回自動挑選</button>';
-  document.getElementById('btn-voice-auto')?.addEventListener('click', () => {
-    selectedVoiceRef = null;
-    renderVoicePicker();
-  });
+  el.innerHTML = msg + mismatch;
 }
 
 // 「要出現在哪個場所底下」下拉：獨立 ＋ 依分部分組的 42 個內建場所。
@@ -4406,106 +4404,94 @@ function renderColorSwatches() {
   });
 }
 
-// 泛用店員選擇（自訂情境專用，2026-08-02）。
-// 男聲在多數裝置上不存在：Google 中文語音全族都是女聲、Windows 系統聲要裝了 zh-TW 語音套件
-// 才有 Zhiwei，Edge 才穩定有 Online 男聲。這台沒有就把男店員停用（灰掉不給選）——
-// 免得老師挑了男生形象、學生卻聽到女聲。點卡片會順便唸一句，選擇即試聽。
-// 店員角色選擇器：有兩處入口共用同一份狀態（selectedClerkGender）——編輯器上方的
-// 「店員角色」主選擇器，以及 AI 區塊裡的精簡版（老師填 AI 問題時常沒往上滑去注意到已選了誰）。
-// 兩處都渲染，任一處點擊都會同步更新兩邊，不是各自獨立的設定。
-const CLERK_ROLE_PICKER_IDS = ['edit-clerk-role', 'ai-gen-clerk-role'];
+// 對話角色＝下拉選聲音（2026-08-18 改版）。
+// 舊版是「小雯／小宇」兩張卡片先選性別、再另外挑語音，等於同一件事分兩處設定；
+// 現在**一個下拉直接選這台實際有的語音**，形象跟著語音走（voicePersonaFor），
+// 所以不會選到不存在的音色，也不會出現「圖是男生、聲音是女生」。
+// ⚠️ 清單只列這台有的語音——換裝置時由 resolveVoiceRef 逐級退回並如實回報（C-2）。
 
-function renderClerkRolePicker() {
-  const boxes = CLERK_ROLE_PICKER_IDS.map(id => document.getElementById(id)).filter(Boolean);
-  const hint  = document.getElementById('clerk-role-hint');
-  if (!boxes.length) return;
+function renderVoiceSelect() {
+  const sel = document.getElementById('edit-voice-select');
+  if (!sel) return;
+  const all = voiceManager.all || [];
+  const cur = selectedVoiceRef ? resolveVoiceRef(selectedVoiceRef, null).voice : null;
 
-  // 語音清單是非同步載入的，還沒載完時不能斷定「沒有男聲」→ 先全放行，
-  // 載完後 voiceManager.refresh()／voiceschanged 會再叫一次這裡重繪。
-  const voicesReady = (voiceManager.all || []).length > 0;
-  const maleOK      = !voicesReady || hasVoiceForGender('male');
-  if (!maleOK && selectedClerkGender === 'male') selectedClerkGender = 'female';
+  sel.innerHTML = '<option value="">🎲 自動挑選（用這台最好的聲音）</option>'
+    + all.map((v, i) => {
+        const p = voicePersonaFor(v.name);
+        const on = cur && v.name === cur.name && v.lang === cur.lang;
+        return `<option value="${i}"${on ? ' selected' : ''}>`
+             + `${p.name}・${voiceShortName(v)}（${voiceEngineTag(v)} ${voiceLangTag(v)}）</option>`;
+      }).join('');
+  if (!cur) sel.value = '';
 
-  boxes.forEach(box => {
-    const compact = box.id !== 'edit-clerk-role';
-    box.innerHTML = '';
-    Object.values(GENERIC_CLERKS).forEach(c => {
-      const usable   = c.gender !== 'male' || maleOK;
-      const isActive = selectedClerkGender === c.key;
-
-      const btn = document.createElement('button');
-      btn.type      = 'button';
-      btn.className = 'clerk-role-card' + (isActive ? ' selected' : '') + (usable ? '' : ' unavailable');
-      btn.disabled  = !usable;
-      btn.setAttribute('role', 'radio');
-      btn.setAttribute('aria-checked', String(isActive));
-      btn.setAttribute('aria-label', c.name + (usable ? '' : '（這台裝置沒有中文男聲，無法選擇）'));   // 男生角色停用時說明原因
-      btn.innerHTML = compact
-        ? `<img class="clerk-role-img" src="${c.image}" alt="">
-           <span class="clerk-role-name">${c.name}</span>`
-        : `<img class="clerk-role-img" src="${c.image}" alt="">
-           <span class="clerk-role-name">${c.name}</span>
-           ${usable ? '' : '<span class="clerk-role-na">🔇 沒有男聲</span>'}`;
-      // 圖檔缺失（舊部署尚未同步新圖）時移除 img，避免破圖
-      btn.querySelector('img').addEventListener('error', e => e.target.remove());
-      if (usable) btn.addEventListener('click', () => {
-        selectedClerkGender = c.key;
-        renderClerkRolePicker();
-        renderVoicePickerStatus();   // 換角色形象後，「自動挑選」會挑到不同的聲音
-        // 老師指定過語音就用他指定的那支（換角色形象不該把指定洗掉）
-        const picked = selectedVoiceRef ? resolveVoiceRef(selectedVoiceRef, c.gender).voice : null;
-        tts.speak(`你好，我是${c.name}。`, 0.85, null, picked || bestVoiceByGender(c.gender));
-        // 唸完後如實回報實際發聲的語音：老師覺得聲音不對時，一眼就能分辨是
-        // 「這台只有這支音色」還是「開啟方式/快取讓指定失效」。
-        setTimeout(reportSpokenVoice, 700);
-      });
-      box.appendChild(btn);
-    });
-  });
-
-  if (hint) hint.innerHTML = maleOK
-    ? '學生在練習畫面看到、也是唸台詞的那位對話角色（店員、老師、醫師…都用這兩個形象）。沒有上傳場景照片時就顯示他。'
-    : '學生在練習畫面看到、也是唸台詞的那位對話角色。<br><b>這台裝置沒有中文男聲，男生角色暫時不能選</b>——'
-      + '可到 Windows「設定 → 時間與語言 → 語音」加裝中文（繁體）語音，或改用 Microsoft Edge 開啟。';
-
-  // 如實顯示「這台裝置實際會用哪支聲音」。台詞好不好聽取決於裝置裝了什麼語音，
-  // 老師若覺得聲音不像男生，看到這行才知道是裝置只有這支、不是選錯角色。
-  const vEl = document.getElementById('clerk-role-voice');
-  if (vEl) {
-    const cur = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
-    const v   = bestVoiceByGender(cur.gender);
-    vEl.innerHTML = v
-      ? `🔊 這台電腦會用 <b>${v.name.replace(/ - .*/, '').replace('Microsoft ', '')}</b> 唸台詞（點上面的頭像可以先聽聽看）`
-      : '🔊 這台電腦找不到合適的語音，台詞會用系統預設聲音朗讀';
-  }
+  sel.onchange = () => {
+    const v = sel.value === '' ? null : all[Number(sel.value)];
+    selectedVoiceRef = v ? voiceRefOf(v) : null;
+    renderVoiceSelect();
+    if (v) previewRoleVoice();     // 選了就聽一次：老師當場聽到的就是學生會聽到的
+  };
+  renderVoicePickerStatus();
+  renderRoleAvatar();
   renderAiGenderNote();
 }
 
-// 試聽後回報「剛才那句實際是誰唸的」。與上面那行「這台電腦會用 X」互相對照：
-// 兩者一致＝正常；不一致＝指定被無視（file:// 開啟、或還在跑快取裡的舊程式）。
-function reportSpokenVoice() {
-  const vEl = document.getElementById('clerk-role-voice');
-  if (!vEl || !tts.lastVoiceName) return;
-  const spoken = tts.lastVoiceName.replace(/ - .*/, '').replace('Microsoft ', '');
-  const cur    = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
-  const want   = bestVoiceByGender(cur.gender);
-  const wantN  = want ? want.name.replace(/ - .*/, '').replace('Microsoft ', '') : null;
-  if (wantN && spoken === wantN) {
-    vEl.innerHTML = `🔊 剛才是 <b>${spoken}</b> 唸的（${cur.name}指定的聲音）`;
-  } else {
-    vEl.innerHTML = `⚠️ 指定的是 <b>${wantN || '（無）'}</b>，但實際唸的是 <b>${spoken}</b>——`
-                  + `這支語音在這台唸不出來。可到「⚙️ 設定 → 檢查這台的語音」逐支試聽找出能用的。`;
-  }
+// 目前這個情境的角色形象（沒指定語音就是自動挑選那支的形象）
+function currentRolePersona() {
+  if (selectedVoiceRef) return voicePersonaFor(selectedVoiceRef.name);
+  const auto = bestVoiceByGender((GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female).gender);
+  return auto ? voicePersonaFor(auto.name)
+              : VOICE_PERSONAS[selectedClerkGender === 'male' ? 'male_adult' : 'female_adult'];
 }
 
-// AI 提示詞區塊的角色提示：老師在上面選的店員，會被寫進提示詞裡（見 buildAiPrompt，
-// 那邊仍會明確告訴 AI 性別，讓它寫出正確稱呼），也會拿來挑語音——
-// 這裡的說明文字改成不特別強調性別，只講「提示詞／語音都跟著這裡選的角色走」。
+function renderRoleAvatar() {
+  const img = document.getElementById('role-avatar-img');
+  if (!img) return;
+  const p = currentRolePersona();
+  img.src = p.image;
+  img.alt = p.name;
+  img.onerror = () => { img.removeAttribute('src'); };
+}
+
+// 點頭像或試聽時：放大顯示這個角色（沿用既有 clerk-modal，不另開層級）
+function showRolePopup(persona, alsoSpeak) {
+  const p = persona || currentRolePersona();
+  const img = document.getElementById('clerk-modal-img');
+  if (!img) return;
+  img.src = p.image;
+  img.alt = p.name;
+  img.hidden = false;
+  document.getElementById('clerk-modal-name').textContent = p.name;
+  document.getElementById('clerk-modal-role').textContent = '這個情境的對話角色';
+  document.getElementById('clerk-modal-text').textContent = '學生在練習畫面會看到他，台詞也是他唸的。';
+  const modal = document.getElementById('clerk-modal');
+  modal.hidden = false;
+  modal._scenario = null;
+  modal._practiceStep = null;
+  modal._rolePreview = true;      // 「再聽一次」要唸試聽句，不是場所開場白
+  if (alsoSpeak) speakRolePreview();
+}
+
+const ROLE_PREVIEW_TEXT = '你好，等一下就用這個聲音跟你說話。';
+
+// ⚠️ 語速用 1（正常）：試聽與自訂情境的台詞都不放慢——放慢是內建教材的教學設計，
+//    老師自己編的情境沒有那個前提，聽起來反而不自然（2026-08-18 使用者要求）。
+function speakRolePreview() {
+  const v = selectedVoiceRef ? resolveVoiceRef(selectedVoiceRef, null).voice
+                             : bestVoiceByGender(currentRolePersona().gender);
+  tts.speak(ROLE_PREVIEW_TEXT, 1, null, v);
+}
+
+function previewRoleVoice() {
+  showRolePopup(currentRolePersona(), true);
+}
+
+// AI 提示詞區的提醒：目前選了誰（提示詞的稱呼與語音都跟著它走）
 function renderAiGenderNote() {
   const el = document.getElementById('ai-gen-gender-note');
   if (!el) return;
-  const c = GENERIC_CLERKS[selectedClerkGender] || GENERIC_CLERKS.female;
-  el.innerHTML = `提示詞和語音都會依上面選的<b>${c.name}</b>產生，讓文字稱呼跟聲音一致。要改就點上面的頭像。`;
+  const p = currentRolePersona();
+  el.innerHTML = `提示詞和語音都會依上面選的<b>${p.name}</b>產生，讓文字稱呼跟聲音一致。`;
 }
 
 function renderStepList() {
@@ -5012,7 +4998,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     location.href = '../index.html?hero=chatdog' + (part ? '&part=' + part : '');
   };
 
-  // 情境選擇頁：只有「返回主頁」（上一頁鈕已移除，見 index.html 的說明）
+  // 情境選擇頁：「上一頁」回本模組首頁的場所清單、「返回主頁」回站台主頁
+  document.getElementById('btn-sit-back')?.addEventListener('click', () => { sfx.click(); renderHome(); });
   document.getElementById('btn-sit-home').addEventListener('click', goSiteHome);
 
   // 簡易版 / 完整版切換
@@ -5263,6 +5250,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-save-scenario').addEventListener('click', saveScenario);
   document.getElementById('btn-add-step').addEventListener('click', () => openStepEditor(-1));
   document.getElementById('btn-voice-copy')?.addEventListener('click', copyVoiceList);
+  // 點頭像＝放大看這個角色；點試聽＝放大＋用正常語速唸一句
+  document.getElementById('btn-role-avatar')?.addEventListener('click', () => { sfx.click(); showRolePopup(); });
+  document.getElementById('btn-role-preview')?.addEventListener('click', () => { sfx.click(); previewRoleVoice(); });
   document.getElementById('btn-topic-template')?.addEventListener('click', applyTopicTemplate);
   document.getElementById('btn-ai-copy-prompt').addEventListener('click', copyAiPrompt);
   document.getElementById('btn-ai-import').addEventListener('click', importAiSteps);
@@ -5335,6 +5325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modal = document.getElementById('clerk-modal');
     if (modal._practiceStep) playShopkeeperAudio(modal._practiceStep);
     else if (modal._scenario) playClerkIntro(modal._scenario);
+    else if (modal._rolePreview) speakRolePreview();   // 編輯器的角色試聽
   });
 
   // 練習頁店員頭像：點擊放大並重播這一步的台詞（鍵盤 Enter/空白鍵同）
