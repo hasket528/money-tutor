@@ -1,0 +1,2215 @@
+/* =====================================================================
+   tablet-landscape.css — iPad 橫式版面（2026-10-02）
+   ---------------------------------------------------------------------
+   🔴 每一條規則都必須以 html.tablet-land 開頭：這個 class 只有 js/tablet-layout.js 判定
+      「手指操作＋橫放＋大螢幕」（或老師手動切成平板版）時才存在，桌面版因此一條都套不到。
+   ⚠️ 要排在所有 CSS 的最後載入（含 dark-mode-simple.css、chatbot.css）。
+   ⚠️ iPad 橫放的難處是「高度」不是寬度：扣掉 Safari 網址列只剩 650～750px。
+      100vh 在 Safari 把網址列也算進去 → 平板版一律改用 100dvh。
+   目前範圍：C2 測驗頁（試做）。🔴 設定頁不改（2026-10-02 使用者定：主要是測驗頁）。
+   🔴 基準機型＝iPad 第 9 代（10.2 吋，網頁 1080×810，扣掉 Safari 列約剩 740px）：測驗頁不能捲
+      （含錢幣／紙鈔 25～30 個）。13 吋（高度 ≥ 950）測驗框整體放大 1.2 倍。2026-10-02 使用者定。
+      改完用 1080×740 量一次。
+   ===================================================================== */
+
+/* ── 共用：高度用實際看得到的高度 ───────────────────────────── */
+html.tablet-land .store-layout {
+    min-height: 100dvh;
+}
+
+/* ── C2 測驗頁：左邊數錢、右邊總計與答案，選答案不用往下捲 ─────── */
+html.tablet-land .c2-unit .unified-task-frame {
+    margin: 8px 12px 10px;
+    padding: 10px;
+}
+html.tablet-land .c2-unit #question-area.task-description {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-rows: auto 1fr;
+    column-gap: 24px;
+    align-items: start;
+    margin: 0;
+    padding: 12px;
+}
+html.tablet-land .c2-unit #coin-display-area {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin: 0;
+    gap: 8px;
+    padding: 12px;
+}
+html.tablet-land .c2-unit #coin-display-area .countable-item {
+    margin: 0;
+    padding: 6px;
+}
+/* 紙鈔是扁的長方形，原本給正方形的框（寬高都 = 紙鈔尺寸）上下空一半；平板版框高改成六成，圖照比例縮放 */
+html.tablet-land .c2-unit #coin-display-area img[src*="100_yuan"],
+html.tablet-land .c2-unit #coin-display-area img[src*="200_yuan"],
+html.tablet-land .c2-unit #coin-display-area img[src*="500_yuan"],
+html.tablet-land .c2-unit #coin-display-area img[src*="1000_yuan"],
+html.tablet-land .c2-unit #coin-display-area img[src*="2000_yuan"] {
+    height: calc(var(--u6-banknote-size) * 0.6);
+}
+/* 錢很多（21 個以上，金錢數量選 20～30 個時）：圖縮小，第 9 代 iPad 才放得進一個畫面 */
+html.tablet-land .c2-unit #coin-display-area:has(> .countable-item:nth-child(21)) {
+    --u6-coin-size: 64px;
+    --u6-banknote-size: 84px;
+}
+html.tablet-land .c2-unit #total-hint-box {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    transform: none;
+}
+/* 普通／困難有右上角的小金探提示（行內 style 絕對定位），總計框往下讓位 */
+html.tablet-land .c2-unit #question-area:has(> .hint-button, > div > .hint-button) #total-hint-box {
+    margin-top: 76px;
+}
+html.tablet-land .c2-unit #total-hint-box .total-display {
+    font-size: 26px;
+}
+html.tablet-land .c2-unit .options-container {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 18px 0 0;
+    max-width: none;
+}
+html.tablet-land .c2-unit .options-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+html.tablet-land .c2-unit .option-btn {
+    min-height: 64px;
+    font-size: 24px;
+}
+/* 觸控沒有「移上去」：點過的錢幣會一直卡在放大狀態，平板版關掉 hover 放大 */
+html.tablet-land .c2-unit .countable-item:hover {
+    transform: none !important;
+}
+html.tablet-land .c2-unit .option-btn:hover {
+    transform: none;
+}
+
+
+/* ── 13 吋（iPad Air 13／iPad Pro 12.9、13）：高度 ≥ 950，整塊放大，不要留一大片空白 ── */
+@media (min-height: 950px) {
+    html.tablet-land .c2-unit .unified-task-frame {
+        zoom: 1.2;
+    }
+}
+
+/* =====================================================================
+   C3 測驗頁（2026-10-02）
+   ---------------------------------------------------------------------
+   C3 是拖曳：錢在「我的金錢」，要拖到下面的「兌換區」。原本三塊上下疊（高 980～2300px），
+   iPad 上要邊拖邊捲整頁。平板版改成左右兩欄：左＝我的金錢、右＝兌換區＋兌換結果，
+   **整頁不捲**，錢太多時只有該欄自己捲——拖曳的起點和終點永遠同時在畫面上。
+   ⚠️ 這幾塊的樣式寫在 c3_money_exchange.js 裡、進測驗才插入 <style>（排在本檔後面），
+      所以一律靠 html.tablet-land 前綴的特異性取勝；對方有 !important 的才用 !important。
+   錢與兌換格用 zoom 等比縮小（原本是寫死 90～128px 的容器＋圖），不逐一改寬高。
+   ===================================================================== */
+html.tablet-land .c3-unit :is(.unit3-easy-layout, .unit3-normal-layout, .unit3-hard-layout) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    column-gap: 10px;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+html.tablet-land .c3-unit :is(.unit3-easy-layout, .unit3-normal-layout, .unit3-hard-layout) > .title-bar {
+    grid-column: 1 / -1;
+}
+html.tablet-land .c3-unit :is(.unit3-easy-money-section, .unit3-normal-money-section, .unit3-hard-money-section) {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin: 10px 0 10px 10px;
+    padding: 12px;
+    overflow-y: auto;
+    min-height: 0;
+}
+html.tablet-land .c3-unit :is(.unit3-easy-exchange-section, .unit3-normal-exchange-section, .unit3-hard-exchange-section) {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 10px 10px 0 0;
+    padding: 12px;
+    overflow-y: auto;
+    min-height: 0;
+}
+html.tablet-land .c3-unit :is(.unit3-easy-results-section, .unit3-normal-results-section, .unit3-hard-results-section) {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 10px 10px 10px 0;
+    padding: 10px 12px;
+    min-height: 0;
+    max-height: 32dvh;
+    overflow-y: auto;
+}
+html.tablet-land .c3-unit :is(.unit3-easy-section-title, .unit3-normal-section-title, .unit3-hard-section-title) {
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+}
+/* 錢與兌換格等比縮小 */
+html.tablet-land .c3-unit #my-money-area {
+    zoom: 0.7;
+    gap: 8px;
+}
+/* 簡單模式的放置格原本寫死最少 160×180（給紙鈔留位），一枚 80px 的硬幣放進去四周空一大圈、
+   一列只排得下兩格 → 平板版改成跟著內容（佔位圖／放進來的錢）大小，一列排得下四、五格 */
+html.tablet-land .c3-unit #game-area .drop-zone {
+    min-width: 0;          /* 高度改由 c3_money_exchange.css 預留（放一枚錢後的高度），這裡不再清成 0 */
+    padding: 4px;
+    margin: 3px;
+}
+html.tablet-land .c3-unit #game-area {
+    zoom: 0.62;
+}
+html.tablet-land .c3-unit #exchange-results-area {
+    zoom: 0.7;
+}
+html.tablet-land .c3-unit :is(.unit3-normal-complete-btn, .unit3-hard-complete-btn) {
+    margin: 10px auto 0;
+    min-height: 48px;
+    padding: 12px 32px;
+    font-size: 1.1em;
+}
+/* 2026-10-02 使用者定：三種難度的兌換列一律由上而下 放置框 → ＝ → 兌換的目標金錢（原本只有困難這樣排） */
+html.tablet-land .c3-unit #game-area .exchange-row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 8px;
+}
+html.tablet-land .c3-unit #game-area .exchange-row > .drop-zone-area {
+    width: 100%;
+}
+/* 放置框預留高度、目標金錢與金額的間距：桌面版也要（使用者定），規則寫在 css/c3_money_exchange.css 檔尾 */
+/* 換到的錢只是顯示用（不能拖），畫小一點，讓「完成兌換」鈕不必捲就看得到 */
+html.tablet-land .c3-unit .unit3-hard-layout #game-area .target-area {
+    zoom: 0.8;
+}
+html.tablet-land .c3-unit #game-area {
+    padding: 8px;
+    gap: 8px;
+}
+/* 觸控沒有「移上去」：拖過的錢會卡在上浮狀態 */
+html.tablet-land .c3-unit :is(.unit3-coin-container, .unit3-banknote-container):hover {
+    transform: none;
+}
+
+/* =====================================================================
+   C1 測驗頁（2026-10-02）：上下疊（題目／請選擇正確答案／5 張 180px 選項卡）在第 9 代
+   iPad 高 790～1070px → 平板版左欄題目、右欄選項（選項卡維持原本 180px，右欄兩列就排得完）。
+   ===================================================================== */
+html.tablet-land .c1-unit .unified-task-frame {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 20px;
+    align-items: start;
+    margin: 10px 14px 14px;
+    padding: 12px;
+}
+html.tablet-land .c1-unit #question-area.task-description {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin: 0;
+    padding: 16px 12px;
+}
+html.tablet-land .c1-unit #options-title {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 4px 0 8px;
+}
+html.tablet-land .c1-unit #options-area {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    padding: 8px;
+}
+html.tablet-land .c1-unit .products-grid.horizontal-layout {
+    padding: 4px 0;
+}
+/* 困難模式左欄的「點擊播放按鈕聽題目」原本字很大，窄欄裡會剩一個字掉到第二行 */
+html.tablet-land .c1-unit #question-area .target-hint {   /* 要帶 #question-area：ai-theme.css 的 #question-area p 有 ID，特異性比 class 高 */
+    font-size: 20px;
+    padding: 10px 8px;
+}
+/* 觸控沒有「移上去」：點過的選項會卡在上浮狀態 */
+html.tablet-land .c1-unit .product-item:hover {
+    transform: none;
+}
+
+/* =====================================================================
+   C4 測驗頁（2026-10-02，使用者定）：拖錢湊金額，由上而下 兌換區（目標＋放置區＋確認）→ 我的金錢區，
+   整寬（曾做過左右兩欄，改回單欄）。原本第 9 代 iPad 高 760～1270px → 放置區與錢等比縮小、留白收緊。
+   ===================================================================== */
+html.tablet-land .c4-unit .store-layout > :is(.exchange-section, .my-money-section) {
+    margin: 5px 12px;
+    padding: 8px 14px;
+}
+html.tablet-land .c4-unit .current-total-display {
+    font-size: 1.25em;
+    margin: 4px 0 0;
+}
+html.tablet-land .c4-unit .section-title {
+    margin-bottom: 6px;
+}
+html.tablet-land .c4-unit #money-source-area,
+html.tablet-land .c4-unit #drop-zone-area {
+    zoom: 0.6;   /* 簡單 4 位數（放置區整排提示格＋錢包 19 枚）是最高的一種 */
+}
+/* 觸控沒有「移上去」：拖過的錢會卡在上浮狀態 */
+html.tablet-land .c4-unit .money-item:hover {
+    transform: none;
+}
+
+/* =====================================================================
+   C5 測驗頁（2026-10-02）：拖錢付款＋判斷錢夠不夠。
+   使用者定：由上而下 購物區 → 我的錢包 → 錢夠不夠按鈕（曾做過左右兩欄，改回單欄、整寬）。
+   「錢夠／錢不夠」按鈕在 HTML 裡是購物區的子元素，平板版由 c5 的 _tabletMoveJudgmentButtons()
+   移到錢包後面（只在 MTLayout.isTablet() 時執行）。
+   高度：商品圖原本 180px、付款區與錢包的錢都很大 → 商品列與兩個錢區等比縮小，整頁放進一個畫面。
+   ===================================================================== */
+html.tablet-land .c5-unit :is(.unit5-easy-layout, .unit5-normal-layout, .unit5-hard-layout) > :is(.exchange-section, .my-money-section) {
+    margin: 6px 12px;
+    padding: 8px 14px;
+}
+html.tablet-land .c5-unit .section-title {
+    margin-bottom: 6px;
+}
+html.tablet-land .c5-unit .item-total-container {
+    zoom: 0.6;
+    margin: 4px 0 !important;   /* 行內 style 寫死 15px 0 */
+}
+html.tablet-land .c5-unit #money-source-area,
+html.tablet-land .c5-unit #payment-zone-area {
+    zoom: 0.68;
+}
+html.tablet-land .c5-unit .judgment-buttons {
+    margin: 4px 12px 10px;
+}
+/* 觸控沒有「移上去」：拖過的錢會卡在上浮狀態 */
+html.tablet-land .c5-unit .money-item:hover {
+    transform: none;
+}
+
+/* =====================================================================
+   C6 測驗頁（2026-10-02，使用者定）
+   步驟一付款（外框 .c6-easy-layout，三難度同名）：由上而下 商品＋付款區 → 我的錢包。
+   步驟二（外框 .game-container）：
+     普通／困難算完後的三選一：由上而下 購買物品 → 找零金額 → 找零選項。
+     簡單（拖找零）：上排 購買物品｜店家找零 並排，下排 我的錢包（使用者沒要求改，維持）。
+     困難計算頁：「開啟計算機」移到「計算找零金額」標題右側靠右（c6 的 _tabletMoveCalcButton，只在平板版移動節點）；
+       計算機固定在右上角標題列下方、最上層，版面不讓位（全站平板版計算機同一個位置）。
+   高度：商品圖 180px、錢與選項都很大 → 等比縮小，整頁放進一個畫面。
+   ===================================================================== */
+html.tablet-land .c6-unit :is(.c6-easy-layout, .game-container):has(> .c6-step1-container, > .c6-step2-container, > .c6-hard-step2-container) {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+/* 步驟一：由上而下 */
+html.tablet-land .c6-unit .c6-step1-container {
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: hidden;
+}
+html.tablet-land .c6-unit .c6-step1-container > * {
+    margin: 0 0 8px;
+}
+html.tablet-land .c6-unit .c6-step1-container > #c6-confirm-payment {
+    margin: 0 auto;   /* 確認付款在錢包下方（2026-10-03），保持置中 */
+}
+html.tablet-land .c6-unit .c6-step1-container .item-info-compact {
+    zoom: 0.62;
+}
+html.tablet-land .c6-unit .c6-step1-container :is(#payment-drop-zone, #wallet-container) {
+    zoom: 0.72;   /* 確認付款移到錢包下方後多佔一列（2026-10-03），0.8 → 0.72 */
+}
+/* 步驟二・簡單：上排並排、錢包整寬 */
+html.tablet-land .c6-unit .c6-step2-container:has(> .c6-change-area) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+    padding: 10px;
+    overflow: hidden;
+}
+html.tablet-land .c6-unit .c6-step2-container:has(> .c6-change-area) > :nth-child(1) { grid-column: 1; grid-row: 1; margin: 0; }
+html.tablet-land .c6-unit .c6-step2-container:has(> .c6-change-area) > :nth-child(2) { grid-column: 2; grid-row: 1; margin: 0; }
+html.tablet-land .c6-unit .c6-step2-container:has(> .c6-change-area) > :nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+}
+html.tablet-land .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.item-info-compact, .store-change, .my-wallet-container) {
+    zoom: 0.75;
+}
+/* 步驟二・普通／困難三選一：由上而下 */
+html.tablet-land .c6-unit .c6-step2-container:has(> .change-options-area) {
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: hidden;
+}
+html.tablet-land .c6-unit .c6-step2-container:has(> .change-options-area) > * {
+    margin: 0 0 8px;
+}
+html.tablet-land .c6-unit .c6-step2-container:has(> .change-options-area) .item-info-compact {
+    zoom: 0.62;
+}
+html.tablet-land .c6-unit .change-options-area {
+    zoom: 0.8;
+}
+/* 困難計算頁 */
+html.tablet-land .c6-unit .c6-hard-step2-container {
+    min-height: 0;
+    overflow-y: auto;
+}
+html.tablet-land .c6-unit .c6-calc-title-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;   /* ::before 佔左格，標題字置中，按鈕在右格靠右 */
+    align-items: center;
+}
+html.tablet-land .c6-unit .c6-calc-title-row::before {
+    content: '';
+}
+html.tablet-land .c6-unit .c6-calc-title-row > #toggle-calculator-btn {
+    justify-self: end;
+    font-size: 0.75em;
+    padding: 8px 14px;
+}
+html.tablet-land .c6-unit #calculator-container {
+    position: fixed;
+    top: 78px;          /* C6 標題列 69px＋間距 */
+    left: auto;         /* 原本的樣式有寫 left，跟 right 並存時以 left 為準，會跑到左上角 */
+    right: 12px;
+    width: 280px;       /* 原本 width:100%，固定定位後會變成整個畫面寬；280 才不會蓋到「關閉計算機」鈕 */
+    z-index: 9600;      /* 最上層：蓋在內容上面，版面維持整寬（使用者定） */
+}
+/* 觸控沒有「移上去」：拖過的錢會卡在上浮狀態 */
+html.tablet-land .c6-unit .money-item:hover {
+    transform: none;
+}
+
+/* =====================================================================
+   B 系列共用：結算回顧畫面 .b-review-screen（2026-10-02，B1 起）
+   原本 600px 寬、卡片上下疊（B1 回顧高 796px）→ 平板版卡片兩兩並排、按鈕與標題整寬。
+   本檔只在已接上平板版的頁面載入，所以這段寫成 .b-series 共用；每接一個 B 單元都要量一次它的回顧畫面。
+   ===================================================================== */
+html.tablet-land .b-series .b-review-screen {
+    max-width: 1040px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: start;
+}
+html.tablet-land .b-series .b-review-screen > :not(.b-review-card) {
+    grid-column: 1 / -1;
+}
+/* 外框 min-height:100vh 疊在 56px 標題列下面 → 整頁多出 56px 可以捲 */
+html.tablet-land .b-series .b-header + .b-review-wrapper {
+    min-height: calc(100dvh - 72px);
+    padding-bottom: 16px;
+}
+
+/* =====================================================================
+   B1 測驗頁（2026-10-02）
+   步驟一（困難）：計算機側欄原本絕對定位在行程卡「右外側」，右緣到 1206px，第 9 代 iPad（1080）
+     整頁被撐寬 → 按鈕移到「總計金額」列中間、計算機彈窗固定在右上角（見下）。
+   步驟二：上下疊（行程參考卡／我的錢包／出發鈕／錢幣托盤，困難 821px）、要從最下面拖到中間 →
+     改單欄加寬，順序換成 行程卡 → 錢幣托盤 → 我的錢包 → 出發鈕（使用者定）。
+   ===================================================================== */
+html.tablet-land .b1-unit .b-game-wrap:has(.b1-calc-side-col, .b1-coin-tray) {
+    max-width: 1040px;
+}
+/* 困難模式計算機：同 B2（2026-10-02 使用者定「計算機彈窗統一出現在右上角、標題列下方」）——
+   按鈕放在行程卡最底下「總計金額」那一列正中間，計算機固定在右上角、最上層（蓋在內容上，版面維持整寬）。⚠️ 不可用 transform 置中（position:fixed 會改以 transform 祖先為基準）。 */
+html.tablet-land .b1-unit .b1-card-outer-wrap:has(> .b1-calc-side-col) {
+    position: relative;
+}
+html.tablet-land .b1-unit .b1-calc-side-col {
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 32px;         /* 行程卡在「總計金額」列下面還有 20px 留白，對齊那一列的垂直中間 */
+    width: fit-content;
+    margin: 0 auto;
+    z-index: auto;        /* 不可給數字：會自成堆疊層，裡面的計算機 z-index 再高也被困在這一層 */
+}
+html.tablet-land .b1-unit .b1-calc-panel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    width: 300px;
+    margin: 0;
+    z-index: 9600;   /* 最上層：蓋在內容上面，版面維持整寬（使用者定） */
+}
+/* 步驟二（2026-10-02 使用者定，取代原本的左右兩欄——兩欄留太多空白；2026-10-05 起桌面寬螢幕 desk-wide 也用這個順序）：單欄、由上而下
+   行程卡 → 錢幣托盤 → 我的錢包 → 出發鈕；整欄用到 1040px，托盤錢幣排成一列、高度省下來。
+   出發鈕外層是沒有 class 的 div，用「不是另外三塊」選它。 */
+html:is(.tablet-land, .desk-wide) .b1-unit .b-game-wrap:has(> .b1-coin-tray) > .b1-phase2-ref { order: 1; }
+html:is(.tablet-land, .desk-wide) .b1-unit .b-game-wrap > .b1-coin-tray { order: 2; }
+html:is(.tablet-land, .desk-wide) .b1-unit .b-game-wrap:has(> .b1-coin-tray) > #wallet-area { order: 3; }
+html:is(.tablet-land, .desk-wide) .b1-unit .b-game-wrap:has(> .b1-coin-tray) > :not(.b1-phase2-ref, .b1-coin-tray, #wallet-area) { order: 4; }
+html.tablet-land .b1-unit .b-game-wrap:has(> .b1-coin-tray) {
+    gap: 10px;
+    padding: 10px 16px 6px;
+}
+/* 單欄四塊在 iPad mini（可見高 674）會把出發鈕擠出畫面 → 行程卡的場景圖 128 → 96px */
+html.tablet-land .b1-unit .b1-phase2-ref .b1-scene-img-lg {
+    width: 96px;
+    height: 96px;
+}
+
+/* =====================================================================
+   B2 測驗頁（2026-10-02）：結構同 B1（class 前綴 b2-）
+   步驟一（困難）：計算機側欄 .b2-calc-side-col 原本絕對定位在卡片右外側（右緣 1186px，撐寬頁面）→
+     按鈕移到「最後剩下」列中間、計算機彈窗固定在右上角（見下）。
+   步驟二：同 B1，單欄加寬，參考卡 → 錢幣托盤 → 我的零用錢 → 準備好了鈕（使用者定）。
+   ===================================================================== */
+html.tablet-land .b2-unit .b-game-wrap:has(.b2-calc-side-col, .b2-coin-tray) {
+    max-width: 1040px;
+}
+/* 困難模式計算機（2026-10-02 使用者定）：按鈕放在日記卡最底下「最後剩下」那一列的正中間
+   （那一列永遠是卡片最後一列，左邊是標籤、右邊是「？元」，中間是空的）；
+   按下後計算機固定出現在右上角、標題列下方、最上層（全站平板版計算機同一個位置），版面維持整寬。
+   ⚠️ 不可用 transform 置中：祖先有 transform 時 position:fixed 會改以它為基準，計算機就不在右上角了。 */
+html.tablet-land .b2-unit .b2-card-outer-wrap:has(> .b2-calc-side-col) {
+    position: relative;
+}
+html.tablet-land .b2-unit .b2-calc-side-col {
+    position: absolute;
+    top: auto;            /* 原本的 top:0 要清掉，不然跟 bottom 並存時以 top 為準 */
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    width: fit-content;
+    margin: 0 auto;
+    z-index: auto;        /* 不可給數字：會自成堆疊層，裡面的計算機 z-index 再高也被困在這一層 */
+}
+html.tablet-land .b2-unit .b2-calc-panel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    width: 300px;         /* 父層是 fit-content，不給寬度計算機會被擠成 137px */
+    margin: 0;
+    z-index: 9600;   /* 最上層：蓋在內容上面，版面維持整寬（使用者定） */
+}
+/* 步驟二：同 B1（使用者定）單欄由上而下 參考卡 → 錢幣托盤 → 我的零用錢 → 準備好了鈕 */
+html:is(.tablet-land, .desk-wide) .b2-unit .b-game-wrap:has(> .b2-coin-tray) > .b2-ref-card { order: 1; }
+html:is(.tablet-land, .desk-wide) .b2-unit .b-game-wrap > .b2-coin-tray { order: 2; }
+html:is(.tablet-land, .desk-wide) .b2-unit .b-game-wrap:has(> .b2-coin-tray) > #b2-wallet-area { order: 3; }
+html:is(.tablet-land, .desk-wide) .b2-unit .b-game-wrap:has(> .b2-coin-tray) > :not(.b2-ref-card, .b2-coin-tray, #b2-wallet-area) { order: 4; }
+/* B2 回顧：「日記清單」把每筆收支連錢幣圖都列出來（困難 777px），跟其他卡兩兩並排會把第三張卡推到很下面 →
+   日記清單獨佔左欄（太長就自己捲），「本期收支總計」「最大記錄」與「查看測驗總結」疊在右欄。 */
+html:is(.tablet-land, .desk-wide) .b2-unit .b-review-screen {
+    grid-template-rows: auto auto 1fr;
+    row-gap: 12px;
+}
+html:is(.tablet-land, .desk-wide) .b2-unit .b-review-screen > * {
+    margin: 0;
+}
+html:is(.tablet-land, .desk-wide) .b2-unit #b2-diary-schedule-card {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    max-height: calc(100dvh - 72px - 40px);
+    overflow-y: auto;
+}
+html:is(.tablet-land, .desk-wide) .b2-unit .b-review-screen > :not(#b2-diary-schedule-card) {
+    grid-column: 2;
+}
+
+/* =====================================================================
+   B3 測驗頁（2026-10-02）：本來就是三欄橫向（目標／月曆／右欄），1080 寬放得下。
+   但點了日期之後右欄（今日可存金錢＋存入金錢區＋我的撲滿）疊到 762px（普通／困難），超出第 9 代 iPad。
+   「存入金錢區」與「我的撲滿」在同一張卡裡，拆到左欄要動外框 → 改成右欄整欄等比縮小：
+   縮小後欄內等效寬度變大，四個面額排得進一列，高度又再省下一截。
+   ===================================================================== */
+html.tablet-land .b3-unit #b3-pig-col {
+    zoom: 0.85;
+}
+/* 存了幾天之後「我的撲滿」會一排排列出存進去的錢（170 元時右欄 1194px）→ 版面固定一個畫面高、右欄撐滿，
+   撲滿卡內的錢幣清單太長就在卡裡自己捲；上面的「今日可存金錢」與「存入金錢區」維持看得到。 */
+html.tablet-land .b3-unit .b-header + .b3-cal-layout {
+    height: calc(100dvh - 72px);
+    align-items: stretch;
+}
+html.tablet-land .b3-unit .b3-cal-layout > :not(#b3-pig-col) {
+    align-self: flex-start;
+}
+html.tablet-land .b3-unit #b3-pig-col {
+    min-height: 0;
+}
+html.tablet-land .b3-unit #b3-pig-bank {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+html.tablet-land .b3-unit #b3-pig-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+/* B3 結算「省錢清單」：成功橫幅＋目標卡（題數多時一堆）＋統計三格＋按鈕上下疊（舊版 1165px）→
+   左欄成功橫幅＋統計（改直排）、右欄目標卡（多了自己捲）、按鈕整寬在底。 */
+html.tablet-land .b3-unit .b-review-screen {
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    row-gap: 12px;
+    align-items: start;
+}
+html.tablet-land .b3-unit .b-review-screen > * {
+    margin: 0;
+}
+html.tablet-land .b3-unit .b-review-screen > .b3-res-success-banner {
+    grid-column: 1;
+    grid-row: 1;
+}
+html.tablet-land .b3-unit .b-review-screen > .b3-res-stats-row {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+}
+html.tablet-land .b3-unit .b3-res-stats-row .b3-res-stat-card {
+    padding: 8px;
+}
+html.tablet-land .b3-unit .b-review-screen > .b3-goals-grid {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    max-height: calc(100dvh - 72px - 40px - 64px);
+    overflow-y: auto;
+    padding-top: 12px;   /* 卡片頂端的類別小標凸出卡外，留位置免得被捲動區切掉 */
+}
+html.tablet-land .b3-unit .b-review-screen > .b-review-next-btn {
+    grid-column: 1 / -1;
+    grid-row: 3;
+}
+/* B2 步驟二「最後剩下 ○○ 元」水平置中（2026-10-02 使用者定）；提示鈕釘在右邊，不跟著擠
+   （不用 transform 置中：ai-theme.css 的 :active 會把按鈕的 transform 改掉） */
+html.tablet-land .b2-unit .b2-ref-simple-row {
+    position: relative;
+    justify-content: center;
+}
+html.tablet-land .b2-unit .b2-ref-simple-row > .b2-ref-hint-inline {
+    position: absolute;
+    right: 0;
+    top: 0;
+    margin: 0;
+}
+
+/* =====================================================================
+   B4 測驗頁（2026-10-03）：本來就單欄整寬，但商品卡（128px 圖＋名稱＋問題上下疊，234px）與
+   「三家店排序」每家的錢幣圖會疊兩三列 → 第 9 代 iPad 高 754～887px。
+   平板版：步驟一商品卡改成一列（圖｜名稱｜問題）、步驟二參考卡縮小；店家圖、錢幣圖、差額選項等比縮小。
+   ===================================================================== */
+html.tablet-land .b4-unit .b4-item-hero:has(> .b4-item-icon) {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html.tablet-land .b4-unit .b4-item-hero > .b4-item-icon {
+    width: auto;
+    flex: 0 0 auto;
+    zoom: 0.65;
+}
+html.tablet-land .b4-unit .b4-item-hero > :is(.b4-item-name, .b4-question-label) {
+    width: auto;
+    margin: 0;
+}
+html.tablet-land .b4-unit .b4-ref-card-wrap {
+    zoom: 0.72;
+}
+html.tablet-land .b4-unit .b4-option-card :is(.b4-store-icon, .b4-price-coins) {
+    zoom: 0.72;
+}
+html.tablet-land .b4-unit .b4-diff-options {
+    zoom: 0.65;   /* 三家店普通模式步驟二的三張差額選項最高，iPad mini 也要放得下 */
+}
+
+/* =====================================================================
+   B5 測驗頁（2026-10-03）
+   步驟一選購：採購任務卡（128px 商品圖）＋預算條＋購物區（分類｜商品格｜購物清單）上下疊，高 830～1000px →
+     任務卡商品圖縮小、預算條收緊；購物區固定佔剩下高度，商品格在格內自己捲（分類與購物清單一直看得到）。
+   ===================================================================== */
+html.tablet-land .b5-unit .b5-game-container:has(> .b5-shopping-layout) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: calc(100dvh - 72px);
+    box-sizing: border-box;
+    padding-bottom: 8px;
+    overflow: hidden;
+}
+html.tablet-land .b5-unit .b5-game-container > .b5-task-card {
+    flex: none;
+    margin: 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .b5-unit .b5-target-checklist {
+    zoom: 0.6;
+}
+html.tablet-land .b5-unit .b5-game-container > .b5-budget-standalone-card {
+    flex: none;
+    margin: 0;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+html.tablet-land .b5-unit .b5-game-container > .b5-shopping-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+}
+/* 分類頁籤：原本 sticky，在固定高度的購物區裡改成跟著排、太多就自己捲，第三個不會被吉祥物蓋住一半 */
+html.tablet-land .b5-unit #b5-cat-list {
+    position: static;
+    max-height: 100%;
+    overflow-y: auto;
+}
+html.tablet-land .b5-unit .b5-cat-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+html.tablet-land .b5-unit #b5-items-grid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+html.tablet-land .b5-unit #b5-right-panel {
+    align-self: flex-start;
+    max-height: 100%;
+    overflow-y: auto;
+}
+/* 步驟二付款（2026-10-03 使用者改定，桌面版同）：由上而下 購物清單卡 → 付款區 → 我的錢包 → 確認付款；
+   步驟三找零：清單卡 → 找零面額 → 我的錢包 → 確認找零。順序直接寫在 JS 樣板裡（不再用 order 換——
+   步驟三的找零面額也叫 .b5p2-tray，order 規則會一起套到步驟三，把錢包和確認鈕排到最上面）。
+   ⚠️ 名字反直覺：`#b5p2-wallet-area`＝付款區（放錢進去的地方），`.b5p2-tray`＝我的錢包（錢的來源）。
+   清單卡商品圖 128px 疊太高 → 商品格縮小；容器放寬到 1040px。 */
+html.tablet-land .b5-unit .game-container:has(> .b5p2-tray) {
+    max-width: 1040px;
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 6px;
+}
+html.tablet-land .b5-unit .game-container:has(> .b5p2-tray) > * {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+html.tablet-land .b5-unit .game-container > .b5p2-ref-card { padding-top: 8px; padding-bottom: 8px; }
+html.tablet-land .b5-unit .b5p2-ref-items-grid {
+    zoom: 0.5;
+}
+html.tablet-land .b5-unit .game-container > #b5p2-wallet-area {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+/* 派對回顧：沒有 .b-header，大表情＋標題的頁首 164px → 表情與標題排同一列、留白收小（iPad mini 也放得下） */
+html.tablet-land .b5-unit .b-review-wrapper:not(.b-header + .b-review-wrapper) {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html.tablet-land .b5-unit .b-review-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 12px;
+    padding: 0 0 8px;
+}
+html.tablet-land .b5-unit .b-review-header > .b-review-emoji {
+    font-size: 2em;
+    margin: 0;
+}
+html.tablet-land .b5-unit .b-review-header > .b-review-title {
+    margin: 0;
+}
+html.tablet-land .b5-unit .b-review-header > .b-review-subtitle {
+    flex-basis: 100%;
+    text-align: center;
+}
+
+/* =====================================================================
+   B6 測驗頁（2026-10-03）
+   步驟一採購：任務卡（市場分區卡＋預算條）＋三欄購物區（採購進度｜攤位商品｜購物車）高 790～930px，
+   購物區原本寫死 582px 高 → 平板版外框固定一個畫面高，購物區吃剩下的高度；任務卡的分區卡縮小。
+   攤位商品格（.b6-stall-panel）與購物車本來就會自己捲。
+   ===================================================================== */
+html.tablet-land .b6-unit .game-container:has(> .b6-market-checkout-row) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 72px);
+    box-sizing: border-box;
+    padding-bottom: 8px;
+    overflow: hidden;
+}
+html.tablet-land .b6-unit .game-container > .b6-task-card {
+    flex: none;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .b6-unit .b6-stall-checklist {
+    zoom: 0.7;
+}
+html.tablet-land .b6-unit .game-container > .b6-market-checkout-row {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+html.tablet-land .b6-unit .b6-market-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+html.tablet-land .b6-unit .b6-stall-panel {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+}
+/* 步驟二付款（2026-10-03 使用者改定，同 B5，順序寫在 JS 樣板）：清單卡 → 需要付款 → 付款區（.b6p2-wallet-area）→ 我的錢包（.b6p2-tray，錢的來源）→ 確認付款 */
+html.tablet-land .b6-unit .game-container:has(> .b6p2-tray) {
+    gap: 6px;
+    padding-top: 8px;
+}
+html.tablet-land .b6-unit .game-container:has(> .b6p2-tray) > * { margin-top: 0; margin-bottom: 0; }
+html.tablet-land .b6-unit .game-container > .b6p2-ref-card { padding-top: 8px; padding-bottom: 8px; }
+html.tablet-land .b6-unit .b6p2-ref-card .b6c-ref-formula {
+    zoom: 0.55;   /* 購物清單的商品格（每格 128px 圖），困難模式 5 樣是最高的一種 */
+}
+
+/* 買菜成功（結算第一頁）：600px 單卡、收據卡＋各攤位卡上下疊（887px）→ 外卡放寬，兩張卡並排、頁首表情與標題同一列 */
+html.tablet-land .b6-unit .b6-results-outer-card {
+    max-width: 1040px;
+    width: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: start;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html.tablet-land .b6-unit .b6-results-outer-card > :not(.b-review-card) {
+    grid-column: 1 / -1;
+}
+html.tablet-land .b6-unit .b6-results-outer-card > .b-review-card {
+    margin: 0 0 10px;
+}
+html.tablet-land .b6-unit .b-review-wrapper:not(.b-header + .b-review-wrapper) {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html.tablet-land .b6-unit .b-review-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 12px;
+    padding: 0 0 8px;
+}
+html.tablet-land .b6-unit .b-review-header > .b-review-emoji { font-size: 2em; margin: 0; }
+html.tablet-land .b6-unit .b-review-header > .b-review-title { margin: 0; }
+html.tablet-land .b6-unit .b-review-header > .b-review-subtitle { flex-basis: 100%; text-align: center; }
+
+/* =====================================================================
+   F1 測驗頁（2026-10-03）：本來就由上而下（物品框 → 對應框 → 目標區 → 完成對應），
+   但數數範圍最大 20～30 個，每區都是一格格 80～90px 的物品 → 第 9 代 iPad 高 790～1370px。
+   平板版三個物品區等比縮小、區塊留白收緊，順序不動。
+   ===================================================================== */
+html.tablet-land .f1-unit .correspondence-frame {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .f1-unit .correspondence-frame > :is(#source-area, #target-area) {
+    margin-top: 0;
+    margin-bottom: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html.tablet-land .f1-unit :is(#source-area, #target-area) > h3 {
+    margin: 0 0 6px;
+}
+html.tablet-land .f1-unit :is(.source-container, #target-placement-zone, #placement-zone, .target-container-bottom, #target-area > .target-container) {   /* 困難的放置區 id 是 #placement-zone */
+    zoom: 0.55;
+}
+html.tablet-land .f1-unit .header-with-hint {
+    margin-bottom: 4px;
+}
+/* 困難模式多一排類型不同的物品＋編號格，20～30 個時再小一點（0.5＝格子約 45px，手指拖曳的下限） */
+html.tablet-land .f1-unit #target-area:has(#placement-zone) :is(#placement-zone, .target-container-bottom),
+html.tablet-land .f1-unit .correspondence-frame:has(#placement-zone) .source-container {
+    zoom: 0.5;
+}
+
+/* =====================================================================
+   C／F／A 系列共用：測驗結果頁 .results-screen（2026-10-03，F1 時發現；C1～C6 一併生效，A1 起 A 系列也用同一套 class）
+   各單元 JS 進結果頁才插入的 <style>，class 名稱全系列一樣：700px 寬、獎盃＋標題＋三格統計＋表現評價＋學習成果＋按鈕
+   上下疊（約 1260px）→ 平板版放寬、獎盃與標題同一列、表現評價與學習成果並排、按鈕整列在底。
+   ===================================================================== */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-wrapper {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-screen {
+    max-width: 1040px;
+    padding: 14px 24px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-header .trophy-icon {
+    font-size: 3em;
+    margin: 0;
+}
+/* 獎盃標題列與「開啟獎勵系統」排同一列，省一整列高度 */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-screen:has(> .results-header + .reward-btn-container) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 24px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-screen > .results-container {
+    flex-basis: 100%;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .reward-btn-container {
+    margin: 0 0 8px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 10px;
+    padding: 12px;
+    align-items: stretch;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > * {
+    margin: 0;
+}
+/* 2026-10-03 使用者定（全專案結算頁）：左上 表現評價、左下 學生自評（.lt-selfrate-block）；
+   右欄由上而下 統計卡片（A 系列＝完成題數→完成時間，C／F＝答對→正確率→時間）→ 學習成果；按鈕整列在最下 */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container {
+    grid-template-areas: "perf stats" "self ach" "btn btn";
+    grid-template-rows: auto auto auto;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .performance-section { grid-area: perf; }
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .lt-selfrate-block { grid-area: self; }
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .results-grid {
+    grid-area: stats;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;   /* 卡片平分右欄高度，跟左邊表現評價等高 */
+    gap: 8px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .learning-achievements { grid-area: ach; }
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .result-buttons { grid-area: btn; }
+/* 統計卡片改直排：圖示、標題、數字排同一列，省高度 */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .results-grid > .result-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .results-grid > .result-card > * { margin: 0; }
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container .result-card .result-icon {
+    font-size: 1.6em;
+    margin-bottom: 2px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container .result-card {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > :is(.performance-section, .learning-achievements) {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .performance-section .results-mascot-img {
+    width: 84px;
+    height: 84px;
+}
+
+/* =====================================================================
+   B 系列測驗總結頁 .b-res-*（2026-10-03）：700px 單欄、獎盃＋標題＋三格統計＋表現評價＋學習成果＋自評＋按鈕上下疊（約 1180px）
+   → 與 C／F／A 同一套排法（使用者定）：獎盃標題與獎勵鈕同一列；左上 表現評價、左下 學生自評；
+     右欄由上而下 答對題數→正確率→完成時間→學習成果；按鈕整列在最下。
+   ===================================================================== */
+html:is(.tablet-land, .desk-wide) .b-res-wrapper { padding-top: 10px; padding-bottom: 10px; }
+/* B3 總結頁上面還有標題列，原本 min-height:100vh 會多出標題列的高度 */
+html:is(.tablet-land, .desk-wide) .b-header + .b-res-wrapper { min-height: calc(100dvh - 72px); }
+html:is(.tablet-land, .desk-wide) .b-res-screen {
+    max-width: 1040px;
+    padding: 14px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 24px;
+}
+html:is(.tablet-land, .desk-wide) .b-res-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 0 0 8px;
+    padding: 0;
+}
+html:is(.tablet-land, .desk-wide) .b-res-header .b-res-trophy { font-size: 3em; margin: 0; height: auto; }
+html:is(.tablet-land, .desk-wide) .b-res-header .b-res-trophy img { height: 56px; width: auto; }
+html:is(.tablet-land, .desk-wide) .b-res-reward-wrap { margin: 0 0 8px; }
+html:is(.tablet-land, .desk-wide) .b-res-container {
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "perf stats" "self ach" "btn btn";
+    column-gap: 14px;
+    row-gap: 10px;
+    padding: 12px;
+    align-items: stretch;
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > * { margin: 0; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-perf-section { grid-area: perf; padding-top: 10px; padding-bottom: 10px; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .lt-selfrate-block { grid-area: self; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-achievements { grid-area: ach; padding-top: 10px; padding-bottom: 10px; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-btns { grid-area: btn; }
+/* B3「存錢達人」有存錢目標時多兩塊（目標清單＋統計列）：整列放在學習成果下面、按鈕上面 */
+html:is(.tablet-land, .desk-wide) .b-res-container:has(> .b3-res-goals) {
+    grid-template-areas: "perf stats" "self ach" "goals goals" "gsum gsum" "btn btn";
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-res-goals { grid-area: goals; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-goal-summary { grid-area: gsum; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-res-goals { padding: 6px 12px; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-res-goals h3 { margin: 0 0 4px; font-size: 1em; }
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-res-goals .b3-goal-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 10px;
+    max-height: 96px;   /* 題數多時清單在框內捲，不撐高整頁 */
+    overflow-y: auto;
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-res-goals .b3-goal-row {
+    margin: 0;
+    padding: 2px 10px;
+    zoom: 0.62;
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b3-goal-summary { zoom: 0.9; margin: 0; }
+html:is(.tablet-land, .desk-wide) .b-res-container:has(> .b3-res-goals) { zoom: 0.88; }
+@media (max-height: 700px) {
+    html:is(.tablet-land, .desk-wide) .b-res-container:has(> .b3-res-goals) { zoom: 0.8; }
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-grid {
+    grid-area: stats;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;   /* B3 行內寫死 1fr 1fr */
+    grid-auto-rows: 1fr;
+    gap: 8px;
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-grid > .b-res-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-grid > .b-res-card > * { margin: 0; }
+html:is(.tablet-land, .desk-wide) .b-res-perf-section .b-res-mascot { width: 84px; height: 84px; }
+
+/* 結算頁（2026-10-03 使用者定）：學生自評的內容在框內垂直置中 */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .lt-selfrate-block,
+html:is(.tablet-land, .desk-wide) .b-res-container > .lt-selfrate-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+/* 右欄統計只有兩張卡（A 系列 完成題數／完成時間、B3）→ 左右並排、佔滿右上空間，卡內恢復上下排（圖示→標題→數字） */
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .results-grid:not(:has(> :nth-child(3))),
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-grid:not(:has(> :nth-child(3))) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container > .results-grid:not(:has(> :nth-child(3))) > .result-card,
+html:is(.tablet-land, .desk-wide) .b-res-container > .b-res-grid:not(:has(> :nth-child(3))) > .b-res-card {
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 結算頁 iPad mini（高 674）：A1／A4／A6 差 2～24px → 留白與角色圖再收一點 */
+@media (max-height: 700px) {
+    html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-wrapper,
+    html:is(.tablet-land, .desk-wide) .b-res-wrapper { padding-top: 6px; padding-bottom: 6px; }
+    html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-screen,
+    html:is(.tablet-land, .desk-wide) .b-res-screen { padding-top: 8px; padding-bottom: 8px; }
+    html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .performance-section .results-mascot-img,
+    html:is(.tablet-land, .desk-wide) .b-res-perf-section .b-res-mascot { width: 64px; height: 64px; }
+    html:is(.tablet-land, .desk-wide) :is(.c-series, .f-series, .a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-container,
+    html:is(.tablet-land, .desk-wide) .b-res-container { row-gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+}
+
+/* =====================================================================
+   桌面寬螢幕也用上面這套結算頁兩欄排法（2026-10-05 使用者定）：
+   上面「C／F／A 系列結果頁」與「B 系列測驗總結頁」兩節的選擇器都是 html:is(.tablet-land, .desk-wide)，
+   desk-wide 由 js/tablet-layout.js 判斷（不是平板、視窗寬 ≥ 1200、高 ≥ 600）；遊戲畫面的平板規則不受影響。
+   空白多就放大、內容多就縮小：由 tablet-layout.js 的 fitSummary() 量總結卡片實際大小，直接在卡片上設 zoom（0.8～1.35）。
+   ===================================================================== */
+/* 結算頁垂直置中（2026-10-05 使用者定）：C／F 系列的外框本來就置中，A 系列 .results-wrapper 與 B 系列 .b-res-wrapper
+   是 align-items:flex-start（靠上）→ 平板與寬螢幕桌面統一置中。外框有 min-height＝一整個畫面，內容比畫面高時外框會跟著長高，不會被裁掉。 */
+html:is(.tablet-land, .desk-wide) :is(.a1-unit, .a2-unit, .a3-unit, .a4-unit, .a5-unit, .a6-unit) .results-wrapper,
+html:is(.tablet-land, .desk-wide) .b-res-wrapper {
+    align-items: center;
+}
+
+/* =====================================================================
+   F2 測驗頁（2026-10-03）：數物品（20～30 個時 #item-area 518px）＋下方作答區（普通三選一／困難輸入），
+   點完物品後作答區出現 → 897～990px。順序本來就由上而下，平板版物品區縮小、留白收緊。
+   ===================================================================== */
+html.tablet-land .f2-unit .unified-task-frame {
+    margin: 8px 14px;
+    padding: 10px;
+}
+html.tablet-land .f2-unit #item-area {
+    zoom: 0.62;
+}
+html.tablet-land .f2-unit #options-area {
+    margin-top: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .f2-unit #options-area .products-grid {
+    padding: 4px 0;
+}
+
+/* =====================================================================
+   F3 測驗頁（2026-10-03）：物品區 → 提示列 → 放置區 → 題目數字（大字 147px）→ 完成，10～20 個時 944～971px。
+   平板版照定則改成 題目數字在最上 → 物品區 → 提示列 → 放置區 → 完成（.game-content 本來就是 flex column，用 order）；
+   題目數字縮小、物品等比縮小、留白收緊。
+   ===================================================================== */
+html.tablet-land .f3-unit .game-content {
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .f3-unit .game-content > * { margin-top: 0; margin-bottom: 0; }
+html.tablet-land .f3-unit .game-content > #prompt-area { order: 1; padding-top: 6px; padding-bottom: 6px; }
+html.tablet-land .f3-unit .game-content > #item-source-area { order: 2; }
+html.tablet-land .f3-unit .game-content > .hint-container { order: 3; }
+html.tablet-land .f3-unit .game-content > :is(#placement-area, .placement-wrapper) { order: 4; }
+html.tablet-land .f3-unit .game-content > #completion-area { order: 5; }
+html.tablet-land .f3-unit #prompt-area .prompt-numeral {
+    zoom: 0.5;
+}
+html.tablet-land .f3-unit #item-source-area {
+    zoom: 0.7;
+}
+html.tablet-land .f3-unit .game-content > .hint-container {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+html.tablet-land .f3-unit .game-content > :is(#placement-area, .placement-wrapper) {
+    zoom: 0.75;   /* 簡單模式的放置格兩排 80px，iPad mini 也要放得下 */
+}
+
+/* =====================================================================
+   F4 測驗頁（2026-10-03）：本來就放得下一個畫面；但普通／簡單排 20 個數字時，答案格一整排
+   （.answer-container，nowrap＋overflow hidden）比框還寬，兩端的格子被切掉、拖不到 → 平板版換行排兩列。
+   ===================================================================== */
+html.tablet-land .f4-unit .answer-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+}
+
+/* =====================================================================
+   F5 測驗頁（2026-10-03）：A組 vs B組 左右比較（本來就是左右，保留）。
+   ⚠️ 物品格是寫死 10 欄的 grid（約 659px 最小寬），範圍最大時兩組各 679px，B組被 .comparison-area 切掉一半
+   （桌面 1280 寬也一樣，是既有問題，桌面版未改）→ 平板版欄寬可縮、兩組平分；題目列與數字收小，整頁放進一個畫面。
+   ===================================================================== */
+html.tablet-land .f5-unit .quantity-group {
+    min-width: 0;
+}
+html.tablet-land .f5-unit .objects-container {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 4px;
+    min-width: 0;
+}
+html.tablet-land .f5-unit .game-content {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+html.tablet-land .f5-unit #question-prompt-area {
+    zoom: 0.75;
+    margin-bottom: 4px;
+}
+html.tablet-land .f5-unit .quantity-display {
+    zoom: 0.7;
+}
+html.tablet-land .f5-unit #comparison-area {
+    margin-top: 6px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    zoom: 0.86;   /* F5 是點選作答（不拖曳），整塊縮一點，iPad mini 也放得下 */
+}
+
+/* =====================================================================
+   F6 測驗頁（2026-10-03）：簡單／普通的合成（左＋右 → 下方目標）與分解，本來就由上而下，
+   數字範圍最大時物品多（合成 931px、分解 673px）→ 平板版整塊等比縮小、箭頭列收矮。困難模式本來就放得下，不動。
+   ===================================================================== */
+html.tablet-land .f6-unit .easy-composition-container {
+    zoom: 0.64;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+html.tablet-land .f6-unit .easy-decomposition-container {
+    zoom: 0.88;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+/* =====================================================================
+   A1 測驗頁（2026-10-03）：販賣機（左：14 種飲料格 815px＋取物口 200px）＋右側控制面板，本來就左右並排（擬真機台，保留）；
+   第 9 代 iPad 高 1159px → 飲料格與取物口等比縮小、控制面板等比縮小，整台放進一個畫面。
+   A1 不載入 ai-theme.css，樣式全在 a1_vending_machine.css 與 JS 內嵌 <style>。
+   ===================================================================== */
+html.tablet-land .a1-unit .main-content-wrapper {
+    align-items: flex-start;
+}
+html.tablet-land .a1-unit #productGrid {
+    zoom: 0.66;
+}
+html.tablet-land .a1-unit #retrievalBin {
+    zoom: 0.7;
+}
+/* 右側控制面板（購買任務／投入金額／請投幣／退幣／退幣口／按鈕）收窄，讓左邊販賣機寬一點（2026-10-03 使用者定） */
+html.tablet-land .a1-unit .control-panel {
+    zoom: 0.74;
+    height: auto;
+    flex: 0 0 230px;
+}
+
+/* =====================================================================
+   A2 測驗頁（2026-10-03）：售票機本來就三欄（紙鈔／硬幣入口｜螢幕｜票券出口，擬真機台，保留）；
+   中間螢幕的內容（金額＋6 張服務卡兩排，778px）超出畫面，#app 內要捲 → 螢幕內容等比縮小。
+   ===================================================================== */
+html:is(.tablet-land, .desk-wide) .a2-unit .kiosk-body {   /* 桌面：整台機器由 tablet-layout.js 的 fitQuiz 縮放，min-height:100vh 不拿掉會跟著放大、一定超出 */
+    min-height: 0;
+}
+html.tablet-land .a2-unit #screen-content > * {
+    zoom: 0.72;
+}
+
+/* =====================================================================
+   A3 測驗頁（2026-10-03）：點餐機本來就左（菜單）右（我的訂單）兩欄（保留）。
+   菜單原設計每頁 10 項＝5 欄 × 2 列，但 1080 寬會命中 a3 的響應式規則變成 2 大欄 → 一頁 1438px 要捲 →
+   平板版恢復 5 欄、卡片等比縮小。
+   ===================================================================== */
+html.tablet-land .a3-unit #item-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    zoom: 0.85;
+}
+
+/* A3 步驟1 困難／普通「指定餐點」彈窗：原本四類上下疊、彈窗內要捲 → 平板版加寬成 2×2 */
+html.tablet-land .a3-unit .hard-modal-content {
+    max-width: 980px !important;
+    width: 94% !important;
+    max-height: 92dvh !important;
+    padding: 18px 24px !important;
+}
+html.tablet-land .a3-unit .hard-modal-header { margin-bottom: 12px !important; }
+html.tablet-land .a3-unit .hard-modal-header > span { font-size: 1.8em !important; }
+html.tablet-land .a3-unit .hard-modal-body {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px !important;
+}
+html.tablet-land .a3-unit .hard-modal-btn { margin-top: 14px !important; }
+
+/* A3 步驟2・訂單明細：容器原本 min-height:100vh＋上下 40px 留白 → 收成一個畫面 */
+html.tablet-land .a3-unit .mcdonalds-container:has(#counter-payment-btn) { min-height: 0 !important; height: 100dvh; }
+html.tablet-land .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div {
+    padding: 16px !important;
+    zoom: 0.86;
+}
+
+/* A3 步驟3・付款：付款區卡片只佔需要的高度，剩下全給錢包（原本兩張卡片各半、錢包要內捲） */
+html.tablet-land .a3-unit .mcdonalds-container:has(.a3-pay-main) { min-height: 0 !important; height: 100dvh; }
+html.tablet-land .a3-unit .a3-pay-main { min-height: 0; padding: 14px !important; gap: 14px !important; }
+html.tablet-land .a3-unit .a3-pay-left { gap: 14px !important; }
+html.tablet-land .a3-unit .a3-pay-card { padding: 16px 20px !important; }
+html.tablet-land .a3-unit .a3-pay-left > .a3-pay-card:first-child { flex: none !important; }
+
+/* A3 步驟5・找零：兩張卡片上下疊（保留），留白收緊＋等比縮小 */
+html.tablet-land .a3-unit .mcdonalds-container:has(#store-change-area) { min-height: 0 !important; height: 100dvh; }
+html.tablet-land .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div {
+    padding: 14px 20px !important;
+    zoom: 0.78;
+}
+
+/* A3 步驟6・點餐完成：直長一張卡（1180px）→ 平板版加寬成左（感謝＋號碼＋取餐鈕）右（交易明細） */
+html.tablet-land .a3-unit #app > .mcdonalds-title-bar + div:has(#dynamic-order-number) {
+    min-height: 0 !important;
+    padding: 16px 20px !important;
+}
+html.tablet-land .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) {
+    max-width: 1000px !important;
+    padding: 20px 28px !important;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-content: start;
+    zoom: 0.9;
+}
+html.tablet-land .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) > div:has(> h3) {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    margin: 0 !important;
+}
+
+/* A3 取餐畫面：同上，左（備妥＋號碼＋按鈕）右（餐盤＋明細） */
+html.tablet-land .a3-unit .pickup-complete-wrapper { min-height: 0 !important; height: 100dvh; padding: 14px !important; }
+html.tablet-land .a3-unit .pickup-complete-screen {
+    max-width: 1000px !important;
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    column-gap: 28px;
+    align-content: start;
+    align-items: start;
+}
+html.tablet-land .a3-unit .pickup-complete-screen > .order-content-container { grid-column: 2; grid-row: 1 / span 2; margin: 0 !important; }
+
+/* A3 13 吋：寬度 > 1200 時 a3 原本的 .mcdonalds-body 是 height:100vh，再加上標題列就多出 71px 要捲 → 扣掉標題列。
+   iPad mini（高 674）再縮一點 */
+@media (min-width: 1201px) {
+    html.tablet-land .a3-unit .mcdonalds-body { height: calc(100dvh - 72px); }
+}
+@media (max-height: 700px) {
+    html.tablet-land .a3-unit #item-grid { zoom: 0.78; }
+    html.tablet-land .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div { zoom: 0.8; }
+    html.tablet-land .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div { zoom: 0.7; }
+    html.tablet-land .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) { zoom: 0.84; }
+}
+
+/* ============================================================
+   A4 測驗頁（2026-10-03）
+   ============================================================ */
+/* 第三步・付錢：購買的物品 → 付款區 → 錢包 由上而下（保留），三塊都收緊留白 */
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) .unified-task-frame { margin: 8px 20px !important; padding: 8px 20px !important; }
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) .selected-item-display { padding: 4px !important; }
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) .item-task-text img { width: 72px !important; height: 72px !important; }
+html.tablet-land .a4-unit .payment-selection-area { margin: 4px 20px !important; }
+html.tablet-land .a4-unit .payment-area { padding: 10px 20px !important; }
+html.tablet-land .a4-unit .payment-info-display-top { margin: 0 auto 8px auto !important; padding: 4px !important; }
+html.tablet-land .a4-unit .payment-zone { padding: 8px !important; margin-bottom: 8px !important; }
+html.tablet-land .a4-unit .payment-hints { margin: 0 !important; }
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) .wallet-content { padding: 8px 20px !important; }
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) > .payment-selection-area,
+html.tablet-land .a4-unit .store-layout:has(.payment-zone) > .wallet-area-top { zoom: 0.82; }
+
+/* 第四步・找零（簡單）：店家找零 → 找零金額 → 我的錢包 由上而下（保留），等比縮小 */
+html.tablet-land .a4-unit .store-layout:has(> .change-targets-container) > :not(.title-bar) { zoom: 0.84; }
+
+/* 第四步・計算找零（困難）：計算機原本絕對定位在卡片右側（left: 50% + 270px），1080 寬會超出畫面右緣被切掉
+   → 平板版照全站計算機規則：固定在標題列下方右上角、最上層，蓋在內容上，頁面不縮 */
+html.tablet-land .a4-unit .calculation-scene-container { zoom: 0.92; }
+html.tablet-land .a4-unit .calculation-scene-container .calculator-area {
+    position: fixed !important;
+    left: auto !important;
+    right: 16px;
+    top: 116px;
+    z-index: 9600;
+}
+
+/* 第一步「購買任務」彈窗：商品卡與任務說明改左右並排（原本上下疊，彈窗 80vh 內要捲）；A1 同一個彈窗結構（2026-10-03 一併套用） */
+html.tablet-land :is(.a1-unit, .a4-unit) .target-item-modal .modal-content { max-width: 680px; max-height: 92dvh; }
+html.tablet-land :is(.a1-unit, .a4-unit) .target-item-modal .modal-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+}
+html.tablet-land :is(.a1-unit, .a4-unit) .target-item-modal .task-instruction,
+html.tablet-land :is(.a1-unit, .a4-unit) .target-item-modal .target-item-display { margin: 0; }
+
+/* A4 iPad mini（高 674）再縮一點 */
+@media (max-height: 700px) {
+    html.tablet-land .a4-unit .store-layout:has(> .product-selection-area) > :not(.title-bar) { zoom: 0.92; }
+    html.tablet-land .a4-unit .store-layout:has(.payment-zone) > .payment-selection-area,
+    html.tablet-land .a4-unit .store-layout:has(.payment-zone) > .wallet-area-top { zoom: 0.72; }
+    html.tablet-land .a4-unit .store-layout:has(> .change-targets-container) > :not(.title-bar) { zoom: 0.77; }
+    html.tablet-land .a4-unit .store-layout:has(.a4c-task-frame) > .title-bar + div { zoom: 0.88; }
+    html.tablet-land .a4-unit .calculation-scene-container { zoom: 0.83; }
+}
+
+/* ============================================================
+   A5 測驗頁（2026-10-03）：ATM 機台（左卡片口｜中螢幕｜右明細表口，下方現金出口）是擬真機台，排法保留；
+   整台 979px 高、右欄還超出右緣 → 去掉外圍留白後整台等比縮小放進一個畫面（同 A1／A2 做法）
+   ============================================================ */
+html.tablet-land .a5-unit .atm-container { min-height: 0; padding: 6px 0; }
+html.tablet-land .a5-unit .atm-body { min-height: 0; padding: 0 16px; }
+html.tablet-land .a5-unit .atm-main-frame { zoom: 0.66; }
+/* 「您的現金」彈窗：原本 600px 寬、紙鈔一排 3 張、彈窗內要捲 → 加寬、留白收緊 */
+html.tablet-land .a5-unit .cash-modal-content { max-width: 940px; width: 92%; }
+html.tablet-land .a5-unit .cash-modal-content .modal-body { padding: 12px 24px 20px !important; max-height: 82dvh !important; }
+@media (max-height: 700px) {
+    html.tablet-land .a5-unit .atm-main-frame { zoom: 0.6; }
+    html.tablet-land .a5-unit .cash-modal-content { zoom: 0.9; max-height: none !important; }
+    html.tablet-land .a5-unit .cash-modal-content .modal-body { max-height: none !important; padding: 8px 20px 12px !important; }
+}
+/* 整台縮小後螢幕裡的數字鍵只剩約 40×26px，手指按不準 →
+   左右兩欄（卡片口／明細表口，下方大多是空的）收窄、螢幕變寬，
+   輸入密碼／輸入金額改成「左：標題與輸入框｜右：數字鍵」，數字鍵放大 */
+html.tablet-land .a5-unit .atm-upper-section { grid-template-columns: 210px 1fr 210px; }
+html.tablet-land .a5-unit :is(.screen-pin-entry, .screen-amount-entry) { flex-direction: row; align-items: center; }
+html.tablet-land .a5-unit :is(.screen-pin-entry, .screen-amount-entry) > .screen-keypad {
+    border-top: none;
+    zoom: 1.4;
+}
+
+/* ============================================================
+   A6 測驗頁（2026-10-03）：左（站務員）右（對話框＋售票窗內容）兩欄保留，
+   外圍留白收緊；內容超高的步驟再等比縮小（依步驟內容用 :has 分辨）
+   ============================================================ */
+html.tablet-land .a6-unit .ticket-window-combined { margin: 0 auto; padding: 10px 20px; }
+html.tablet-land .a6-unit .ticket-window-combined .right-section { gap: 10px; }
+html.tablet-land .a6-unit .ticket-window-combined .npc-dialogue-box { padding: 10px 20px; }
+html.tablet-land .a6-unit .ticket-window-content { padding: 12px 20px; }
+/* 第五步・付款：票價 → 付款區 → 確認付款 → 錢包 由上而下（保留） */
+html.tablet-land .a6-unit .ticket-window-content:has(#payment-area) > * { zoom: 0.8; }
+/* 第六步・找零：店家找零 → 我的錢包 */
+html.tablet-land .a6-unit .ticket-window-content:has(.easy-change-source) > * { zoom: 0.9; }
+/* 第七步・拿取車票：車票 480px 高 */
+html.tablet-land .a6-unit .ticket-window-content:has(.train-ticket) > * { zoom: 0.76; }
+/* 困難・計算找零：計算機與 A4 同一套（絕對定位在卡片右側，1080 寬會被切掉）→ 固定在標題列下方右上角、最上層 */
+html.tablet-land .a6-unit .calculation-scene-container { zoom: 0.92; }
+html.tablet-land .a6-unit .calculation-scene-container .calculator-area {
+    position: fixed !important;
+    left: auto !important;
+    right: 16px;
+    top: 100px;
+    z-index: 9600;
+}
+@media (max-height: 700px) {
+    html.tablet-land .a6-unit .ticket-window-combined { zoom: 0.9; }
+}
+
+/* C6 步驟一 iPad mini：確認付款移到錢包下方後（2026-10-03）錢包卡被擠掉 22～44px → 再縮一點 */
+@media (max-height: 700px) {
+    html.tablet-land .c6-unit .c6-step1-container .item-info-compact { zoom: 0.5; }
+    html.tablet-land .c6-unit .c6-step1-container :is(#payment-drop-zone, #wallet-container) { zoom: 0.62; }
+}
+
+/* =====================================================================
+   一日金錢冒險（adventure/，2026-10-03 使用者要 iPad 版）
+   ★ 主要靠 adventure.js 檔尾的自動縮放：平板版每換一個畫面量一次內容高，太矮就放大填滿（最多 1.45）、
+     太高就縮小到一個畫面（最少 0.68）——各關卡本來是 600px 的手機卡片，iPad 上只佔中間一小塊。
+   這裡只處理「縮到 0.68 還放不下」的兩個畫面：首頁（含準備頁）與結算頁，改成橫向較寬、較矮的排法。
+   ===================================================================== */
+/* 首頁：地圖圖示＋標題＋副標同一列；金隊長卡六個角色排一行 */
+html.tablet-land .adv-home-card { padding-top: 14px; padding-bottom: 14px; }
+html.tablet-land .adv-home-card > .adv-logo { font-size: 40px; margin: 0; }
+html.tablet-land .adv-home-card > .adv-title { margin: 0; }
+html.tablet-land .adv-home-card > .adv-sub { margin: 2px 0 10px; }
+html.tablet-land .adv-hero-card .adv-char-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+html.tablet-land .adv-hero-card .adv-co-circle { width: 56px; height: 56px; font-size: 26px; }
+html.tablet-land .adv-settings { padding-top: 10px; padding-bottom: 10px; }
+
+/* 結算頁：比照 24 單元結算頁排法（使用者定；2026-10-05 起桌面寬螢幕 desk-wide 也套用，倍率由 adventure.js 的自動縮放負責）——
+   左上 金博士講評、左下 學生自評；右上 三張統計卡、右下 今天的七項金錢技能（＝學習成果）；按鈕整列在底 */
+html:is(.tablet-land, .desk-wide) .adv-victory { padding-top: 10px; padding-bottom: 10px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap {
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "tro tro" "tit tit" "sub sub" "enc stats" "self sum" "btn btn";
+    column-gap: 16px;
+    align-items: stretch;
+}
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-v-trophy { grid-area: tro; font-size: 48px; margin: 0; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-v-title { grid-area: tit; margin: 0 0 2px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-v-sub { grid-area: sub; margin: 0 0 10px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-encourage { grid-area: enc; margin: 0 0 10px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-v-stats { grid-area: stats; margin: 0 0 10px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .lt-selfrate-block {
+    grid-area: self;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-sum-block { grid-area: sum; margin: 0; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-btn-row { grid-area: btn; margin-top: 10px; }
+html:is(.tablet-land, .desk-wide) .adv-v-card-wrap > .adv-encourage .adv-encourage-hero { height: 110px; }
+/* 導覽列多捲一截的問題：2026-10-03 改在 adventure/index.html 一併修（桌面版也要），這裡不再另寫 */
+
+/* =====================================================================
+   生活情境對話（dialogue/，2026-10-03 使用者要 iPad 版；桌面版不動）
+   範圍：首頁、練習頁、完成頁。⚠️ 情境設定頁（難度／範圍／作答方式）與選擇情境（含新建／編輯）頁
+   使用者說先不動。
+   ===================================================================== */
+/* 練習頁：原本一欄（店員＋商品圖＋任務 → 作答區 → 作答方式）760px 寬，很多步驟 900～1300px 要捲 →
+   平板版左右兩欄：左＝店員、店員的話、商品圖、你的任務（與提示）；右＝作答區（麥克風／選項／打字／跟讀）＋作答方式，兩欄都垂直置中。
+   （2026-10-03 曾把任務框搬到右欄上方，使用者看過後改回這個配置。） */
+html.tablet-land #screen-practice.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+html.tablet-land #screen-practice > .app-header { grid-column: 1 / -1; }
+html.tablet-land #screen-practice > .practice-main,
+html.tablet-land #screen-practice > .practice-footer {
+    max-width: none;
+    margin: 0;
+    width: auto;
+    min-height: 0;
+    overflow-y: auto;   /* 真的放不下時在欄內捲，標題列不跟著跑 */
+}
+html.tablet-land #screen-practice > .practice-main { grid-column: 1; padding: 16px 12px 16px 24px; gap: 12px; }
+/* 右欄：作答區 → 作答方式 緊湊成一組、垂直置中，跟左欄對齊（2026-10-03 使用者定） */
+html.tablet-land #screen-practice > .practice-footer { grid-column: 2; padding: 16px 24px 16px 12px; justify-content: center; gap: 16px; }
+html.tablet-land #screen-practice > .practice-main { justify-content: center; }
+/* 商品圖：單張 300 → 220，左欄才放得下店員＋圖＋任務 */
+html.tablet-land #screen-practice .step-image-card:not(.multi):not(.many):not(.equation) { width: 248px; }
+html.tablet-land #screen-practice .step-image-card:not(.multi):not(.many):not(.equation) img { max-width: 220px; }
+@media (max-height: 700px) {
+    html.tablet-land #screen-practice .step-image-card:not(.multi):not(.many):not(.equation) { width: 208px; }
+    html.tablet-land #screen-practice .step-image-card:not(.multi):not(.many):not(.equation) img { max-width: 180px; }
+}
+/* 完成頁：比照 24 單元結算頁排法（使用者定；2026-10-05 起桌面寬螢幕 desk-wide 也套用，倍率由 js/tablet-layout.js 的 fitSummary 負責）——獎盃＋標題同一列；
+   左：金好聊講評 → 獎勵提示 → 學生自評；右：三張統計卡 → 每一步的表現（＝學習成果，步驟多時框內捲）；推薦與按鈕整列在底 */
+html:is(.tablet-land, .desk-wide) #screen-complete .complete-wrap { padding: 12px 20px; max-width: none; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-card {
+    max-width: 1020px;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: 10px;
+    padding-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    column-gap: 14px;
+}
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-trophy { font-size: 44px; margin: 0; }
+html:is(.tablet-land, .desk-wide) #screen-complete .complete-title { margin: 0; }
+html:is(.tablet-land, .desk-wide) #screen-complete .complete-stars { min-height: 0; margin: 0; font-size: 2rem; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-card > :not(.dlg-result-trophy):not(.complete-title):not(.complete-stars) { flex-basis: 100%; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 10px;
+    align-items: start;
+    margin-top: 6px;
+}
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > * { margin: 0; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .complete-encourage { grid-column: 1; grid-row: 1; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .complete-reward    { grid-column: 1; grid-row: 2; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .dlg-selfrate-block { grid-column: 1; grid-row: 3; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .dlg-stat-grid      { grid-column: 2; grid-row: 1; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .dlg-summary-block {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+    max-height: 330px;
+    overflow-y: auto;
+}
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > :is(.complete-recommend, .complete-actions) { grid-column: 1 / -1; }
+html:is(.tablet-land, .desk-wide) #screen-complete .complete-hero { height: 110px; width: auto; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .dlg-selfrate-block {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .complete-reward:empty { display: none; }
+html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner:has(> .complete-reward:empty) > .dlg-selfrate-block { grid-row: 2 / span 2; }
+@media (max-height: 700px) {
+    html:is(.tablet-land, .desk-wide) #screen-complete .dlg-result-inner > .dlg-summary-block { max-height: 270px; }
+    html:is(.tablet-land, .desk-wide) #screen-complete .complete-hero { height: 90px; }
+}
+/* 首頁：標題＋雙角色卡＋七部分頁籤＋六張場所卡（3×2）上下疊高 1084px →
+   平板版標題列收緊、雙角色卡縮短、部分頁籤排成一列八個、場所卡等比縮小，
+   一個部分的六個場所一個畫面看得完（自訂情境多的時候照常往下捲） */
+html.tablet-land #screen-home > .home-header { padding-top: 4px; padding-bottom: 0; }
+html.tablet-land #screen-home > .home-header h1 { margin: 0; }
+html.tablet-land #screen-home > .home-duo { zoom: 0.72; margin-top: 4px; }
+html.tablet-land #screen-home > .home-parts-wrap { max-width: 1040px; margin-top: 8px; padding: 6px; }
+html.tablet-land #screen-home .home-parts { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+html.tablet-land #screen-home .home-parts > * { font-size: 0.72rem; padding-left: 2px; padding-right: 2px; }
+/* 場所卡（2026-10-03 使用者提議）：「開始練習」移到店名與「8 種情境」同一列、字縮小 → 卡片變矮，縮放可以少一點 */
+html.tablet-land #screen-home .scenario-card.has-scene .card-content {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+}
+/* 由左至右同一列（使用者定）：店名 →「8 種情境」緊接在店名後面（靠左）→ 開始練習在剩下的空間水平置中；
+   字縮小，最長的店名（車廂禮儀與求助）也放得下 */
+html.tablet-land #screen-home .card-title-row {
+    flex: none; width: auto; min-width: 0; padding: 0; gap: 6px; min-height: 0;
+}
+html.tablet-land #screen-home .card-title-row .card-steps { position: static; transform: none; font-size: 0.68rem; gap: 2px; white-space: nowrap; }
+html.tablet-land #screen-home .card-name { font-size: 1rem; white-space: nowrap; line-height: 1.25; }
+html.tablet-land #screen-home .scenario-card.has-scene .card-badge { margin: 0 auto; flex: none; font-size: 0.68rem; padding: 3px 8px; white-space: nowrap; }
+html.tablet-land #screen-home > #scenario-grid { zoom: 0.86; padding-top: 18px; padding-bottom: 4px; row-gap: 22px; }
+@media (max-height: 700px) {
+    html.tablet-land #screen-home > .home-duo { zoom: 0.62; }
+    html.tablet-land #screen-home > #scenario-grid { zoom: 0.76; }
+}
+@media (min-height: 900px) {
+    html.tablet-land #screen-home > #scenario-grid { zoom: 0.9; }
+}
+/* 場所卡一律三等分寬：店名長（火車站售票口、悠遊卡服務台）的卡片原本會撐寬，第二列只排得下兩張 */
+html.tablet-land #screen-home > #scenario-grid > .scenario-card-wrap { flex: 0 0 calc((100% - 32px) / 3); width: auto; min-width: 0; max-width: none; }
+html.tablet-land #screen-home > #scenario-grid > .scenario-card-wrap .card-content { min-width: 0; }
+
+/* =====================================================================
+   站台主頁（index.html）金隊長模式：24 單元（2026-10-03 使用者要 iPad 版；桌面版不動）
+   標題＋角色卡輪播＋四部分頁籤＋六張單元卡（3×2）高 1012px →
+   各塊留白收緊、輪播與單元卡等比縮小，一個部分的六個單元一個畫面看得完。
+   以 #tabs-main 認主頁（.container／.tabs 這些 class 名別的頁面也有）。
+   ===================================================================== */
+html.tablet-land body:has(#tabs-main) .container { padding: 8px 20px 6px; max-width: 1040px; }
+html.tablet-land body:has(#tabs-main) .page-header { margin-bottom: 10px; }
+html.tablet-land body:has(#tabs-main) .page-header h1 { font-size: 2.1em; margin: 0 0 6px; }
+html.tablet-land body:has(#tabs-main) .hero-carousel { zoom: 0.8; }
+html.tablet-land body:has(#tabs-main) #tabs-main { margin-bottom: 10px; zoom: 0.88; }
+html.tablet-land body:has(#tabs-main) .tab-content .unit-grid { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html.tablet-land body:has(#tabs-main) .tab-content .unit-btn { padding: 8px 18px; }
+html.tablet-land body:has(#tabs-main) .site-credits { margin: 6px 0 0; }
+@media (max-height: 700px) {
+    html.tablet-land body:has(#tabs-main) .hero-carousel { zoom: 0.68; }
+    html.tablet-land body:has(#tabs-main) .page-header h1 { font-size: 1.8em; margin-bottom: 2px; }
+    html.tablet-land body:has(#tabs-main) .tab-content .unit-grid { zoom: 0.9; }
+}
+
+/* =====================================================================
+   角色彈窗（js/hero-modal.js 共用元件：主頁的金隊長／金婆婆／金好聊／金博士／小金探）（2026-10-03 使用者要 iPad 版）
+   原本 420～660px 寬、角色大圖在上面＋內容在下 → 金婆婆的建立學生表單 673px 高，頂端被導覽列（z 10000）蓋住。
+   平板版改橫式：左＝角色圖與說話泡泡，右＝內容（建立學生表單／冒險入口…），並避開上方導覽列。
+   ===================================================================== */
+html.tablet-land .hm-overlay { padding: 64px 24px 16px; }
+/* 角色固定在卡片左半（絕對定位、垂直置中），右半是一般的直排內容、整欄垂直置中 */
+html.tablet-land .hm-card:has(> .hm-head),
+html.tablet-land :is(#doctor-modal, #detective-modal) {
+    position: relative;
+    max-width: 960px;
+    width: 92%;
+    max-height: calc(100dvh - 80px);
+    min-height: 360px;
+    box-sizing: border-box;
+    padding: 28px 32px 28px 352px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+}
+/* 角色一律單獨在左邊、一樣大（240×240，同一個位置）；說話泡泡統一在右欄最上面，
+   左側有一個小角指向角色，像漫畫對話框從角色嘴巴講出來（2026-10-03 使用者定）。
+   共用元件的泡泡原本跟角色包在 .hm-head 裡 → .hm-head 拆掉外框（display: contents），角色圖改絕對定位到左邊、泡泡留在右欄 */
+html.tablet-land .hm-card > .hm-head { display: contents; }
+html.tablet-land .hm-card > .hm-head > .hm-avatar,
+html.tablet-land :is(.modal-doctor-row, .modal-detective-row) > .modal-avatar {
+    position: absolute;
+    left: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 260px !important;
+    height: 260px !important;
+    margin: 0;
+}
+html.tablet-land :is(.hm-card > .hm-head > .hm-avatar, .modal-doctor-row > .modal-avatar, .modal-detective-row > .modal-avatar) img {
+    width: 100% !important; height: 100% !important; object-fit: contain;
+}
+/* 對話框在右欄水平滿版（金博士／小金探原本只有文字寬，2026-10-03 使用者定跟金隊長一樣） */
+html.tablet-land :is(.hm-card > .hm-head > .hm-bubble, #doctor-modal .modal-speech-bubble, #detective-modal .modal-speech-bubble) {
+    align-self: stretch;
+    width: auto;
+    box-sizing: border-box;
+    margin: 0 0 0 10px;
+    max-width: none;
+    text-align: left;
+}
+html.tablet-land :is(#doctor-modal, #detective-modal) .modal-speech-bubble br { display: none; }
+html.tablet-land .hm-card > :not(.hm-head):not(.hm-close) { margin-top: 0; }
+html.tablet-land :is(.modal-doctor-row, .modal-detective-row) { display: block; margin: 0; }
+html.tablet-land :is(#doctor-modal, #detective-modal) .modal-speech-bubble { margin: 0; }
+html.tablet-land :is(#doctor-modal, #detective-modal) > :is(.modal-adventure-card, .modal-games-card) { margin: 0; width: 100%; }
+/* 漫畫式對話框的小角：放大、三個彈窗一樣大（顏色沿用各自泡泡的框線色／底色） */
+html.tablet-land :is(.hm-card > .hm-head > .hm-bubble, #doctor-modal .modal-speech-bubble, #detective-modal .modal-speech-bubble)::before {
+    left: -22px; border-width: 11px;
+}
+html.tablet-land :is(.hm-card > .hm-head > .hm-bubble, #doctor-modal .modal-speech-bubble, #detective-modal .modal-speech-bubble)::after {
+    left: -17px; border-width: 9px;
+}
+html.tablet-land :is(.hm-card > .hm-head > .hm-bubble, #doctor-modal .modal-speech-bubble, #detective-modal .modal-speech-bubble) {
+    font-size: 1rem; padding: 12px 16px;
+}
+
+/* =====================================================================
+   小金探小遊戲（games/g1～g14；g15～g17 凍結不動）（2026-10-03 使用者要 iPad 版；桌面版不動）
+   遊戲在主頁全螢幕彈窗的 iframe 裡跑，可用高度 ＝ 畫面高 − 彈窗標題列 47px（9 代 693、mini 627）。
+   大多本來就放得下；這裡只處理會捲的幾個。
+   ===================================================================== */
+/* g3 超市閃電結帳：原本 ≥768 寬就是「題目左｜選項右」，但 1080 寬會換行成上下兩排 → 平板版不換行 */
+html.tablet-land #game-area:has(> #question-panel + #options-panel) {
+    flex-wrap: nowrap;
+    max-width: 1060px;
+    height: calc(100dvh - 69px);
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 24px;
+}
+html.tablet-land #game-area:has(> #question-panel + #options-panel) > #question-timer-bar {
+    position: absolute; top: 8px; left: 28px; right: 28px; width: auto; max-width: none; margin: 0;
+}
+html.tablet-land #game-area > #question-panel { flex: 1 1 auto; max-width: 600px; margin: 0; min-height: 0; }
+html.tablet-land #game-area > #options-panel  { flex: 0 0 400px; margin: 0; }
+/* g5 數字消消樂：6×8 格（每格 72px，盤面 633px 高）放不進計分列下面 → 盤面等比縮小 */
+html.tablet-land #game-area > #sn-grid { zoom: 0.86; }
+@media (max-height: 660px) { html.tablet-land #game-area > #sn-grid { zoom: 0.76; } }
+@media (min-height: 860px) { html.tablet-land #game-area > #sn-grid { zoom: 1.02; } }
+/* g9 比大小：六張牌（3×2，464px 高）在 mini 超出 31px → 牌區縮一點 */
+@media (max-height: 660px) { html.tablet-land .game-screen > #pool-grid { zoom: 0.9; } }
+/* g13 美味餐點大作戰：選角色頁八張角色卡 2 欄×4 列（692px）→ 平板版 4 欄×2 列 */
+html.tablet-land #ts-char-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1000px; }
+/* g12 猜拳大戰：設定卡（模式 → 電腦難度 → 局數）上下疊 480px 寬，選完難度後 739px → 平板版卡片加寬，模式與難度並排 */
+html.tablet-land .rps-setup-card {
+    max-width: 960px;
+    width: 92%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+    margin-top: 16px;
+}
+html.tablet-land .rps-setup-card > :not(.rps-step) { grid-column: 1 / -1; }
+html.tablet-land .rps-setup-card > #step-rounds { grid-column: 1 / -1; }
+/* g7 貪食蛇：遊戲依「區域高 − 180（方向鍵）」算盤面，但方向鍵實際 216px、區域又比畫面高 → 13 吋多捲 28px。
+   平板版區域高度鎖在畫面內、方向鍵縮到 180px 以內（盤面由遊戲自己依可用空間算，不必另外縮） */
+html.tablet-land #game-area:has(> #snake-canvas) { height: calc(100dvh - 72px); min-height: 0; }
+@media (min-height: 860px) { html.tablet-land #game-area > #dpad { zoom: 0.82; } }
+
+/* =====================================================================
+   桌面寬螢幕測驗頁（desk-wide，2026-10-05 試做 C2、F2）
+   測驗頁有點選／拖曳，不用整頁 zoom（F2 的提示框依 getBoundingClientRect 算位置，zoom 會錯位），
+   改成直接把錢幣／物品放大：尺寸＝min(寬的 x%, 高的 y%)，介於原尺寸與上限之間，視窗越大越大。
+   ===================================================================== */
+/* C2：硬幣 60px → 約 80～100px；紙鈔維持硬幣的 1.5 倍 */
+html.desk-wide .c2-unit #coin-display-area .countable-item img {   /* 要帶 #coin-display-area：c-series.css 的 .c-series #coin-display-area img 有 id，不帶會被蓋掉 */
+    width: clamp(60px, min(6vw, 9.5vh), 100px);
+    height: clamp(60px, min(6vw, 9.5vh), 100px);
+}
+html.desk-wide .c2-unit #coin-display-area .countable-item:is([data-value="100"], [data-value="200"], [data-value="500"], [data-value="1000"], [data-value="2000"]) img {
+    width: clamp(90px, min(9vw, 14.25vh), 150px);
+    height: clamp(90px, min(9vw, 14.25vh), 150px);
+}
+html.desk-wide .c2-unit .countable-item { padding: clamp(10px, 0.9vw, 16px); margin: clamp(5px, 0.5vw, 9px); }
+/* 高度只有 720 上下（1280×720）時兩排硬幣差十幾 px 放不下（原本的硬幣圖是 80×60 扁的，放大後改成正方形）→ 格子內外距收緊 */
+@media (max-height: 760px) { html.desk-wide .c2-unit .countable-item { padding: 7px; margin: 3px; } }
+/* 硬幣框本來寫死最寬 1000px：硬幣放大後一排擠不下 7 枚、多出第三排就要捲 → 跟著放寬 */
+html.desk-wide .c2-unit #coin-display-area { max-width: min(1320px, 94%); }
+/* 普通模式數完後出現三選一（.options-container，每格 140px 高）原本疊在硬幣下面，1280／1536 都要捲（改大硬幣前就是）。
+   2026-10-05 使用者定：桌面寬螢幕改成彈窗，比照困難模式的數字鍵盤浮在畫面中間（只改樣式，iPad 不變）。
+   背景暗幕用超大 box-shadow 做，不擋點擊、也不必多一個元素；寫死白底就一併寫死字色（深色模式規則） */
+html.desk-wide .c2-unit #question-area > .options-container {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9000;
+    margin: 0;
+    padding: 22px 32px 26px;
+    background: #FFFFFF;
+    color: #1E293B;
+    border-radius: 18px;
+    box-shadow: 0 0 0 100vmax rgba(15, 23, 42, 0.45), 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+/* F2：物品是 emoji 文字（3.5rem）→ 約 5～6.5rem；物品多時（16 個以上、24 個以上）收回，作答區才放得下 */
+html.desk-wide .f2-unit #item-area .item { font-size: clamp(3.5rem, min(5.2vw, 9.5vh), 6.5rem); }
+html.desk-wide .f2-unit #item-area:has(> .item:nth-child(16)) .item { font-size: clamp(3.5rem, min(4vw, 7vh), 5rem); }
+html.desk-wide .f2-unit #item-area:has(> .item:nth-child(24)) .item { font-size: 3.5rem; }
+/* 普通模式數完後的三選一（.payment-btn，80×70）跟著放大，才配得上放大後的物品 */
+html.desk-wide .f2-unit #options-area .payment-btn {   /* 要帶 #options-area：單元自己注入的 #options-area .payment-btn 有 id */
+    min-width: clamp(80px, min(7vw, 12vh), 130px);
+    height: clamp(70px, min(6vw, 10.5vh), 110px);
+    font-size: clamp(1.8rem, min(2.6vw, 4.6vh), 2.8rem);
+}
+
+/* C1：四選一的選項格（180×180，硬幣實際只有 80px）與上方題目的錢幣一起放大 */
+html.desk-wide .c1-unit .products-grid.horizontal-layout .product-item {
+    width: clamp(150px, min(15vw, 27vh), 250px);
+    height: clamp(150px, min(15vw, 27vh), 250px);
+    max-width: none;
+    padding: 12px;
+}
+/* 硬幣／紙鈔圖的尺寸在 c-series.css 是讀變數 --u6-coin-size／--u6-banknote-size（那條規則條件多、優先順序高，
+   直接寫 width 蓋不過）→ 在選項區與題目區改變數值，硬幣、紙鈔一起跟著變 */
+html.desk-wide .c1-unit .products-grid {
+    --u6-coin-size: clamp(80px, min(9vw, 16vh), 150px);
+    --u6-banknote-size: clamp(100px, min(11vw, 19.5vh), 190px);
+}
+html.desk-wide .c1-unit #question-area .target-item-display {
+    --u6-coin-size: clamp(80px, min(7vw, 12vh), 120px);
+    --u6-banknote-size: clamp(100px, min(9vw, 15vh), 150px);
+}
+html.desk-wide .c1-unit #question-area .target-item-display img { max-width: none; }
+/* 上下兩張白卡的留白很多（困難模式題目卡 300px 只放一個喇叭和一行字；選項卡上下各 50px）→ 收緊，放大後 1280×720 也放得下
+   （改大之前 1280×720 三種難度就要捲 6～144px） */
+html.desk-wide .c1-unit .unified-task-frame { padding: 14px; margin-top: 12px; margin-bottom: 12px; }
+html.desk-wide .c1-unit #question-area { padding-top: 14px; padding-bottom: 14px; }
+html.desk-wide .c1-unit #question-area .target-item-display { padding: 10px; }
+html.desk-wide .c1-unit #question-area .target-item-display .replay-icon { margin-bottom: 6px; }
+html.desk-wide .c1-unit #question-area .target-item-display .target-hint { margin-top: 6px; padding: 8px; }
+html.desk-wide .c1-unit #options-area { padding: 12px 20px; margin-top: 10px; margin-bottom: 0; }
+html.desk-wide .c1-unit #options-area .products-grid { padding-top: 8px; padding-bottom: 8px; }
+/* F4：數字方塊、拖放空格、困難模式輸入格 60px → 約 80～100px；數字 13 個以上收回原尺寸。
+   空格那排（.answer-container）本來 nowrap，20 個數字時兩端被切到、拖不到（平板版已改換行）→ 桌面同樣換行 */
+html.desk-wide .f4-unit :is(.number-box, .slot, .input-slot) {
+    width: clamp(60px, min(6vw, 10.5vh), 100px);
+    height: clamp(60px, min(6vw, 10.5vh), 100px);
+    min-width: 0;
+    min-height: 0;
+    font-size: clamp(24px, min(2.4vw, 4.2vh), 40px);
+}
+html.desk-wide .f4-unit :is(.number-container, .answer-container, .input-slots):has(> :nth-child(13)) > :is(.number-box, .slot, .input-slot) {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+}
+html.desk-wide .f4-unit .answer-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+}
+
+/* B1／B2 結算回顧頁（.b-review-screen，600px 單欄、改之前 1536×864 就要捲）→ 比照平板版卡片兩兩並排，
+   倍率交給 js/tablet-layout.js 的 fitSummary。只開 B1／B2：B3／B5／B6 的回顧頁另有各自的平板規則，接到時再一起量 */
+html.desk-wide :is(.b1-unit, .b2-unit) .b-review-screen {
+    max-width: 1040px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: start;
+}
+html.desk-wide :is(.b1-unit, .b2-unit) .b-review-screen > :not(.b-review-card) { grid-column: 1 / -1; }
+html.desk-wide :is(.b1-unit, .b2-unit) .b-header + .b-review-wrapper { min-height: calc(100dvh - 72px); padding-bottom: 16px; }
+
+/* B5 派對回顧：外框 min-height:100vh＋下方留白 32px，1280×720 多出 2px 可捲 → 下方留白收一半 */
+html.desk-wide .b5-unit .b-review-wrapper { padding-bottom: 16px; }
+
+/* C6 步驟一付款（2026-10-05 起：不可整頁倍率縮放，商品圖與錢幣放大；2026-10-06 使用者改定：回到原本的垂直排列）：
+   由上而下 商品付款（商品 → 付款區）→ 我的錢包 → 確認付款。商品圖與錢幣依視窗高度，1280×720 也放得下；
+   金額字平常隱藏（js/money-label-hint.js，按提示才出現）。
+   ⚠️ 錢幣尺寸是單元內嵌 <style> 的 `.money-item.coin img{width:50px!important}`＋`.money-item{width:100px;height:100px}`，
+   ai-theme.css 另有 `.money-item img{max-height:60px;max-width:90px}` → 帶 #id＋!important、解除 max */
+html.desk-wide .c6-unit .c6-step1-container { padding: 10px 14px; }
+html.desk-wide .c6-unit .c6-step1-container > * { margin: 0 0 10px; }
+html.desk-wide .c6-unit .c6-step1-container > #c6-confirm-payment { margin: 0 auto; }
+html.desk-wide .c6-unit .c6-step1-container .item-payment-section { padding: 12px 20px 14px; }
+html.desk-wide .c6-unit .c6-step1-container .item-info-compact { margin: 0 0 10px; padding-top: 4px; padding-bottom: 4px; }
+html.desk-wide .c6-unit .c6-step1-container .iic-img img {
+    width: clamp(100px, calc(40vh - 180px), 220px) !important;   /* 720 高 108、864 高 165、1080 高 220 */
+    height: clamp(100px, calc(40vh - 180px), 220px) !important;
+}
+html.desk-wide .c6-unit .c6-step1-container #payment-drop-zone { margin: 0; min-height: 0; padding-top: 10px; padding-bottom: 10px; }
+html.desk-wide .c6-unit .c6-step1-container .wallet-section { padding: 12px 20px 14px; }
+html.desk-wide .c6-unit .c6-step1-container .wallet-section > .section-title { margin-bottom: 10px; }
+html.desk-wide .c6-unit .c6-step1-container #wallet-container { padding: 10px; }
+html.desk-wide .c6-unit .c6-step1-container :is(#wallet-container, #payment-drop-zone) .money-item { width: auto; height: auto; min-height: 0; min-width: 0; padding: 8px; }
+html.desk-wide .c6-unit .c6-step1-container :is(#wallet-container, #payment-drop-zone) .money-item.coin img {
+    width: clamp(50px, min(6.5vw, 10vh), 110px) !important;
+    height: clamp(50px, min(6.5vw, 10vh), 110px) !important;
+}
+html.desk-wide .c6-unit .c6-step1-container :is(#wallet-container, #payment-drop-zone) .money-item.banknote img {
+    width: clamp(100px, min(13vw, 20vh), 220px) !important;
+    max-height: none !important;
+}
+html.desk-wide .c6-unit .c6-step1-container :is(#wallet-container, #payment-drop-zone) .money-item img { max-width: none !important; max-height: none !important; margin-bottom: 0; }
+
+@media (max-height: 760px) {
+    html.desk-wide .c6-unit .c6-step1-container :is(.item-payment-section, .wallet-section) { padding-top: 8px; padding-bottom: 10px; }
+    html.desk-wide .c6-unit .c6-step1-container > * { margin-bottom: 8px; }
+}
+/* C5 付款（同 C6；2026-10-06 回到垂直排列）：購物區（商品 → 目前總額 → 付款區）→ 我的錢包。商品圖與錢幣依視窗高度 */
+html.desk-wide .c5-unit .exchange-section { padding: 12px 20px 14px; }
+html.desk-wide .c5-unit .exchange-section > :is(.section-title, .section-header-with-hint) { margin-bottom: 6px; }
+html.desk-wide .c5-unit .exchange-section > .item-total-container { margin: 0 0 8px !important; }
+html.desk-wide .c5-unit .exchange-section > .current-total-display { margin: 0 auto 8px !important; }
+html.desk-wide .c5-unit .exchange-section > #payment-zone-area { margin: 0; min-height: 0; padding-top: 10px; padding-bottom: 10px; }
+html.desk-wide .c5-unit .item-total-container .item-info-display img {
+    width: clamp(100px, calc(30vh - 80px), 200px) !important;
+    height: clamp(100px, calc(30vh - 80px), 200px) !important;
+}
+html.desk-wide .c5-unit .my-money-section { padding: 12px 20px 14px; }
+html.desk-wide .c5-unit .my-money-section > .section-title { margin-bottom: 10px; }
+html.desk-wide .c5-unit #money-source-area { padding: 10px; min-height: 0; }
+html.desk-wide .c5-unit :is(#money-source-area, #payment-zone-area) .money-item { width: auto; height: auto; min-height: 0; min-width: 0; padding: 8px; }
+html.desk-wide .c5-unit :is(#money-source-area, #payment-zone-area) .money-item img { max-width: none !important; max-height: none !important; margin-bottom: 0; }
+html.desk-wide .c5-unit :is(#money-source-area, #payment-zone-area) .money-item.coin img {
+    width: clamp(50px, min(6.5vw, 10vh), 110px) !important;
+    height: clamp(50px, min(6.5vw, 10vh), 110px) !important;
+}
+html.desk-wide .c5-unit :is(#money-source-area, #payment-zone-area) .money-item.banknote img {
+    width: clamp(100px, min(13vw, 20vh), 220px) !important;
+    height: auto !important;
+}
+
+/* C4（2026-10-05）：兌換區／我的金錢區兩張整寬卡片的留白收緊，錢幣放大（讀 c-series 變數，同 C1）。
+   改之前 1280×720 三種難度都要捲 5～55px；1536×864 下方空一大塊 */
+html.desk-wide .c4-unit :is(.exchange-section, .my-money-section) { padding: 12px 20px; margin-bottom: 10px; }
+html.desk-wide .c4-unit :is(.exchange-section, .my-money-section) > :is(.section-title, .section-header-with-hint) { margin-bottom: 6px; }
+html.desk-wide .c4-unit .exchange-section > .target-amount-display { margin: 4px 0 8px !important; }
+html.desk-wide .c4-unit .exchange-section > .current-total-display { margin: 6px auto 0; }
+/* 各面額大小不同（單元內嵌 style：寬＝70px×比例、高＝50px×比例，帶 !important）→ 保留比例、只把 50px 這個基準放大。
+   寬高變數設很大，讓 max-width／max-height 決定尺寸（跟原本一樣） */
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) {
+    --c4b: clamp(50px, min(4.6vw, 7.8vh), 85px);
+    --u6-coin-size: 400px;
+    --u6-banknote-size: 400px;
+    padding: 10px;
+}
+html.desk-wide .c4-unit #drop-zone-area { min-height: calc(var(--c4b) * 2.2 + 50px); }
+/* 金額大（三、四位數）錢包有 7～12 個 → 基準縮回，一排放得下（改之前這種題目 1280×720 就要捲 200～380px） */
+html.desk-wide .c4-unit:has(#money-source-area > :nth-child(7)) :is(#money-source-area, #drop-zone-area) { --c4b: clamp(36px, min(3vw, 5.6vh), 60px); }
+html.desk-wide .c4-unit:has(#money-source-area > :nth-child(10)) :is(#money-source-area, #drop-zone-area) { --c4b: clamp(34px, min(2.6vw, 5vh), 52px); }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) .money-item { min-height: 0; padding: 8px 10px 26px; }   /* 金額字絕對定位貼底，錢幣變大會壓到字 → 底下留字的高度 */
+html.desk-wide .c4-unit #drop-zone-area .hint-item { min-height: 0; padding: 8px 10px 26px; }
+/* 紙鈔是扁的：框高照紙鈔比例（寬 ÷ 2.1）；硬幣是圓的：框寬＝框高。原本的框是 70×50 的倍數，兩種都留一大塊空白；卡片間距收緊 */
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area, #drop-zone-area .visual-hints) { gap: 6px 10px; }
+html.desk-wide .c4-unit #drop-zone-area .hint-item img { width: 400px !important; height: 400px !important; }   /* 提示格原本固定 60px；由下面各面額的 max 決定大小，跟錢包裡的一樣大 */
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="1000"] img { max-width: calc(var(--c4b) * 3.08) !important; max-height: calc(var(--c4b) * 3.08 / 2.1) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="500"] img { max-width: calc(var(--c4b) * 2.66) !important; max-height: calc(var(--c4b) * 2.66 / 2.1) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="100"] img { max-width: calc(var(--c4b) * 2.52) !important; max-height: calc(var(--c4b) * 2.52 / 2.1) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="50"] img { max-width: calc(var(--c4b) * 2.0) !important; max-height: calc(var(--c4b) * 2.0) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="10"] img { max-width: calc(var(--c4b) * 1.9) !important; max-height: calc(var(--c4b) * 1.9) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="5"] img { max-width: calc(var(--c4b) * 1.8) !important; max-height: calc(var(--c4b) * 1.8) !important; }
+html.desk-wide .c4-unit :is(#money-source-area, #drop-zone-area) :is(.money-item, .hint-item)[data-value="1"] img { max-width: calc(var(--c4b) * 1.7) !important; max-height: calc(var(--c4b) * 1.7) !important; }
+
+/* F1（2026-10-05）：只收緊留白、不放大物品——JS 用固定 90px 算格子寬（itemWidth = 90），改尺寸會對不齊。
+   改之前 1280×720 普通／困難要捲 67px */
+html.desk-wide .f1-unit .correspondence-frame { padding: 12px 20px; }
+html.desk-wide .f1-unit :is(.source-area, .target-area) { padding: 12px 20px; }
+html.desk-wide .f1-unit .target-area { margin-bottom: 0; }
+html.desk-wide .f1-unit :is(.source-area, .target-area, .target-container-bottom) > h3 { margin-bottom: 8px; }
+html.desk-wide .f1-unit .header-with-hint { margin-bottom: 8px; }
+html.desk-wide .f1-unit .target-container-bottom { margin-top: 8px; }
+html.desk-wide .f1-unit .completion-area { margin-top: 10px; }
+
+/* F3（2026-10-05）：留白收緊（提示鈕自己一列，上下各 15px 外距），物品 emoji 與數字依視窗高度放大。
+   改之前 1280×720 三種難度要捲 30～73px */
+html.desk-wide .f3-unit .game-content { padding: 12px 20px; gap: 10px; }
+html.desk-wide .f3-unit .item-source-area { padding: 12px 20px; }
+html.desk-wide .f3-unit .hint-container { margin: 0; padding: 0; }
+html.desk-wide .f3-unit .placement-area { padding: 12px 20px; }
+html.desk-wide .f3-unit .prompt-area { padding: 8px 20px; }
+html.desk-wide .f3-unit .game-content { --f3e: clamp(3.5rem, 7.5vh, 5.5rem); }
+html.desk-wide .f3-unit :is(.source-item, .placed-item, .placement-slot) { font-size: var(--f3e); }
+html.desk-wide .f3-unit .placement-slot { width: calc(var(--f3e) * 1.43); height: calc(var(--f3e) * 1.43); }
+html.desk-wide .f3-unit .prompt-numeral { font-size: clamp(7rem, 18vh, 11rem); }
+
+/* F5（2026-10-05）：留白收緊；物品格寫死 10 欄（最小約 659px），範圍大時 B 組被切掉一半（平板版已修，桌面同樣改欄寬可縮、兩組平分）。
+   物品不放大（10 欄放不下）。改之前 1280×720 簡單／普通要捲 29px。單元內嵌樣式帶 id → 這裡也帶 id */
+html.desk-wide .f5-unit .quantity-group { min-width: 0; }
+html.desk-wide .f5-unit .objects-container { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; min-width: 0; }
+html.desk-wide .f5-unit .game-content.f5-gc { padding-top: 10px !important; padding-bottom: 10px !important; gap: 10px !important; }
+html.desk-wide .f5-unit #question-prompt-area { margin-bottom: 0 !important; }
+html.desk-wide .f5-unit #comparison-area.f5-ca { padding-top: 15px !important; padding-bottom: 15px !important; }
+html.desk-wide .f5-unit .group-label { margin-bottom: 8px !important; }
+html.desk-wide .f5-unit .quantity-display { margin-top: 4px !important; }
+
+/* B6 步驟一採購（2026-10-05，比照平板版）：外框固定一個畫面高、購物區吃剩下的高度，攤位商品格本來就會自己捲；
+   任務卡留白收緊。改之前 1280×720 整頁要捲 135px（購物區寫死 582px 高） */
+html.desk-wide .b6-unit .game-container:has(> .b6-market-checkout-row) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 72px);
+    box-sizing: border-box;
+    padding-bottom: 10px;
+    overflow: hidden;
+}
+html.desk-wide .b6-unit .game-container > .b6-task-card { flex: none; padding-top: 10px; padding-bottom: 8px; }
+html.desk-wide .b6-unit .b6-task-hdr { margin-bottom: 4px; }
+html.desk-wide .b6-unit .b6-stall-checklist { margin-top: 4px; }
+html.desk-wide .b6-unit .b6-budget-bar-wrap { margin-top: 8px; }
+html.desk-wide .b6-unit .game-container > .b6-market-checkout-row { flex: 1; min-height: 0; height: auto; margin-bottom: 0; }
+html.desk-wide .b6-unit .b6-market-card { display: flex; flex-direction: column; min-height: 0; }
+html.desk-wide .b6-unit .b6-stall-panel { flex: 1; min-height: 0; max-height: none; }
+/* 商品圖跟著視窗大小：原本格子 100px、圖 128px（凸出格子）；1920×1080 下方空一半 → 依高度放大，1280×720 略縮 */
+html.desk-wide .b6-unit .b6-products-grid { --b6i: clamp(90px, min(7vw, 13vh), 150px); }
+html.desk-wide .b6-unit .b6-product-btn .b6-product-icon { width: var(--b6i); height: var(--b6i); }
+html.desk-wide .b6-unit .b6-product-btn .b6-icon-img { width: calc(var(--b6i) * 1.28); height: calc(var(--b6i) * 1.28); }
+
+/* B5／B6 步驟三找零（2026-10-05，B5／B6 同步）：面額托盤、錢包裡的錢、淡化提示格的錢依視窗大小放大（原本硬幣 52px、紙鈔 80px，
+   1536×864 下方空一半）。錢包裡兩種格子的圖寬是 JS 行內 style（沒有 !important）→ 這裡用 !important 蓋 */
+html.desk-wide :is(.b5-unit, .b6-unit) { --bcz: clamp(52px, min(5.5vw, 9.5vh), 96px); }
+html.desk-wide :is(.b5c-denom-card, .b6c-denom-card) .coin-img { width: var(--bcz); height: var(--bcz); }
+html.desk-wide :is(.b5c-denom-card, .b6c-denom-card) .banknote-img { width: calc(var(--bcz) * 1.54); height: auto; }
+html.desk-wide :is(.b5c-wc-item, .b6c-wc-item, .b5c-ghost-slot, .b6c-ghost-slot) img { width: var(--bcz) !important; height: var(--bcz) !important; }
+html.desk-wide :is(.b5c-wc-item, .b6c-wc-item, .b5c-ghost-slot, .b6c-ghost-slot) img:is([src*="/100_yuan"], [src*="/500_yuan"], [src*="/1000_yuan"]) { width: calc(var(--bcz) * 1.54) !important; height: auto !important; }
+/* 步驟二付款：我的錢包（托盤）與付款區的錢，原本硬幣 60px／紙鈔 100px，1280×720 維持原尺寸，畫面越高越大 */
+html.desk-wide :is(.b5-unit, .b6-unit) { --bpz: clamp(48px, min(5vw, 8.3vh), 100px); }
+html.desk-wide :is(.b5p2-coin-drag, .b6p2-coin-drag) .coin-img { width: var(--bpz); height: var(--bpz); }
+html.desk-wide :is(.b5p2-coin-drag, .b6p2-coin-drag) .banknote-img { width: calc(var(--bpz) * 1.67); height: auto; }
+html.desk-wide :is(.b5p2-wallet-coin, .b6p2-wallet-coin) img { width: var(--bpz) !important; height: var(--bpz) !important; }
+html.desk-wide :is(.b5p2-wallet-coin, .b6p2-wallet-coin) img:is([src*="/100_yuan"], [src*="/500_yuan"], [src*="/1000_yuan"]) { width: calc(var(--bpz) * 1.67) !important; height: auto !important; }
+
+/* B5（2026-10-05）：原本整區 zoom 0.7～1 縮小，使用者否決「單純倍率」→ 改成比照平板版排版、圖依視窗大小。
+   步驟一選購：外框固定一個畫面高（原本 1001px），購物區吃剩下的高度、商品格在格內自己捲；外框放寬（原本寫死 1100px）；
+   採購任務卡商品圖（128px）依視窗高度縮放。 */
+html.desk-wide .b5-unit .game-container.b5-game-container { max-width: min(1500px, calc(100vw - 40px)); }
+html.desk-wide .b5-unit .b5-game-container:has(> .b5-shopping-layout) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: calc(100dvh - 72px);
+    box-sizing: border-box;
+    padding-bottom: 10px;
+    overflow: hidden;
+}
+html.desk-wide .b5-unit .b5-game-container > .b5-task-card { flex: none; margin: 0; padding-top: 8px; padding-bottom: 8px; }
+html.desk-wide .b5-unit .b5-tc-img .b5-icon-img { width: clamp(72px, 11vh, 128px); height: clamp(72px, 11vh, 128px); }
+html.desk-wide .b5-unit .b5-game-container > .b5-budget-standalone-card { flex: none; margin: 0; padding-top: 6px; padding-bottom: 6px; }
+html.desk-wide .b5-unit .b5-game-container > .b5-shopping-layout { flex: 1; min-height: 0; align-items: stretch; }
+html.desk-wide .b5-unit #b5-cat-list { position: static; max-height: 100%; overflow-y: auto; }
+html.desk-wide .b5-unit .b5-cat-panel { display: flex; flex-direction: column; min-height: 0; }
+html.desk-wide .b5-unit #b5-items-grid { flex: 1; min-height: 0; overflow-y: auto; }
+/* 步驟一選購商品（2026-10-06 使用者定）：一列 5 個、兩列放滿 10 個；商品圖依視窗高度縮放，卡片矮一點兩列才放得下 */
+html.desk-wide .b5-unit #b5-items-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); align-content: start; }
+html.desk-wide .b5-unit #b5-items-grid .b5-item-card { padding: 6px 8px; gap: 2px; }
+/* 2026-10-09 使用者定：商品圖放大，比照 B6 步驟一（同一個公式；放不下兩列時商品格在格內自己捲，同 B6） */
+html.desk-wide .b5-unit #b5-items-grid { --b5i: clamp(90px, min(7vw, 13vh), 150px); }
+html.desk-wide .b5-unit #b5-items-grid .b5-item-icon .b5-icon-img { width: calc(var(--b5i) * 1.28); height: calc(var(--b5i) * 1.28); }
+html.desk-wide .b5-unit #b5-right-panel { align-self: flex-start; max-height: 100%; overflow-y: auto; }
+/* 步驟二付款／步驟三找零：外框放寬（原本 960px）、留白收緊，購物清單卡的商品圖依視窗高度縮放 */
+html.desk-wide .b5-unit .game-container:not(.b5-game-container) { max-width: min(1300px, calc(100vw - 40px)); }
+html.desk-wide .b5-unit .game-container:has(> .b5p2-tray) { gap: 8px; padding-top: 8px; padding-bottom: 6px; }
+html.desk-wide .b5-unit .game-container:has(> .b5p2-tray) > * { margin-top: 0; margin-bottom: 0; }
+html.desk-wide .b5-unit .game-container > .b5p2-ref-card { padding-top: 8px; padding-bottom: 8px; }
+html.desk-wide .b5-unit .b5p2-ri-img .b5-icon-img { width: clamp(60px, 9vh, 128px); height: clamp(60px, 9vh, 128px); }
+
+/* A6（2026-10-05）：左（站務員）右（對話框＋售票窗內容）兩欄保留；外圍與各區塊的上下外距 20～30px 收緊（不縮放）。
+   改之前 1280×720 選站／確認／付款／找零要捲 100～220px、1536×864 付款要捲 76px */
+html.desk-wide .a6-unit .ticket-window-combined { margin-top: 10px !important; margin-bottom: 10px !important; padding: 12px 20px !important; }
+html.desk-wide .a6-unit .ticket-window-combined .right-section { gap: 10px !important; }
+html.desk-wide .a6-unit .ticket-window-combined .npc-dialogue-box { padding: 12px 22px !important; }
+html.desk-wide .a6-unit .ticket-window-content { padding: 12px 20px !important; gap: 10px !important; }
+html.desk-wide .a6-unit .ticket-window-content > h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+html.desk-wide .a6-unit .ticket-window-content > .station-tabs { margin-bottom: 8px !important; }
+html.desk-wide .a6-unit .ticket-window-content > .station-grid { margin-top: 8px !important; margin-bottom: 8px !important; }
+html.desk-wide .a6-unit .ticket-window-content > .station-grid + div { margin-top: 10px !important; }
+html.desk-wide .a6-unit .ticket-window-content > .result-display-panel { margin-top: 10px !important; padding: 12px 20px !important; }
+html.desk-wide .a6-unit .payment-info-display-top { margin-bottom: 0 !important; }
+html.desk-wide .a6-unit .ticket-window-content > .payment-zone { margin-bottom: 0 !important; }
+html.desk-wide .a6-unit .wallet-content { margin-bottom: 0 !important; padding-top: 10px !important; padding-bottom: 10px !important; }
+html.desk-wide .a6-unit .wallet-total-header { margin-bottom: 8px !important; }
+/* 第七步・拿取車票：一張 480px 高、原本一張一列往下疊（3 張就 2064px）→ 並排；畫面矮時車票整張等比縮小（只是展示，不能點） */
+html.desk-wide .a6-unit .ticket-window-content:has(> .train-ticket) { display: flex !important; flex-flow: row wrap !important; justify-content: center !important; align-items: flex-start !important; column-gap: 16px; }
+html.desk-wide .a6-unit .ticket-window-content:has(> .train-ticket) > :not(.train-ticket) { flex-basis: 100%; display: flex; justify-content: center; margin: 0; }
+html.desk-wide .a6-unit .ticket-window-content > .train-ticket { margin: 0 !important; }   /* 行內 style 寫 margin: 20px auto */
+@media (max-height: 940px) { html.desk-wide .a6-unit .ticket-window-content > .train-ticket { zoom: 0.85; } }
+@media (max-height: 800px) { html.desk-wide .a6-unit .ticket-window-content > .train-ticket { zoom: 0.72; } }
+/* 錢包的錢卡固定 140px 高（紙鈔圖只有 35px 高）、找零區上下外距 15px → 卡片照內容高、外距收掉 */
+html.desk-wide .a6-unit #wallet-display .money-item { min-height: 0 !important; height: auto !important; padding: 10px !important; }
+html.desk-wide .a6-unit .ticket-window-content > .easy-change-source { margin-top: 0 !important; margin-bottom: 0 !important; padding: 12px 20px !important; }
+html.desk-wide .a6-unit .ticket-window-content > p { margin-top: 4px !important; margin-bottom: 4px !important; }
+html.desk-wide .a6-unit .order-summary-card { margin-top: 0 !important; margin-bottom: 0 !important; }
+html.desk-wide .a6-unit .ticket-window-content > .payment-zone { padding: 12px 20px !important; }
+html.desk-wide .a6-unit .wallet-content { gap: 8px !important; }
+
+/* A5（2026-10-05）：ATM 整台由 tablet-layout.js 的 fitQuiz 等比縮放（擬真機台，同 A1／A2）；外框的最小高度與上下留白先拿掉才量得準 */
+html.desk-wide .a5-unit .atm-container { min-height: 0; padding: 0; }
+html.desk-wide .a5-unit .atm-body { min-height: 0; padding-top: 8px; padding-bottom: 0; }
+/* 「您的現金」彈窗：600px 寬、紙鈔一列 3 張，10 張就要在彈窗裡捲 → 比照平板版放寬 */
+html.desk-wide .a5-unit .cash-modal-content { max-width: 940px; width: 92%; max-height: calc(100dvh - 24px) !important; }
+html.desk-wide .a5-unit .cash-modal-content .modal-body { max-height: calc(100dvh - 90px) !important; }
+
+/* A3（2026-10-05）：比照平板版的排版（不縮放）。
+   寬度 > 1200 時 a3 的 .mcdonalds-body 是 height:100vh，再加上 71px 標題列就要捲 → 扣掉標題列；
+   訂單明細／找零的容器 min-height:100vh＋上下留白 → 收成一個畫面；點餐完成／取餐畫面直長一張卡 → 左右兩欄 */
+html.desk-wide .a3-unit .mcdonalds-body { height: calc(100dvh - 72px); }
+html.desk-wide .a3-unit .mcdonalds-container:has(#counter-payment-btn) { min-height: 0 !important; height: 100dvh; }
+html.desk-wide .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div { padding: 16px !important; }
+html.desk-wide .a3-unit .mcdonalds-container:has(.a3-pay-main) { min-height: 0 !important; height: 100dvh; }
+html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) { min-height: 0 !important; height: 100dvh; }
+html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div { padding: 14px 20px !important; }
+html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div:has(#dynamic-order-number) { min-height: 0 !important; padding: 16px 20px !important; }
+html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) {
+    max-width: 1100px !important;
+    padding: 20px 28px !important;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-content: start;
+}
+html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) > div:has(> h3) { grid-column: 2; grid-row: 1 / span 8; margin: 0 !important; }
+html.desk-wide .a3-unit .pickup-complete-wrapper { min-height: 0 !important; height: 100dvh; padding: 14px !important; }
+html.desk-wide .a3-unit .pickup-complete-screen {
+    max-width: 1100px !important;
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    column-gap: 28px;
+    align-content: start;
+    align-items: start;
+}
+html.desk-wide .a3-unit .pickup-complete-screen > .order-content-container { grid-column: 2; grid-row: 1 / span 2; margin: 0 !important; }
+/* 開始前「我的錢包」說明卡（2026-10-06 起只剩錢包內容框，任務框已拿掉）：上下留白收緊，一個畫面放得下（行內 style → !important） */
+html.desk-wide .a3-unit .mcdonalds-welcome-page { padding-top: 16px !important; padding-bottom: 16px !important; }
+html.desk-wide .a3-unit .mcdonalds-welcome-page > div:has(> h1 + div + p + button) { padding: 24px 40px !important; }
+html.desk-wide .a3-unit .mcdonalds-welcome-page > div:has(> h1 + div + p + button) > * { margin-bottom: 14px !important; }
+html.desk-wide .a3-unit .mcdonalds-welcome-page > div:has(> h1 + div + p + button) > button { margin-bottom: 0 !important; }
+/* 步驟5・找零：兩張卡片上下疊（保留），卡片內外留白收緊（行內 style → !important） */
+html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div > div { padding: 16px 24px !important; margin-bottom: 10px !important; }
+html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div > div > h2 { margin-bottom: 6px !important; }
+html.desk-wide .a3-unit div:has(> #store-change-area) > div:nth-child(2) { margin-bottom: 10px !important; }
+html.desk-wide .a3-unit :is(#store-change-area, #change-collection-area) { padding: 12px !important; }
+html.desk-wide .a3-unit div:has(> #change-collection-area) > div:last-child { margin-top: 12px !important; }
+html.desk-wide .a3-unit :is(#store-change-area .change-money-item, #change-collection-area .change-target) img { width: clamp(55px, 8vh, 96px) !important; height: clamp(55px, 8vh, 96px) !important; }
+/* 步驟2・訂單明細：700px 卡片裡「訂單內容」與「付款方式」上下疊 → 放寬、左右並排 */
+html.desk-wide .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div { align-items: center !important; }
+html.desk-wide .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div > div {
+    max-width: 1100px !important;
+    width: min(1100px, 94vw) !important;
+    padding: 24px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: 24px;
+    align-items: stretch;
+}
+html.desk-wide .a3-unit .mcdonalds-container:has(#counter-payment-btn) > .mcdonalds-title-bar + div > div > div { margin: 0 !important; display: flex; flex-direction: column; justify-content: center; }
+html.desk-wide .a3-unit #counter-payment-btn { margin-left: auto !important; margin-right: auto !important; }
+/* 點餐完成：右欄交易明細的內外距收緊 */
+html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) > div:has(> h3) { padding: 16px 20px !important; }
+html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) > div:has(> h3) > * { margin-bottom: 10px !important; }
+@media (max-height: 760px) {
+    html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div { padding-top: 8px !important; padding-bottom: 8px !important; }
+    html.desk-wide .a3-unit .mcdonalds-container:has(#store-change-area) > .mcdonalds-title-bar + div > div { padding: 10px 24px !important; margin-bottom: 8px !important; }
+    html.desk-wide .a3-unit :is(#store-change-area, #change-collection-area) { padding: 6px 12px !important; }
+    html.desk-wide .a3-unit #collected-amount { margin-bottom: 6px !important; }
+    html.desk-wide .a3-unit div:has(> #store-change-area) > div:nth-child(2) { margin-bottom: 6px !important; }
+    html.desk-wide .a3-unit div:has(> #change-collection-area) > div:last-child { margin-top: 8px !important; }
+    html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) { padding-top: 12px !important; padding-bottom: 12px !important; }
+    html.desk-wide .a3-unit #app > .mcdonalds-title-bar + div > div:has(#dynamic-order-number) > :not(div:has(> h3)) { margin-top: 0 !important; margin-bottom: 10px !important; }
+}
+
+/* A4（2026-10-05）第三步・付錢：購買的物品 → 付款區 → 錢包 → 確認付款 由上而下（保留），比照平板版收緊留白（不縮放）；
+   「購買的物品」標題與商品排成一列；商品圖依視窗高度。改之前 1536×864 也要捲 275px */
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .unified-task-frame { margin: 8px 20px !important; padding: 8px 20px !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; column-gap: 20px; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .unified-task-frame > .task-header { width: auto !important; flex: none !important; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .selected-item-display { padding: 4px !important; width: auto !important; flex: none !important; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .item-task-text img { width: clamp(72px, calc(28vh - 120px), 140px) !important; height: clamp(72px, calc(28vh - 120px), 140px) !important; }   /* 720 高 82px、864 高 122px、1080 高 140px */
+html.desk-wide .a4-unit .payment-selection-area { margin: 4px 20px !important; }
+html.desk-wide .a4-unit .payment-area { padding: 10px 20px !important; }
+html.desk-wide .a4-unit .payment-info-display-top { margin: 0 auto 8px auto !important; padding: 4px !important; }
+html.desk-wide .a4-unit .payment-zone { padding: 8px !important; margin-bottom: 0 !important; }
+html.desk-wide .a4-unit .payment-hints { margin: 0 !important; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .wallet-content { padding: 8px 20px !important; margin-bottom: 0 !important; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) .wallet-total-header { margin-bottom: 8px !important; }
+html.desk-wide .a4-unit .store-layout:has(.payment-zone) > #confirm-payment { margin-top: 8px !important; margin-bottom: 8px !important; }
+@media (max-height: 760px) {
+    /* 1280×720：錢包與付款區的錢卡固定 120～140px 高（硬幣 50px）→ 照內容高 */
+    html.desk-wide .a4-unit .store-layout:has(.payment-zone) :is(.wallet-money-icons, .visual-hints) > * { min-height: 0 !important; height: auto !important; padding: 6px 8px !important; }
+}
+/* 第四步・找零（簡單）：店家找零 → 找零金額 → 我的錢包 由上而下（保留），各區上下外距 20px、內距 30px 收緊 */
+html.desk-wide .a4-unit .store-layout > .change-check-area { margin: 8px 20px !important; padding: 12px 20px !important; }
+html.desk-wide .a4-unit .store-layout > .change-check-area > h3 { margin-bottom: 8px !important; }
+html.desk-wide .a4-unit .store-layout > .change-check-area > .store-change { margin: 6px 0 0 !important; padding: 10px !important; }
+html.desk-wide .a4-unit .store-layout > .change-amount-display { margin: 4px 0 !important; padding: 6px !important; }
+html.desk-wide .a4-unit .store-layout > .change-targets-container { margin: 8px 20px !important; padding: 12px 20px !important; }
+html.desk-wide .a4-unit .store-layout > .change-targets-container > h3 { margin-bottom: 8px !important; }
+/* 每題結束的「交易完成」：760px 一張卡、上下疊 1087px → 放寬，商品圖在左、明細在右 */
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-content { max-width: 1100px !important; width: min(1100px, 94vw) !important; padding: 20px 28px !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-header > p { margin: 6px 0 12px !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .transaction-details { width: 100% !important; max-width: none !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-card {
+    max-width: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 20px 28px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    column-gap: 32px;
+    align-items: center;
+}
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-card > * { grid-column: 2; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-card > h2 { grid-column: 1; grid-row: 1; margin-bottom: 8px !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-card > h2 + div { grid-column: 1; grid-row: 2 / span 12; align-self: start; margin: 0 !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .next-round-notice { margin-top: 12px !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .next-round-notice > p { margin: 0 !important; }
+html.desk-wide :is(.a1-unit, .a4-unit) .transaction-summary-screen .summary-card > h2 + div img { width: clamp(120px, 24vh, 240px) !important; height: clamp(120px, 24vh, 240px) !important; max-width: none !important; max-height: none !important; object-fit: contain; }
+
+/* C6 步驟二・簡單（拖找零）：由上而下 購買物品 → 店家找零 → 我的錢包（2026-10-06 使用者定：跟付款頁一樣垂直排列，不並排）。
+   商品圖與錢幣依視窗高度，各卡片留白收緊 */
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) { gap: 8px; padding: 8px 14px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) > * { margin: 0; padding-top: 10px; padding-bottom: 10px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .item-info-compact { margin-bottom: 6px; padding-top: 2px; padding-bottom: 2px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .calculation-display { margin-top: 0; padding: 4px 10px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .store-change { margin: 0; padding: 8px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .my-wallet-container { padding: 8px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .iic-img img { width: clamp(80px, calc(40vh - 220px), 200px) !important; height: clamp(80px, calc(40vh - 220px), 200px) !important; }
+@media (max-height: 760px) {
+    html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) > * { padding-top: 6px; padding-bottom: 6px; }
+    html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.section-title, .wallet-header-container) { margin-bottom: 4px !important; }
+    html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.store-change, .my-wallet-container) .money-item:not(:has(img[src*="00_yuan"])) img { width: 54px !important; height: 54px !important; }
+}
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .section-title { margin-bottom: 8px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) .wallet-header-container { margin-bottom: 8px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.store-change, .my-wallet-container) .money-item { width: auto; height: auto; min-height: 0; min-width: 0; padding: 8px; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.store-change, .my-wallet-container) .money-item img { max-width: none !important; max-height: none !important; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.store-change, .my-wallet-container) .money-item:not(:has(img[src*="00_yuan"])) img { width: clamp(50px, min(5.5vw, 9vh), 100px) !important; height: clamp(50px, min(5.5vw, 9vh), 100px) !important; }
+html.desk-wide .c6-unit .c6-step2-container:has(> .c6-change-area) :is(.store-change, .my-wallet-container) .money-item:has(img[src*="00_yuan"]) img { width: clamp(100px, min(11vw, 18vh), 200px) !important; height: auto !important; }
+/* C6 步驟二・普通／困難（拖曳找零）：外框原本寫死 980px → 放寬；商品圖、面額托盤與錢包裡的錢依視窗大小（1280×720 原本要捲 6～24px） */
+html.desk-wide .c6-unit .c6c-container { max-width: min(1300px, calc(100vw - 40px)); gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+html.desk-wide .c6-unit .c6c-container .iic-img img { width: clamp(84px, calc(30vh - 130px), 180px) !important; height: clamp(84px, calc(30vh - 130px), 180px) !important; }
+html.desk-wide .c6-unit .c6c-container { --c6cz: clamp(54px, min(5vw, 8.5vh), 96px); }
+html.desk-wide .c6-unit .c6c-container .c6c-coin { width: var(--c6cz); height: var(--c6cz); }
+html.desk-wide .c6-unit .c6c-container .c6c-bill { width: calc(var(--c6cz) * 1.67); }
+
+/* A1（2026-10-06）：每題結束的「交易完成」與 A4 同一套（上面的 :is(.a1-unit, .a4-unit) 規則）；
+   取貨彈窗「購買成功」原本 1536×864 也要在彈窗裡捲 → 留白收緊、飲料圖依視窗高度 */
+html.desk-wide #pickup-product-modal .pickup-card { padding: 22px 30px; max-height: 94vh; }
+html.desk-wide #pickup-product-modal .success-icon { width: 60px; height: 60px; margin-bottom: 8px; }
+html.desk-wide #pickup-product-modal .checkmark { width: 60px; height: 60px; }
+html.desk-wide #pickup-product-modal .pickup-title { margin-bottom: 14px; }
+html.desk-wide #pickup-product-modal .product-showcase { padding: 16px 24px; margin-bottom: 14px; }
+html.desk-wide #pickup-product-modal .product-img { height: clamp(110px, calc(40vh - 160px), 200px); width: auto; }
+html.desk-wide #pickup-product-modal .info-card { padding: 12px 20px; margin-bottom: 12px; }
+html.desk-wide #pickup-product-modal .success-msg { padding: 10px; margin-bottom: 14px; }
+html.desk-wide .a1-unit .modal-content { max-height: calc(100dvh - 24px) !important; }   /* 「購買任務」彈窗 1280×720 原本按鈕被切掉、要在彈窗裡捲 */
+/* 按提示後金額字出現（js/money-label-hint.js 加 html.mt-ml-show）：放大後的錢幣卡底下要留字的位置，否則字疊在錢上（2026-10-06） */
+html.desk-wide.mt-ml-show .c5-unit :is(#money-source-area, #payment-zone-area) .money-item,
+html.desk-wide.mt-ml-show .c6-unit .c6-step1-container :is(#wallet-container, #payment-drop-zone) .money-item { padding-bottom: 26px; position: relative; }
+
+/* =====================================================================
+   測驗頁標題列高度全站統一＝F1 的 72px（2026-10-06 使用者定；所有版面、所有 24 單元）。
+   原本 A1 66／A2 76／A3 69／A4 84～104／A5 94／A6 84／B 系列 56／C5 69……各寫各的。
+   上下內距歸零、內容垂直置中；上面幾條「100dvh − 標題列高」的計算一起改成 72px（原本 B 系列 56、A3 71）。
+   設定頁、結算頁沒有這幾種標題列，不受影響。
+   ===================================================================== */
+body[class*="-unit"] :is(.title-bar, .kiosk-title-bar, .mcdonalds-title-bar, .atm-title-bar, .b-header) {
+    height: 72px !important;
+    min-height: 72px !important;
+    max-height: 72px !important;
+    box-sizing: border-box !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: center !important;
+}

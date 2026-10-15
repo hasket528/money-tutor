@@ -1,0 +1,199 @@
+{
+  "description": "A4 模擬購物 - 商品中英文名稱對照表",
+  "note": "圖片檔名請使用 english_name.png 格式",
+  "stores": {
+    "convenience": {
+      "name_zh": "便利商店",
+      "name_en": "convenience_store",
+      "products": [
+        { "id": 1, "name_zh": "蘋果", "name_en": "apple", "emoji": "🍎", "image": "apple.png" },
+        { "id": 2, "name_zh": "餅乾", "name_en": "cookie", "emoji": "🍪", "image": "cookie.png" },
+        { "id": 3, "name_zh": "飲料", "name_en": "beverage", "emoji": "🥤", "image": "beverage.png" },
+        { "id": 4, "name_zh": "洋芋片", "name_en": "potato_chips", "emoji": "🍟", "image": "potato_chips.png" },
+        { "id": 5, "name_zh": "麵包", "name_en": "bread", "emoji": "🍞", "image": "bread.png" },
+        { "id": 101, "name_zh": "泡麵", "name_en": "instant_noodles", "emoji": "🍜", "image": "instant_noodles.png" },
+        { "id": 102, "name_zh": "口香糖", "name_en": "chewing_gum", "emoji": "🍬", "image": "chewing_gum.png" },
+        { "id": 103, "name_zh": "咖啡", "name_en": "coffee", "emoji": "☕", "image": "coffee.png" },
+        { "id": 104, "name_zh": "巧克力", "name_en": "chocolate", "emoji": "🍫", "image": "chocolate.png" },
+        { "id": 105, "name_zh": "衛生紙", "name_en": "tissue_paper", "emoji": "🧻", "image": "tissue_paper.png" }
+      ]
+    },
+    "market": {
+      "name_zh": "菜市場",
+      "name_en": "market",
+      "products": [
+        { "id": 6, "name_zh": "香蕉", "name_en": "banana", "emoji": "🍌", "image": "banana.png" },
+        { "id": 7, "name_zh": "胡蘿蔔", "name_en": "carrot", "emoji": "🥕", "image": "carrot.png" },
+        { "id": 8, "name_zh": "蔥", "name_en": "green_onion", "emoji": "🧅", "image": "green_onion.png" },
+        { "id": 9, "name_zh": "蛋", "name_en": "egg", "emoji": "🥚", "image": "egg.png" },
+        { "id": 10, "name_zh": "魚", "name_en": "fish", "emoji": "🐟", "image": "fish.png" },
+        { "id": 106, "name_zh": "蘋果", "name_en": "apple_market", "emoji": "🍎", "image": "apple_market.png" },
+        { "id": 107, "name_zh": "白菜", "name_en": "chinese_cabbage", "emoji": "🥬", "image": "chinese_cabbage.png" },
+        { "id": 108, "name_zh": "蕃茄", "name_en": "tomato", "emoji": "🍅", "image": "tomato.png" },
+        { "id": 109, "name_zh": "豬肉", "name_en": "pork", "emoji": "🥩", "image": "pork.png" },
+        { "id": 110, "name_zh": "雞肉", "name_en": "chicken", "emoji": "🍗", "image": "chicken.png" }
+      ]
+    },
+    "breakfast": {
+      "name_zh": "早餐店",
+      "name_en": "breakfast_shop",
+      "products": [
+        { "id": 11, "name_zh": "三明治", "name_en": "sandwich", "emoji": "🥪", "image": "sandwich.png" },
+        { "id": 12, "name_zh": "豆漿", "name_en": "soy_milk", "emoji": "🥛", "image": "soy_milk.png" },
+        { "id": 13, "name_zh": "蛋餅", "name_en": "egg_pancake", "emoji": "🥞", "image": "egg_pancake.png" },
+        { "id": 14, "name_zh": "吐司", "name_en": "toast", "emoji": "🍞", "image": "toast.png" },
+        { "id": 15, "name_zh": "紅茶", "name_en": "black_tea", "emoji": "🧋", "image": "black_tea.png" },
+        { "id": 111, "name_zh": "漢堡", "name_en": "hamburger", "emoji": "🍔", "image": "hamburger.png" },
+        { "id": 112, "name_zh": "奶茶", "name_en": "milk_tea", "emoji": "🥤", "image": "milk_tea.png" },
+        { "id": 113, "name_zh": "蘿蔔糕", "name_en": "radish_cake", "emoji": "🥘", "image": "radish_cake.png" },
+        { "id": 114, "name_zh": "飯糰", "name_en": "rice_ball", "emoji": "🍙", "image": "rice_ball.png" },
+        { "id": 115, "name_zh": "果汁", "name_en": "juice", "emoji": "🧃", "image": "juice.png" }
+      ]
+    },
+    "mcdonalds": {
+      "name_zh": "美式速食店",
+      "name_en": "fast_food",
+      "products": [
+        { "id": 16, "name_zh": "漢堡", "name_en": "burger", "emoji": "🍔", "image": "burger.png" },
+        { "id": 17, "name_zh": "薯條", "name_en": "french_fries", "emoji": "🍟", "image": "french_fries.png" },
+        { "id": 18, "name_zh": "可樂", "name_en": "cola", "emoji": "🥤", "image": "cola.png" },
+        { "id": 19, "name_zh": "雞塊", "name_en": "chicken_nuggets", "emoji": "🍗", "image": "chicken_nuggets.png" },
+        { "id": 20, "name_zh": "派", "name_en": "pie", "emoji": "🥧", "image": "pie.png" },
+        { "id": 116, "name_zh": "冰炫風", "name_en": "mcflurry", "emoji": "🍦", "image": "mcflurry.png" },
+        { "id": 117, "name_zh": "魚堡", "name_en": "fish_burger", "emoji": "🐟", "image": "fish_burger.png" },
+        { "id": 118, "name_zh": "沙拉", "name_en": "salad", "emoji": "🥗", "image": "salad.png" },
+        { "id": 119, "name_zh": "咖啡", "name_en": "coffee_mcd", "emoji": "☕", "image": "coffee_mcd.png" },
+        { "id": 120, "name_zh": "蛋堡", "name_en": "egg_burger", "emoji": "🥪", "image": "egg_burger.png" }
+      ]
+    },
+    "pxmart": {
+      "name_zh": "超級市場",
+      "name_en": "supermarket",
+      "products": [
+        { "id": 21, "name_zh": "洗髮精", "name_en": "shampoo", "emoji": "🧴", "image": "shampoo.png" },
+        { "id": 22, "name_zh": "牙膏", "name_en": "toothpaste", "emoji": "🦷", "image": "toothpaste.png" },
+        { "id": 23, "name_zh": "衛生紙", "name_en": "toilet_paper", "emoji": "🧻", "image": "toilet_paper.png" },
+        { "id": 24, "name_zh": "洗衣粉", "name_en": "laundry_detergent", "emoji": "🧽", "image": "laundry_detergent.png" },
+        { "id": 25, "name_zh": "餅乾", "name_en": "biscuit", "emoji": "🍪", "image": "biscuit.png" },
+        { "id": 121, "name_zh": "牛奶", "name_en": "milk", "emoji": "🥛", "image": "milk.png" },
+        { "id": 122, "name_zh": "麵包", "name_en": "bread_super", "emoji": "🍞", "image": "bread_super.png" },
+        { "id": 123, "name_zh": "沐浴乳", "name_en": "body_wash", "emoji": "🧴", "image": "body_wash.png" },
+        { "id": 124, "name_zh": "洗碗精", "name_en": "dish_soap", "emoji": "🧽", "image": "dish_soap.png" },
+        { "id": 125, "name_zh": "泡麵", "name_en": "instant_noodles_super", "emoji": "🍜", "image": "instant_noodles_super.png" }
+      ]
+    },
+    "clothing": {
+      "name_zh": "服飾店",
+      "name_en": "clothing_store",
+      "products": [
+        { "id": 126, "name_zh": "T恤", "name_en": "tshirt", "emoji": "👕", "image": "tshirt.png" },
+        { "id": 127, "name_zh": "牛仔褲", "name_en": "jeans", "emoji": "👖", "image": "jeans.png" },
+        { "id": 128, "name_zh": "運動鞋", "name_en": "sneakers", "emoji": "👟", "image": "sneakers.png" },
+        { "id": 129, "name_zh": "帽子", "name_en": "cap", "emoji": "🧢", "image": "cap.png" },
+        { "id": 130, "name_zh": "襪子", "name_en": "socks", "emoji": "🧦", "image": "socks.png" },
+        { "id": 131, "name_zh": "外套", "name_en": "jacket", "emoji": "🧥", "image": "jacket.png" },
+        { "id": 132, "name_zh": "裙子", "name_en": "skirt", "emoji": "👗", "image": "skirt.png" },
+        { "id": 133, "name_zh": "圍巾", "name_en": "scarf", "emoji": "🧣", "image": "scarf.png" },
+        { "id": 134, "name_zh": "手套", "name_en": "gloves", "emoji": "🧤", "image": "gloves.png" },
+        { "id": 135, "name_zh": "內衣", "name_en": "underwear", "emoji": "👙", "image": "underwear.png" }
+      ]
+    },
+    "electronics": {
+      "name_zh": "3C用品店",
+      "name_en": "electronics_store",
+      "products": [
+        { "id": 136, "name_zh": "手機", "name_en": "smartphone", "emoji": "📱", "image": "smartphone.png" },
+        { "id": 137, "name_zh": "耳機", "name_en": "headphones", "emoji": "🎧", "image": "headphones.png" },
+        { "id": 138, "name_zh": "充電器", "name_en": "charger", "emoji": "🔌", "image": "charger.png" },
+        { "id": 139, "name_zh": "滑鼠", "name_en": "mouse", "emoji": "🖱️", "image": "mouse.png" },
+        { "id": 140, "name_zh": "鍵盤", "name_en": "keyboard", "emoji": "⌨️", "image": "keyboard.png" },
+        { "id": 141, "name_zh": "隨身碟", "name_en": "usb_drive", "emoji": "💾", "image": "usb_drive.png" },
+        { "id": 142, "name_zh": "平板", "name_en": "tablet", "emoji": "📱", "image": "tablet.png" },
+        { "id": 143, "name_zh": "喇叭", "name_en": "speaker", "emoji": "🔊", "image": "speaker.png" },
+        { "id": 144, "name_zh": "電池", "name_en": "battery", "emoji": "🔋", "image": "battery.png" },
+        { "id": 145, "name_zh": "記憶卡", "name_en": "memory_card", "emoji": "💳", "image": "memory_card.png" }
+      ]
+    },
+    "bookstore": {
+      "name_zh": "書局",
+      "name_en": "bookstore",
+      "products": [
+        { "id": 146, "name_zh": "小說", "name_en": "novel", "emoji": "📚", "image": "novel.png" },
+        { "id": 147, "name_zh": "字典", "name_en": "dictionary", "emoji": "📖", "image": "dictionary.png" },
+        { "id": 148, "name_zh": "筆記本", "name_en": "notebook", "emoji": "📓", "image": "notebook.png" },
+        { "id": 149, "name_zh": "原子筆", "name_en": "ballpoint_pen", "emoji": "🖊️", "image": "ballpoint_pen.png" },
+        { "id": 150, "name_zh": "橡皮擦", "name_en": "eraser", "emoji": "🧽", "image": "eraser.png" },
+        { "id": 151, "name_zh": "漫畫", "name_en": "comic", "emoji": "📘", "image": "comic.png" },
+        { "id": 152, "name_zh": "文具盒", "name_en": "pencil_case", "emoji": "📦", "image": "pencil_case.png" },
+        { "id": 153, "name_zh": "尺", "name_en": "ruler", "emoji": "📏", "image": "ruler.png" },
+        { "id": 154, "name_zh": "膠水", "name_en": "glue", "emoji": "🧴", "image": "glue.png" },
+        { "id": 155, "name_zh": "雜誌", "name_en": "magazine", "emoji": "📰", "image": "magazine.png" }
+      ]
+    },
+    "toystore": {
+      "name_zh": "玩具店",
+      "name_en": "toy_store",
+      "products": [
+        { "id": 156, "name_zh": "玩具車", "name_en": "toy_car", "emoji": "🚗", "image": "toy_car.png" },
+        { "id": 157, "name_zh": "娃娃", "name_en": "doll", "emoji": "🧸", "image": "doll.png" },
+        { "id": 158, "name_zh": "積木", "name_en": "building_blocks", "emoji": "🧱", "image": "building_blocks.png" },
+        { "id": 159, "name_zh": "拼圖", "name_en": "puzzle", "emoji": "🧩", "image": "puzzle.png" },
+        { "id": 160, "name_zh": "球", "name_en": "ball", "emoji": "⚽", "image": "ball.png" },
+        { "id": 161, "name_zh": "飛機", "name_en": "toy_plane", "emoji": "✈️", "image": "toy_plane.png" },
+        { "id": 162, "name_zh": "機器人", "name_en": "robot", "emoji": "🤖", "image": "robot.png" },
+        { "id": 163, "name_zh": "玩具槍", "name_en": "toy_gun", "emoji": "🔫", "image": "toy_gun.png" },
+        { "id": 164, "name_zh": "彈珠", "name_en": "marble", "emoji": "🔮", "image": "marble.png" },
+        { "id": 165, "name_zh": "溜溜球", "name_en": "yoyo", "emoji": "🪀", "image": "yoyo.png" }
+      ]
+    },
+    "stationery": {
+      "name_zh": "文具店",
+      "name_en": "stationery_store",
+      "products": [
+        { "id": 166, "name_zh": "鉛筆", "name_en": "pencil", "emoji": "✏️", "image": "pencil.png" },
+        { "id": 167, "name_zh": "原子筆", "name_en": "pen", "emoji": "🖊️", "image": "pen.png" },
+        { "id": 168, "name_zh": "橡皮擦", "name_en": "eraser_sta", "emoji": "🧽", "image": "eraser_sta.png" },
+        { "id": 169, "name_zh": "尺", "name_en": "ruler_sta", "emoji": "📏", "image": "ruler_sta.png" },
+        { "id": 170, "name_zh": "筆記本", "name_en": "notebook_sta", "emoji": "📓", "image": "notebook_sta.png" },
+        { "id": 171, "name_zh": "膠水", "name_en": "glue_sta", "emoji": "🧴", "image": "glue_sta.png" },
+        { "id": 172, "name_zh": "剪刀", "name_en": "scissors", "emoji": "✂️", "image": "scissors.png" },
+        { "id": 173, "name_zh": "彩色筆", "name_en": "colored_pencils", "emoji": "🖍️", "image": "colored_pencils.png" },
+        { "id": 174, "name_zh": "計算機", "name_en": "calculator", "emoji": "🧮", "image": "calculator.png" },
+        { "id": 175, "name_zh": "資料夾", "name_en": "folder", "emoji": "📁", "image": "folder.png" }
+      ]
+    },
+    "cosmetics": {
+      "name_zh": "美妝店",
+      "name_en": "cosmetics_store",
+      "products": [
+        { "id": 176, "name_zh": "口紅", "name_en": "lipstick", "emoji": "💄", "image": "lipstick.png" },
+        { "id": 177, "name_zh": "粉底液", "name_en": "foundation", "emoji": "🧴", "image": "foundation.png" },
+        { "id": 178, "name_zh": "睫毛膏", "name_en": "mascara", "emoji": "👁️", "image": "mascara.png" },
+        { "id": 179, "name_zh": "眼影", "name_en": "eyeshadow", "emoji": "🎨", "image": "eyeshadow.png" },
+        { "id": 180, "name_zh": "面膜", "name_en": "face_mask", "emoji": "😷", "image": "face_mask.png" },
+        { "id": 181, "name_zh": "洗面乳", "name_en": "facial_cleanser", "emoji": "🧴", "image": "facial_cleanser.png" },
+        { "id": 182, "name_zh": "乳液", "name_en": "lotion", "emoji": "🧴", "image": "lotion.png" },
+        { "id": 183, "name_zh": "香水", "name_en": "perfume", "emoji": "🌸", "image": "perfume.png" },
+        { "id": 184, "name_zh": "指甲油", "name_en": "nail_polish", "emoji": "💅", "image": "nail_polish.png" },
+        { "id": 185, "name_zh": "化妝棉", "name_en": "cotton_pads", "emoji": "🤍", "image": "cotton_pads.png" }
+      ]
+    },
+    "sports": {
+      "name_zh": "運動用品店",
+      "name_en": "sports_store",
+      "products": [
+        { "id": 186, "name_zh": "籃球", "name_en": "basketball", "emoji": "🏀", "image": "basketball.png" },
+        { "id": 187, "name_zh": "足球", "name_en": "soccer_ball", "emoji": "⚽", "image": "soccer_ball.png" },
+        { "id": 188, "name_zh": "羽毛球拍", "name_en": "badminton_racket", "emoji": "🏸", "image": "badminton_racket.png" },
+        { "id": 189, "name_zh": "網球", "name_en": "tennis_ball", "emoji": "🎾", "image": "tennis_ball.png" },
+        { "id": 190, "name_zh": "游泳鏡", "name_en": "swimming_goggles", "emoji": "🥽", "image": "swimming_goggles.png" },
+        { "id": 191, "name_zh": "跑步鞋", "name_en": "running_shoes", "emoji": "👟", "image": "running_shoes.png" },
+        { "id": 192, "name_zh": "瑜珈墊", "name_en": "yoga_mat", "emoji": "🧘", "image": "yoga_mat.png" },
+        { "id": 193, "name_zh": "啞鈴", "name_en": "dumbbell", "emoji": "🏋️", "image": "dumbbell.png" },
+        { "id": 194, "name_zh": "護膝", "name_en": "knee_pad", "emoji": "🦵", "image": "knee_pad.png" },
+        { "id": 195, "name_zh": "水壺", "name_en": "water_bottle", "emoji": "🥤", "image": "water_bottle.png" }
+      ]
+    }
+  },
+  "total_products": 120
+}

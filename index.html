@@ -1,0 +1,3639 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+<meta charset="UTF-8">
+<script src="js/emoji-font.js"></script>
+<meta name="darkreader-lock"><!-- 本站自帶深淺色切換：請 Dark Reader 等外掛別再疊一層（2026-09-24） -->
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem("mt_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<script src="js/tablet-layout.js"></script><!-- iPad 橫式版面判斷：要在所有 CSS 之前（2026-10-03） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生活數學王</title>
+    <!-- PWA：可安裝＋離線 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1d4ed8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="金錢小達人">
+    <link rel="apple-touch-icon" href="images/common/captain_gold.png">
+    <link rel="stylesheet" href="css/ai-theme.css">
+    <!-- 角色彈窗（金好聊／金隊長）：與對話模組共用同一份樣式，見 js/hero-modal.js -->
+    <link rel="stylesheet" href="css/hero-modal.css">
+    
+    <style>
+        /* CSS 變數定義，方便管理主題顏色 */
+        :root {
+            --bg-primary: #ffffff;
+            --text-primary: #334e68;
+            --primary-color: #007bff;
+            --secondary-color: #ffc107;
+            --accent-color: #28a745;
+            --card-bg: #ffffff;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            --radius: 12px;
+            --transition: all 0.3s ease-in-out;
+        }
+        
+        /* 深色主題變數：強制深色（[data-theme="dark"]）＋跟隨系統（@media，未手動選淺色時）
+           兩區塊數值逐字對應，只有外層 gate 不同，全站統一寫法見 CLAUDE.md「深色模式規則」。 */
+        [data-theme="dark"] {
+            --bg-primary: #1a1a2e;
+            --text-primary: #e2e8f0;
+            --primary-color: #6366f1;
+            --secondary-color: #fbbf24;
+            --accent-color: #10b981;
+            --card-bg: #2d2d44;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            --card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            --radius: 12px;
+            --transition: all 0.3s ease-in-out;
+            --unit-btn-border: #3f3f5c;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-primary: #1a1a2e;
+                --text-primary: #e2e8f0;
+                --primary-color: #6366f1;
+                --secondary-color: #fbbf24;
+                --accent-color: #10b981;
+                --card-bg: #2d2d44;
+                --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                --card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+                --radius: 12px;
+                --transition: all 0.3s ease-in-out;
+                --unit-btn-border: #3f3f5c;
+            }
+        }
+
+        /* 角色卡家族（金隊長/金婆婆/金好聊/金博士/小金探）與一日金錢冒險卡：
+           各自寫死的淡色漸層在深色模式沒有變數可接，這裡補上對應的深色版本，
+           維持「一眼認出是哪張卡」的辨識度（同色相、降明度、文字提亮）。 */
+        [data-theme="dark"] .captain-banner { background: linear-gradient(135deg, #3a2f14, #2d2410); border-color: #92400e; }
+        [data-theme="dark"] .captain-banner .captain-name { color: #fcd34d; }
+        [data-theme="dark"] .captain-banner .captain-line { color: #fbbf24; }
+        [data-theme="dark"] .create-banner { background: linear-gradient(135deg, #16281a, #122016); border-color: #16803d; }
+        [data-theme="dark"] .create-banner .captain-name { color: #6ee7a0; }
+        [data-theme="dark"] .create-banner .captain-line { color: #4ade80; }
+        [data-theme="dark"] .chat-banner { background: linear-gradient(135deg, #0c2233, #0a1c2b); border-color: #0284c7; }
+        [data-theme="dark"] .chat-banner .captain-name { color: #7dd3fc; }
+        [data-theme="dark"] .chat-banner .captain-line { color: #38bdf8; }
+        [data-theme="dark"] .doc-banner { background: linear-gradient(135deg, #241b3d, #1c1530); border-color: #6d28d9; }
+        [data-theme="dark"] .doc-banner .captain-name { color: #c4b5fd; }
+        [data-theme="dark"] .doc-banner .captain-line { color: #a78bfa; }
+        [data-theme="dark"] .detective-banner { background: linear-gradient(135deg, #33210f, #29190b); border-color: #c2410c; }
+        [data-theme="dark"] .detective-banner .captain-name { color: #fdba74; }
+        [data-theme="dark"] .detective-banner .captain-line { color: #fb923c; }
+        /* 主頁標題／單元代碼／選中頁籤：--primary-color #6366f1 在深底上只有 3.8／3.0（2026-09-24 掃描） */
+        [data-theme="dark"] .unit-btn { border-color: var(--unit-btn-border); }
+        [data-theme="dark"] h1 { color: #a5b4fc; }
+        [data-theme="dark"] .unit-text .code { color: #a5b4fc; }
+        [data-theme="dark"] .tab-btn.active { background: #4f46e5; }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) h1 { color: #a5b4fc; }
+            :root:not([data-theme="light"]) .unit-text .code { color: #a5b4fc; }
+            :root:not([data-theme="light"]) .tab-btn.active { background: #4f46e5; }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) .captain-banner { background: linear-gradient(135deg, #3a2f14, #2d2410); border-color: #92400e; }
+            :root:not([data-theme="light"]) .captain-banner .captain-name { color: #fcd34d; }
+            :root:not([data-theme="light"]) .captain-banner .captain-line { color: #fbbf24; }
+            :root:not([data-theme="light"]) .create-banner { background: linear-gradient(135deg, #16281a, #122016); border-color: #16803d; }
+            :root:not([data-theme="light"]) .create-banner .captain-name { color: #6ee7a0; }
+            :root:not([data-theme="light"]) .create-banner .captain-line { color: #4ade80; }
+            :root:not([data-theme="light"]) .chat-banner { background: linear-gradient(135deg, #0c2233, #0a1c2b); border-color: #0284c7; }
+            :root:not([data-theme="light"]) .chat-banner .captain-name { color: #7dd3fc; }
+            :root:not([data-theme="light"]) .chat-banner .captain-line { color: #38bdf8; }
+            :root:not([data-theme="light"]) .doc-banner { background: linear-gradient(135deg, #241b3d, #1c1530); border-color: #6d28d9; }
+            :root:not([data-theme="light"]) .doc-banner .captain-name { color: #c4b5fd; }
+            :root:not([data-theme="light"]) .doc-banner .captain-line { color: #a78bfa; }
+            :root:not([data-theme="light"]) .detective-banner { background: linear-gradient(135deg, #33210f, #29190b); border-color: #c2410c; }
+            :root:not([data-theme="light"]) .detective-banner .captain-name { color: #fdba74; }
+            :root:not([data-theme="light"]) .detective-banner .captain-line { color: #fb923c; }
+            :root:not([data-theme="light"]) .unit-btn { border-color: var(--unit-btn-border); }
+        }
+
+        /* 基礎樣式 */
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            min-height: 100vh;
+            transition: var(--transition);
+        }
+
+        .container {
+            padding: 30px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 標題 */
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 3em;
+            font-weight: 700;
+            text-shadow: 2px 2px 5px rgba(0, 123, 255, 0.1);
+        }
+
+        /* 頁籤導覽列 */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            padding: 10px;
+            border-radius: 50px;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* .tabs 有 display:flex，會蓋掉 [hidden] 內建的 display:none → 切換模式時要明確關掉 */
+        .tabs[hidden], #alt-panel[hidden] { display: none !important; }
+        /* 對話練習有 7 個分部，一行排不下要能折行；按鈕也縮一級 */
+        #alt-tabs { flex-wrap: wrap; }
+        /* .container 是 flex column + align-items:center：子元素不寫 100% 會縮成內容寬，
+           格線就會塌成一欄（原本的 .tab-content 也是靠 width:100% 才撐開）*/
+        #alt-panel { width: 100%; animation: fadeIn 0.5s ease; }
+        /* 冒險關卡沿用 24 單元的 .unit-btn，只縮小圖示讓右邊文字有空間 */
+        #alt-grid .unit-btn { padding: 18px; gap: 12px; }
+        #alt-grid .unit-icon { width: 78px; }
+        #alt-grid .game-pick-img { width: 78px; height: 78px; object-fit: contain; display: block; }
+        #alt-grid .unit-text .code { white-space: nowrap; }
+        #alt-grid .unit-text .title { min-height: 0; font-size: 1.05em; }
+
+        /* 對話分部：固定四欄 → 第一行 1~4、第二行 5~7＋自訂，兩行對齊 */
+        #alt-tabs.parts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-radius: 24px; }
+        #alt-tabs.parts-grid .tab-btn { white-space: normal; line-height: 1.3; }
+        @media (max-width: 600px) { #alt-tabs.parts-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        /* 對話場所卡：比照 dialogue 首頁的情境卡（132px 場景圖＋右上角浮出的店員頭像） */
+        #alt-grid.dlg-grid { grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 18px; }
+        /* 同一列的卡片等高：自訂場景卡沒有場景圖、內容也比「➕ 建立場景」少，
+           不撐滿的話一排卡片高高低低（2026-09-16 使用者回報）*/
+        .dlg-card-wrap { position: relative; padding-top: 34px; display: flex; flex-direction: column; }
+        .dlg-card-wrap > .dlg-card { flex: 1; }
+        .dlg-card {
+            display: flex; flex-direction: column; width: 100%; overflow: hidden;
+            background: var(--card-bg); border: 2px solid transparent; border-radius: var(--radius);
+            box-shadow: var(--card-shadow); text-decoration: none; color: var(--text-primary);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+        }
+        /* ai-theme.css 的 `a:not(.selection-btn):not(.choice-btn)` 特異性比 class 高，
+           會把卡片內所有文字染成連結色 → 這兩處要 !important 才守得住 */
+        .dlg-card { color: var(--text-primary) !important; }
+        .dlg-card:hover { transform: translateY(-4px); border-color: var(--c, var(--primary-color)); box-shadow: 0 8px 24px rgba(0,0,0,0.14); }
+        .dlg-card-img { display: block; width: 100%; height: 132px; object-fit: cover; object-position: center 38%; }
+        .dlg-card-emoji { display: flex; align-items: center; justify-content: center; height: 132px; font-size: 3.4rem; background: #f1f5f9; }
+        .dlg-card-body { padding: 12px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .dlg-card-row { position: relative; width: 100%; display: flex; align-items: center; min-height: 1.6em; padding-right: 4.6rem; }
+        .dlg-card-name { font-size: 1.08em; font-weight: 800; }
+        .dlg-card-steps { position: absolute; right: 0; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 0.78em; color: #64748b; }
+        .dlg-card-badge { font-size: 0.86em; font-weight: 700; color: #fff; border-radius: 20px; padding: 6px 16px; background: var(--c, var(--primary-color)); }
+        .dlg-clerk-btn {
+            position: absolute; top: 0; right: 14px; width: 64px; height: 64px; z-index: 2;
+            border-radius: 50%; border: 3px solid #fff; overflow: hidden; padding: 0; cursor: pointer;
+            background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.2); transition: box-shadow 0.15s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .dlg-clerk-btn:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+        .dlg-clerk-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .dlg-empty { grid-column: 1 / -1; text-align: center; color: #64748b; line-height: 1.9; padding: 18px; }
+        /* 「➕ 自訂情境」新增卡：虛線框、跟內容卡區隔（同 dialogue 首頁的 .scenario-card-add） */
+        .dlg-card-add { background: transparent; border: 2px dashed #cbd5e1; box-shadow: none; --c: #0ea5e9; }
+        .dlg-card-add .dlg-card-emoji { background: transparent; }
+        .dlg-card-add .dlg-card-row { flex-direction: column; padding-right: 0; gap: 2px; }
+        .dlg-card-add .dlg-card-steps { position: static; transform: none; }
+
+        /* 那兩張卡從 <a> 改成 <button>（點了只關彈窗、不跳頁），button 不會自己撐滿寬度 */
+        button.modal-games-card, button.modal-adventure-card { width: 100%; font-family: inherit; font-size: inherit; }
+
+        /* 彈窗裡的「選學生語音／選冒險角色」小選擇器（金好聊／金博士共用） */
+        .modal-pick { margin: 14px 0 4px; text-align: left; }
+        .modal-pick-title { font-weight: 800; font-size: 0.98em; }
+        .modal-pick-note { font-size: 0.78em; color: #64748b; line-height: 1.6; margin: 4px 0 10px; }
+        .modal-pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .pick-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: none; border: none; padding: 4px; cursor: pointer; font-family: inherit;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .pick-item img, .pick-item .pick-emoji {
+            width: 62px; height: 62px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #e2e8f0; background: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 2rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .pick-item.on img, .pick-item.on .pick-emoji { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(37,99,235,0.22); }
+        .pick-item .pick-name { font-size: 0.82em; font-weight: 700; }
+        .pick-item.on .pick-name { color: var(--primary-color); }
+
+        /* 小遊戲彈窗：幾乎滿版，讓遊戲有足夠空間 */
+        /* 學生試聽彈窗的樣式已移到 css/hero-modal.css（與對話模組共用同一份） */
+
+        /* 遊戲彈窗＝全螢幕（小遊戲需要空間），只留右上角的 ✕ 回主頁 */
+        #game-modal-overlay {
+            /* 全螢幕就必須蓋過 sticky 導覽列（z-index:10000），否則遊戲的標題列會被壓在下面看不到 */
+            display: none; position: fixed; inset: 0; z-index: 10500;
+            background: #000; align-items: stretch; justify-content: stretch; padding: 0;
+        }
+        #game-modal-overlay.open { display: flex; }
+        #game-modal-overlay:active { transform: none !important; }
+        #game-modal {
+            width: 100%; height: 100%;
+            background: #fff; border-radius: 0; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        #game-modal-bar {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            background: linear-gradient(135deg,#1e3a5f,#2563eb); color: #fff; font-weight: 800;
+        }
+        .game-modal-close {
+            margin-left: auto; background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.45);
+            border-radius: 10px; padding: 6px 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+            touch-action: manipulation;
+        }
+        .game-modal-close:hover { background: rgba(255,255,255,0.32); }
+        #game-frame { flex: 1; width: 100%; border: none; display: block; }
+        #alt-grid .game-pick { cursor: pointer; font-family: inherit; text-align: left; }
+        #alt-grid .game-pick .subtitle { font-size: 0.78em; color: #888; margin-top: 4px; line-height: 1.4; }
+
+        /* 店員介紹彈窗（點卡片右上角的頭像） */
+        #clerk-modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.45); align-items: center; justify-content: center; padding: 20px;
+        }
+        #clerk-modal-overlay.open { display: flex; }
+        #clerk-modal-overlay:active { transform: none !important; }
+        #clerk-modal {
+            position: relative; background: var(--card-bg); border-radius: 18px;
+            max-width: 520px; width: 100%; max-height: 92vh; overflow-y: auto;
+            padding: 26px 24px 22px; text-align: center;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+        }
+        #clerk-modal .modal-close-btn { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 1.2em; cursor: pointer; color: #64748b; }
+        /* 與 dialogue 的 .clerk-modal-img 同尺寸：桌面最大 300px，小裝置依版面彈性縮放 */
+        #clerk-modal-img {
+            width: clamp(150px, 44vw, 300px); height: clamp(150px, 44vw, 300px);
+            border-radius: 50%; object-fit: cover; border: 4px solid #fff;
+            box-shadow: 0 6px 22px rgba(0,0,0,0.22); background: #f1f5f9;
+        }
+        #clerk-modal-name { font-size: 1.4em; font-weight: 800; margin-top: 10px; }
+        #clerk-modal-role { font-size: 0.9em; color: #64748b; margin-top: 2px; }
+        #clerk-modal-intro { font-size: 0.95em; line-height: 1.8; margin: 12px 0 16px; text-align: left; }
+        /* 建立／編輯自訂場景的彈窗（就地開，不跳去對話模組——跳頁會把主頁整個換掉，
+           角色卡輪播與左右切換鈕都不見了，老師以為跑錯地方）。版型沿用店員介紹彈窗。 */
+        #scene-modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.45); align-items: center; justify-content: center; padding: 20px;
+        }
+        #scene-modal-overlay.open { display: flex; }
+        /* ⚠️ ai-theme.css 有一條 `[onclick]:active { transform: scale(.95) !important }`，
+           遮罩自己掛 onclick → 不擋的話點彈窗任何地方整個視窗都會縮一下 */
+        #scene-modal-overlay:active { transform: none !important; }
+        #scene-modal {
+            position: relative; background: var(--card-bg); border-radius: 18px;
+            max-width: 460px; width: 100%; max-height: 92vh; overflow-y: auto;
+            padding: 26px 24px 22px; text-align: left;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+        }
+        #scene-modal .modal-close-btn { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 1.2em; cursor: pointer; color: var(--text-primary); opacity: 0.7; }
+        #scene-modal h3 { margin: 0 0 6px; font-size: 1.2em; }
+        /* ⚠️ 說明文字不要寫死 #64748b：深色模式下印在深色卡片上只有 2.81（低於 WCAG AA 4.5）。
+           用主色加透明度，淺色深色都在 5 以上。 */
+        .scene-modal-note { margin: 0 0 14px; font-size: 0.86em; line-height: 1.7; color: var(--text-primary); opacity: 0.72; }
+        .scene-field { display: block; font-weight: 800; font-size: 0.92em; margin-bottom: 14px; }
+        /* 🔴 選擇器一定要帶 #scene-modal：`ai-theme.css` 有一條
+           `input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select { background: var(--background-card) }`，
+           特異性 (0,3,1) 高於 `.scene-field input` 的 (0,1,1) → 它贏；而 `--background-card`
+           **主頁根本沒有定義**，宣告失效後掉回瀏覽器預設的白底 → 深色模式下白底配亮字，對比 1.23 幾乎看不見。
+           （同型陷阱見 dialogue/CLAUDE.md「用了不存在的變數會掉回 fallback」） */
+        #scene-modal .scene-field input {
+            display: block; width: 100%; margin-top: 6px; padding: 10px 12px; box-sizing: border-box;
+            border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1em; font-family: inherit;
+            background: var(--card-bg); color: var(--text-primary);
+        }
+        .scene-icon-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .scene-icon-btn {
+            width: 44px; height: 44px; font-size: 1.3rem; line-height: 1; cursor: pointer;
+            border: 2px solid #e2e8f0; border-radius: 12px; background: var(--card-bg);
+            font-family: inherit; touch-action: manipulation;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .scene-icon-btn.on { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.18); }
+        /* ⚠️ 按下只變色、不改幾何（見檔尾「按下會位移 → click 落空」踩雷） */
+        .scene-icon-btn:active { transform: none !important; }
+        .scene-modal-msg { min-height: 1.2em; margin: 0 0 10px; font-size: 0.86em; font-weight: 700; color: #dc2626; }
+        .scene-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .scene-modal-actions button {
+            padding: 10px 18px; border-radius: 12px; font-size: 0.95em; font-weight: 700;
+            font-family: inherit; cursor: pointer; border: 1.5px solid #e2e8f0; background: none;
+            color: var(--text-primary); touch-action: manipulation;
+        }
+        .scene-modal-actions .primary { border-color: transparent; background: var(--primary-color); color: #fff; }
+
+        #alt-tabs .tab-btn { font-size: 0.98em; padding: 10px 16px; }
+        #alt-tabs .tab-btn[disabled] { cursor: default; }
+
+        .tab-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+        }
+        
+        /* 頁籤內容面板 */
+        .tab-content {
+            display: none; /* 預設隱藏 */
+            width: 100%;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block; /* 啟用時顯示 */
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 單元網格佈局 */
+        .unit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+
+        /* 單元按鈕樣式 */
+        .unit-btn {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 25px;
+            border-radius: var(--radius);
+            border: 1px solid #e0e0e0;
+            box-shadow: var(--card-shadow);
+            text-align: left;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-height: 120px;
+        }
+
+        .unit-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .unit-icon {
+            font-size: 2.5em;
+            width: 128px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .unit-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .unit-text .code {
+            font-size: 0.9em;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .unit-text .title {
+            font-size: 1.2em;
+            font-weight: 600;
+            min-height: 2.4em;
+            line-height: 1.2em;
+        }
+        
+        .unit-text .subtitle {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        /* AI功能標籤樣式 */
+        .ai-feature {
+            font-size: 0.7em;
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-top: 4px;
+            display: inline-block;
+            font-weight: 500;
+        }
+        
+        /* 頁面標題區域 */
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        /* ── 三吉祥物改為「隱藏舞台」：主頁預設不顯示，
+               點右緣 ✨ 標籤開啟聚光燈旋轉舞台（已取消滑動開啟，避免誤觸其他設定）── */
+        .ai-dual-intro { display: none !important; }
+
+        /* ── 角色卡輪播：一次只顯示兩張卡，左右三角形各切換一位 ─────────
+           四位角色循環（金隊長→金婆婆→金好聊→金博士→金隊長…）。
+           卡片本身全部留在 DOM，只用 .on 決定哪兩張看得到、用 order 決定左右順序，
+           所以卡片內原有的 id／事件（如 #captain-current-chip）都不會因為切換而失效。
+           ⚠️ 三角形是 pointerdown 觸發、按下只變底色不改幾何——見檔尾「可點元素按下會位移」踩雷。 */
+        .hero-carousel {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; max-width: 1040px; margin: 22px auto 0;   /* 扣掉左右箭頭後，卡片區約等於原本的 900px */
+        }
+        .hero-arrow {
+            width: 46px; height: 46px; flex: none; border-radius: 50%;
+            border: 2px solid #cbd5e1; background: #fff; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            transition: background 0.15s, border-color 0.15s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .hero-arrow:hover  { background: #eff6ff; border-color: var(--primary-color); }
+        .hero-arrow:active { background: #dbeafe; }
+        .hero-arrow .ha-tri {
+            width: 0; height: 0; color: var(--primary-color);
+            border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+        }
+        .hero-arrow.right .ha-tri { border-left: 15px solid currentColor; margin-left: 3px; }
+        .hero-arrow.left  .ha-tri { border-right: 15px solid currentColor; margin-right: 3px; }
+        /* 選擇器要帶上 .home-duo：各卡片自己的 .captain-banner/.chat-banner… 都有 display:flex，
+           特異性一樣時後定義的會贏，只寫 .hero-card 會關不掉。 */
+        .home-duo > .hero-card { display: none; }
+        .home-duo > .hero-card.on { display: flex; }
+        /* 目前選中的角色（下方區塊正顯示他的內容）＝加一圈光暈 */
+        .hero-card.picked { box-shadow: 0 0 0 3px rgba(37,99,235,0.35), var(--card-shadow); }
+        .hero-hint { display: none; }
+        /* 手機：兩張卡本來就上下堆疊，箭頭再左右各佔一塊會把卡片壓得更窄 →
+           改成箭頭獨立成一列（左右分置、中間寫「切換角色」），卡片維持整個寬度。 */
+        @media (max-width: 600px) {
+            .hero-carousel { flex-wrap: wrap; justify-content: space-between; row-gap: 10px; gap: 4px; }
+            .hero-arrow { width: 40px; height: 40px; }
+            .hero-arrow.left  { order: 1; }
+            .hero-hint {
+                order: 2; display: block; font-size: 0.82em; font-weight: 700; color: #64748b;
+                align-self: center;
+            }
+            .hero-arrow.right { order: 3; }
+            /* 要帶 .hero-carousel > 才蓋得過後面定義的 .home-duo { flex: 1 }（同特異性時後者贏） */
+            .hero-carousel > .home-duo { order: 4; flex: 1 1 100%; }
+            .hero-arrow .ha-tri { border-top-width: 8px; border-bottom-width: 8px; }
+            .hero-arrow.right .ha-tri { border-left-width: 12px; }
+            .hero-arrow.left  .ha-tri { border-right-width: 12px; }
+        }
+
+        /* ✨ 右緣「隱藏角色」標籤鈕：平常只露出 ✨，滑鼠移到右緣（hover）滑出顯示文字；
+           觸控裝置無 hover，改用週期性「探頭」動畫提示存在。
+           ⚠️ 2026-08-04 起停用：改由標題旁的 ▶ 三角形進生活情境對話（見 .title-jump）。
+              舞台本體（#stage-overlay／openStage／CHARS）全部保留，
+              要恢復入口只要拿掉下面這行 display:none 即可。 */
+        #stage-hint {
+            position: fixed; right: 0; top: 50%; z-index: 800;
+            display: flex; align-items: center; gap: 7px;
+            background: linear-gradient(135deg, rgba(123,63,164,0.94), rgba(74,34,110,0.94));
+            color: #ffe9a8; border: none; cursor: pointer;
+            border-radius: 24px 0 0 24px; padding: 12px 16px 12px 17px;
+            font-size: 1.35em; line-height: 1;
+            box-shadow: -3px 4px 16px rgba(0,0,0,0.28);
+            /* 只露出左側 ✨（約 46px），其餘（文字）藏在畫面右緣外 */
+            transform: translateY(-50%) translateX(calc(100% - 46px));
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+            animation: stagePeek 5s ease-in-out infinite;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        #stage-hint .sh-label {
+            font-size: 0.56em; font-weight: 800; white-space: nowrap; letter-spacing: 1px;
+        }
+        /* 滑鼠移到右緣（hover）或鍵盤聚焦 → 完整滑出，停止探頭動畫 */
+        #stage-hint:hover, #stage-hint:focus-visible {
+            transform: translateY(-50%) translateX(0);
+            animation: none; box-shadow: -4px 6px 24px rgba(0,0,0,0.42); outline: none;
+        }
+        /* 週期性探頭：桌機/手機皆可見，不依賴 hover */
+        @keyframes stagePeek {
+            0%, 86%, 100% { transform: translateY(-50%) translateX(calc(100% - 46px)); }
+            91%, 96%      { transform: translateY(-50%) translateX(calc(100% - 74px)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #stage-hint { animation: none; }
+        }
+        /* 停用舊入口：上面整套樣式原樣保留，恢復隱藏角色入口時刪掉這一條即可 */
+        #stage-hint { display: none !important; }
+
+        /* ── 後台舞台 ── */
+        #stage-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9600;
+            background:
+                repeating-linear-gradient(90deg, rgba(80,20,60,0.22) 0 26px, rgba(0,0,0,0) 26px 52px),
+                radial-gradient(ellipse at 50% 0%, #3b1f4e 0%, #1b0f2e 55%, #0d0718 100%);
+            align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #stage-overlay.open { display: flex; }
+
+        .stage-inner {
+            position: relative; text-align: center;
+            width: min(94vw, 560px); perspective: 1000px; padding: 20px 0 34px;
+        }
+        /* 聚光燈（光錐＋輕微搖擺） */
+        .stage-spotlight {
+            position: absolute; top: -6vh; left: 50%; transform: translateX(-50%);
+            width: min(80vw, 460px); height: 78vh; pointer-events: none;
+            background: radial-gradient(ellipse 46% 60% at 50% 12%, rgba(255,246,205,0.55), rgba(255,246,205,0.10) 55%, transparent 72%);
+            clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+            animation: spotSway 5.5s ease-in-out infinite alternate;
+            transform-origin: top center;
+        }
+        @keyframes spotSway {
+            0%   { transform: translateX(-50%) rotate(-2.5deg); }
+            100% { transform: translateX(-50%) rotate(2.5deg); }
+        }
+        /* 舞台地板光暈 */
+        .stage-floor {
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+            width: min(70vw, 380px); height: 46px; border-radius: 50%;
+            background: radial-gradient(ellipse, rgba(255,244,200,0.35), transparent 70%);
+            pointer-events: none;
+        }
+
+        .stage-char {
+            position: relative; transform-style: preserve-3d; will-change: transform, opacity;
+            transition: transform 0.26s cubic-bezier(0.45,0,0.55,1), opacity 0.26s ease;
+        }
+        .stage-char.spin-out { transform: rotateY(80deg) scale(0.72); opacity: 0; }
+        .stage-char.spin-pre { transition: none; transform: rotateY(-80deg) scale(0.72); opacity: 0; }
+        .stage-char img {
+            width: min(48vw, 250px); max-height: 42vh; object-fit: contain;
+            filter: drop-shadow(0 20px 32px rgba(0,0,0,0.6));
+            cursor: pointer; /* 點圖示可聽該角色語音介紹 */
+        }
+        .stage-name {
+            font-size: 1.5em; font-weight: 800; color: #ffe9a8; margin-top: 10px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .stage-name .ai-voice-btn { border-color: rgba(255,233,168,0.5); color: #ffe9a8; background: rgba(255,255,255,0.08); }
+        .stage-desc { color: #efeadf; font-size: 0.95em; margin: 8px 14px 14px; line-height: 1.7; }
+        .stage-action {
+            display: inline-block; border: none; cursor: pointer; font-family: inherit;
+            background: linear-gradient(135deg, #f7c948, #de911d);
+            color: #4a2b00; font-size: 1.02em; font-weight: 800;
+            padding: 12px 30px; border-radius: 28px;
+            box-shadow: 0 6px 20px rgba(222,145,29,0.5);
+            transition: transform 0.15s;
+        }
+        .stage-action:hover { transform: scale(1.06); }
+
+        .stage-arrow {
+            position: absolute; top: 42%; transform: translateY(-50%);
+            width: 52px; height: 52px; border-radius: 50%;
+            border: 2px solid rgba(255,233,168,0.55); background: rgba(255,255,255,0.08);
+            color: #ffe9a8; font-size: 1.35em; cursor: pointer; z-index: 2;
+            transition: background 0.15s, transform 0.1s;
+            touch-action: manipulation;                 /* 消觸控 300ms 延遲與雙擊縮放，按下即回應 */
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media (hover: hover) { /* 只在有滑鼠的裝置套 hover，觸控就不會「第一下變底色、第二下才切換」 */
+          .stage-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.12); }
+        }
+        /* 按下回饋：只變底色，不改幾何（縮放/位移會讓按鈕在游標下滑走，害頂緣點擊落空） */
+        .stage-arrow:active { transform: translateY(-50%); background: rgba(255,255,255,0.3); }
+        .stage-arrow.left  { left: -6px; }
+        .stage-arrow.right { right: -6px; }
+
+        .stage-close {
+            position: absolute; top: 14px; right: 16px; z-index: 3;
+            background: none; border: none; color: rgba(255,255,255,0.7);
+            font-size: 1.5em; cursor: pointer;
+        }
+        .stage-close:hover { color: #fff; }
+        .stage-dots { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+        .stage-dots span { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+        .stage-dots span.on { background: #ffe9a8; }
+        .stage-tip {
+            position: absolute; bottom: 12px; left: 0; right: 0;
+            color: rgba(255,255,255,0.45); font-size: 0.75em; text-align: center; pointer-events: none;
+        }
+
+        /* ── 雙角色介紹區 ─────────────────────────── */
+        .ai-dual-intro {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 32px;
+            margin-top: 24px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .ai-char-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .ai-char-avatar {
+            width: 96px;
+            height: 96px;
+            flex-shrink: 0;
+        }
+
+        .ai-char-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 兩角色使用不同週期 + 半週期錯相，避免同步跳動 */
+        @keyframes floatBob {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-10px); }
+        }
+
+        .detective-block .ai-char-avatar {
+            animation: floatBob 3.2s ease-in-out infinite;
+        }
+
+        .doctor-block .ai-char-avatar {
+            animation: floatBob 3.6s ease-in-out infinite;
+            animation-delay: -1.8s;   /* 半週期錯開，兩人一上一下 */
+        }
+
+        .chatdog-block .ai-char-avatar {
+            animation: floatBob 3.4s ease-in-out infinite;
+            animation-delay: -0.9s;   /* 與另外兩位錯相，三人波浪起伏 */
+        }
+
+        .ai-char-name {
+            font-weight: 700;
+            font-size: 1em;
+            margin: 8px 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-primary);
+        }
+
+        .ai-voice-btn {
+            background: none;
+            border: 1px solid #E5E7EB;
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 2px 6px;
+            border-radius: 20px;
+            transition: background 0.15s;
+            line-height: 1.4;
+        }
+
+        .ai-voice-btn:hover { background: rgba(0,0,0,0.07); }
+        .ai-voice-btn:active { transform: scale(0.94); }
+
+        .ai-char-bubble {
+            background: var(--card-bg);
+            max-width: 100%;
+            box-sizing: border-box;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            text-align: center;
+        }
+
+        .ai-char-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-bottom-color: var(--card-bg);
+        }
+
+        .detective-block .ai-char-bubble { border-top: 3px solid #F59E0B; }
+        .doctor-block   .ai-char-bubble { border-top: 3px solid #7C3AED; }
+        .chatdog-block  .ai-char-bubble { border-top: 3px solid #22C55E; }
+
+        /* 三欄版面需 >920px 才夠寬容納不換行台詞 */
+        @media (min-width: 921px) {
+            .bubble-line { white-space: nowrap; }
+        }
+
+        .ai-char-bubble p {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 0.9em;
+            line-height: 1.55;
+        }
+        
+
+        /* 禁用/即將推出樣式 */
+        .unit-btn.disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+            opacity: 0.6;
+            pointer-events: none; /* 讓連結不可點擊 */
+        }
+        
+        .unit-btn.disabled:hover {
+            transform: none;
+            box-shadow: var(--card-shadow);
+            border-color: #e0e0e0;
+        }
+        
+        /* 主題過渡動畫 */
+        .theme-transitioning * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        /* 顏色拾取器高亮效果 */
+        .color-picker-highlight {
+            box-shadow: 0 0 10px 2px rgba(102, 126, 234, 0.6) !important;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 920px) {
+            /* 頁籤列在中等寬度先允許換行，避免水平溢出 */
+            .tabs {
+                flex-wrap: wrap;
+                border-radius: var(--radius);
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .tabs {
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-radius: var(--radius);
+                gap: 8px;
+                justify-content: center;
+                padding: 8px;
+            }
+            .tab-btn {
+                white-space: normal;
+                flex: 1 1 calc(50% - 8px);
+                min-width: 0;
+                font-size: 0.95em;
+                padding: 10px 12px;
+                text-align: center;
+                line-height: 1.3;
+            }
+            .unit-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .ai-dual-intro { grid-template-columns: 1fr; max-width: 420px; }
+        }
+
+        /* 金博士可點擊 */
+        /* 金博士：點擊整個區塊都可觸發，hover 紫色光暈 */
+        .doctor-block {
+            cursor: pointer;
+        }
+        .doctor-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 12px rgba(124,58,237,0.55));
+            transition: filter 0.25s;
+        }
+        .doctor-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .doctor-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(124,58,237,0.18);
+        }
+
+        /* 小金探：點擊整個區塊可觸發，hover 橙色光暈（與金博士有所區別） */
+        .detective-block {
+            cursor: pointer;
+        }
+        .detective-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 14px rgba(251,146,60,0.7));
+            transition: filter 0.25s;
+        }
+        .detective-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .detective-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(245,158,11,0.22);
+        }
+
+        /* 金好聊：點擊整個區塊直接開啟購物對話練習，hover 綠色光暈（呼應領巾） */
+        .chatdog-block {
+            cursor: pointer;
+        }
+        .chatdog-block:hover .ai-char-avatar img {
+            filter: drop-shadow(0 0 14px rgba(34,197,94,0.65));
+            transition: filter 0.25s;
+        }
+        .chatdog-block .ai-char-bubble {
+            transition: box-shadow 0.2s;
+        }
+        .chatdog-block:hover .ai-char-bubble {
+            box-shadow: 0 6px 20px rgba(34,197,94,0.2);
+        }
+
+        /* ── 金隊長：成長基地入口橫幅 ── */
+        .captain-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            max-width: 900px;
+            margin: 22px auto 0;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #fffdf5, #fff7e0);
+            border: 2px solid #f5d576;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+            transition: var(--transition);
+            box-sizing: border-box;
+            text-align: left;
+        }
+        .captain-banner:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
+            border-color: #f0b429;
+        }
+        .captain-banner .captain-avatar { width: clamp(80px, 16vw, 120px); height: clamp(80px, 16vw, 120px); flex-shrink: 0; }
+        .captain-banner .captain-avatar img {
+            width: 100%; height: 100%; object-fit: contain;
+            animation: floatBob 3.0s ease-in-out infinite;
+        }
+        .captain-banner .captain-text { flex: 1; min-width: 0; }
+        .captain-banner .captain-name {
+            font-weight: 800; font-size: 1.05em; color: #92400e;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .captain-banner .captain-line { font-size: 0.85em; color: #78350f; margin-top: 3px; line-height: 1.5; }
+        .captain-banner .captain-cta {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff; font-weight: 700; font-size: 0.9em;
+            padding: 9px 16px; border-radius: 24px; white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);
+        }
+        /* 角色圖 ＋ 圖下方的 🔊（五張卡共用；喇叭在名字那行會擠到標題） */
+        .hero-figure { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+        .hero-figure .ai-voice-btn { flex-shrink: 0; }
+        /* 選學生下拉改放文字下方：卡片高度才不會被右側元素拉長 */
+        .captain-text .captain-cta { display: inline-block; margin-top: 10px; }
+        /* ── 金隊長成長基地／金婆婆建立學生：彈窗裡的內容（#captain-base-body）的配色 ──
+           🔴 這些內容原本寫死淺色底，字卻用 var(--text-primary)——深色模式下字變淺、底沒變，
+              整片字看不見（2026-09-16 使用者回報）。改成一組變數，深色只換變數值：
+              兩塊（@media 跟隨系統／[data-theme="dark"] 強制深色）的數值要逐字對應。
+           ⚠️ 新增這個區塊裡的顏色一律走變數，不要再寫死淺色值。 */
+        #captain-base-body {
+            --cb-muted: #64748b;
+            --cb-banner-bg: #f0f7ff;
+            --cb-card-bg: #fbfdff;      --cb-stat-bg: #f8fbff;     --cb-card-line: #dbe7f5;
+            --cb-stat-num: var(--primary-color);
+            --cb-done-bg: #f0fdf4;      --cb-done-line: #86efac;
+            --cb-go-bg: #eaf3ff;        --cb-go-ink: #1d4ed8;
+            --cb-title: #92400e;        --cb-date: #b45309;        --cb-claimed: #16a34a;
+            --cb-quote-bg: #fffbeb;     --cb-quote-line: #f5d576;
+            --cb-select-bg: #fffdf5;    --cb-select-line: #f5d576;
+            --cb-guest-bg: #f1f5f9;     --cb-guest-ink: #475569;   --cb-guest-line: #e2e8f0;
+            --cb-guest-on-bg: #e0e7ff;  --cb-guest-on-ink: #3730a3; --cb-guest-on-line: #c7d2fe;
+            --gm-ink: #166534;          --gm-line: #a7e3a0;        --gm-tab-bg: #fff;
+            --gm-row-bg: #fbfefb;       --gm-row-line: #d9f0d5;    --gm-photo-bg: #fff;
+            --gm-field-bg: #fff;        --gm-field-line: #cbd5e1;
+            --gm-cancel-bg: #eef2f7;    --gm-cancel-ink: #475569;
+            --gm-del-bg: #fee2e2;       --gm-del-ink: #991b1b;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) #captain-base-body {
+                --cb-muted: #94a3b8;
+                --cb-banner-bg: #1e3a5f;
+                --cb-card-bg: #273449;      --cb-stat-bg: #273449;     --cb-card-line: #3b4a61;
+                --cb-stat-num: #a5b4fc;
+                --cb-done-bg: #14301f;      --cb-done-line: #15803d;
+                --cb-go-bg: #1e3a8a;        --cb-go-ink: #dbeafe;
+                --cb-title: #fbbf24;        --cb-date: #f59e0b;        --cb-claimed: #4ade80;
+                --cb-quote-bg: #2d2410;     --cb-quote-line: #92400e;
+                --cb-select-bg: #0f172a;    --cb-select-line: #b45309;
+                --cb-guest-bg: #334155;     --cb-guest-ink: #e2e8f0;   --cb-guest-line: #475569;
+                --cb-guest-on-bg: #312e81;  --cb-guest-on-ink: #e0e7ff; --cb-guest-on-line: #6366f1;
+                --gm-ink: #86efac;          --gm-line: #15803d;        --gm-tab-bg: #16281a;
+                --gm-row-bg: #16281a;       --gm-row-line: #1f5130;    --gm-photo-bg: #0f172a;
+                --gm-field-bg: #0f172a;     --gm-field-line: #475569;
+                --gm-cancel-bg: #334155;    --gm-cancel-ink: #e2e8f0;
+                --gm-del-bg: #4c1d1d;       --gm-del-ink: #fecaca;
+            }
+        }
+        [data-theme="dark"] #captain-base-body {
+            --cb-muted: #94a3b8;
+            --cb-banner-bg: #1e3a5f;
+            --cb-card-bg: #273449;      --cb-stat-bg: #273449;     --cb-card-line: #3b4a61;
+            --cb-stat-num: #a5b4fc;
+            --cb-done-bg: #14301f;      --cb-done-line: #15803d;
+            --cb-go-bg: #1e3a8a;        --cb-go-ink: #dbeafe;
+            --cb-title: #fbbf24;        --cb-date: #f59e0b;        --cb-claimed: #4ade80;
+            --cb-quote-bg: #2d2410;     --cb-quote-line: #92400e;
+            --cb-select-bg: #0f172a;    --cb-select-line: #b45309;
+            --cb-guest-bg: #334155;     --cb-guest-ink: #e2e8f0;   --cb-guest-line: #475569;
+            --cb-guest-on-bg: #312e81;  --cb-guest-on-ink: #e0e7ff; --cb-guest-on-line: #6366f1;
+            --gm-ink: #86efac;          --gm-line: #15803d;        --gm-tab-bg: #16281a;
+            --gm-row-bg: #16281a;       --gm-row-line: #1f5130;    --gm-photo-bg: #0f172a;
+            --gm-field-bg: #0f172a;     --gm-field-line: #475569;
+            --gm-cancel-bg: #334155;    --gm-cancel-ink: #e2e8f0;
+            --gm-del-bg: #4c1d1d;       --gm-del-ink: #fecaca;
+        }
+
+        /* 金婆婆彈窗：新增／修改兩個分頁 */
+        .gm-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 16px; }
+        .gm-tab {
+            border: 2px solid var(--gm-line); background: var(--gm-tab-bg); color: var(--gm-ink);
+            border-radius: 20px; padding: 7px 18px; font-weight: 800; font-size: 0.92em;
+            cursor: pointer; font-family: inherit; touch-action: manipulation; white-space: nowrap;
+        }
+        /* 教師登入後有三個分頁：手機寬度排不進一列（390px 時容器只剩 294px、三顆各 102px），
+           窄螢幕省掉三顆都重複的「學生」二字，只留「新增／修改／刪除」 */
+        @media (max-width: 480px) {
+            .gm-tabs { gap: 6px; }
+            .gm-tab { padding: 6px 12px; }
+            .gm-tab-noun { display: none; }
+        }
+        @media (max-width: 340px) {
+            .gm-tabs { gap: 4px; }
+            .gm-tab { padding: 5px 8px; font-size: 0.85em; }
+        }
+        .gm-tab.active { background: linear-gradient(135deg,#22c55e,#15803d); color: #fff; border-color: transparent; }
+        .gm-note { font-size: 0.8em; color: var(--cb-muted); text-align: center; line-height: 1.6; margin: 10px 0 12px; }
+        /* 單一橫列：左＝照片、中＝資料欄（新增＝姓名／修改＝下拉＋姓名） */
+        .gm-form-row {
+            display: flex; align-items: center; gap: 14px;
+            border: 2px solid var(--gm-row-line); border-radius: 16px; padding: 14px; background: var(--gm-row-bg);
+            max-width: 420px; margin: 0 auto;
+        }
+        .gm-photo {
+            position: relative; width: 96px; height: 96px; flex-shrink: 0; cursor: pointer;
+            border-radius: 14px; overflow: hidden; border: 2px dashed var(--gm-line); background: var(--gm-photo-bg);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .gm-photo-empty { font-size: 38px; color: #94a3b8; }
+        .gm-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .gm-photo-hint {
+            position: absolute; left: 0; right: 0; bottom: 0; background: rgba(21,128,61,0.82);
+            color: #fff; font-size: 0.66rem; text-align: center; padding: 3px 0; font-weight: 700;
+        }
+        .gm-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .gm-fields .gm-name, .gm-fields select {
+            width: 100%; padding: 10px; font-size: 1em; font-family: inherit; box-sizing: border-box;
+            border: 1.5px solid var(--gm-field-line); border-radius: 10px; background: var(--gm-field-bg);
+            color: var(--text-primary);
+        }
+        .gm-fields select { font-weight: 700; color: var(--gm-ink); cursor: pointer; }
+        /* ⚠️ ai-theme.css 的 input:not([type="range"]):not(…):not(…) 特異性 (0,3,1) 比上面那條高，
+           底色會被它固定成淺色（深色模式淺字配白底＝看不見）→ 底色要用 id 提高優先度 */
+        #captain-base-body .gm-fields .gm-name { background: var(--gm-field-bg); }
+        .gm-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+        /* ⚠️ 上一條的 display:flex 會蓋掉 [hidden]（刪除分頁的兩段確認靠 hidden 切換） */
+        .gm-actions[hidden] { display: none !important; }
+        .gm-btn-ok, .gm-btn-cancel, .gm-del-photo, .gm-btn-danger {
+            border: none; border-radius: 10px; padding: 10px 20px; font-weight: 800; font-size: 1em;
+            cursor: pointer; font-family: inherit; touch-action: manipulation;
+        }
+        .gm-btn-ok     { background: linear-gradient(135deg,#22c55e,#15803d); color: #fff; }
+        /* 刪除學生（只有教師登入才看得到這個分頁）：紅色＝不可復原的動作，兩段確認 */
+        .gm-btn-danger { background: linear-gradient(135deg,#ef4444,#b91c1c); color: #fff; }
+        .gm-btn-danger[disabled] { opacity: 0.4; cursor: default; }
+        .gm-photo.gm-photo-static { cursor: default; }
+        .gm-del-ask {
+            flex-basis: 100%; text-align: center; font-weight: 800; line-height: 1.6;
+            color: var(--gm-del-ink); background: var(--gm-del-bg); border-radius: 10px; padding: 8px 12px;
+        }
+        .gm-btn-cancel { background: var(--gm-cancel-bg); color: var(--gm-cancel-ink); font-weight: 700; }
+        .gm-del-photo  { background: var(--gm-del-bg); color: var(--gm-del-ink); font-weight: 700; font-size: 0.9em; }
+        .gm-del-photo[disabled] { opacity: 0.4; cursor: default; }
+        .gm-empty { text-align: center; color: var(--cb-muted); line-height: 1.9; padding: 14px; }
+        #captain-base-body .create-msg { color: var(--gm-ink); }
+
+        /* 主頁「左：成長基地／右：創建學生」兩欄 */
+        .home-duo { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; flex: 1; min-width: 0; margin: 0; }
+        .home-duo > .hero-card { margin: 0; max-width: none; flex: 1 1 320px; }
+        /* 桌面端：兩張卡水平並排、等寬；窄螢幕自動上下堆疊 */
+        @media (min-width: 768px) {
+            .home-duo { flex-wrap: nowrap; }
+            .home-duo > .hero-card { flex: 1 1 0; min-width: 0; }
+        }
+        /* 金好聊（天藍）／金博士（紫）：與金隊長(黃)、金婆婆(綠) 一眼分得開 */
+        /* 三張新卡共用同一組版面（圓角／內距／對齊）——漏掉任何一個 selector，
+           那張卡就會變成沒有圓角、文字也對不齊（小金探卡曾發生過）*/
+        .chat-banner, .doc-banner, .detective-banner {
+            display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+            border-radius: 16px; box-shadow: var(--card-shadow);
+            box-sizing: border-box; text-align: left; cursor: pointer;
+            transition: var(--transition);
+        }
+        .chat-banner { background: linear-gradient(135deg, #f2fbff, #e0f2fe); border: 2px solid #7dd3fc; }
+        .doc-banner  { background: linear-gradient(135deg, #f7f5ff, #ede9fe); border: 2px solid #c4b5fd; }
+        .detective-banner { background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 2px solid #fdba74; }
+        .chat-banner:hover, .doc-banner:hover, .detective-banner:hover { transform: translateY(-3px); }
+        .chat-banner:hover { box-shadow: 0 8px 24px rgba(14,165,233,0.25); border-color: #38bdf8; }
+        .doc-banner:hover  { box-shadow: 0 8px 24px rgba(124,58,237,0.22); border-color: #a78bfa; }
+        .detective-banner:hover { box-shadow: 0 8px 24px rgba(249,115,22,0.24); border-color: #fb923c; }
+        .chat-banner .captain-avatar, .doc-banner .captain-avatar, .detective-banner .captain-avatar {
+            width: clamp(80px, 16vw, 120px); height: clamp(80px, 16vw, 120px); flex-shrink: 0; align-self: center;
+        }
+        .chat-banner .captain-avatar img, .doc-banner .captain-avatar img, .detective-banner .captain-avatar img {
+            width: 100%; height: 100%; object-fit: contain; animation: floatBob 3.4s ease-in-out infinite;
+        }
+        .detective-banner .captain-name { font-weight: 800; font-size: 1.05em; color: #9a3412; display: flex; align-items: center; gap: 6px; }
+        .detective-banner .captain-line { font-size: 0.85em; color: #7c2d12; margin-top: 3px; line-height: 1.5; }
+        .chat-banner .captain-text, .doc-banner .captain-text, .detective-banner .captain-text { flex: 1; min-width: 0; }
+        .chat-banner .captain-name { font-weight: 800; font-size: 1.05em; color: #075985; display: flex; align-items: center; gap: 6px; }
+        .doc-banner  .captain-name { font-weight: 800; font-size: 1.05em; color: #5b21b6; display: flex; align-items: center; gap: 6px; }
+        .chat-banner .captain-line { font-size: 0.85em; color: #0c4a6e; margin-top: 3px; line-height: 1.5; }
+        .doc-banner  .captain-line { font-size: 0.85em; color: #4c1d95; margin-top: 3px; line-height: 1.5; }
+        .hero-go {
+            display: inline-block; margin-top: 8px; font-size: 0.82em; font-weight: 700;
+            color: #fff !important;   /* 蓋過 ai-theme.css 的 a:not(...) 連結色，否則白字變亮藍看不見 */
+            text-decoration: none; border-radius: 20px; padding: 6px 14px;
+        }
+        .chat-banner .hero-go { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+        .doc-banner  .hero-go { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .hero-go:hover { filter: brightness(1.1); }
+        .create-banner {
+            display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+            background: linear-gradient(135deg, #f5fdf3, #eafbe6);
+            border: 2px solid #a7e3a0; border-radius: 16px; box-shadow: var(--card-shadow);
+            box-sizing: border-box; text-align: left;
+            cursor: pointer;                     /* 其他角色卡都是手指游標，這張漏了 */
+            transition: var(--transition);
+        }
+        .create-banner:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(34,197,94,0.22); border-color: #4ade80; }
+        .create-banner .captain-avatar { width: clamp(80px, 16vw, 120px); height: clamp(80px, 16vw, 120px); flex-shrink: 0; align-self: center; }
+        .create-banner .captain-avatar img { width: 100%; height: 100%; object-fit: contain; animation: floatBob 3.2s ease-in-out infinite; }
+        .create-banner .captain-text { flex: 1; min-width: 0; }
+        .create-banner .captain-name { font-weight: 800; font-size: 1.05em; color: #15803d; display: flex; align-items: center; gap: 6px; }
+        .create-banner .captain-line { font-size: 0.85em; color: #166534; margin-top: 3px; line-height: 1.5; }
+        .create-row { display: flex; gap: 8px; margin-top: 8px; }
+        .create-row input { flex: 1; min-width: 0; padding: 8px 12px; border: 1.5px solid #a7e3a0; border-radius: 10px; font-family: inherit; font-size: 0.9em; }
+        .create-row button { flex-shrink: 0; background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; font-weight: 700; border: none; border-radius: 10px; padding: 8px 16px; cursor: pointer; font-family: inherit; }
+        .create-msg { font-size: 0.8em; color: #166534; margin-top: 5px; min-height: 1.1em; }
+        @media (max-width: 600px) {
+            .captain-banner { flex-wrap: wrap; justify-content: center; text-align: center; }
+            .captain-banner .captain-text { flex: 1 1 100%; }
+            .captain-banner .captain-name { justify-content: center; }
+        }
+
+        /* 金隊長／金婆婆彈窗的外殼樣式已移到 css/hero-modal.css（與對話模組共用同一份） */
+
+        .captain-current {
+            text-align: center; font-size: 0.95em; margin: 10px 0;
+            padding: 8px; background: var(--cb-banner-bg); border-radius: 10px; color: var(--text-primary);
+        }
+        .captain-reward-btn { flex-shrink: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 800; border: none; border-radius: 10px; padding: 9px 15px; cursor: pointer; font-family: inherit; font-size: 0.9em; white-space: nowrap; box-shadow: 0 3px 10px rgba(217,119,6,0.3); }
+        .captain-reward-btn:hover { filter: brightness(1.05); }
+        /* 金婆婆版：只顯示建立學生表單，隱藏選學生/統計/任務 */
+        /* 金婆婆模式只顯示建立表單；金隊長模式只顯示選學生／統計／任務 */
+        #captain-base-body.mode-grandma #captain-current-banner,
+        #captain-base-body.mode-grandma #captain-stats,
+        #captain-base-body.mode-grandma #captain-record-sec,
+        #captain-base-body.mode-grandma #captain-quest-sec { display: none !important; }
+        /* 金隊長版：隱藏建立學生表單 */
+        #captain-base-body:not(.mode-grandma) #captain-create-block { display: none; }
+        .captain-stu-chip {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 22px;
+            border: 2px solid #dbe7f5; background: #fff;
+            cursor: pointer; font-size: 0.9em; font-family: inherit;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .captain-stu-chip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+        .captain-stu-chip:hover { border-color: #f0b429; }
+        .captain-stu-chip.selected {
+            border-color: #f59e0b; background: #fff7e0; font-weight: 700; color: #92400e;
+        }
+        .captain-newrow { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
+        .captain-newrow input {
+            padding: 8px 12px; border: 1.5px solid #dbe7f5; border-radius: 10px;
+            font-size: 0.9em; font-family: inherit; width: 180px;
+        }
+        .captain-newrow button {
+            padding: 8px 16px; border: none; border-radius: 10px;
+            background: var(--accent-color); color: #fff; font-weight: 700;
+            cursor: pointer; font-family: inherit; font-size: 0.9em;
+        }
+        .captain-stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 12px 0;
+        }
+        .captain-stats .captain-empty { grid-column: 1 / -1; }
+        .captain-stats .stat {
+            background: var(--cb-stat-bg); border: 1px solid var(--cb-card-line); border-radius: 12px;
+            padding: 8px 6px; text-align: center; font-size: 0.85em; color: var(--text-primary);
+        }
+        .captain-stats .stat b { display: block; font-size: 1.3em; color: var(--cb-stat-num); }
+        .captain-sec-sub { font-weight: 600; font-size: 0.82em; color: var(--cb-muted); }
+        .captain-rec-select {
+            font: inherit; font-weight: 800; width: 200px; max-width: 100%; padding: 6px 12px; margin: 0 4px; cursor: pointer;
+            border-radius: 10px; border: 1.5px solid var(--cb-select-line); background: var(--cb-select-bg); color: var(--text-primary);
+        }
+        .captain-rec-select option { color: #1f2937; background: #fff; }
+        .captain-rec-tail { white-space: nowrap; }
+        .captain-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+        .captain-badge {
+            background: var(--cb-stat-bg); border: 1px solid var(--cb-card-line); border-radius: 12px;
+            padding: 8px 4px; text-align: center; font-size: 0.78em; line-height: 1.35; color: var(--text-primary);
+        }
+        .captain-badge .bi { display: block; font-size: 1.7em; line-height: 1.2; }
+        .captain-badge .bi img { width: 44px; height: 44px; object-fit: contain; display: block; margin: 0 auto 2px; }   /* 徽章圖（2026-10-07） */
+        .captain-badge.off { opacity: 0.45; }
+        .captain-badge.off .bi { filter: grayscale(1); }
+        .captain-recent { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
+        .captain-recent-row {
+            display: flex; align-items: center; gap: 10px; background: var(--cb-card-bg); border: 1px solid var(--cb-card-line);
+            border-radius: 10px; padding: 7px 12px; font-size: 0.86em; color: var(--text-primary);
+        }
+        .captain-recent-row .rn { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .captain-recent-row .rs { color: var(--cb-stat-num); font-weight: 800; white-space: nowrap; }
+        .captain-recent-row .rd { color: var(--cb-muted); font-size: 0.9em; white-space: nowrap; }
+        .captain-empty { text-align: center; color: var(--cb-muted); font-size: 0.88em; line-height: 1.7; padding: 8px; }
+        .captain-links { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+        .captain-links a {
+            text-decoration: none; padding: 9px 18px; border-radius: 12px;
+            font-size: 0.9em; font-weight: 700;
+            background: #eaf3ff; color: #1d4ed8; border: 1px solid #dbe7f5;
+        }
+        .captain-links a:hover { background: #dbeafe; }
+
+        /* ── 每日任務 ── */
+        .captain-sec-title {
+            font-weight: 800; font-size: 0.95em; color: var(--cb-title);
+            margin: 16px 0 8px; display: flex; align-items: center; gap: 6px;
+        }
+        .quest-card {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--cb-card-bg); border: 1.5px solid var(--cb-card-line); border-radius: 12px;
+            padding: 10px 12px; margin-bottom: 8px;
+        }
+        .quest-card.done { border-color: var(--cb-done-line); background: var(--cb-done-bg); }
+        .quest-card.claimed { opacity: 0.65; }
+        .quest-icon { font-size: 1.4em; flex-shrink: 0; }
+        .quest-info { flex: 1; min-width: 0; }
+        .quest-desc { font-size: 0.88em; font-weight: 700; color: var(--text-primary); }
+        .quest-prog { font-size: 0.75em; color: var(--cb-muted); margin-top: 2px; }
+        .quest-act { flex-shrink: 0; }
+        .quest-act a, .quest-act button {
+            border: none; cursor: pointer; font-family: inherit; text-decoration: none;
+            font-size: 0.8em; font-weight: 800; padding: 7px 14px; border-radius: 18px; display: inline-block;
+        }
+        /* color 要 !important：ai-theme.css 的 a:not(.selection-btn):not(.choice-btn) 特異性較高，會把字染成淺藍（淺色模式也看不清楚） */
+        .quest-go    { background: var(--cb-go-bg); color: var(--cb-go-ink) !important; }
+        .quest-claim {
+            background: linear-gradient(135deg, #f7c948, #de911d); color: #4a2b00;
+            animation: questClaimPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes questClaimPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(222,145,29,0.45); }
+            50%     { box-shadow: 0 0 0 7px rgba(222,145,29,0); }
+        }
+        .quest-claimed-tag { font-size: 0.8em; font-weight: 800; color: var(--cb-claimed); }
+
+        /* ── 徽章牆 ── */
+        .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .badge-chip {
+            width: 92px; text-align: center; padding: 10px 4px 8px;
+            border: 1.5px solid #dbe7f5; border-radius: 12px; background: #fbfdff;
+        }
+        .badge-chip .b-icon { font-size: 1.6em; }
+        .badge-chip .b-name { font-size: 0.68em; font-weight: 700; color: var(--text-primary); margin-top: 3px; line-height: 1.3; }
+        .badge-chip.locked { filter: grayscale(1); opacity: 0.45; }
+        .badge-chip.fresh {
+            border-color: #f59e0b; background: #fff7e0;
+            animation: badgePop 0.5s ease;
+        }
+        @keyframes badgePop { 0% { transform: scale(0.5); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        .captain-quote {
+            text-align: center; font-size: 0.82em; color: var(--cb-title);
+            background: var(--cb-quote-bg); border: 1px dashed var(--cb-quote-line); border-radius: 10px;
+            padding: 7px 10px; margin-top: 10px;
+        }
+
+        /* 小金探對話視窗 */
+        #detective-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9700; /* 高於隱藏舞台(9600)：從舞台點角色時彈窗蓋在舞台上，不需先關舞台 */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #detective-modal-overlay.open { display: flex; }
+        #detective-modal {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px 28px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            animation: modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #detective-modal .modal-close-btn {
+            position: absolute; top: 14px; right: 16px;
+            background: none; border: none; font-size: 1.4rem;
+            cursor: pointer; color: #9CA3AF; line-height: 1;
+            padding: 2px 6px; border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        #detective-modal .modal-close-btn:hover { background: #F3F4F6; color: #374151; }
+        #detective-modal .modal-detective-row {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 22px; text-align: left;
+        }
+        #detective-modal .modal-avatar { width: 100px; height: 100px; flex-shrink: 0; }
+        #detective-modal .modal-avatar img { width: 100%; height: 100%; object-fit: contain; }
+        #detective-modal .modal-speech-bubble {
+            background: #FFF7ED; border: 2px solid #F59E0B;
+            border-radius: 14px; padding: 10px 14px;
+            font-size: 0.9rem; font-weight: 600; color: #92400e;
+            line-height: 1.6; position: relative; text-align: left; flex: 0 1 auto;
+        }
+        #detective-modal .modal-speech-bubble::before {
+            content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+            left: -10px; border: 6px solid transparent; border-right-color: #F59E0B;
+        }
+        #detective-modal .modal-speech-bubble::after {
+            content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+            left: -7px; border: 5px solid transparent; border-right-color: #FFF7ED;
+        }
+        #detective-modal .modal-games-card {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg,#FFF7ED,#FFFBEB);
+            border: 2px solid #F59E0B; border-radius: 16px;
+            text-decoration: none; color: inherit;
+            margin-bottom: 16px; cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        #detective-modal .modal-games-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245,158,11,0.25);
+        }
+        #detective-modal .modal-games-card .adv-text { text-align: center; }
+        #detective-modal .modal-cancel-btn {
+            width: 100%; padding: 11px; border: 1.5px solid #E5E7EB;
+            border-radius: 12px; background: none; cursor: pointer;
+            font-size: 0.95rem; color: #6B7280;
+            transition: background 0.15s, color 0.15s;
+        }
+        #detective-modal .modal-cancel-btn:hover { background: #F3F4F6; color: #6B7280; }
+
+        /* 金好聊彈窗的樣式已移到 css/hero-modal.css（與對話模組共用同一份） */
+
+        /* 金博士對話視窗遮罩 */
+        #doctor-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9700; /* 高於隱藏舞台(9600) */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #doctor-modal-overlay.open {
+            display: flex;
+        }
+
+        /* 對話視窗卡片 */
+        #doctor-modal {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px 28px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            animation: modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.85) translateY(20px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        #doctor-modal .modal-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: #9CA3AF;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        #doctor-modal .modal-close-btn:hover { background: #F3F4F6; color: #374151; }
+
+        /* 金博士 + 氣泡橫排 */
+        #doctor-modal .modal-doctor-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        #doctor-modal .modal-avatar {
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+        }
+        #doctor-modal .modal-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 對話氣泡 */
+        #doctor-modal .modal-speech-bubble {
+            background: #F5F3FF;
+            border: 2px solid #DDD6FE;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #4C1D95;
+            line-height: 1.6;
+            position: relative;
+            text-align: left;
+            flex: 0 1 auto;
+        }
+        #doctor-modal .modal-speech-bubble::before {
+            content: '';
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            left: -10px;
+            border: 6px solid transparent;
+            border-right-color: #DDD6FE;
+        }
+        #doctor-modal .modal-speech-bubble::after {
+            content: '';
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            left: -7px;
+            border: 5px solid transparent;
+            border-right-color: #F5F3FF;
+        }
+
+        #doctor-modal .modal-adventure-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #fbbf24;
+            border-radius: 14px;
+            padding: 16px 18px;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(217,119,6,0.18);
+            margin-bottom: 14px;
+        }
+        #doctor-modal .modal-adventure-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(217,119,6,0.28);
+        }
+        #doctor-modal .modal-adventure-card .adv-icon {
+            font-size: 2.6rem;
+            flex-shrink: 0;
+        }
+        #doctor-modal .modal-adventure-card .adv-text {
+            text-align: center;
+        }
+        #doctor-modal .modal-adventure-card .adv-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #92400e;
+        }
+        #doctor-modal .modal-adventure-card .adv-desc {
+            font-size: 0.8rem;
+            color: #78350f;
+            margin-top: 3px;
+        }
+        #doctor-modal .modal-adventure-card .adv-arrow {
+            font-size: 1.3rem;
+            color: #d97706;
+            flex-shrink: 0;
+        }
+
+        #doctor-modal .modal-cancel-btn {
+            width: 100%; padding: 11px; border: 1.5px solid #E5E7EB;
+            border-radius: 12px; background: none; cursor: pointer;
+            font-size: 0.95rem; color: #6B7280;
+            transition: background 0.15s, color 0.15s;
+        }
+        #doctor-modal .modal-cancel-btn:hover { background: #F3F4F6; color: #6B7280; }
+
+        /* 桌面端：金博士／小金探彈窗頭像放大到 300×300，彈窗加寬容納 */
+        @media (min-width: 768px) {
+            #detective-modal, #doctor-modal { max-width: 660px; }
+            #detective-modal .modal-avatar,
+            #doctor-modal .modal-avatar { width: 300px; height: 300px; }
+        }
+            /* 主頁最底下的「素材來源與著作權說明」連結：顏色跟著文字色，深淺色都不用另寫 */
+        .site-credits { width: 100%; text-align: center; margin: 28px 0 8px; font-size: 0.92rem; }
+        .site-credits a { color: inherit; opacity: 0.75; text-decoration: underline; text-underline-offset: 3px;
+                          display: inline-block; padding: 10px 12px; }   /* 命中區 ≥ 44px */
+        .site-credits a:hover { opacity: 1; }
+        /* 🎬 教材介紹影片（2026-10-09 使用者定：放主頁；影片由 Downloads/tools/kinetic-text 產生，見下方 openIntroVideo） */
+        :root { --iv-bg: #fff3d6; --iv-fg: #92400e; --iv-bd: #f6c453; }
+        @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --iv-bg: #2d2d44; --iv-fg: #fde68a; --iv-bd: #4b5563; } }
+        [data-theme="dark"] { --iv-bg: #2d2d44; --iv-fg: #fde68a; --iv-bd: #4b5563; }
+        .intro-video-btn { display: inline-flex; align-items: center; gap: 6px; margin: -6px auto 14px; padding: 9px 18px; min-height: 44px;
+                           border-radius: 999px; border: 1.5px solid var(--iv-bd); background: var(--iv-bg); color: var(--iv-fg);
+                           font: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+        .intro-video-btn:hover { filter: brightness(1.05); }
+        #intro-video-modal { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.75);
+                             display: flex; align-items: center; justify-content: center; padding: 16px; }
+        #intro-video-modal[hidden] { display: none !important; }
+        #intro-video-modal .iv-box { position: relative; width: min(960px, 100%); background: #111827; border-radius: 14px; padding: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        #intro-video-modal video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; }
+        #intro-video-modal .iv-close { position: absolute; top: -14px; right: -14px; width: 44px; height: 44px; border-radius: 50%;
+                                       border: 2px solid #fff; background: #374151; color: #fff; font-size: 1.2rem; cursor: pointer; touch-action: manipulation; }
+    </style>
+
+    <!-- 关键：在页面渲染前根据 hash 添加 CSS 规则，立即隐藏/显示正确的标签页 -->
+    <script>
+        (function() {
+            const hash = window.location.hash.substring(1);
+            if (hash === 'part2' || hash === 'part3' || hash === 'part4') {
+                // 通过添加 style 来覆盖 HTML 中的默认 active 状态，使用 id 以便后续移除
+                document.write('<style id="initial-tab-styles">');
+                document.write('.tab-btn[data-target="part1"] { background: transparent !important; color: var(--text-primary) !important; box-shadow: none !important; }');
+                document.write('.tab-btn[data-target="' + hash + '"] { background: var(--primary-color) !important; color: white !important; box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3) !important; }');
+                document.write('#part1.tab-content { display: none !important; }');
+                document.write('#' + hash + '.tab-content { display: block !important; }');
+                document.write('</style>');
+            }
+        })();
+    </script>
+    <!-- iPad 橫式版面（只在 html.tablet-land 生效，必須在頁內 <style> 之後） -->
+    <link rel="stylesheet" href="css/tablet-landscape.css">
+</head>
+<body>
+    <style>
+        .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+        .site-nav a { color:#fff !important; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+        .site-nav a:hover { background:rgba(255,255,255,0.30); }
+        .site-nav a.current { background:#f59e0b; }
+        .theme-toggle-btn { color:#fff; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s; }
+        .theme-toggle-btn:hover { background:rgba(255,255,255,0.30); }
+        /* 隱藏舞台開啟時導覽列讓位：sticky 導覽列 z-index(10000) 高於舞台(9600)，
+           手機（尤其教師登入後選項變多、折成多行）會蓋住舞台上緣的角色圖示。
+           不動層級鏈（舞台9600＜角色彈窗9700＜導覽列10000），只在舞台開啟期間隱藏。 */
+        body.stage-open .site-nav { visibility: hidden; }
+    </style>
+    <nav class="site-nav">
+        <a href="index.html" class="current" data-hero="home">🏠 主頁(金錢核心課程)</a>
+        <!-- 這三項是「顯示在主頁上」的區塊，不是跳去子模組首頁（?hero= 由檔尾的 applyEntryParams 處理）；
+             data-hero 供下面 setMode() 同步 .current 高亮，別跟著改名時漏掉 -->
+        <a href="index.html?hero=chatdog" data-hero="chatdog">💬 生活情境對話</a>
+        <a href="index.html?hero=doctor" data-hero="doctor">🗺️ 一日金錢冒險</a>
+        <a href="index.html?hero=detective" data-hero="detective">🎮 小遊戲</a>
+        <a href="reward/index.html?page=growth" class="nav-growth">🌟 成就與寵物</a>
+        <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+        <a href="teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+        <button type="button" class="theme-toggle-btn" id="theme-toggle-btn"></button>
+        <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
+    </nav>
+    <script src="js/nav-auth.js"></script>
+    <div class="container">
+        <div class="page-header">
+            <h1>💰 金錢小達人</h1>
+            <button type="button" class="intro-video-btn" onclick="openIntroVideo()">🎬 教材介紹</button>
+            <div class="ai-dual-intro">
+                <!-- 小金探 -->
+                <div class="ai-char-block detective-block" onclick="openDetectiveModal()" title="點擊進入遊戲室">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/hint_detective.png" alt="小金探">
+                    </div>
+                    <div class="ai-char-name">
+                        小金探
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('detective')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('detective')">
+                        <p><span class="bubble-line">大家好！我是小金探，</span><br><span class="bubble-line">學習遇到困難了嗎？來找我幫忙，</span><br><span class="bubble-line">我會給你一些小提示，幫你找到解題的線索！</span></p>
+                    </div>
+                </div>
+                <!-- 金博士 -->
+                <div class="ai-char-block doctor-block" onclick="openDoctorModal()" title="點擊查看金錢故事冒險">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/money_doctor.png" alt="金博士">
+                    </div>
+                    <div class="ai-char-name">
+                        金博士
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('doctor')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('doctor')">
+                        <p><span class="bubble-line">很高興見到你，我是金博士，</span><br><span class="bubble-line">學習與金錢及生活有關的知識，</span><br><span class="bubble-line">將能讓你受用一生，開始今天的課程吧！</span></p>
+                    </div>
+                </div>
+                <!-- 金好聊 -->
+                <div class="ai-char-block chatdog-block" onclick="openChatDogModal()" title="點擊認識金好聊">
+                    <div class="ai-char-avatar">
+                        <img src="images/common/money_chat_dog.png" alt="金好聊">
+                    </div>
+                    <div class="ai-char-name">
+                        金好聊
+                        <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('chatdog')" title="播放語音">🔊</button>
+                    </div>
+                    <div class="ai-char-bubble" onclick="event.stopPropagation(); speakCharacter('chatdog')">
+                        <p><span class="bubble-line">汪！我是金好聊，</span><br><span class="bubble-line">最喜歡聽你說話了！跟我一起去逛商店，</span><br><span class="bubble-line">練習開口說、輕鬆買東西吧！</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 角色卡輪播：一次顯示兩張，◀▶ 各切換一位（金隊長→金婆婆→金好聊→金博士，循環） -->
+            <div class="hero-carousel">
+                <button class="hero-arrow left" id="hero-prev" type="button" aria-label="上一位角色" title="上一位角色"><span class="ha-tri" aria-hidden="true"></span></button>
+                <span class="hero-hint" aria-hidden="true">切換角色</span>
+
+                <div class="home-duo" id="home-duo">
+                    <div class="captain-banner hero-card" data-hero="captain" title="點擊看學生的學習紀錄">
+                        <div class="hero-figure">
+                            <div class="captain-avatar">
+                                <img src="images/common/captain_gold.png" alt="金隊長">
+                            </div>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('captain')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-text">
+                            <div class="captain-name">🤖 金隊長・成長基地</div>
+                            <!-- 2026-09-28 使用者定：各單元都能選學生了，這張卡不再放「選學生」下拉，點開是看學習紀錄 -->
+                            <div class="captain-line">所有課程表現、任務與獎勵都會自動記錄成長。點我看看目前學生的學習紀錄。</div>
+                        </div>
+                    </div>
+
+                    <div class="create-banner hero-card" data-hero="grandma" title="點擊建立新學生">
+                        <div class="hero-figure">
+                            <div class="captain-avatar">
+                                <img src="images/common/grandma_gold.png" alt="金婆婆">
+                            </div>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('grandma')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-text">
+                            <div class="captain-name">🌱 金婆婆・創建學生</div>
+                            <div class="captain-line">「歡迎新朋友，告訴金婆婆你的名字。」在彈出的視窗裡輸入姓名，就能建立新學生。</div>
+                        </div>
+                    </div>
+
+                    <div class="chat-banner hero-card" data-hero="chatdog" title="點擊看生活情境對話的七個部分">
+                        <div class="hero-figure">
+                            <div class="captain-avatar">
+                                <img src="images/common/money_chat_dog.png" alt="金好聊">
+                            </div>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('chatdog')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-text">
+                            <div class="captain-name">🐕 金好聊・對話練習</div>
+                            <div class="captain-line">汪！跟我一起去逛商店，練習開口說、輕鬆買東西吧！日常對話等你練習。</div>
+                        </div>
+                    </div>
+
+                    <div class="doc-banner hero-card" data-hero="doctor" title="點擊看一日金錢冒險的關卡">
+                        <div class="hero-figure">
+                            <div class="captain-avatar">
+                                <img src="images/common/money_doctor.png" alt="金博士">
+                            </div>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('doctor')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-text">
+                            <div class="captain-name">🔬 金博士・金錢冒險</div>
+                            <div class="captain-line">想接受不一樣的挑戰嗎？7個冒險關卡，看看你能不能全部過關！</div>
+                        </div>
+                    </div>
+
+                    <div class="detective-banner hero-card" data-hero="detective" title="點擊看趣味小遊戲">
+                        <div class="hero-figure">
+                            <div class="captain-avatar">
+                                <img src="images/common/hint_detective.png" alt="小金探">
+                            </div>
+                            <button class="ai-voice-btn" onclick="event.stopPropagation();speakCharacter('detective')" title="播放語音">🔊</button>
+                        </div>
+                        <div class="captain-text">
+                            <div class="captain-name">🕵️ 小金探・趣味遊戲</div>
+                            <div class="captain-line">學習累了嗎？來遊戲室挑戰小遊戲放鬆一下！點我，下面就會換成一頁一頁的遊戲。</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="hero-arrow right" id="hero-next" type="button" aria-label="下一位角色" title="下一位角色"><span class="ha-tri" aria-hidden="true"></span></button>
+            </div>
+
+            <script>
+            (function () {
+                const SPEECH = {
+                    detective:       '大家好！我是小金探，學習遇到困難了嗎？來找我幫忙，我會給你一些小提示，幫你找到解題的線索！',
+                    doctor:          '很高興見到你，我是金博士，學習與金錢及生活有關的知識，將能讓你受用一生，開始今天的課程吧！',
+                    doctorModal:     '你想要接受不一樣的挑戰嗎？進入金錢冒險的故事中，看看你能不能全部過關！',
+                    detectiveModal:  '學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。快來遊戲室，挑戰趣味小遊戲，看看你能闖過幾關！',
+                    chatdog:         '汪！我是金好聊，最喜歡聽你說話了！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
+                    captain:         '大家好，我是金隊長！你的努力，我都會記錄下來。跟我一起完成今天的任務，每天比昨天更進步！',
+                    grandma:         '歡迎新朋友～我是金婆婆。告訴我你的名字，我會像照顧一株小苗一樣，耐心陪著你，一天一天慢慢長大。',
+                    grandmaEdit:     '想換個名字或照片嗎？改好以後按確認修改，我就幫您記起來。',
+                    grandmaDelete:   '要刪除學生嗎？先選好是哪一位，再按確認刪除。刪除以後沒辦法復原，請再想一想喔。',
+                };
+                let _voices = [];
+                if (window.speechSynthesis) {
+                    _voices = speechSynthesis.getVoices();
+                    speechSynthesis.addEventListener('voiceschanged', () => { _voices = speechSynthesis.getVoices(); });
+                }
+
+                // 有網路：微軟 Online → Yating → Google → 其他；無網路：直接用 Yating 系統語音
+                function _pickVoice(prefer) {
+                    const online = navigator.onLine;
+                    const msOn  = online ? _voices.filter(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) : [];
+                    const msSys = _voices.filter(v => /microsoft/i.test(v.name) && !/online/i.test(v.name) && v.lang.startsWith('zh'));
+                    const goog  = online ? _voices.filter(v => /google/i.test(v.name) && v.lang.startsWith('zh')) : [];
+                    if (prefer) {
+                        const hit = msOn.find(v => new RegExp(prefer, 'i').test(v.name));
+                        if (hit) return hit;
+                    }
+                    return msOn[0] ||
+                           msSys.find(v => /yating/i.test(v.name)) ||
+                           goog[0] ||
+                           msSys[0] ||
+                           _voices.find(v => v.lang === 'zh-TW');
+                }
+
+                // ── 預錄音檔播放（.wav → .mp3 → TTS 依序後備）──
+                // 檔名見 voicegen/lists/*.csv；放進 audio/chatbot/ 即優先播放。
+                const AUDIO_BASE = 'audio/chatbot/';
+                const FILE_MAP = {
+                    [SPEECH.detective]:      'index_detective_intro',
+                    [SPEECH.doctor]:         'index_doctor_intro',
+                    [SPEECH.doctorModal]:    'index_doctor_modal',
+                    [SPEECH.detectiveModal]: 'index_detective_modal',
+                    [SPEECH.chatdog]:        'index_chatdog_intro',
+                    [SPEECH.captain]:        'index_captain_intro',
+                    [SPEECH.grandma]:        'index_grandma_intro',
+                    [SPEECH.grandmaEdit]:    'index_grandma_edit',
+                    [SPEECH.grandmaDelete]:  'index_grandma_delete',
+                };
+                let _charAudio = null, _charToken = null;
+                function _stopCharAudio() {
+                    _charToken = null;
+                    if (_charAudio) { try { _charAudio.pause(); } catch (e) {} _charAudio = null; }
+                }
+                function _playCharAudio(file, onFail) {
+                    const exts = ['mp3', 'wav']; let i = 0; const token = {}; _charToken = token;
+                    const tryNext = () => {
+                        if (_charToken !== token) return;
+                        if (i >= exts.length) { onFail && onFail(); return; }
+                        const audio = new Audio(AUDIO_BASE + file + '.' + exts[i++]);
+                        _charAudio = audio;
+                        let advanced = false;
+                        const fail = () => { if (advanced) return; advanced = true; tryNext(); };
+                        audio.onerror = fail;
+                        audio.onended = () => { if (_charToken === token) _charAudio = null; };
+                        audio.play().catch(fail);
+                    };
+                    tryNext();
+                }
+
+                // 主入口：先播預錄音檔，找不到才用瀏覽器即時 TTS
+                function _speak(text, type) {
+                    _stopCharAudio();
+                    if (window.speechSynthesis) speechSynthesis.cancel();
+                    const file = FILE_MAP[text];
+                    if (file) { _playCharAudio(file, () => _speakTTS(text, type)); return; }
+                    _speakTTS(text, type);
+                }
+
+                function _speakTTS(text, type) {
+                    if (!window.speechSynthesis) return;
+                    speechSynthesis.cancel();
+                    const utt = new SpeechSynthesisUtterance(text);
+                    utt.lang = 'zh-TW';
+                    if (type === 'doctor') {
+                        utt.rate  = 0.88;
+                        utt.voice = _pickVoice('yunjian|云健');
+                    } else {
+                        utt.rate  = 0.92;
+                        utt.voice = _pickVoice(null);
+                    }
+                    speechSynthesis.speak(utt);
+                }
+
+                // 停止角色語音（含預錄音檔）；供彈窗關閉時呼叫
+                window.stopCharacterVoice = function () {
+                    _stopCharAudio();
+                    if (window.speechSynthesis) speechSynthesis.cancel();
+                };
+
+                // 角色介紹文字的唯一來源就是上面的 SPEECH；共用彈窗（hero-modal.js）要顯示同一句話
+                window.getHeroSpeech = function (key) { return SPEECH[key] || ''; };
+
+                window.speakCharacter = function (type) {
+                    _speak(SPEECH[type], type);
+                };
+
+                // 播放指定 key 的語音文字（對話框開啟時使用）
+                window.speakCharacterText = function (speechKey, voiceType) {
+                    _speak(SPEECH[speechKey], voiceType);
+                };
+
+                // 指定「雅婷」唸一段動態文字（例：金婆婆建立學生後的「○○○ 的學生已被建立成功」）。
+                // 動態內容不可能有預錄檔，一律走即時 TTS。
+                // ⚠️ getVoices() 每次回新實例，speak 前重抓；voice 賦值失敗會丟 TypeError 要包起來。
+                // ⚠️ 挑好就直接指定，不去驗證瀏覽器有沒有照做（見 CLAUDE.md「不要自動判定」踩雷）。
+                window.speakYating = function (text) {
+                    if (!window.speechSynthesis || !text) return;
+                    _stopCharAudio();
+                    speechSynthesis.cancel();
+                    const vs = speechSynthesis.getVoices() || [];
+                    const pick = vs.find(v => /yating/i.test(v.name))
+                              || vs.find(v => /hsiaochen|曉臻/i.test(v.name))
+                              || _pickVoice(null);
+                    const utt = new SpeechSynthesisUtterance(text);
+                    utt.lang = 'zh-TW';
+                    utt.rate = 0.92;
+                    if (pick) { try { utt.voice = pick; } catch (e) {} }
+                    speechSynthesis.speak(utt);
+                };
+            })();
+
+            // （已無呼叫點：主頁改為直接開場所 `dialogue/index.html?scenario=<id>`，
+            //   不再走「先進對話模組首頁」這條路；2026-08-04 移除 openChatDogPractice）
+
+            // 金好聊彈窗改由**共用元件** hero-modal.js 提供（與對話模組同一份），
+            // 定義在檔尾那支 IIFE 裡。
+
+            window.openDoctorModal = function () {
+                document.getElementById('doctor-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+                // 開啟時自動播放金博士語音
+                if (window.speakCharacter) {
+                    setTimeout(() => speakCharacterText('doctorModal', 'doctor'), 300);
+                }
+            };
+
+            window.closeDoctorModal = function (event) {
+                if (event && event.target !== document.getElementById('doctor-modal-overlay')) return;
+                window.stopCharacterVoice?.();
+                document.getElementById('doctor-modal-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            window.openDetectiveModal = function () {
+                document.getElementById('detective-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+                if (window.speakCharacter) {
+                    setTimeout(() => speakCharacterText('detectiveModal', 'detective'), 300);
+                }
+            };
+
+            window.closeDetectiveModal = function (event) {
+                if (event && event.target !== document.getElementById('detective-modal-overlay')) return;
+                window.stopCharacterVoice?.();
+                document.getElementById('detective-modal-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+            </script>
+        </div>
+        
+        <!-- ── 金博士對話視窗 ────────────────────────────────── -->
+        <div id="doctor-modal-overlay" onclick="closeDoctorModal(event)">
+            <div id="doctor-modal">
+                <button class="modal-close-btn" onclick="closeDoctorModal(null)" title="關閉">✕</button>
+
+                <!-- 金博士說話區 -->
+                <div class="modal-doctor-row">
+                    <div class="modal-avatar">
+                        <img src="images/common/money_doctor.png" alt="金博士">
+                    </div>
+                    <div class="modal-speech-bubble">
+                        你想要接受不一樣的挑戰嗎？<br>
+                        進入金錢冒險的故事中，<br>
+                        看看你能不能全部過關！
+                    </div>
+                </div>
+
+                <!-- 點這張卡＝關掉彈窗，讓學生直接在下面挑一位角色 -->
+                <button type="button" class="modal-adventure-card" onclick="closeDoctorModal(null)">
+                    <span class="adv-icon">🗺️</span>
+                    <div class="adv-text">
+                        <div class="adv-title">一日金錢冒險</div>
+                        <div class="adv-desc">點我關閉，直接在下面挑一位角色開始冒險</div>
+                    </div>
+                </button>
+
+
+            </div>
+        </div>
+
+        <!-- ── 小金探對話視窗 ────────────────────────────────── -->
+        <div id="detective-modal-overlay" onclick="closeDetectiveModal(event)">
+            <div id="detective-modal">
+                <button class="modal-close-btn" onclick="closeDetectiveModal(null)" title="關閉">✕</button>
+                <div class="modal-detective-row">
+                    <div class="modal-avatar">
+                        <img src="images/common/hint_detective.png" alt="小金探">
+                    </div>
+                    <div class="modal-speech-bubble">
+                        學習累了嗎？偶爾放鬆，也是讓學習更有動力的方法。<br>
+                        快來遊戲室，挑戰趣味小遊戲，<br>
+                        看看你能闖過幾關！
+                    </div>
+                </div>
+                <!-- 與金好聊／金博士一致：點卡片＝關掉彈窗，直接在下面挑遊戲（遊戲會就地彈出） -->
+                <button type="button" class="modal-games-card" onclick="closeDetectiveModal(null)">
+                    <span style="font-size:2rem;">🎮</span>
+                    <div class="adv-text">
+                        <div class="adv-title" style="color:#92400e;">小金探的遊戲室</div>
+                        <div class="adv-desc" style="color:#78350f;">點我關閉，直接在下面挑想玩的遊戲</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 金好聊彈窗已改由共用元件 js/hero-modal.js 產生（對話模組載入同一支）→ 這裡不再有自己的 markup -->
+
+        <!-- ── 金隊長成長基地／金婆婆建立學生 ──────────────────────────
+             彈窗外殼與角色頭部由**共用元件** js/hero-modal.js 提供（對話模組載入同一支），
+             這一塊只是「要塞進彈窗裡的內容」，平常隱藏在頁面底部。 -->
+        <div id="captain-base-body" hidden>
+                <div class="captain-current" id="captain-current-banner">目前學生：<b>訪客</b></div>
+                <div id="captain-create-block">
+                    <!-- 金婆婆彈窗分兩種：新增一位學生／修改現有學生（改名字、換或移除照片） -->
+                    <div class="gm-tabs">
+                        <button type="button" class="gm-tab active" data-gm="new">➕ 新增<span class="gm-tab-noun">學生</span></button>
+                        <button type="button" class="gm-tab" data-gm="edit">✏️ 修改<span class="gm-tab-noun">學生</span></button>
+                        <!-- 掛 nav-teacher：教師登入才顯示（顯示／隱藏由 js/nav-auth.js 統一處理） -->
+                        <button type="button" class="gm-tab nav-teacher" data-gm="delete">🗑️ 刪除<span class="gm-tab-noun">學生</span></button>
+                    </div>
+
+                    <!-- 兩個分頁同一種版型：左＝照片、中＝資料欄、下＝確認／取消 -->
+                    <div id="gm-pane-new">
+                        <div class="gm-row gm-form-row">
+                            <label class="gm-photo" title="點我選照片（可略過）">
+                                <input type="file" id="captain-new-photo" accept="image/*" hidden onchange="captainPreviewPhoto(this)">
+                                <span id="captain-photo-placeholder" class="gm-photo-empty">👤</span>
+                                <img id="captain-new-photo-preview" alt="" style="display:none;">
+                                <span class="gm-photo-hint">加照片</span>
+                            </label>
+                            <div class="gm-fields">
+                                <input id="captain-new-name" type="text" maxlength="12" class="gm-name" placeholder="請輸入學生名稱（必填）" autocomplete="off"
+                                       onkeydown="if(event.key==='Enter'){event.preventDefault();captainCreateStudent('captain-new-name','captain-create-msg');}">
+                            </div>
+                        </div>
+                        <p class="gm-note">姓名<b>必填</b>；照片可放可不放，不放會用預設頭像。</p>
+                        <div class="gm-actions">
+                            <button type="button" class="gm-btn-ok" onclick="captainCreateStudent('captain-new-name','captain-create-msg')">✅ 確認新增</button>
+                            <button type="button" class="gm-btn-cancel" onclick="closeCaptainBase(null)">取消</button>
+                        </div>
+                        <div class="create-msg" id="captain-create-msg" style="text-align:center; margin-top:10px;"></div>
+                    </div>
+
+                    <div id="gm-pane-edit" hidden>
+                        <div class="gm-row gm-form-row">
+                            <label class="gm-photo" title="點我換照片">
+                                <input type="file" id="gm-edit-photo-input" accept="image/*" hidden>
+                                <span id="gm-edit-photo-empty" class="gm-photo-empty">👤</span>
+                                <img id="gm-edit-photo-preview" alt="" style="display:none;">
+                                <span class="gm-photo-hint">換照片</span>
+                            </label>
+                            <div class="gm-fields">
+                                <!-- 兩位以上學生才顯示這個下拉（只有一位時直接改他的名字就好） -->
+                                <select id="gm-edit-select" aria-label="選擇要修改的學生"></select>
+                                <input id="gm-edit-name" type="text" maxlength="12" class="gm-name" placeholder="學生名稱" autocomplete="off">
+                            </div>
+                        </div>
+                        <p class="gm-note">改名字不會影響已經記錄的學習歷程（紀錄是綁學生編號，不是名字）。</p>
+                        <div class="gm-actions">
+                            <button type="button" class="gm-del-photo" id="gm-remove-photo">🗑️ 移除照片</button>
+                            <button type="button" class="gm-btn-ok" id="gm-save">✅ 確認修改</button>
+                            <button type="button" class="gm-btn-cancel" onclick="closeCaptainBase(null)">取消</button>
+                        </div>
+                        <div class="create-msg" id="gm-edit-msg" style="text-align:center; margin-top:10px;"></div>
+                    </div>
+
+                    <!-- 刪除學生：選人 → 確認刪除 → 再問一次才真的刪（教師專用） -->
+                    <div id="gm-pane-delete" hidden>
+                        <div class="gm-row gm-form-row">
+                            <div class="gm-photo gm-photo-static">
+                                <span id="gm-del-photo-empty" class="gm-photo-empty">👤</span>
+                                <img id="gm-del-photo-preview" alt="" style="display:none;">
+                            </div>
+                            <div class="gm-fields">
+                                <select id="gm-del-select" aria-label="選擇要刪除的學生"></select>
+                            </div>
+                        </div>
+                        <p class="gm-note">只會把學生從名冊移除，已經記錄的學習歷程會保留（「學習歷程總覽」仍查得到）。<br><b>刪除以後無法復原。</b></p>
+                        <div class="gm-actions" id="gm-del-actions">
+                            <button type="button" class="gm-btn-danger" id="gm-del-go">🗑️ 確認刪除</button>
+                            <button type="button" class="gm-btn-cancel" onclick="closeCaptainBase(null)">取消</button>
+                        </div>
+                        <div class="gm-actions" id="gm-del-confirm" hidden>
+                            <div class="gm-del-ask" id="gm-del-ask"></div>
+                            <button type="button" class="gm-btn-danger" id="gm-del-yes">是，刪除</button>
+                            <button type="button" class="gm-btn-cancel" id="gm-del-no">先不要</button>
+                        </div>
+                        <div class="create-msg" id="gm-del-msg" style="text-align:center; margin-top:10px;"></div>
+                    </div>
+                </div>
+                <div class="captain-stats" id="captain-stats"></div>
+                <!-- 學習紀錄（2026-09-28）：徽章＋最近練習；徽章規則用 js/growth-system.js（與學生成長頁同一份） -->
+                <div id="captain-record-sec" hidden>
+                    <div class="captain-sec-title">🏅 已獲得的徽章 <span id="captain-badge-count" class="captain-sec-sub"></span></div>
+                    <div class="captain-badges" id="captain-badges"></div>
+                    <div class="captain-sec-title">🕘 最近的練習</div>
+                    <div class="captain-recent" id="captain-recent"></div>
+                </div>
+
+                <div id="captain-quest-sec" hidden>
+                    <div class="captain-sec-title">🚀 今日任務 <span id="quest-date" style="font-weight:600;color:var(--cb-date);font-size:0.82em"></span></div>
+                    <div id="captain-assigned"></div>
+                    <div id="captain-quests"></div>
+                    <!-- 老師指派「控制」已移至 學習歷程總覽(teacher.html)；這裡只保留學生看到的指派卡片(captain-assigned) -->
+                </div>
+
+                <div class="captain-quote" id="captain-quote" hidden></div>
+        </div>
+
+        <!-- ── 隱藏角色舞台（入口已停用，樣式與程式碼保留；見 #stage-hint 的 display:none）── -->
+        <button id="stage-hint" type="button" title="✨ 有隱藏的朋友們……" aria-label="開啟隱藏角色舞台"><span aria-hidden="true">✨</span><span class="sh-label">隱藏角色</span></button>
+        <div id="stage-overlay" role="dialog" aria-modal="true" aria-label="角色舞台">
+            <button class="stage-close" onclick="closeStage()" title="關閉">✕</button>
+            <div class="stage-inner">
+                <div class="stage-spotlight"></div>
+                <div class="stage-floor"></div>
+                <button class="stage-arrow left"  type="button" aria-label="上一位">◀</button>
+                <button class="stage-arrow right" type="button" aria-label="下一位">▶</button>
+                <div class="stage-char" id="stage-char">
+                    <img id="stage-img" src="" alt="">
+                    <div class="stage-name">
+                        <span id="stage-name"></span>
+                        <button class="ai-voice-btn" id="stage-voice" title="播放語音">🔊</button>
+                    </div>
+                    <div class="stage-desc" id="stage-desc"></div>
+                    <button class="stage-action" id="stage-action"></button>
+                </div>
+                <div class="stage-dots" id="stage-dots"></div>
+                <div class="stage-tip">◀ ▶ 切換角色 ・ 點角色按鈕進入活動 ・ ESC 離開</div>
+            </div>
+        </div>
+
+        <script>
+        // ── 隱藏角色舞台：聚光燈＋3D 旋轉換角 ──
+        (function () {
+            const CHARS = [
+                { img: 'images/common/hint_detective.png', name: '小金探', speech: 'detective',
+                  desc: '學習遇到困難了嗎？來找我幫忙，我會給你解題的小提示！累了也可以來遊戲室放鬆一下。',
+                  btn: '🎮 小金探的遊戲室', act: () => { openDetectiveModal(); } },
+                { img: 'images/common/money_doctor.png', name: '金博士', speech: 'doctor',
+                  desc: '想接受不一樣的挑戰嗎？進入金錢故事冒險，看看你能不能全部過關！',
+                  btn: '🗺️ 金錢故事冒險', act: () => { openDoctorModal(); } },
+                { img: 'images/common/money_chat_dog.png', name: '金好聊', speech: 'chatdog',
+                  desc: '汪！跟我一起去逛商店，練習開口說、輕鬆買東西吧！',
+                  btn: '🛒 購物對話練習', act: () => { openChatDogModal(); } },
+            ];
+            let idx = 0, queue = [], spinning = false;   // queue＝待切換的方向佇列（每次點擊排一筆，保證每下都切一次）
+            const SPIN_MS = 260;   // 每段旋轉時間（需與 .stage-char 的 CSS transition 時長同步）
+
+            const charEl = () => document.getElementById('stage-char');
+
+            function renderStage() {
+                const c = CHARS[idx];
+                document.getElementById('stage-img').src = c.img;
+                document.getElementById('stage-img').alt = c.name;
+                document.getElementById('stage-name').textContent = c.name;
+                document.getElementById('stage-desc').textContent = c.desc;
+                const btn = document.getElementById('stage-action');
+                btn.textContent = c.btn;
+                btn.onclick = c.act;
+                document.getElementById('stage-voice').onclick = () => window.speakCharacter?.(c.speech);
+                document.getElementById('stage-img').onclick   = () => window.speakCharacter?.(c.speech);
+                document.getElementById('stage-dots').innerHTML =
+                    CHARS.map((_, i) => `<span class="${i === idx ? 'on' : ''}"></span>`).join('');
+            }
+
+            // 每次點擊都排進佇列，保證「每按一下就翻一頁」；狂點時逐頁快速翻。
+            window.rotateStage = function (dir) {
+                queue.push(dir);
+                if (queue.length > 6) queue = queue.slice(-6);   // 防呆：按住方向鍵狂連時最多留 6 步，避免佇列爆量
+                if (!spinning) stepStage();
+            };
+
+            // 逐一消化佇列（之前的 3D 旋轉效果）：目前角色旋出 → 換人 → 新角色從反向旋入 → 播下一筆。
+            function stepStage() {
+                if (!queue.length) { spinning = false; return; }
+                spinning = true;
+                const dir = queue.shift();
+                const el = charEl();
+                el.classList.remove('spin-pre');                 // 保險：清掉上一輪殘留
+                el.classList.add('spin-out');                    // 目前角色旋出
+                setTimeout(() => {
+                    idx = (idx + dir + CHARS.length) % CHARS.length;
+                    renderStage();                                // 旋出到透明時換人
+                    el.classList.remove('spin-out');
+                    el.classList.add('spin-pre');                // 新角色從反向就位
+                    void el.offsetWidth;                          // 強制 reflow
+                    el.classList.remove('spin-pre');              // 旋入
+                    setTimeout(() => {
+                        el.classList.remove('spin-out', 'spin-pre');
+                        stepStage();                              // 消化下一筆排隊的點擊
+                    }, SPIN_MS);
+                }, SPIN_MS);
+            }
+
+            window.openStage = function () {
+                idx = 0; queue = []; spinning = false;
+                renderStage();
+                document.getElementById('stage-overlay').classList.add('open');
+                document.body.classList.add('stage-open');   // 導覽列讓位（見 .site-nav 的 stage-open 規則）
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.closeStage = function () {
+                window.stopCharacterVoice?.();
+                document.getElementById('stage-overlay').classList.remove('open');
+                document.body.classList.remove('stage-open');
+                document.body.style.overflow = '';
+            };
+
+            // 箭頭改用 pointerdown（按下即觸發）：不靠 click（需 down+up 同在按鈕上），
+            // 這樣即使按鈕在按下瞬間有任何位移/縮放、或在頂緣，press 一定送到切換邏輯。
+            document.querySelectorAll('.stage-arrow').forEach(btn => {
+                btn.addEventListener('pointerdown', (e) => {
+                    if (e.button && e.button !== 0) return;   // 只理會主鍵/觸控/筆
+                    e.preventDefault();                        // 阻止 focus 捲動與後續 click（免雙觸發）
+                    rotateStage(btn.classList.contains('left') ? -1 : 1);
+                });
+            });
+
+            // 「隱藏角色」開啟鈕同理：它有 stagePeek 探頭動畫＋hover 滑出，一直在移動，
+            // 用 click 容易在移動中落空 → 改 pointerdown，按下即開。
+            document.getElementById('stage-hint')?.addEventListener('pointerdown', (e) => {
+                if (e.button && e.button !== 0) return;
+                e.preventDefault();
+                openStage();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // 若舞台上疊了角色彈窗，Esc 先關彈窗（留在舞台），否則才關舞台
+                    if (window.HeroModal?.isOpen()) { HeroModal.close(); return; }   // 金好聊／金隊長（共用元件）
+                    const openModalClose = [['detective-modal-overlay', 'closeDetectiveModal'],
+                                            ['doctor-modal-overlay', 'closeDoctorModal']]
+                        .find(([id]) => document.getElementById(id)?.classList.contains('open'));
+                    if (openModalClose) window[openModalClose[1]]?.(null);
+                    else closeStage();
+                }
+                else if (document.getElementById('stage-overlay').classList.contains('open')) {
+                    if (e.key === 'ArrowRight') rotateStage(1);
+                    if (e.key === 'ArrowLeft')  rotateStage(-1);
+                }
+            });
+
+            // 已取消「左滑／左拖曳開啟舞台」手勢：在主頁易誤觸其他設定。
+            // 開啟入口統一為右緣 ✨「隱藏角色」標籤鈕（見 #stage-hint），舞台內仍可用 ◀ ▶ 與方向鍵切換。
+        })();
+        </script>
+
+        <script>
+        // ── 金隊長成長基地：學生資料（與 reward / dialogue 共用同一份名冊與目前學生）──
+        (function () {
+            const ROSTER_KEY  = 'rewardSystemStudents';
+            const CURRENT_KEY = 'sp_currentStudent';
+
+            function loadRoster() {
+                try { return JSON.parse(localStorage.getItem(ROSTER_KEY) || '[]'); }
+                catch { return []; }
+            }
+            function getCurrent() {
+                try { return JSON.parse(localStorage.getItem(CURRENT_KEY) || 'null'); }
+                catch { return null; }
+            }
+            function setCurrent(stu) {
+                if (stu) localStorage.setItem(CURRENT_KEY, JSON.stringify({ id: stu.id, name: stu.name }));
+                else localStorage.removeItem(CURRENT_KEY);
+                renderCaptainBase();
+            }
+
+            // 讀取全部學習紀錄（與 dialogue/單元共用的 IndexedDB）。
+            // 版本須與 dialogue/db.js、js/learning-tracker.js 一致（目前 3）並建立相同 stores，
+            // 否則全新瀏覽器上先開此處會建立無資料表的空 DB，導致單元記錄靜默失敗。
+            function readAllRecords() {
+                return new Promise((resolve) => {
+                    try {
+                        const req = indexedDB.open('shopping-practice', 3);
+                        req.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('records')) {
+                                const store = db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
+                                store.createIndex('ts',         'ts',         { unique: false });
+                                store.createIndex('scenarioId', 'scenarioId', { unique: false });
+                            }
+                            if (!db.objectStoreNames.contains('custom_audio')) {
+                                db.createObjectStore('custom_audio', { keyPath: 'key' });
+                            }
+                            if (!db.objectStoreNames.contains('interrupted')) {
+                                db.createObjectStore('interrupted', { keyPath: 'id' });
+                            }
+                        };
+                        req.onsuccess = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('records')) { db.close(); resolve([]); return; }
+                            const q = db.transaction('records', 'readonly').objectStore('records').getAll();
+                            q.onsuccess = () => { db.close(); resolve(q.result || []); };
+                            q.onerror = () => { db.close(); resolve([]); };
+                        };
+                        req.onerror = () => resolve([]);
+                        req.onblocked = () => resolve([]);
+                    } catch { resolve([]); }
+                });
+            }
+
+            // ── 每日任務＋徽章（金隊長的成長管理核心）───────────
+            const UNIT_NAMES = {
+                f1:'F1 數量與物品的對應', f2:'F2 數量與點數', f3:'F3 認識數字與數量',
+                f4:'F4 數字排序', f5:'F5 數量大小的比較', f6:'F6 數的合成與分解',
+                c1:'C1 金錢的種類與面額', c2:'C2 金錢的點數與加總', c3:'C3 金錢面額的兌換',
+                c4:'C4 正確的金額', c5:'C5 足額付款', c6:'C6 找零與計算',
+                b1:'B1 今天帶多少錢', b2:'B2 零用錢日記', b3:'B3 存錢計畫',
+                b4:'B4 商品價格比較', b5:'B5 派對活動採購', b6:'B6 菜市場買菜',
+                a1:'A1 自動飲料販賣機', a2:'A2 理髮店售票機', a3:'A3 美式速食自助點餐',
+                a4:'A4 模擬購物', a5:'A5 ATM提款機', a6:'A6 火車購票',
+            };
+            const UNIT_PAGES = {
+                f1:'f1_object_correspondence', f2:'f2_rote_and_rational_counting', f3:'f3_number_recognition',
+                f4:'f4_number_sorting', f5:'f5_quantity_comparison', f6:'f6_number_composition',
+                c1:'c1_money_types', c2:'c2_money_counting', c3:'c3_money_exchange',
+                c4:'c4_correct_amount', c5:'c5_sufficient_payment', c6:'c6_making_change',
+                b1:'b1_daily_budget', b2:'b2_allowance_diary', b3:'b3_savings_plan',
+                b4:'b4_sale_comparison', b5:'b5_party_budget', b6:'b6_market_shopping',
+                a1:'a1_vending_machine', a2:'a2_barber_shop_kiosk', a3:'a3_mcdonalds_order',
+                a4:'a4_simulated_shopping', a5:'a5_atm_simulator', a6:'a6_train_ticket',
+            };
+            // 今日任務／老師指派任務的獎勵＝「成就與寵物」頁的金幣（mt_coins_{id}，與 reward/script.js getCoins 同一份）。
+            // 2026-10-05 使用者定：優良表現獎勵板的分數只由老師手動給，系統自動發的一律是金幣。
+            // 每項任務給幾金幣＝teacher.html「🎁 單元獎勵設定」的「金隊長任務」欄（預設 10；取消啟用＝0）。
+            // growth-system.js 載在頁尾，這裡在點擊／重繪時才呼叫，所以一定已載入。
+            const questCoins = () => (window.GrowthSystem?.questCoins ? GrowthSystem.questCoins() : 10);
+            // 領獎鈕文字：老師關掉獎勵（0 金幣）時仍可按，記成「已完成」（任務達人徽章照算）
+            const claimLabel = () => { const c = questCoins(); return c > 0 ? `🪙 領 ${c} 金幣` : '✅ 確認完成'; };
+            function addQuestCoins(stuId, n) {
+                const k = 'mt_coins_' + stuId;
+                const cur = parseInt(localStorage.getItem(k) || '0', 10) || 0;
+                localStorage.setItem(k, String(Math.max(0, cur + n)));
+            }
+            const QUOTES = [
+                '🌟 你的努力，我已經記錄下來了！',
+                '🏅 恭喜完成挑戰，獲得新的獎勵！',
+                '📈 今天比昨天更進步，真棒！',
+                '🚀 下一個任務準備開始，一起加油！',
+                '💛 每一次努力，都會成為成長的力量！',
+            ];
+
+            const isMainRec = (r) => r.source === 'main' || !!UNIT_PAGES[r.situationId];
+            function todayKey() {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            function dayKeyOf(ts) {
+                const d = new Date(ts);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            function hashCode(s) {
+                let h = 0;
+                for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+                return Math.abs(h);
+            }
+            function questStore(stuId) {
+                try { return JSON.parse(localStorage.getItem(`mt_quests_${stuId}`) || 'null'); } catch { return null; }
+            }
+            function saveQuestStore(stuId, data) {
+                localStorage.setItem(`mt_quests_${stuId}`, JSON.stringify(data));
+            }
+
+            // 難度晉級建議：以「目前難度（最近一場的難度）最近 2 場合併的逐題答錯比例」判斷
+            //   ≤20%（≥80% 步驟一次做對，對齊精熟判準）→ 建議升級；>20% → 維持原難度多練
+            //   提示是「每步各錯 3 次」才跳，故用比率而非絕對錯誤數。無逐題明細則不給建議。
+            const DIFF_ORDER = ['easy', 'normal', 'hard'];
+            const DIFF_NAME = { easy: '簡單', normal: '普通', hard: '困難' };
+            function difficultyAdvice(unitId, recs) {
+                const sess = recs.filter(r => r.situationId === unitId && (r.stepDetail || []).length > 0)
+                                 .sort((a, b) => b.ts - a.ts);
+                if (!sess.length) return null;
+                const cur = sess[0].difficulty || 'normal';
+                const curIdx = DIFF_ORDER.indexOf(cur);
+                if (curIdx < 0) return null;
+                const atCur = sess.filter(r => (r.difficulty || 'normal') === cur).slice(0, 2); // 最近 2 場
+                let w = 0, t = 0;
+                atCur.forEach(r => (r.stepDetail || []).forEach(s => { t++; if (!s.ok) w++; }));
+                if (t === 0) return null;
+                const ratio = w / t;
+                if (ratio <= 0.2) {
+                    return curIdx < 2
+                        ? { text: `建議挑戰：${DIFF_NAME[DIFF_ORDER[curIdx + 1]]}模式 🔥`, advance: true }
+                        : { text: '已精熟困難模式 🏆', advance: true };
+                }
+                return { text: `先用${DIFF_NAME[cur]}模式再練練`, advance: false };
+            }
+
+            // 產生今日任務（同日同學生固定；優先推「最需加強」的單元）
+            function generateQuests(stu, records) {
+                // 只計真正可玩的單元（排除起點評估 assess 等非單元紀錄，避免推薦到不存在的單元）
+                const myMain = records.filter(r => isMainRec(r) && String(r.studentId) === String(stu.id) && UNIT_PAGES[r.situationId]);
+                // 挑戰單元：有紀錄→最需加強者；無紀錄→依日期輪一個入門單元
+                // ⚠️ 難度訊號用「錯誤嘗試 / 逐題明細答錯比例」而非總結正確率——
+                //    多數單元可反覆作答至答對，總結頁正確率恆為鼓勵性 100%，
+                //    真正反映難度的是 trial-and-error（wrongAttempts / stepDetail）。
+                let unit, focusStep = null;
+                if (myMain.length > 0) {
+                    const stat = {};
+                    myMain.forEach(r => {
+                        const u = r.situationId;
+                        if (!stat[u]) stat[u] = { w: 0, t: 0, att: 0, n: 0, steps: {} };
+                        (r.stepDetail || []).forEach(s => {
+                            stat[u].t++;
+                            if (!s.ok) { stat[u].w++; stat[u].steps[s.q] = (stat[u].steps[s.q] || 0) + 1; }
+                        });
+                        stat[u].att += (r.wrongAttempts || 0);
+                        stat[u].n++;
+                    });
+                    // 弱點分數：有逐題明細→答錯比例(0~1，較可靠優先)；
+                    // 否則（舊紀錄無明細）→平均錯誤嘗試壓縮到 0~1，且刻意較保守，讓實測比率優先
+                    const weakness = (s) => s.t > 0
+                        ? s.w / s.t
+                        : Math.min((s.att / s.n) / ((s.att / s.n) + 6), 0.9);
+                    const ranked = Object.entries(stat).sort((a, b) => {
+                        const d = weakness(b[1]) - weakness(a[1]);
+                        return d !== 0 ? d : (b[1].att / b[1].n) - (a[1].att / a[1].n);
+                    });
+                    unit = ranked[0][0];
+                    // 該單元最常答錯的步驟 → 任務「重點加強」提示
+                    const worst = Object.entries(stat[unit].steps).sort((a, b) => b[1] - a[1])[0];
+                    if (worst && worst[1] > 0) focusStep = worst[0];
+                } else {
+                    // 無單元紀錄（新學生）：優先用「起點評估」建議的起點；沒評估過才輪入門單元
+                    const sp = (() => { try { return localStorage.getItem('mt_startpoint_' + stu.id); } catch { return null; } })();
+                    if (sp && UNIT_PAGES[sp]) {
+                        unit = sp;
+                    } else {
+                        const starters = ['f1', 'f2', 'c1', 'c2', 'f3', 'c4'];
+                        unit = starters[hashCode(todayKey() + stu.id) % starters.length];
+                    }
+                }
+                // 難度晉級建議：做得好→建議升級；否則→若有弱點步驟就標「重點加強」
+                const diffAdv = difficultyAdvice(unit, myMain);
+                const unitExtra = (diffAdv && diffAdv.advance) ? `（${diffAdv.text}）`
+                                : focusStep ? `（重點加強：${focusStep}）`
+                                : diffAdv ? `（${diffAdv.text}）` : '';
+                const alt = hashCode(todayKey() + stu.id) % 2 === 0;
+                return [
+                    { id: 'q_unit', icon: '📚', type: 'play_unit', unit,
+                      desc: `完成一次「${UNIT_NAMES[unit]}」` + unitExtra, done: false, claimed: false },
+                    alt ? { id: 'q_flawless', icon: '🌟', type: 'flawless_any',
+                            desc: '任何單元拿到一次「無錯通過」', done: false, claimed: false }
+                        : { id: 'q_dialogue', icon: '🐕', type: 'dialogue_once',
+                            desc: '完成一次購物對話練習', done: false, claimed: false },
+                    { id: 'q_time', icon: '⏱️', type: 'practice_time', target: 300,
+                      desc: '今天累計練習 5 分鐘', done: false, claimed: false },
+                ];
+            }
+
+            function evaluateQuests(quests, stu, records) {
+                const today = todayKey();
+                const mine = records.filter(r => String(r.studentId) === String(stu.id) && dayKeyOf(r.ts) === today);
+                let timeSum = 0;
+                mine.forEach(r => { timeSum += (r.durationSec || 0); });
+                quests.forEach(q => {
+                    if (q.claimed) { q.done = true; return; }
+                    if (q.type === 'play_unit')     q.done = mine.some(r => r.situationId === q.unit);
+                    if (q.type === 'flawless_any')  q.done = mine.some(r => isMainRec(r) && r.flawless);
+                    if (q.type === 'dialogue_once') q.done = mine.some(r => !isMainRec(r));
+                    if (q.type === 'practice_time') { q.done = timeSum >= q.target; q.progress = Math.min(timeSum, q.target); }
+                });
+                return quests;
+            }
+
+            // ── 老師指派任務（mt_assign_{id}＝[{unit, ts, claimed}]）──
+            function assignStore(stuId) {
+                try { return JSON.parse(localStorage.getItem(`mt_assign_${stuId}`) || '[]'); } catch { return []; }
+            }
+            function saveAssign(stuId, arr) {
+                localStorage.setItem(`mt_assign_${stuId}`, JSON.stringify(arr));
+            }
+            // 指派的鑰匙（2026-10-07 起含冒險與對話，同 teacher.html 的 iepKeyOf）：
+            //   主課程單元代號（'c3'）／'adventure'／生活情境對話「場景代號|情境代號」；a.n＝老師指派時存下的名稱
+            const assignKeyOf = (r) => isMainRec(r) ? r.situationId : `${r.scenarioId}|${r.situationId}`;
+            function assignDone(a, stuId, records) {
+                // 指派之後完成過該單元／情境即算達成
+                return records.some(r => String(r.studentId) === String(stuId) &&
+                                         assignKeyOf(r) === a.unit && r.ts >= a.ts);
+            }
+            const assignName = (a) => UNIT_NAMES[a.unit] || (a.unit === 'adventure' ? '一日金錢冒險' : a.n || a.unit);
+            function assignHref(a) {
+                if (UNIT_PAGES[a.unit]) return `html/${UNIT_PAGES[a.unit]}.html`;
+                if (a.unit === 'adventure') return 'adventure/index.html';
+                const [sc, sit] = String(a.unit).split('|');   // 自訂情境的情境代號是 custom：只帶場景，對話模組會直接開始
+                return `dialogue/index.html?from=home&scenario=${encodeURIComponent(sc)}` + (sit && sit !== 'custom' ? `&sit=${encodeURIComponent(sit)}` : '');
+            }
+
+            // 老師指派/移除的「控制」已移到 學習歷程總覽(teacher.html)；這裡只保留學生領獎
+            window.captainClaimAssign = function (idx) {
+                const cur = getCurrent();
+                if (!cur) return;
+                const arr = assignStore(cur.id);
+                const a = arr[idx];
+                if (!a || a.claimed) return;
+                a.claimed = true;
+                a.claimedAt = Date.now();   // 領獎隔天卡片就收起來（renderAssigned）
+                saveAssign(cur.id, arr);
+                const coins = questCoins();
+                if (coins > 0) addQuestCoins(cur.id, coins);
+                Promise.resolve(renderCaptainBase()).then(() => {
+                    const quoteEl = document.getElementById('captain-quote');
+                    if (quoteEl.hidden) showCaptainQuote(coins > 0 ? '⭐ 完成老師指派的任務，獲得 ' + coins + ' 金幣，真棒！' : '⭐ 完成老師指派的任務，真棒！');
+                });
+            };
+
+            function renderAssigned(cur, records) {
+                // 只渲染「學生看到的指派卡片」；老師指派控制已移到 學習歷程總覽
+                const host = document.getElementById('captain-assigned');
+                if (!host) return;
+                host.innerHTML = '';
+                if (!cur) return;
+                const arr = assignStore(cur.id);
+                arr.forEach((a, idx) => {
+                    // 已領獎的卡片只留到領獎當天，隔天收起來（2026-10-07 使用者定）；資料不刪，老師在學習歷程仍看得到。
+                    // 沒有 claimedAt 的是之前領的 → 一律收起
+                    if (a.claimed && !(a.claimedAt && dayKeyOf(a.claimedAt) === todayKey())) return;
+                    const done = assignDone(a, cur.id, records);
+                    const card = document.createElement('div');
+                    card.className = 'quest-card' + (a.claimed ? ' done claimed' : done ? ' done' : '');
+                    let act;
+                    if (a.claimed)   act = `<span class="quest-claimed-tag">✅ 已領獎</span>`;
+                    else if (done)   act = `<button class="quest-claim" onclick="captainClaimAssign(${idx})">${claimLabel()}</button>`;
+                    else             act = `<a class="quest-go" href="${assignHref(a)}">▶ 去挑戰</a>`;
+                    card.innerHTML = `
+                        <span class="quest-icon">⭐</span>
+                        <div class="quest-info"><div class="quest-desc">老師指派：完成「${escT(assignName(a))}」</div></div>
+                        <div class="quest-act">${act}</div>`;
+                    host.appendChild(card);
+                });
+            }
+
+            window.captainClaimQuest = function (qid) {
+                const cur = getCurrent();
+                if (!cur) return;
+                const store = questStore(cur.id);
+                if (!store || store.date !== todayKey()) return;
+                const q = store.quests.find(x => x.id === qid);
+                if (!q || !q.done || q.claimed) return;
+                q.claimed = true;
+                store.totalClaimed = (store.totalClaimed || 0) + 1;
+                saveQuestStore(cur.id, store);
+                // 發金幣：進「成就與寵物」頁的金幣（不加優良表現分數）
+                const coins = questCoins();
+                if (coins > 0) addQuestCoins(cur.id, coins);
+                // 先重繪（會重置台詞區），完成後再顯示領獎台詞（若無新徽章台詞佔位）
+                Promise.resolve(renderCaptainBase()).then(() => {
+                    const quoteEl = document.getElementById('captain-quote');
+                    if (quoteEl.hidden) showCaptainQuote(coins > 0 ? '🏅 恭喜完成挑戰，獲得 ' + coins + ' 金幣！' : '🏅 恭喜完成挑戰！');
+                });
+            };
+
+            function showCaptainQuote(msg) {
+                const el = document.getElementById('captain-quote');
+                el.textContent = msg || QUOTES[Math.floor(Math.random() * QUOTES.length)];
+                el.hidden = false;
+            }
+
+            function renderQuestsAndBadges(cur, records) {
+                const qSec = document.getElementById('captain-quest-sec');
+                document.getElementById('captain-quote').hidden = true;
+                if (!cur) { qSec.hidden = true; return; }
+                qSec.hidden = false;
+                renderAssigned(cur, records);   // ⭐ 老師指派任務（顯示在每日任務上方）
+
+                // 任務：讀/建今日清單 → 判定 → 渲染
+                let store = questStore(cur.id);
+                if (!store || store.date !== todayKey()) {
+                    store = { date: todayKey(), totalClaimed: store?.totalClaimed || 0,
+                              quests: generateQuests(cur, records) };
+                }
+                evaluateQuests(store.quests, cur, records);
+                saveQuestStore(cur.id, store);
+                document.getElementById('quest-date').textContent = store.date;
+
+                const qHost = document.getElementById('captain-quests');
+                qHost.innerHTML = '';
+                store.quests.forEach(q => {
+                    const card = document.createElement('div');
+                    card.className = 'quest-card' + (q.claimed ? ' done claimed' : q.done ? ' done' : '');
+                    let act;
+                    if (q.claimed)      act = `<span class="quest-claimed-tag">✅ 已領獎</span>`;
+                    else if (q.done)    act = `<button class="quest-claim" onclick="captainClaimQuest('${q.id}')">${claimLabel()}</button>`;
+                    else if (q.type === 'play_unit')     act = `<a class="quest-go" href="html/${UNIT_PAGES[q.unit]}.html">▶ 去挑戰</a>`;
+                    else if (q.type === 'dialogue_once') act = `<a class="quest-go" href="dialogue/index.html">▶ 去挑戰</a>`;
+                    else act = '';
+                    const prog = q.type === 'practice_time' && !q.claimed
+                        ? `<div class="quest-prog">已練習 ${Math.floor((q.progress || 0) / 60)} 分 ${(q.progress || 0) % 60} 秒 / 5 分</div>` : '';
+                    card.innerHTML = `
+                        <span class="quest-icon">${q.icon}</span>
+                        <div class="quest-info"><div class="quest-desc">${q.desc}</div>${prog}</div>
+                        <div class="quest-act">${act}</div>`;
+                    qHost.appendChild(card);
+                });
+
+                // 徽章判定與展示已移至「學生成長頁」（reward 系統，js/growth-system.js 共用邏輯）
+            }
+
+            // 開啟「獎勵板」（學生優良表現獎勵板＋成長頁；原稱計分版）
+            window.openRewardBoard = function () {
+                window.open('reward/index.html', 'RewardBoard');
+            };
+
+            // 金隊長彈窗＝「目前學生的學習紀錄」（2026-09-28 使用者定：各單元都能選學生了，
+            // 這裡的重點不再是選學生，而是展示這位學生已有的紀錄）。
+            function fmtDuration(sec) {
+                const m = Math.round((sec || 0) / 60);
+                if (m < 1) return (sec || 0) > 0 ? '不到 1 分' : '0 分';
+                const h = Math.floor(m / 60);
+                return h ? `${h} 小時 ${m % 60} 分` : `${m} 分`;
+            }
+            function fmtDate(ts) {
+                const d = new Date(ts);
+                return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            }
+            const escT = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            window.renderCaptainBase = async function () {
+                const roster = loadRoster();
+                const cur    = getCurrent();
+                // 標頭的名字就是下拉選單：老師可以直接切換要看哪一位的紀錄（2026-09-28 使用者要求）。
+                // 切換＝改「目前學生」（sp_currentStudent），之後各單元的練習也會記在這位名下。
+                const banner = document.getElementById('captain-current-banner');
+                banner.innerHTML = '';
+                banner.append('目前學生：');
+                if (roster.length) {
+                    const sel = document.createElement('select');
+                    sel.className = 'captain-rec-select';
+                    sel.setAttribute('aria-label', '切換要看的學生');
+                    if (!cur) sel.append(new Option('── 選擇學生 ──', '', true, true));
+                    roster.forEach(st => sel.append(new Option(st.name || '未命名', String(st.id), false,
+                        !!cur && String(cur.id) === String(st.id))));
+                    if (!cur) sel.options[0].disabled = true;
+                    sel.addEventListener('change', () => {
+                        const st = roster.find(x => String(x.id) === sel.value);
+                        if (st) setCurrent(st);
+                    });
+                    const tail = document.createElement('span');
+                    tail.className = 'captain-rec-tail';   // 窄螢幕整段換到下一行，不在字中間斷開
+                    tail.textContent = cur ? '（學習紀錄）' : '（選一位學生看他的學習紀錄）';
+                    banner.append(sel, tail);
+                } else {
+                    const b = document.createElement('b');
+                    b.textContent = '訪客';
+                    banner.append(b, '（還沒有學生，請先找金婆婆建立學生）');
+                }
+
+                const statsEl = document.getElementById('captain-stats');
+                const recSec  = document.getElementById('captain-record-sec');
+                const records = await readAllRecords();
+                if (!cur) {
+                    statsEl.innerHTML = '<div class="captain-empty">選好學生後，這裡會顯示他的練習次數、時間與徽章。</div>';
+                    recSec.hidden = true;
+                    renderQuestsAndBadges(cur, records);
+                    return;
+                }
+                const stu  = roster.find(s => String(s.id) === String(cur.id));
+                const my   = records.filter(r => String(r.studentId) === String(cur.id)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                const secs = my.reduce((t, r) => t + (Number(r.durationSec) || 0), 0);
+                const days = new Set(my.map(r => new Date(r.ts).toDateString())).size;
+                statsEl.innerHTML = `
+                    <div class="stat"><b>${my.length}</b>📚 練習次數</div>
+                    <div class="stat"><b>${fmtDuration(secs)}</b>⏱️ 練習時間</div>
+                    <div class="stat"><b>${days}</b>📅 練習天數</div>
+                    <div class="stat"><b>${my.filter(r => r.flawless).length}</b>🌟 無錯通過</div>
+                    <div class="stat"><b>${stu?.score ?? 0}</b>🪙 獎勵分數</div>`;
+
+                // 徽章：規則與學生成長頁同一份（GrowthSystem.BADGES），判定結果也寫回同一個 mt_badges_{id}
+                recSec.hidden = false;
+                const GS = window.GrowthSystem;
+                const badgeHost = document.getElementById('captain-badges');
+                if (GS) {
+                    let earned;
+                    try { earned = GS.computeBadges(cur.id, records, GS.questMeta(cur.id), stu).earned; }
+                    catch (e) { earned = GS.badgeStore(cur.id); }
+                    const got = GS.BADGES.filter(b => earned[b.id]).length;
+                    document.getElementById('captain-badge-count').textContent = `${got}／${GS.BADGES.length}`;
+                    badgeHost.innerHTML = GS.BADGES.map(b => `
+                        <div class="captain-badge${earned[b.id] ? '' : ' off'}" title="${earned[b.id] ? '已獲得' : '尚未獲得'}">
+                            <span class="bi">${b.img ? `<img src="${b.img}" alt="" onerror="this.replaceWith(document.createTextNode('${b.icon}'))">` : b.icon}</span>${b.name}</div>`).join('');
+                } else {
+                    badgeHost.innerHTML = '';
+                }
+
+                const recent = my.slice(0, 5);
+                document.getElementById('captain-recent').innerHTML = recent.length
+                    ? recent.map(r => {
+                        const name = r.source !== 'main' && r.scenarioName && r.situationName && r.scenarioName !== r.situationName
+                            ? `${r.scenarioName}・${r.situationName}` : (r.situationName || r.scenarioName || '練習');
+                        const sc = (r.total ? `${r.score}／${r.total}` : '') + (r.hinted ? ` 💡${r.hinted}` : '');   // 💡＝提示後完成題數（learning-tracker.js 存的）
+                        return `<div class="captain-recent-row"><span class="rn">${r.flawless ? '🌟 ' : ''}${escT(name)}</span>
+                            <span class="rs">${sc}</span><span class="rd">${fmtDate(r.ts)}</span></div>`;
+                    }).join('')
+                    : '<div class="captain-empty">還沒有練習紀錄，去挑一個單元練習看看吧！</div>';
+
+                renderQuestsAndBadges(cur, records);
+            };
+
+            // 建立學生（可從主頁金婆婆卡或彈窗呼叫；inputId/msgId 可選）
+            // 金婆婆建立學生：可選照片（壓縮 300px），與獎勵板共用同一份 rewardSystemStudents
+            let _captainNewPhoto = null;
+            // 照片壓縮、名冊增改刪的規則都在 js/student-roster.js（teacher.html 的「👥 管理學生」也用它）
+            const compressPhoto = (file, done) => window.StudentRoster.compressPhoto(file, done);
+
+            window.captainPreviewPhoto = function (input) {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                compressPhoto(file, dataUrl => {
+                    _captainNewPhoto = dataUrl;
+                    const prev = document.getElementById('captain-new-photo-preview');
+                    if (prev) { prev.src = _captainNewPhoto; prev.style.display = 'inline-block'; }
+                    const ph = document.getElementById('captain-photo-placeholder'); if (ph) ph.style.display = 'none';
+                });
+            };
+
+            // ── 金婆婆彈窗：修改學生（改名字／換照片／移除照片）────────────
+            // ⚠️ 學生的唯一識別是建立時給的 id，姓名只是顯示用 → 改名字不會弄丟學習歷程；
+            //    但 sp_currentStudent 存了 {id,name} 快照，改名時要一起更新，否則卡片會顯示舊名。
+            // 修改分頁的暫存狀態：照片先不寫進名冊，按「確認修改」才一起存（這樣「取消」才有意義）
+            let _gmEditId = null;
+            let _gmEditPhoto;            // undefined＝沒動過；null＝要移除；字串＝新照片
+
+            function gmEditMsg(text, keep) {
+                const el = document.getElementById('gm-edit-msg');
+                if (!el) return;
+                el.textContent = text;
+                if (!keep && text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 3000);
+            }
+
+            // 把選中學生的資料載進表單
+            function gmLoadStudent(id) {
+                const stu = loadRoster().find(s => String(s.id) === String(id));
+                _gmEditId = stu ? String(stu.id) : null;
+                _gmEditPhoto = undefined;
+                const nameEl = document.getElementById('gm-edit-name');
+                if (nameEl) { nameEl.value = stu?.name || ''; nameEl.disabled = !stu; }
+                gmPaintPhoto(stu?.photo || null);
+            }
+
+            // 只更新畫面上的照片預覽（不碰名冊）
+            function gmPaintPhoto(src) {
+                const img = document.getElementById('gm-edit-photo-preview');
+                const empty = document.getElementById('gm-edit-photo-empty');
+                const del = document.getElementById('gm-remove-photo');
+                if (img)   { img.src = src || ''; img.style.display = src ? 'block' : 'none'; }
+                if (empty) empty.style.display = src ? 'none' : 'block';
+                if (del)   del.disabled = !src;
+            }
+
+            window.renderGrandmaEditList = function () {
+                const sel = document.getElementById('gm-edit-select');
+                if (!sel) return;
+                const roster = loadRoster();
+                const cur = getCurrent();
+                // 一位學生時不需要下拉（直接改他就好）；兩位以上才顯示，讓老師挑要改誰
+                sel.hidden = roster.length < 2;
+                sel.innerHTML = roster.map(s =>
+                    `<option value="${s.id}">${s.name || '未命名'}</option>`).join('');
+                if (!roster.length) {
+                    document.getElementById('gm-edit-name').value = '';
+                    document.getElementById('gm-edit-name').disabled = true;
+                    gmPaintPhoto(null);
+                    _gmEditId = null;
+                    gmEditMsg('還沒有任何學生，請先到「➕ 新增學生」建立一位。', true);
+                    return;
+                }
+                gmEditMsg('');
+                // 預設選目前學生，沒有就選第一位
+                const pick = (cur && roster.some(s => String(s.id) === String(cur.id))) ? String(cur.id) : String(roster[0].id);
+                sel.value = pick;
+                gmLoadStudent(pick);
+            };
+
+            // ── 金婆婆彈窗：刪除學生（教師專用）────────────────────────
+            // 與獎勵板的「永久刪除學生」同一個做法：只從名冊（＋獎勵板顯示清單）移除，
+            // 學習紀錄與成長資料不刪——teacher.html 的學生篩選是「名冊 ∪ 紀錄裡出現過的學生」，刪了仍查得到。
+            // ⚠️ 分頁按鈕掛 nav-teacher 只是「看不到」，真正動手前還要再問一次登入狀態
+            //    （導覽列疊在彈窗上面，老師可能開著這個分頁就按了登出）。
+            const isTeacher = () => !!window.mtTeacherAuthed?.();
+
+            function gmDelMsg(text, keep) {
+                const el = document.getElementById('gm-del-msg');
+                if (!el) return;
+                el.textContent = text;
+                if (!keep && text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 3000);
+            }
+
+            // 回到「選人＋確認刪除」那一段（收起二次確認）
+            function gmDelAskReset() {
+                const act = document.getElementById('gm-del-actions'), ask = document.getElementById('gm-del-confirm');
+                if (act) act.hidden = false;
+                if (ask) ask.hidden = true;
+            }
+
+            function gmDelPaint(id) {
+                const stu = loadRoster().find(s => String(s.id) === String(id));
+                const img = document.getElementById('gm-del-photo-preview');
+                const empty = document.getElementById('gm-del-photo-empty');
+                const src = stu?.photo || null;
+                if (img)   { img.src = src || ''; img.style.display = src ? 'block' : 'none'; }
+                if (empty) empty.style.display = src ? 'none' : 'block';
+                const go = document.getElementById('gm-del-go'); if (go) go.disabled = !stu;
+                gmDelAskReset();
+            }
+
+            window.renderGrandmaDeleteList = function () {
+                const sel = document.getElementById('gm-del-select');
+                if (!sel) return;
+                const roster = loadRoster();
+                const cur = getCurrent();
+                gmDelAskReset();
+                // 刪除一律顯示下拉（就算只有一位）：刪之前要看清楚名字，不能靠猜
+                sel.hidden = !roster.length;
+                sel.innerHTML = roster.map(s => `<option value="${s.id}">${s.name || '未命名'}</option>`).join('');
+                if (!roster.length) {
+                    gmDelPaint(null);
+                    gmDelMsg('名冊裡沒有學生。', true);
+                    return;
+                }
+                gmDelMsg('');
+                const pick = (cur && roster.some(s => String(s.id) === String(cur.id))) ? String(cur.id) : String(roster[0].id);
+                sel.value = pick;
+                gmDelPaint(pick);
+            };
+
+            function gmDeleteStudent(id) {
+                const r = window.StudentRoster.remove(id);
+                renderCaptainBase();
+                return r.ok ? r.stu : null;
+            }
+
+            // 分頁切換：新增／修改／刪除。speak＝使用者點分頁才讓金婆婆開口（程式自動切回時不出聲）
+            const GM_SPEECH = { new: 'grandma', edit: 'grandmaEdit', delete: 'grandmaDelete' };
+            function gmShowPane(which, speak) {
+                if (which === 'delete' && !isTeacher()) which = 'new';
+                document.querySelectorAll('.gm-tab').forEach(b => b.classList.toggle('active', b.dataset.gm === which));
+                document.getElementById('gm-pane-new').hidden    = which !== 'new';
+                document.getElementById('gm-pane-edit').hidden   = which !== 'edit';
+                document.getElementById('gm-pane-delete').hidden = which !== 'delete';
+                if (which === 'edit') renderGrandmaEditList();
+                if (which === 'delete') renderGrandmaDeleteList();
+                if (!speak) return;
+                // 泡泡文字與語音同一句（共用彈窗提供 setBubble）
+                window.HeroModal?.setBubble(window.getHeroSpeech?.(GM_SPEECH[which]));
+                // 每個分頁都讓金婆婆說話（預錄檔在 audio/chatbot/，缺檔會自動退回即時 TTS）
+                window.speakCharacterText?.(GM_SPEECH[which], 'grandma');
+            }
+            window.gmShowPane = gmShowPane;
+
+            // 開著刪除分頁時按了登出 → 分頁按鈕被 nav-auth 藏起來，內容也要跟著收掉
+            document.addEventListener('mt-teacher-auth', (e) => {
+                const pane = document.getElementById('gm-pane-delete');
+                if (!e.detail?.on && pane && !pane.hidden) {
+                    gmShowPane('new', false);
+                    window.HeroModal?.setBubble(window.getHeroSpeech?.('grandma'));
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const tab = e.target.closest('.gm-tab');
+                if (tab) { gmShowPane(tab.dataset.gm, true); return; }
+                if (e.target.closest('#gm-del-go')) {
+                    const stu = loadRoster().find(s => String(s.id) === document.getElementById('gm-del-select')?.value);
+                    if (!stu) { gmDelMsg('⚠️ 請先選擇要刪除的學生'); return; }
+                    document.getElementById('gm-del-ask').textContent = `真的要刪除「${stu.name || '未命名'}」嗎？刪除以後無法復原。`;
+                    document.getElementById('gm-del-actions').hidden = true;
+                    document.getElementById('gm-del-confirm').hidden = false;
+                    return;
+                }
+                if (e.target.closest('#gm-del-no')) { gmDelAskReset(); return; }
+                if (e.target.closest('#gm-del-yes')) {
+                    if (!isTeacher()) { gmDelAskReset(); gmDelMsg('⚠️ 請先教師登入才能刪除學生'); return; }
+                    const stu = gmDeleteStudent(document.getElementById('gm-del-select')?.value);
+                    renderGrandmaDeleteList();
+                    if (stu) gmDelMsg(`✅ 已刪除「${stu.name || '未命名'}」`, !loadRoster().length);
+                    return;
+                }
+                if (e.target.closest('#gm-remove-photo')) {
+                    _gmEditPhoto = null;          // 先只是標記要移除，按確認才寫進名冊
+                    gmPaintPhoto(null);
+                    gmEditMsg('已標記移除照片，按「確認修改」才會生效');
+                    return;
+                }
+                if (e.target.closest('#gm-save')) {
+                    const r = window.StudentRoster.update(_gmEditId,
+                        { name: document.getElementById('gm-edit-name').value, photo: _gmEditPhoto });
+                    if (!r.ok) {
+                        gmEditMsg(r.error);
+                        const cur = loadRoster().find(s => String(s.id) === String(_gmEditId));
+                        if (cur && r.error.includes('有人用了')) document.getElementById('gm-edit-name').value = cur.name || '';
+                        return;
+                    }
+                    const stu = r.stu, name = stu.name, old = r.oldName;
+                    _gmEditPhoto = undefined;
+                    renderGrandmaEditList();
+                    document.getElementById('gm-edit-select').value = String(stu.id);
+                    gmLoadStudent(stu.id);
+                    gmEditMsg(old === name ? `✅ 已更新「${name}」的資料` : `✅ 「${old}」已改名為「${name}」`);
+                }
+            });
+
+            document.addEventListener('change', (e) => {
+                if (e.target.id === 'gm-edit-select') { gmLoadStudent(e.target.value); return; }
+                if (e.target.id === 'gm-del-select') { gmDelPaint(e.target.value); return; }
+                if (e.target.id !== 'gm-edit-photo-input') return;
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                compressPhoto(file, dataUrl => {
+                    _gmEditPhoto = dataUrl;       // 一樣先暫存，按確認才寫
+                    gmPaintPhoto(dataUrl);
+                    gmEditMsg('已選好新照片，按「確認修改」才會生效');
+                });
+            });
+            window.captainCreateStudent = function (inputId, msgId) {
+                const input = document.getElementById(inputId || 'captain-new-name');
+                if (!input) return;
+                const msgEl = msgId ? document.getElementById(msgId) : null;
+                const setMsg = (t) => { if (msgEl) msgEl.textContent = t; else if (t) alert(t); };
+                const name = input.value.trim();
+                if (!name) { input.focus(); return; }
+                const r = window.StudentRoster.add({ name, photo: _captainNewPhoto });
+                if (!r.ok) { setMsg(r.error); return; }
+                const stu = r.stu;
+                input.value = '';
+                _captainNewPhoto = null;
+                const prev = document.getElementById('captain-new-photo-preview');
+                if (prev) { prev.style.display = 'none'; prev.src = ''; }
+                const ph = document.getElementById('captain-photo-placeholder'); if (ph) ph.style.display = '';
+                const pf = document.getElementById('captain-new-photo'); if (pf) pf.value = '';
+                setCurrent(stu);
+                setMsg('✅ 已建立「' + name + '」並設為目前學生');
+                window.speakYating?.('學生' + name + '已新增成功');
+            };
+            // 主頁金婆婆卡：建立學生
+            window.homeCreateStudent = function () {
+                window.captainCreateStudent('home-new-name', 'home-create-msg');
+            };
+
+            // mode='grandma' → 金婆婆版（顯示建立學生表單＋金婆婆角色/語氣）；否則金隊長版（不顯示建立表單）
+            // 成長基地／金婆婆：外殼與角色頭部走**共用元件**（與對話模組同一個），
+            // 這裡只準備「要塞進去的內容」#captain-base-body。
+            window.openCaptainBase = function (mode) {
+                const grandma = mode === 'grandma';
+                const body = document.getElementById('captain-base-body');
+                if (body) {
+                    body.hidden = false;
+                    // 金婆婆版只顯示建立表單；金隊長版只顯示選學生/統計/任務（用 class 控制，兼容 async 渲染）
+                    body.classList.toggle('mode-grandma', grandma);
+                    if (grandma) {
+                        const inp = body.querySelector('#captain-new-name'); if (inp) inp.value = '';
+                        // 每次開啟都回到「新增學生」分頁，並把修改／刪除清單重畫成最新名冊
+                        ['gm-edit-msg', 'gm-del-msg'].forEach(id => { const m = document.getElementById(id); if (m) m.textContent = ''; });
+                        window.gmShowPane?.('new', false);
+                        window.renderGrandmaEditList?.();
+                        window.renderGrandmaDeleteList?.();
+                    }
+                }
+                renderCaptainBase();
+                // 彈窗一開就自我介紹＝共用元件負責（playHeroIntro），這裡不必再排一次
+                window.HeroModal?.open(grandma ? 'grandma' : 'captain', { extra: body });
+            };
+
+            window.closeCaptainBase = function () { window.HeroModal?.close(); };
+
+
+        })();
+
+        // ── 主站 PWA：註冊 Service Worker（首頁；各單元頁由 reward-launcher.js 註冊）──
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+
+        // ── 版本更新提示（version.txt 與 BUILD_VERSION 每次發版需同步遞增）──
+        (function () {
+            const BUILD_VERSION = '20261015c';
+            fetch('version.txt', { cache: 'no-store' })
+                .then(r => r.ok ? r.text() : null)
+                .then(v => {
+                    if (!v || v.trim() === BUILD_VERSION) return;
+                    const bar = document.createElement('div');
+                    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1d4ed8;color:#fff;' +
+                        'text-align:center;padding:9px;font-size:0.9em;font-weight:700;cursor:pointer;font-family:inherit;';
+                    bar.textContent = '🔄 教材有新版本，點此立即更新';
+                    bar.addEventListener('click', async () => {
+                        bar.textContent = '⏳ 更新中…';
+                        try { await fetch(location.href.split('#')[0], { cache: 'reload' }); } catch (e) {}
+                        location.reload();
+                    });
+                    document.body.appendChild(bar);
+                })
+                .catch(() => {});
+        })();
+        </script>
+
+        <div class="tabs" id="tabs-main">
+            <button class="tab-btn active" data-target="part1">第一部分：基礎技能</button>
+            <button class="tab-btn" data-target="part2">第二部分：核心課程</button>
+            <button class="tab-btn" data-target="part3">第三部分：預算規劃</button>
+            <button class="tab-btn" data-target="part4">第四部分：進階應用</button>
+        </div>
+
+        <!-- 立即执行脚本：根据 hash 调整标签按钮状态 -->
+        <script>
+            (function() {
+                const hash = window.location.hash.substring(1);
+                if (hash && ['part1', 'part2', 'part3', 'part4'].includes(hash)) {
+                    document.querySelectorAll('.tab-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.target === hash) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+            })();
+        </script>
+
+        <div id="part1" class="tab-content active">
+            <div class="unit-grid">
+                <a href="html/f1_object_correspondence.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F1</div>
+                        <div class="title">數量與物品的對應</div>
+                    </div>
+                </a>
+                <a href="html/f2_rote_and_rational_counting.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F2</div>
+                        <div class="title">數量與點數</div>
+                    </div>
+                </a>
+                <a href="html/f3_number_recognition.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F3</div>
+                        <div class="title">認識數字與數量</div>
+                    </div>
+                </a>
+                <a href="html/f4_number_sorting.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F4</div>
+                        <div class="title">數字排序</div>
+                    </div>
+                </a>
+                <a href="html/f5_quantity_comparison.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F5</div>
+                        <div class="title">數量大小的比較</div>
+                    </div>
+                </a>
+                <a href="html/f6_number_composition.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-f6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">F6</div>
+                        <div class="title">數的合成與分解</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div id="part2" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/c1_money_types.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C1</div>
+                        <div class="title">金錢的種類與面額</div>
+                    </div>
+                </a>
+                <a href="html/c2_money_counting.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C2</div>
+                        <div class="title">金錢的點數與加總</div>
+                    </div>
+                </a>
+                <a href="html/c3_money_exchange.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C3</div>
+                        <div class="title">金錢面額的兌換</div>
+                    </div>
+                </a>
+                <a href="html/c4_correct_amount.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C4</div>
+                        <div class="title">正確的金額</div>
+                    </div>
+                </a>
+                <a href="html/c5_sufficient_payment.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C5</div>
+                        <div class="title">足額付款</div>
+                    </div>
+                </a>
+                <a href="html/c6_making_change.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-c6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">C6</div>
+                        <div class="title">找零與計算</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div id="part3" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/b1_daily_budget.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b1.png" alt="B1" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='💰'"></div>
+                    <div class="unit-text">
+                        <div class="code">B1</div>
+                        <div class="title">今天帶多少錢</div>
+                    </div>
+                </a>
+                <a href="html/b2_allowance_diary.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b2.png" alt="B2" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='📒'"></div>
+                    <div class="unit-text">
+                        <div class="code">B2</div>
+                        <div class="title">零用錢日記</div>
+                    </div>
+                </a>
+                <a href="html/b3_savings_plan.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b3.png" alt="B3" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🐷'"></div>
+                    <div class="unit-text">
+                        <div class="code">B3</div>
+                        <div class="title">存錢計畫</div>
+                    </div>
+                </a>
+                <a href="html/b4_sale_comparison.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b4.png" alt="B4" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🏷️'"></div>
+                    <div class="unit-text">
+                        <div class="code">B4</div>
+                        <div class="title">商品價格比較</div>
+                    </div>
+                </a>
+                <a href="html/b5_party_budget.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b5.png" alt="B5" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🎂'"></div>
+                    <div class="unit-text">
+                        <div class="code">B5</div>
+                        <div class="title">派對活動採購</div>
+                    </div>
+                </a>
+                <a href="html/b6_market_shopping.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-b6.png" alt="B6" style="width:128px;height:128px;object-fit:contain;" onerror="this.parentElement.innerHTML='🛒'"></div>
+                    <div class="unit-text">
+                        <div class="code">B6</div>
+                        <div class="title">菜市場買菜</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div id="part4" class="tab-content">
+            <div class="unit-grid">
+                <a href="html/a1_vending_machine.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a1.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A1</div>
+                        <div class="title">自動飲料販賣機</div>
+                    </div>
+                </a>
+                <a href="html/a2_barber_shop_kiosk.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a2.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A2</div>
+                        <div class="title">理髮店售票機</div>
+                    </div>
+                </a>
+                <a href="html/a3_mcdonalds_order.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a3.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A3</div>
+                        <div class="title">美式速食自助點餐</div>
+                    </div>
+                </a>
+                <a href="html/a4_simulated_shopping.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a4.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A4</div>
+                        <div class="title">模擬購物</div>
+                    </div>
+                </a>
+                <a href="html/a5_atm_simulator.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a5.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A5</div>
+                        <div class="title">ATM提款機</div>
+                    </div>
+                </a>
+                <a href="html/a6_train_ticket.html" class="unit-btn">
+                    <div class="unit-icon"><img loading="lazy" src="images/index/icon-index-a6.png" style="width:128px;height:128px;object-fit:contain;"></div>
+                    <div class="unit-text">
+                        <div class="code">A6</div>
+                        <div class="title">火車購票</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 立即执行脚本：根据 hash 调整内容面板状态 -->
+        <script>
+            (function() {
+                const hash = window.location.hash.substring(1);
+                if (hash && ['part1', 'part2', 'part3', 'part4'].includes(hash)) {
+                    document.querySelectorAll('.tab-content').forEach(panel => {
+                        panel.classList.remove('active');
+                        if (panel.id === hash) {
+                            panel.classList.add('active');
+                        }
+                    });
+                }
+            })();
+        </script>
+
+        <!-- 切到金好聊／金博士時，主課程的 tabs 與 part1~4 讓位給這一區
+             （分部與卡片內容一律來自 js/home-catalog.js，那是產生器的產物，勿手改）-->
+        <div class="tabs" id="alt-tabs" hidden></div>
+        <div id="alt-panel" hidden><div class="unit-grid" id="alt-grid"></div></div>
+
+        <!-- 學生試聽彈窗同樣由 js/hero-modal.js 產生（點頭像會跳出來），兩頁一致 -->
+
+        <!-- 小遊戲彈窗：主頁就地開遊戲（iframe 帶 ?embed=1），遊戲裡按返回會 postMessage 回來關閉 -->
+        <div id="game-modal-overlay" onclick="closeGameModal(event)">
+            <div id="game-modal">
+                <div id="game-modal-bar">
+                    <span id="game-modal-title"></span>
+                    <button type="button" class="game-modal-close" onclick="closeGameModal(null)">✕ 遊戲選單</button>
+                </div>
+                <iframe id="game-frame" src="about:blank" title="小遊戲" allow="autoplay"></iframe>
+            </div>
+        </div>
+
+        <!-- 店員介紹彈窗（對話場所卡右上角的頭像點下去）；開場白文字與語音都來自 dialogue -->
+        <div id="clerk-modal-overlay" onclick="closeClerkModal(event)">
+            <div id="clerk-modal">
+                <button class="modal-close-btn" onclick="closeClerkModal(null)" aria-label="關閉">✕</button>
+                <img id="clerk-modal-img" src="" alt="">
+                <div id="clerk-modal-name"></div>
+                <div id="clerk-modal-role"></div>
+                <div id="clerk-modal-intro"></div>
+                <a id="clerk-modal-go" class="hero-go" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)" href="dialogue/index.html">開始練習 →</a>
+            </div>
+        </div>
+
+        <!-- 建立／編輯自訂場景：就地開彈窗，不離開主頁 -->
+        <div id="scene-modal-overlay" onclick="closeSceneModal(event)">
+            <div id="scene-modal">
+                <button class="modal-close-btn" onclick="closeSceneModal(null)" aria-label="關閉">✕</button>
+                <h3 id="scene-modal-title">➕ 建立場景</h3>
+                <p class="scene-modal-note">場景就像「便利商店」那樣的地方，建立之後可以在它底下加好幾個自訂情境。</p>
+                <label class="scene-field" for="scene-name-input">場景名稱
+                    <input id="scene-name-input" type="text" maxlength="12" autocomplete="off" placeholder="例如：學校合作社">
+                </label>
+                <div class="scene-field">圖示
+                    <div class="scene-icon-row" id="scene-icon-row" role="group" aria-label="選擇場景圖示"></div>
+                </div>
+                <p class="scene-modal-msg" id="scene-modal-msg" role="status"></p>
+                <div class="scene-modal-actions">
+                    <button type="button" onclick="closeSceneModal(null)">取消</button>
+                    <button type="button" class="primary" onclick="saveSceneModal()">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2026-09-25 使用者要求：主頁放一個「素材來源／著作權說明」讓使用者點選查看（內容在 credits.html） -->
+        <footer class="site-credits"><a href="credits.html">📄 素材來源與著作權說明</a></footer>
+        <!-- 🎬 教材介紹影片：按了才載入（16 MB，不拖慢主頁）；關掉就暫停 -->
+        <div id="intro-video-modal" hidden role="dialog" aria-modal="true" aria-label="教材介紹影片">
+            <div class="iv-box">
+                <button type="button" class="iv-close" onclick="closeIntroVideo()" aria-label="關閉">✕</button>
+                <video controls playsinline preload="none"></video>
+            </div>
+        </div>
+        <script>
+            // 影片來源：Downloads/tools/kinetic-text 的 videos/film_money_tutor.json（計畫 docs/money_tutor_intro_plan.md），
+            // 成品 out/film_money_tutor.mp4 複製成 video/money_tutor_intro.mp4；影片重做了就再複製一次
+            function openIntroVideo() {
+                const m = document.getElementById('intro-video-modal'), v = m.querySelector('video');
+                if (!v.getAttribute('src')) v.src = 'video/money_tutor_intro.mp4';
+                try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
+                m.hidden = false;
+                try { v.currentTime = 0; } catch (e) {}
+                v.play().catch(() => {});   // 自動播放被擋就停在第一格，按播放鍵即可
+            }
+            function closeIntroVideo() {
+                const m = document.getElementById('intro-video-modal');
+                m.querySelector('video').pause();
+                m.hidden = true;
+            }
+            document.addEventListener('click', e => { if (e.target && e.target.id === 'intro-video-modal') closeIntroVideo(); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('intro-video-modal').hidden) closeIntroVideo(); });
+        </script>
+
+    </div>
+
+    <script>
+        // 切換標籤頁的函數
+        function switchTab(targetId) {
+            // 移除初始加載時的內聯樣式（防止 !important 規則干擾）
+            const initialStyles = document.getElementById('initial-tab-styles');
+            if (initialStyles) {
+                initialStyles.remove();
+            }
+
+            // 處理按鈕的 active 狀態
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.target === targetId) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 處理內容面板的顯示
+            document.querySelectorAll('.tab-content').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        }
+
+        // 檢查 URL hash 並顯示對應的標籤頁
+        function checkHash() {
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                switchTab(hash);
+            }
+        }
+
+        // 監聽 hash 變化
+        window.addEventListener('hashchange', checkHash);
+
+        // 點擊標籤按鈕時更新 hash
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabsContainer = document.querySelector('.tabs');
+            tabsContainer.addEventListener('click', (event) => {
+                const clickedButton = event.target.closest('.tab-btn');
+                if (!clickedButton) return;
+
+                const targetId = clickedButton.dataset.target;
+                window.location.hash = targetId;
+                switchTab(targetId);
+            });
+        });
+    </script>
+    
+    <script src="js/home-catalog.js"></script>
+    <!-- 自訂場景／情境的資料層：與對話模組共用同一份規則（id 產生、配色、預設場景、舊資料遷移），
+         主頁的「⭐ 自訂」分頁要就地建立場景，所以這裡也要載入 -->
+    <script src="dialogue/custom-scenes.js"></script>
+    <!-- 角色彈窗共用元件：對話模組載入同一支，兩頁的金好聊／金隊長彈窗因此不可能長得不一樣 -->
+    <script src="js/hero-modal.js"></script>
+    <script src="js/growth-system.js"></script>
+    <script src="js/student-roster.js"></script>
+    <script src="js/student-picker.js"></script>
+    <script>
+    // ── 角色卡輪播 ＋ 下方區塊連動 ────────────────────────────────
+    // 一次顯示兩張卡（四位角色循環）；點金好聊／金博士時，下方的分部與卡片換成
+    // 對話練習七部分／冒險七關。清單全部來自 js/home-catalog.js（產生器產物），
+    // 主頁不自己抄一份，改了 dialogue/adventure 只要重跑產生器就同步。
+    (function () {
+        const HEROES = ['captain', 'grandma', 'chatdog', 'doctor', 'detective'];
+        const CAT = window.HOME_CATALOG || { parts: [], scenarios: [], levels: [] };
+        const $ = id => document.getElementById(id);
+
+        let idx = 0;                 // 目前左邊那張卡是 HEROES 的第幾位
+        let picked = 'captain';      // 下方區塊正在顯示誰的內容
+        let dlgPart = 1;             // 對話練習目前選的分部
+        let gamePage = 0;            // 小遊戲目前第幾頁（遊戲關閉後要回到這一頁）
+        const GAMES_PER_PAGE = 6;
+
+        const cards = () => [...document.querySelectorAll('.hero-card')];
+
+        function renderCarousel() {
+            const list = cards();
+            list.forEach(c => { c.classList.remove('on'); c.style.order = ''; });
+            for (let k = 0; k < 2; k++) {
+                const hero = HEROES[(idx + k) % HEROES.length];
+                const el = list.find(c => c.dataset.hero === hero);
+                if (el) { el.classList.add('on'); el.style.order = k; }
+            }
+            list.forEach(c => c.classList.toggle('picked', c.dataset.hero === picked));
+        }
+
+        function step(dir) {
+            idx = (idx + dir + HEROES.length) % HEROES.length;
+            renderCarousel();
+        }
+
+        // 下方區塊：main＝原本的 24 單元（金隊長／金婆婆），其餘走 alt 區
+        function setMode(hero) {
+            picked = hero;
+            const main = (hero === 'captain' || hero === 'grandma');   // 其餘（chatdog/doctor/detective）走 alt 區
+            $('tabs-main').hidden = !main;
+            // part1~4 用 .active 控制顯示，這裡用 inline display 覆蓋，切回來時還原
+            document.querySelectorAll('.tab-content').forEach(p => p.style.display = main ? '' : 'none');
+            $('alt-tabs').hidden  = main;
+            $('alt-panel').hidden = main;
+            if (!main) renderAlt(hero);
+            renderCarousel();
+            // 導覽列高亮跟著切：主頁上點「生活情境對話／一日金錢冒險／小遊戲」是就地切換、不重載頁面，
+            // 沒有這段的話 .current 會一直卡在剛載入時的「主頁」不放
+            const navHero = main ? 'home' : hero;
+            document.querySelectorAll('.site-nav a[data-hero]').forEach(a => {
+                a.classList.toggle('current', a.dataset.hero === navHero);
+            });
+        }
+
+        // 自訂場景／情境存在 dialogue 那邊的 localStorage（同源讀得到）。
+        // 🔴 讀寫一律走 dialogue/custom-scenes.js 的 CustomScenes——**規則只有一份**，
+        //    主頁不要自己 JSON.parse localStorage，也不要自己決定 id 或配色。
+        const loadCustomScenarios = () => (window.CustomScenes ? CustomScenes.loadCustoms() : []);
+        const loadCustomScenes    = () => (window.CustomScenes ? CustomScenes.loadScenes()  : []);
+        // 老師打的名稱會進 innerHTML → 先跳脫
+        const escHtml = (t) => String(t ?? '').replace(/[&<>"']/g,
+            ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+        function scenarioCard(s) {
+            const img = s.scene
+                ? `<img class="dlg-card-img" loading="lazy" src="${s.scene}" alt=""
+                        onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'dlg-card-emoji',textContent:'${s.icon}'}))">`
+                : `<div class="dlg-card-emoji">${s.icon}</div>`;
+            const clerk = s.clerk?.image
+                ? `<button class="dlg-clerk-btn" type="button" data-clerk="${s.id}" aria-label="${s.clerk.name} 介紹"
+                           title="點我聽 ${s.clerk.name} 介紹"><img src="${s.clerk.image}" alt=""></button>`
+                : '';
+            return `<div class="dlg-card-wrap">
+                <a class="dlg-card" href="dialogue/index.html?scenario=${s.id}&from=home" style="--c:${s.color}">
+                    ${img}
+                    <div class="dlg-card-body">
+                        <div class="dlg-card-row">
+                            <span class="dlg-card-name">${s.name}</span>
+                            <span class="dlg-card-steps">📝 ${s.metaLabel || `${s.situations} 種情境`}</span>
+                        </div>
+                        <span class="dlg-card-badge">開始練習 →</span>
+                    </div>
+                </a>${clerk}
+            </div>`;
+        }
+
+        function renderAlt(hero) {
+            const tabs = $('alt-tabs'), grid = $('alt-grid');
+            tabs.classList.toggle('parts-grid', hero === 'chatdog');
+            grid.classList.toggle('dlg-grid', hero === 'chatdog');
+            if (hero === 'chatdog') {
+                // 四欄格線：第一行＝第一~四部分，第二行＝第五~七部分＋自訂情境
+                tabs.innerHTML = CAT.parts.map(p =>
+                    `<button class="tab-btn alt-tab${p.id === dlgPart ? ' active' : ''}" data-part="${p.id}">${p.label}</button>`).join('')
+                    + `<button class="tab-btn alt-tab${dlgPart === 'custom' ? ' active' : ''}" data-part="custom">⭐ 自訂</button>`;
+                if (dlgPart === 'custom') {
+                    // 2026-09-16 起列的是**場景卡**（老師自己的「便利商店」），情境條列在場景裡面。
+                    // 掛在內建場所底下的自訂情境仍然只出現在那個場所的情境清單，這裡不重複列。
+                    const customs = loadCustomScenarios();
+                    const scenes  = loadCustomScenes();
+                    // 「➕ 建立場景」新增卡**永遠排第一個**（2026-09-15 使用者回報：原本要有東西才看得到入口）
+                    const addCard = `<div class="dlg-card-wrap">
+                        <a class="dlg-card dlg-card-add" href="dialogue/index.html?scene=new" aria-label="建立自訂場景">
+                            <div class="dlg-card-emoji">➕</div>
+                            <div class="dlg-card-body">
+                                <div class="dlg-card-row">
+                                    <span class="dlg-card-name">建立場景</span>
+                                    <span class="dlg-card-steps">🧑‍🏫 先建場景，再加情境</span>
+                                </div>
+                                <span class="dlg-card-badge">建立新場景 →</span>
+                            </div>
+                        </a>
+                    </div>`;
+                    grid.innerHTML = addCard + (scenes.length
+                        ? scenes.map(s => scenarioCard({
+                              id: s.id, name: escHtml(s.name || '自訂場景'), icon: s.icon || '⭐',
+                              color: s.theme?.color || '#f59e0b',
+                              metaLabel: `${customs.filter(x => x && x.parentId === s.id).length} 種情境`,
+                              scene: 'dialogue/images/scenes/custom.webp', clerk: null,
+                          })).join('')
+                        : `<div class="dlg-empty">${customs.length
+                            ? '你做的自訂情境都放在場所裡面了（到那個場所就看得到）。<br>要自己開一個場景，點上面的「建立新場景」。'
+                            : '還沒有自訂場景，點上面的「建立新場景」做第一個，再把情境加進去。'}</div>`);
+                } else {
+                    grid.innerHTML = CAT.scenarios.filter(s => s.part === dlgPart).map(scenarioCard).join('');
+                }
+            } else if (hero === 'detective') {
+                // 小遊戲：一頁 6 個，分頁顯示；點卡片就地開遊戲彈窗
+                const pages = Math.ceil(CAT.games.length / GAMES_PER_PAGE);
+                if (gamePage >= pages) gamePage = 0;
+                tabs.innerHTML = Array.from({ length: pages }, (_, i) =>
+                    `<button class="tab-btn alt-tab${i === gamePage ? ' active' : ''}" data-gpage="${i}">第${'一二三四五六七'[i] || (i + 1)}頁遊戲</button>`).join('');
+                grid.innerHTML = CAT.games
+                    .slice(gamePage * GAMES_PER_PAGE, (gamePage + 1) * GAMES_PER_PAGE)
+                    .map(g => `
+                    <button type="button" class="unit-btn game-pick" data-game="${g.id}">
+                        <div class="unit-icon" style="font-size:52px;line-height:1.3">${g.image
+                            // 有圖用圖（旁邊已有遊戲名稱 → alt 留空免重複朗讀）；圖載不到退回 emoji
+                            ? `<img src="${g.image}" alt="" class="game-pick-img" onerror="this.replaceWith(document.createTextNode('${g.emoji}'))">`
+                            : g.emoji}</div>
+                        <div class="unit-text">
+                            <div class="code" style="color:#c2410c">🎮 小遊戲</div>
+                            <div class="title">${g.name}</div>
+                            <div class="subtitle">${g.desc}</div>
+                        </div>
+                    </button>`).join('');
+            } else {
+                // 冒險：一位角色一張方格（比照小遊戲方格，2026-09-28 使用者定）；
+                // 點下去進冒險的「準備頁」（adventure/index.html?prep=1&char=）：上方選學生、下方今天的冒險＋開始冒險
+                tabs.innerHTML = `<button class="tab-btn alt-tab active" disabled>🗺️ 一日金錢冒險・選一位角色</button>`;
+                grid.innerHTML = CAT.advChars.map(c => `
+                    <button type="button" class="unit-btn game-pick adv-char-pick" data-char="${c.id}">
+                        <div class="unit-icon"><img src="${c.image}" alt="" style="width:78px;height:78px;object-fit:cover;object-position:top center;border-radius:50%"></div>
+                        <div class="unit-text">
+                            <div class="code">🗺️ 一日金錢冒險</div>
+                            <div class="title">${c.name}</div>
+                            <div class="subtitle">${c.desc}</div>
+                        </div>
+                    </button>`).join('');
+            }
+        }
+
+        // ── 金好聊彈窗：走**共用元件** hero-modal.js（對話模組載入同一支）──────────
+        // 🔴 這裡只注入「本來就不一樣」的東西（學生清單從哪來、怎麼播），
+        //    版型與互動一律交給元件——兩頁各寫一份就是上一版那個「彈窗比較小」的成因。
+        const HERO_IMG = {
+            captain: 'images/common/captain_gold.png',
+            grandma: 'images/common/grandma_gold.png',
+            chatdog: 'images/common/money_chat_dog.png',
+        };
+        window.HeroModal?.configure({
+            heroImage: h => HERO_IMG[h] || HERO_IMG.chatdog,
+            heroText:  h => window.getHeroSpeech?.(h) || '',
+            // 金婆婆的聲音鍵就是 grandma；金隊長／金好聊各自同名
+            playHeroIntro: h => window.speakCharacterText?.(h, h === 'grandma' ? 'grandma' : h),
+            stopVoice: () => window.stopCharacterVoice?.(),
+        });
+        window.openChatDogModal = function () {
+            window.HeroModal?.open('chatdog', {
+                // 主頁才有這張卡：關掉彈窗讓學生直接在下面挑情境（對話模組裡不需要，已經在模組內）
+                action: { emoji: '🛒', title: '購物對話練習', desc: '點我關閉，直接在下面挑想練習的情境' },
+                // 「選擇學生語音」已移到對話模組的情境設定頁（作答方式＝🔘 選擇對話 才出現；2026-09-28 使用者定）
+            });
+        };
+        window.closeChatDogModal = () => window.HeroModal?.close();
+
+        // （金博士彈窗的「選擇冒險角色」已改成下方一位角色一張方格，2026-09-28）
+
+        // ── 店員介紹彈窗：先播 dialogue 的預錄開場白，沒有檔案才用瀏覽器 TTS；關閉即停 ──
+        let _clerkAudio = null;
+        function stopClerkVoice() {
+            if (_clerkAudio) { try { _clerkAudio.pause(); } catch (e) {} _clerkAudio = null; }
+            if (window.speechSynthesis) speechSynthesis.cancel();
+        }
+        window.openClerkModal = function (id) {
+            const s = CAT.scenarios.find(x => x.id === id);
+            if (!s || !s.clerk) return;
+            $('clerk-modal-img').src = s.clerk.image;
+            $('clerk-modal-img').alt = s.clerk.name;
+            $('clerk-modal-name').textContent = s.clerk.name;
+            // role 常常就等於店名（VOICE_INFO 的 role 寫的是所屬店家），一樣就別重複印兩次
+            $('clerk-modal-role').textContent = [s.clerk.role, s.name].filter((v, i, a) => v && a.indexOf(v) === i).join('　|　');
+            $('clerk-modal-intro').textContent = s.clerk.intro;
+            $('clerk-modal-go').href = 'dialogue/index.html?scenario=' + s.id + '&from=home';
+            $('clerk-modal-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            stopClerkVoice();
+            const a = new Audio('dialogue/audio/clerk/' + s.id + '_intro.mp3');
+            _clerkAudio = a;
+            a.play().catch(() => {
+                if (_clerkAudio !== a || !window.speechSynthesis) return;   // 已被關閉/換人就別再開口
+                const u = new SpeechSynthesisUtterance(s.clerk.intro);
+                u.lang = 'zh-TW'; u.rate = 0.92;
+                speechSynthesis.speak(u);
+            });
+        };
+        window.closeClerkModal = function (event) {
+            if (event && event.target !== $('clerk-modal-overlay')) return;
+            stopClerkVoice();
+            $('clerk-modal-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        };
+        $('alt-grid').addEventListener('click', e => {
+            const btn = e.target.closest('.dlg-clerk-btn');
+            if (!btn) return;
+            e.preventDefault();
+            window.openClerkModal(btn.dataset.clerk);
+        });
+
+        // ── 建立自訂場景：**就地開彈窗，不離開主頁** ────────────────────
+        // 🔴 原本這張卡是連到 dialogue/index.html?scene=new，點下去整個主頁被換掉
+        //    （角色卡輪播與左右切換鈕跟著不見，老師以為跑錯地方）。卡片仍保留 href
+        //    當作沒有 JS 時的退路，但正常情況一律攔下來自己開彈窗。
+        // ⚠️ 規則（id、配色、預設場景）一律走 CustomScenes，主頁不自己決定。
+        let _sceneIcon = '⭐';
+        function renderSceneIcons() {
+            const row = $('scene-icon-row');
+            row.innerHTML = '';
+            (window.CustomScenes?.SCENE_ICONS || ['⭐']).forEach(ic => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'scene-icon-btn' + (ic === _sceneIcon ? ' on' : '');
+                b.textContent = ic;
+                b.setAttribute('aria-pressed', String(ic === _sceneIcon));
+                b.addEventListener('click', () => { _sceneIcon = ic; renderSceneIcons(); });
+                row.appendChild(b);
+            });
+        }
+        window.openSceneModal = function () {
+            _sceneIcon = window.CustomScenes?.ICON || '⭐';
+            $('scene-name-input').value = '';
+            $('scene-modal-msg').textContent = '';
+            renderSceneIcons();
+            $('scene-modal-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => $('scene-name-input').focus(), 50);
+        };
+        window.closeSceneModal = function (event) {
+            if (event && event.target !== $('scene-modal-overlay')) return;
+            $('scene-modal-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        };
+        window.saveSceneModal = function () {
+            const name = $('scene-name-input').value.trim();
+            if (!name) { $('scene-modal-msg').textContent = '請先輸入場景名稱。'; return; }
+            if (!window.CustomScenes) { $('scene-modal-msg').textContent = '資料模組沒載入，請重新整理頁面。'; return; }
+            CustomScenes.create(name, _sceneIcon);
+            window.closeSceneModal(null);
+            renderAlt('chatdog');   // 自訂分頁重畫 → 新場景卡就出現在旁邊
+        };
+        $('scene-name-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); window.saveSceneModal(); }
+        });
+        $('alt-grid').addEventListener('click', e => {
+            const add = e.target.closest('.dlg-card-add');
+            if (!add) return;
+            e.preventDefault();
+            window.openSceneModal();
+        });
+
+        // 導覽鈕一律 pointerdown（按下即觸發）：見檔尾「按下會位移→click 落空」踩雷
+        ['hero-prev', 'hero-next'].forEach(id => $(id)?.addEventListener('pointerdown', e => {
+            if (e.button && e.button !== 0) return;
+            e.preventDefault();
+            step(id === 'hero-next' ? 1 : -1);
+        }));
+
+        // 四張卡都要有「彈窗＋自我介紹語音」（彈窗關閉時各自的 close 會 stopCharacterVoice）
+        cards().forEach(card => card.addEventListener('click', () => {
+            const hero = card.dataset.hero;
+            setMode(hero);
+            if (hero === 'captain') window.openCaptainBase?.();
+            if (hero === 'grandma') window.openCaptainBase?.('grandma');
+            if (hero === 'chatdog') window.openChatDogModal?.();
+            if (hero === 'doctor')  window.openDoctorModal?.();
+            if (hero === 'detective') window.openDetectiveModal?.();
+        }));
+
+        // 小遊戲：分頁切換 ＋ 就地開遊戲（iframe），關閉後仍停在同一頁
+        $('alt-tabs').addEventListener('click', e => {
+            const btn = e.target.closest('.alt-tab[data-gpage]');
+            if (!btn) return;
+            gamePage = Number(btn.dataset.gpage);
+            renderAlt('detective');
+        });
+        $('alt-grid').addEventListener('click', e => {
+            const ch = e.target.closest('.adv-char-pick');
+            if (ch) {
+                try { localStorage.setItem('adv_selectedChar', ch.dataset.char); } catch (err) {}   // 與 adventure 共用
+                location.href = 'adventure/index.html?prep=1&char=' + encodeURIComponent(ch.dataset.char);
+                return;
+            }
+            const btn = e.target.closest('.game-pick');
+            if (!btn) return;
+            const g = CAT.games.find(x => x.id === btn.dataset.game);
+            if (g) openGameModal(g);
+        });
+        window.openGameModal = function (g) {
+            $('game-modal-title').textContent = `${g.emoji} ${g.name}`;
+            $('game-frame').src = g.url + '?embed=1';
+            $('game-modal-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        };
+        window.closeGameModal = function (event) {
+            if (event && event.target !== $('game-modal-overlay')) return;
+            $('game-frame').src = 'about:blank';   // 卸載遊戲，停掉裡面的音效與計時器
+            $('game-modal-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        };
+        // 遊戲裡按「返回選單／遊戲選單」→ 由 games/js/game-ui.js 送訊息回來（見該檔的 GUE_EMBED）
+        window.addEventListener('message', e => {
+            if (e.data && e.data.type === 'mt-game-back') window.closeGameModal(null);
+        });
+
+        $('alt-tabs').addEventListener('click', e => {
+            const btn = e.target.closest('.alt-tab[data-part]');
+            if (!btn) return;
+            dlgPart = btn.dataset.part === 'custom' ? 'custom' : Number(btn.dataset.part);
+            renderAlt('chatdog');
+        });
+
+        renderCarousel();
+
+        // 切到某個角色的區塊（?hero=chatdog|doctor|detective，可帶 &part=）
+        function showHeroSection(hero, part) {
+            if (!hero || !HEROES.includes(hero)) return false;
+            if (part) dlgPart = part === 'custom' ? 'custom' : Number(part);
+            idx = Math.max(0, HEROES.indexOf(hero));   // 讓該角色出現在左邊那張
+            setMode(hero);
+            document.getElementById('alt-panel')?.scrollIntoView({ block: 'start' });
+            return true;
+        }
+
+        // 從子模組「返回主頁」回來時（例：dialogue 帶 ?hero=chatdog&part=2）
+        // 直接把輪播與下方區塊停在原來的位置，學生不必自己找回去
+        (function applyEntryParams() {
+            const q = new URLSearchParams(location.search);
+            if (showHeroSection(q.get('hero'), q.get('part'))) {
+                history.replaceState(null, '', location.pathname);
+            }
+        })();
+
+        // 導覽列的「生活情境對話／一日金錢冒險／小遊戲」指向本頁的區塊：
+        // 已經在主頁就不必重新載入整頁，直接切過去。
+        document.addEventListener('click', e => {
+            const a = e.target.closest('a[href*="hero="]');
+            if (!a) return;
+            const u = new URL(a.getAttribute('href'), location.href);
+            if (u.pathname !== location.pathname) return;   // 從其他頁點進來 → 照常跳轉
+            e.preventDefault();
+            showHeroSection(u.searchParams.get('hero'), u.searchParams.get('part'));
+        });
+    })();
+    </script>
+
+    <script src="js/audio-unlocker.js"></script>
+    <script src="js/theme-switch.js"></script>
+
+</body>
+</html>

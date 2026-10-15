@@ -1,0 +1,557 @@
+/* =================================================================
+   FILE: css/dark-mode-simple.css
+   深色模式輕量樣式 — 僅修改背景色與文字色，其他樣式不動
+   所有 24 個單元共用，由 js/theme-switch.js 控制的三態機制觸發：
+     - 強制深色：<html data-theme="dark">（下方「強制深色」區塊）
+     - 跟隨系統且系統為深色：<html> 沒有 data-theme（或非 "light"）＋瀏覽器 prefers-color-scheme:
+       dark（下方「跟隨系統」區塊，包在 @media 裡）
+     - 強制淺色：<html data-theme="light">，兩區塊都不生效
+   兩區塊選擇器與數值刻意逐字對應（只有外層 gate 不同），改動時務必兩邊同步。
+   建立日期：2026-02-24；2026-09-09 補上跟隨系統的媒體查詢鏡射層；
+   2026-09-09 修正「背景圖蓋住背景色」的根因（見下方說明）＋補上 B 系列 .b-setting-group。
+
+   🔴 **一律用 `background` 簡寫，不要只寫 `background-color`**：ai-theme.css 的
+   `body:has(.unit-welcome) { background: linear-gradient(...) !important; }` 這類規則
+   會用 !important 畫上漸層背景圖；`background-color` 只改得動背景「色」，背景圖仍疊在上面
+   完全蓋住看不見（這正是這份檔案 2026-02-24 建立以來，大部分單元的頁面/設定卡背景在深色模式
+   下實際上從未真的變暗的根因——只有 body/#app 的顏色變了，圖案疊在上面看不出來）。
+   `background: 色票 !important` 一次歸零 image/position/repeat，才會真的蓋掉漸層。
+   ================================================================= */
+
+/* ── 強制深色（[data-theme="dark"]）───────────────────────────── */
+
+[data-theme="dark"] {
+    --dm-bg-page:      #1a1a2e;   /* 頁面底層背景（深藍黑） */
+    --dm-bg-container: #22223a;   /* 主容器背景 */
+    --dm-bg-card:      #2d2d44;   /* 卡片/區塊背景 */
+    --dm-text:         #e2e8f0;   /* 主要文字（近白） */
+    --dm-text-muted:   #a0aec0;   /* 次要文字（淺灰） */
+}
+
+[data-theme="dark"] html,
+[data-theme="dark"] body {
+    background: var(--dm-bg-page) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] #app {
+    background: var(--dm-bg-page) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] .game-settings,
+[data-theme="dark"] .settings-screen,
+[data-theme="dark"] .settings-container,
+[data-theme="dark"] .setting-group,
+[data-theme="dark"] .b-setting-group,
+[data-theme="dark"] .unit-welcome,
+[data-theme="dark"] .welcome-content {
+    background: var(--dm-bg-card) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] .game-area,
+[data-theme="dark"] .game-screen,
+[data-theme="dark"] .game-container,
+[data-theme="dark"] .game-board {
+    background: var(--dm-bg-container) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] .completion-screen,
+[data-theme="dark"] .completion-container,
+[data-theme="dark"] .results-screen,
+[data-theme="dark"] .end-screen {
+    background: var(--dm-bg-container) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] .header-bar,
+[data-theme="dark"] .title-bar,
+[data-theme="dark"] .game-header,
+[data-theme="dark"] .top-bar {
+    background: var(--dm-bg-card) !important;
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+    color: var(--dm-text);
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] label,
+[data-theme="dark"] span {
+    color: var(--dm-text);
+}
+/* 注意：p/label/span 的 color 不加 !important，
+   讓單元內的答對（綠）、答錯（紅）等特定顏色繼續生效 */
+
+
+/* ── 跟隨系統（沒有手動選淺色，且瀏覽器偏好深色）──────────────── */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --dm-bg-page:      #1a1a2e;
+        --dm-bg-container: #22223a;
+        --dm-bg-card:      #2d2d44;
+        --dm-text:         #e2e8f0;
+        --dm-text-muted:   #a0aec0;
+    }
+
+    :root:not([data-theme="light"]),
+    :root:not([data-theme="light"]) body {
+        background: var(--dm-bg-page) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) #app {
+        background: var(--dm-bg-page) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) .game-settings,
+    :root:not([data-theme="light"]) .settings-screen,
+    :root:not([data-theme="light"]) .settings-container,
+    :root:not([data-theme="light"]) .setting-group,
+    :root:not([data-theme="light"]) .b-setting-group,
+    :root:not([data-theme="light"]) .unit-welcome,
+    :root:not([data-theme="light"]) .welcome-content {
+        background: var(--dm-bg-card) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) .game-area,
+    :root:not([data-theme="light"]) .game-screen,
+    :root:not([data-theme="light"]) .game-container,
+    :root:not([data-theme="light"]) .game-board {
+        background: var(--dm-bg-container) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) .completion-screen,
+    :root:not([data-theme="light"]) .completion-container,
+    :root:not([data-theme="light"]) .results-screen,
+    :root:not([data-theme="light"]) .end-screen {
+        background: var(--dm-bg-container) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) .header-bar,
+    :root:not([data-theme="light"]) .title-bar,
+    :root:not([data-theme="light"]) .game-header,
+    :root:not([data-theme="light"]) .top-bar {
+        background: var(--dm-bg-card) !important;
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) h1,
+    :root:not([data-theme="light"]) h2,
+    :root:not([data-theme="light"]) h3,
+    :root:not([data-theme="light"]) h4,
+    :root:not([data-theme="light"]) h5,
+    :root:not([data-theme="light"]) h6 {
+        color: var(--dm-text);
+    }
+
+    :root:not([data-theme="light"]) p,
+    :root:not([data-theme="light"]) label,
+    :root:not([data-theme="light"]) span {
+        color: var(--dm-text);
+    }
+}
+
+
+/* ── 強制淺色時，瀏覽器自己畫的表單控制項也要跟著淺色 ─────────────
+   🔴 24 個單元的 HTML 都寫了 `<meta name="color-scheme" content="light dark">`，
+   意思是「表單控制項跟著作業系統走」。於是作業系統是深色時，就算站台選了
+   **強制淺色**，`<button>` 沒寫 color 的預設字色（UA 的 `buttontext` 系統色）
+   仍然是**白色** → 寫死 `background: white` 的按鈕變成白底白字，完全看不見
+   （2026-09-20 使用者回報：A4 第二步的數字鍵盤按鈕整排空白）。
+   這一行讓 `data-theme="light"` 連 UA 系統色一起壓成淺色，是該族問題的根因修法。
+   ⚠️ 深色狀態**刻意不寫** `color-scheme: dark`：本站的彈窗／鍵盤在深色模式下
+   底色仍是白的（只有頁面容器變暗），把 UA 壓成深色反而會製造新的白底白字。
+   個別元件自己的字色仍要寫死，不可依賴 UA 預設——這行只保證淺色模式不出事。 */
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+/* ── 單元設定頁與共用彈窗（2026-09-22）─────────────────────────────
+   上面那幾組只認得 .welcome-content／.game-settings／.setting-group 這些名字，
+   而且**只改文字色、不改寫死在各單元裡的底色**。於是同一個毛病在很多單元重演：
+     ① A5／A6 的設定卡叫 .settings-content，沒人管 → 白底 + 被染白的 h1 ＝ 標題看不見。
+     ② 難度說明 #difficulty-description 行內寫死 #f8f9fa → 深色下一條白槓。
+     ③ 數字輸入彈窗整個白底，標題 h3 白底白字（A1~A6 都一樣）。
+   這一區補的是**底色**，以及底色一變就讀不到的字。
+
+   🔴 這裡的 !important 是刻意的：這些色值寫在**各單元 HTML 的行內 style**或各單元 JS 的
+   內嵌 <style> 裡，外部樣式表不加 !important 蓋不過行內樣式。
+   （行內樣式自己帶 !important 的則誰都蓋不過，那種只能回去改 JS。）
+   ⚠️ 兩塊（@media 跟隨系統／[data-theme="dark"] 強制深色）**逐字對應**，只有外層 gate 不同。
+   ⚠️ 淺色模式（含 data-theme="light"）完全不受影響——整區都在深色 gate 內。
+   回歸守門：node tests/_e2e_units_dark.js（24 單元設定頁）＋ node tests/_e2e_numpad_contrast.js
+   ────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+    /* 設定頁外框：A5／A6 用的是 .settings-content／.settings-header，不在上面那組名單裡
+         → 整張卡片留在白底，而 h1 被上面的規則染成近白＝**標題整行看不見**。 */
+    :root:not([data-theme="light"]) .settings-content,
+    :root:not([data-theme="light"]) .settings-header {
+        background: var(--dm-bg-card) !important;
+        color: var(--dm-text);
+    }
+
+    /* 設定頁的說明文字：24 個單元都把 `color:#666`／`#888` 寫在 HTML 的行內 style 裡
+         （副標、任務分組小標、輔助點擊說明…）。與其一個一個挑選擇器，直接**對著行內樣式的內容**挑。
+         行內樣式**沒有帶 !important**，所以外部樣式表加 !important 就蓋得掉，不必回頭改 JS。
+         （行內若自己帶了 !important 就誰都蓋不過，那種只能改 JS——各單元的「產生作業單」連結就是。） */
+    :root:not([data-theme="light"]) [style*="color: #666"],
+    :root:not([data-theme="light"]) [style*="color:#666"],
+    :root:not([data-theme="light"]) [style*="color: #888"],
+    :root:not([data-theme="light"]) [style*="color:#888"],
+    :root:not([data-theme="light"]) [style*="color: #6b7280"],
+    :root:not([data-theme="light"]) [style*="color:#6b7280"],
+    :root:not([data-theme="light"]) [style*="color: #9ca3af"],
+    :root:not([data-theme="light"]) [style*="color:#9ca3af"] {
+        color: #b8c2d0 !important;
+    }
+    :root:not([data-theme="light"]) .setting-description small {
+        color: #b8c2d0 !important;
+    }
+
+    /* 設定頁的兩顆連結按鈕。「列印教具卡」的字色由 js/scan-pay/settings-tools.js 注入
+         （`#settings-money-cards-link{color:#000!important}`，六個單元共用）→ 只有 id + !important 壓得過。
+         「產生作業單」的 `color:#000!important` 原本寫在 <a> 的行內又帶 !important → CSS 蓋不掉，
+         已逐單元把那兩個宣告從 JS 裡移除（A1~A6），字色改由這裡與各單元 CSS 決定。 */
+    :root:not([data-theme="light"]) a#settings-money-cards-link,
+    :root:not([data-theme="light"]) a#settings-worksheet-link {
+        color: #e8ecf3 !important;
+    }
+    :root:not([data-theme="light"]) a.b-sel-btn.active#settings-worksheet-link {
+        color: #3d2b00 !important;
+    }
+
+    /* 其他寫死深色字的小標題：C4／C5 面額挑選區的「錢幣」「紙鈔」（行內 color:#000，
+         2026-09-22 加上 .c-denom-head 才有東西可以挑）、F4 的 .setting-label（#333）。
+         兩者在深色底上都只有 1.0~1.6 的對比，等於看不見。 */
+    :root:not([data-theme="light"]) .c-denom-head {
+        color: #e8ecf3 !important;
+    }
+    :root:not([data-theme="light"]) .setting-group .setting-label {
+        color: #e8ecf3 !important;
+    }
+
+    /* 難度說明那一塊：行內寫死 `background:#f8f9fa`，深色下是一條白槓。
+         用 [style*="background"] 只挑「行內真的有背景色」的那些——A1 已經把行內搬進自己的 CSS，不會被這條掃到。 */
+    :root:not([data-theme="light"]) #difficulty-description,
+    :root:not([data-theme="light"]) .setting-description[style*="background"] {
+        background: #383a52 !important;
+        color: #c9d2e0 !important;
+    }
+
+    /* 設定頁的選項按鈕（A1~A6 與 C／F 系列共用 .selection-btn）：白底黑字。
+         🔴 **底色與字色一定要一起改**：上一條把連結的字色改淺之後，底色若還留在白的，
+         就從「看得見的黑字」變成「白底白字」——改一半比不改更糟。
+         :not(.active) 是為了讓選中的那顆維持原本的藍底白字（它自己的特異性比這條低，不排除會被蓋掉）。 */
+    :root:not([data-theme="light"]) .selection-btn:not(.active):not(.disabled) {
+        background: #383a52 !important;
+        color: #e8ecf3 !important;
+        border-color: #4e5270 !important;
+    }
+    :root:not([data-theme="light"]) .selection-btn:not(.active):not(.disabled):hover {
+        background: #444864 !important;
+        border-color: #7b86e8 !important;
+    }
+
+    /* B 系列設定頁的選項按鈕 .b-sel-btn（b-series.css 的 #f9fafb 底、#374151 字）。
+         2026-09-22 使用者指定改成深底白字，與 A 系列的 .selection-btn 一致。
+         :not(.active) 保住選中那顆的橘底白字；「產生作業單」是 a.b-sel-btn.active，一樣不動。 */
+    :root:not([data-theme="light"]) .b-sel-btn:not(.active) {
+        background: #383a52 !important;
+        color: #e8ecf3 !important;
+        border-color: #4e5270 !important;
+    }
+    :root:not([data-theme="light"]) .b-sel-btn:not(.active):hover {
+        background: #444864 !important;
+        border-color: #f5b342 !important;
+        color: #ffd894 !important;
+    }
+
+    /* 停用中的「開始」按鈕：#ccc 底 + #666 字，深色下是一塊亮灰。 */
+    :root:not([data-theme="light"]) .start-btn.disabled,
+    :root:not([data-theme="light"]) .start-btn:disabled {
+        background: #4a4d66 !important;
+        color: #b7c0d0 !important;
+    }
+
+    /* 結算／完成畫面（CLAUDE.md「統一測驗結束畫面樣式」那一套模板：A1~A4、A6 與 C／F 系列
+         共用同一批 class，樣式各自寫在該單元 JS 的內嵌 <style> 裡、全部寫死白底）。
+         白卡片 + 被共用規則染白的 h3 ＝「表現評價」「學習成果」整行看不見（使用者在 A1 回報的兩項）。
+         ⚠️ 這組原本只寫在 css/a1_vending_machine.css，2026-09-22 搬到共用層——class 名完全一樣，
+         留在單一單元裡就是等著其他單元各自重蹈覆轍。
+         ⚠️ 表現徽章 .performance-badge 的橘底白字與按鈕的彩底白字刻意不碰（深淺模式一致）。 */
+    :root:not([data-theme="light"]) .results-container {
+        background: #2d2d44 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45) !important;
+    }
+    :root:not([data-theme="light"]) .result-card {
+        background: linear-gradient(135deg, #383a52, #32344a) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35) !important;
+    }
+    :root:not([data-theme="light"]) .result-label {
+        color: #b8c2d0 !important;
+    }
+    :root:not([data-theme="light"]) .result-value {
+        color: #e8ecf3 !important;
+    }
+    :root:not([data-theme="light"]) .performance-section {
+        background: #383a52 !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+    }
+    :root:not([data-theme="light"]) .performance-section h3 {
+        color: #e8ecf3 !important;
+    }
+    :root:not([data-theme="light"]) .learning-achievements {
+        background: linear-gradient(135deg, #1e3a29, #24472f) !important;
+    }
+    :root:not([data-theme="light"]) .learning-achievements h3 {
+        color: #9ae6b4 !important;
+    }
+    :root:not([data-theme="light"]) .achievement-item {
+        background: rgba(255, 255, 255, 0.07) !important;
+        color: #d5f3df !important;
+    }
+
+    /* 數字輸入彈窗（A1~A6 共用同一套 class，樣式寫在各單元 JS 的內嵌 <style>）：
+         整個彈窗白底，標題 h3 寫死 #333 卻被上面的 h1~h6 規則染成近白 → **白底白字**。
+         ⚠️ 三顆功能鍵（清除／退格／確認）的彩底白字是內嵌樣式用 !important 寫的，這裡刻意不碰。
+         改完要跑 node tests/_e2e_numpad_contrast.js。 */
+    :root:not([data-theme="light"]) .number-input-container {
+        background: var(--dm-bg-card) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55) !important;
+    }
+    :root:not([data-theme="light"]) .number-input-header {
+        border-bottom-color: rgba(255, 255, 255, 0.14) !important;
+    }
+    :root:not([data-theme="light"]) .number-input-header h3 {
+        color: var(--dm-text) !important;
+    }
+    :root:not([data-theme="light"]) .number-input-container .close-btn {
+        color: #b8c2d0 !important;
+    }
+    :root:not([data-theme="light"]) #number-display,
+    :root:not([data-theme="light"]) #question-count-display {
+        background: #383a52 !important;
+        color: #e8ecf3 !important;
+        border-color: #4e5270 !important;
+    }
+    :root:not([data-theme="light"]) .number-input-buttons button {
+        background: #383a52 !important;
+        color: #e8ecf3 !important;
+        border-color: #4e5270 !important;
+    }
+}
+
+/* 設定頁外框：A5／A6 用的是 .settings-content／.settings-header，不在上面那組名單裡
+     → 整張卡片留在白底，而 h1 被上面的規則染成近白＝**標題整行看不見**。 */
+[data-theme="dark"] .settings-content,
+[data-theme="dark"] .settings-header {
+    background: var(--dm-bg-card) !important;
+    color: var(--dm-text);
+}
+
+/* 設定頁的說明文字：24 個單元都把 `color:#666`／`#888` 寫在 HTML 的行內 style 裡
+     （副標、任務分組小標、輔助點擊說明…）。與其一個一個挑選擇器，直接**對著行內樣式的內容**挑。
+     行內樣式**沒有帶 !important**，所以外部樣式表加 !important 就蓋得掉，不必回頭改 JS。
+     （行內若自己帶了 !important 就誰都蓋不過，那種只能改 JS——各單元的「產生作業單」連結就是。） */
+[data-theme="dark"] [style*="color: #666"],
+[data-theme="dark"] [style*="color:#666"],
+[data-theme="dark"] [style*="color: #888"],
+[data-theme="dark"] [style*="color:#888"],
+[data-theme="dark"] [style*="color: #6b7280"],
+[data-theme="dark"] [style*="color:#6b7280"],
+[data-theme="dark"] [style*="color: #9ca3af"],
+[data-theme="dark"] [style*="color:#9ca3af"] {
+    color: #b8c2d0 !important;
+}
+[data-theme="dark"] .setting-description small {
+    color: #b8c2d0 !important;
+}
+
+/* 設定頁的兩顆連結按鈕。「列印教具卡」的字色由 js/scan-pay/settings-tools.js 注入
+     （`#settings-money-cards-link{color:#000!important}`，六個單元共用）→ 只有 id + !important 壓得過。
+     「產生作業單」的 `color:#000!important` 原本寫在 <a> 的行內又帶 !important → CSS 蓋不掉，
+     已逐單元把那兩個宣告從 JS 裡移除（A1~A6），字色改由這裡與各單元 CSS 決定。 */
+[data-theme="dark"] a#settings-money-cards-link,
+[data-theme="dark"] a#settings-worksheet-link {
+    color: #e8ecf3 !important;
+}
+[data-theme="dark"] a.b-sel-btn.active#settings-worksheet-link {
+    color: #3d2b00 !important;
+}
+
+/* 其他寫死深色字的小標題：C4／C5 面額挑選區的「錢幣」「紙鈔」（行內 color:#000，
+     2026-09-22 加上 .c-denom-head 才有東西可以挑）、F4 的 .setting-label（#333）。
+     兩者在深色底上都只有 1.0~1.6 的對比，等於看不見。 */
+[data-theme="dark"] .c-denom-head {
+    color: #e8ecf3 !important;
+}
+[data-theme="dark"] .setting-group .setting-label {
+    color: #e8ecf3 !important;
+}
+
+/* 難度說明那一塊：行內寫死 `background:#f8f9fa`，深色下是一條白槓。
+     用 [style*="background"] 只挑「行內真的有背景色」的那些——A1 已經把行內搬進自己的 CSS，不會被這條掃到。 */
+[data-theme="dark"] #difficulty-description,
+[data-theme="dark"] .setting-description[style*="background"] {
+    background: #383a52 !important;
+    color: #c9d2e0 !important;
+}
+
+/* 設定頁的選項按鈕（A1~A6 與 C／F 系列共用 .selection-btn）：白底黑字。
+     🔴 **底色與字色一定要一起改**：上一條把連結的字色改淺之後，底色若還留在白的，
+     就從「看得見的黑字」變成「白底白字」——改一半比不改更糟。
+     :not(.active) 是為了讓選中的那顆維持原本的藍底白字（它自己的特異性比這條低，不排除會被蓋掉）。 */
+[data-theme="dark"] .selection-btn:not(.active):not(.disabled) {
+    background: #383a52 !important;
+    color: #e8ecf3 !important;
+    border-color: #4e5270 !important;
+}
+[data-theme="dark"] .selection-btn:not(.active):not(.disabled):hover {
+    background: #444864 !important;
+    border-color: #7b86e8 !important;
+}
+
+/* B 系列設定頁的選項按鈕 .b-sel-btn（b-series.css 的 #f9fafb 底、#374151 字）。
+     2026-09-22 使用者指定改成深底白字，與 A 系列的 .selection-btn 一致。
+     :not(.active) 保住選中那顆的橘底白字；「產生作業單」是 a.b-sel-btn.active，一樣不動。 */
+[data-theme="dark"] .b-sel-btn:not(.active) {
+    background: #383a52 !important;
+    color: #e8ecf3 !important;
+    border-color: #4e5270 !important;
+}
+[data-theme="dark"] .b-sel-btn:not(.active):hover {
+    background: #444864 !important;
+    border-color: #f5b342 !important;
+    color: #ffd894 !important;
+}
+
+/* 停用中的「開始」按鈕：#ccc 底 + #666 字，深色下是一塊亮灰。 */
+[data-theme="dark"] .start-btn.disabled,
+[data-theme="dark"] .start-btn:disabled {
+    background: #4a4d66 !important;
+    color: #b7c0d0 !important;
+}
+
+/* 結算／完成畫面（CLAUDE.md「統一測驗結束畫面樣式」那一套模板：A1~A4、A6 與 C／F 系列
+     共用同一批 class，樣式各自寫在該單元 JS 的內嵌 <style> 裡、全部寫死白底）。
+     白卡片 + 被共用規則染白的 h3 ＝「表現評價」「學習成果」整行看不見（使用者在 A1 回報的兩項）。
+     ⚠️ 這組原本只寫在 css/a1_vending_machine.css，2026-09-22 搬到共用層——class 名完全一樣，
+     留在單一單元裡就是等著其他單元各自重蹈覆轍。
+     ⚠️ 表現徽章 .performance-badge 的橘底白字與按鈕的彩底白字刻意不碰（深淺模式一致）。 */
+[data-theme="dark"] .results-container {
+    background: #2d2d44 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45) !important;
+}
+[data-theme="dark"] .result-card {
+    background: linear-gradient(135deg, #383a52, #32344a) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35) !important;
+}
+[data-theme="dark"] .result-label {
+    color: #b8c2d0 !important;
+}
+[data-theme="dark"] .result-value {
+    color: #e8ecf3 !important;
+}
+[data-theme="dark"] .performance-section {
+    background: #383a52 !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+[data-theme="dark"] .performance-section h3 {
+    color: #e8ecf3 !important;
+}
+[data-theme="dark"] .learning-achievements {
+    background: linear-gradient(135deg, #1e3a29, #24472f) !important;
+}
+[data-theme="dark"] .learning-achievements h3 {
+    color: #9ae6b4 !important;
+}
+[data-theme="dark"] .achievement-item {
+    background: rgba(255, 255, 255, 0.07) !important;
+    color: #d5f3df !important;
+}
+
+/* 數字輸入彈窗（A1~A6 共用同一套 class，樣式寫在各單元 JS 的內嵌 <style>）：
+     整個彈窗白底，標題 h3 寫死 #333 卻被上面的 h1~h6 規則染成近白 → **白底白字**。
+     ⚠️ 三顆功能鍵（清除／退格／確認）的彩底白字是內嵌樣式用 !important 寫的，這裡刻意不碰。
+     改完要跑 node tests/_e2e_numpad_contrast.js。 */
+[data-theme="dark"] .number-input-container {
+    background: var(--dm-bg-card) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55) !important;
+}
+[data-theme="dark"] .number-input-header {
+    border-bottom-color: rgba(255, 255, 255, 0.14) !important;
+}
+[data-theme="dark"] .number-input-header h3 {
+    color: var(--dm-text) !important;
+}
+[data-theme="dark"] .number-input-container .close-btn {
+    color: #b8c2d0 !important;
+}
+[data-theme="dark"] #number-display,
+[data-theme="dark"] #question-count-display {
+    background: #383a52 !important;
+    color: #e8ecf3 !important;
+    border-color: #4e5270 !important;
+}
+[data-theme="dark"] .number-input-buttons button {
+    background: #383a52 !important;
+    color: #e8ecf3 !important;
+    border-color: #4e5270 !important;
+}
+
+
+/* 單元載入畫面（A2~A6「…載入中」）：深色時不要黃／紫漸層（2026-09-24 使用者附圖 A3 黃、A4 紫）*/
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #loading-screen.loading-screen { background: var(--dm-bg-page, #1a1a2e); }
+    :root:not([data-theme="light"]) #loading-screen .loading-text { color: var(--dm-text, #e2e8f0); background: transparent; }
+    :root:not([data-theme="light"]) #loading-screen .loading-spinner { border-color: rgba(226, 232, 240, 0.2); border-top-color: #e2e8f0; }
+}
+[data-theme="dark"] #loading-screen.loading-screen { background: var(--dm-bg-page, #1a1a2e); }
+[data-theme="dark"] #loading-screen .loading-text { color: var(--dm-text, #e2e8f0); background: transparent; }
+[data-theme="dark"] #loading-screen .loading-spinner { border-color: rgba(226, 232, 240, 0.2); border-top-color: #e2e8f0; }
+
+
+/* A1～A4 設定頁「自訂錢包內容」彈窗（2026-09-24 使用者附圖整片白底）：JS 產生、色值全寫在行內 style，
+   只有 !important 蓋得掉；照 A6 的做法（css/a6_train_ticket.css）用行內色值當選擇器。淺色不受影響。
+   ⚠️ 逗號規則每一段都各自帶 gate（不然淺色也會吃到）。 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #custom-wallet-modal > div, :root:not([data-theme="light"]) #a1-custom-wallet-modal > div { background: #2d2d44 !important; }
+    :root:not([data-theme="light"]) #custom-wallet-modal [style*="#f8f9fa"], :root:not([data-theme="light"]) #a1-custom-wallet-modal [style*="#f8f9fa"] { background: #3a3a52 !important; }
+    :root:not([data-theme="light"]) #custom-wallet-modal h3, :root:not([data-theme="light"]) #a1-custom-wallet-modal h3, :root:not([data-theme="light"]) #custom-wallet-modal [style*="#2c3e50"], :root:not([data-theme="light"]) #a1-custom-wallet-modal [style*="#2c3e50"], :root:not([data-theme="light"]) #custom-wallet-modal span[style*="#333"], :root:not([data-theme="light"]) #a1-custom-wallet-modal span[style*="#333"] { color: #e2e8f0 !important; }
+}
+[data-theme="dark"] #custom-wallet-modal > div, [data-theme="dark"] #a1-custom-wallet-modal > div { background: #2d2d44 !important; }
+[data-theme="dark"] #custom-wallet-modal [style*="#f8f9fa"], [data-theme="dark"] #a1-custom-wallet-modal [style*="#f8f9fa"] { background: #3a3a52 !important; }
+[data-theme="dark"] #custom-wallet-modal h3, [data-theme="dark"] #a1-custom-wallet-modal h3, [data-theme="dark"] #custom-wallet-modal [style*="#2c3e50"], [data-theme="dark"] #a1-custom-wallet-modal [style*="#2c3e50"], [data-theme="dark"] #custom-wallet-modal span[style*="#333"], [data-theme="dark"] #a1-custom-wallet-modal span[style*="#333"] { color: #e2e8f0 !important; }
+
+
+/* ── 自動補上的「跟隨系統」鏡射（node tests/_audit_dark_mirror.js --fix）
+   這一區是機器補的：上面那些 [data-theme="dark"] 規則原本只在「站台強制深色」時生效，
+   「跟隨系統深色」（localStorage 沒有 mt_theme，也就是**預設狀態**）完全吃不到。
+   ⚠️ 要改色值時**改上面那一份**，然後重跑 node tests/_audit_dark_mirror.js --fix 重生這一區；
+   只改這裡會讓兩邊漂移，稽核會把它報成「缺鏡射」。
+   ────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --dm-bg-page:      #1a1a2e;   /* 頁面底層背景（深藍黑） */
+        --dm-bg-container: #22223a;   /* 主容器背景 */
+        --dm-bg-card:      #2d2d44;   /* 卡片/區塊背景 */
+        --dm-text:         #e2e8f0;   /* 主要文字（近白） */
+        --dm-text-muted:   #a0aec0;   /* 次要文字（淺灰） */
+    }
+}

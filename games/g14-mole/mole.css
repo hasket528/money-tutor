@@ -1,0 +1,272 @@
+/* ══════════════════════════════════════════════════════════
+   G14 打地鼠賺金幣
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --ml-accent: #FFD700;
+  --ml-panel:  rgba(255,255,255,0.07);
+  --ml-border: rgba(255,255,255,0.12);
+  --ml-dim:    rgba(255,255,255,0.5);
+  --ml-good:   #2ed573;
+  --ml-bad:    #FF4757;
+}
+
+.hidden { display: none !important; }
+
+/* ══ 標題列（設定畫面）════════════════════════════════════ */
+
+.ml-title-bar {
+  width: 100%; display: flex; align-items: center;
+  padding: 10px 14px; gap: 8px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--ml-border);
+  min-height: 56px; flex-shrink: 0;
+}
+
+.ml-back {
+  color: var(--ml-dim); text-decoration: none; font-size: 1.5rem;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: rgba(255,255,255,0.07);
+  border: 1px solid var(--ml-border); flex-shrink: 0;
+}
+.ml-back:active { background: rgba(255,255,255,0.18); }
+
+.ml-title {
+  flex: 1; text-align: center; font-size: 1.1rem; font-weight: 900;
+  background: linear-gradient(90deg, var(--ml-accent), #FF8C42);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ml-spacer { width: 30px; flex-shrink: 0; }
+
+/* ══ 設定畫面 ════════════════════════════════════════════ */
+
+#ml-setup {
+  flex: 1; display: flex; flex-direction: column; overflow-y: auto;
+}
+
+.ml-setup-body {
+  flex: 1; padding: 16px 16px 24px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px;
+}
+
+.ml-coin-row {
+  font-size: 1rem; font-weight: 700; letter-spacing: 3px;
+  color: var(--ml-accent); opacity: 0.85;
+}
+
+.ml-setup-sub {
+  font-size: 0.8rem; color: var(--ml-dim); font-weight: 600;
+  text-align: center; width: 100%; max-width: 420px;
+}
+
+/* ── 模式卡片 ─────────────────────────────────────────── */
+
+.ml-mode-grid {
+  display: flex; gap: 10px; width: 100%; max-width: 420px;
+}
+
+.ml-mode-card {
+  flex: 1;
+  background: var(--ml-panel); border: 2px solid var(--ml-border);
+  border-radius: 16px; padding: 14px 10px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: all 0.16s;
+}
+.ml-mode-card:hover { transform: translateY(-2px); }
+.ml-mode-card:active { transform: scale(0.97); }
+
+.ml-mode-selected {
+  border-color: var(--ml-accent);
+  background: rgba(255,215,0,0.12);
+  box-shadow: 0 0 18px rgba(255,215,0,0.25);
+}
+
+.ml-mode-emoji { font-size: 1.9rem; line-height: 1; }
+.ml-mode-name  { font-size: 0.9rem; font-weight: 800; color: #fff; }
+.ml-mode-desc  { font-size: 0.68rem; color: var(--ml-dim); text-align: center; line-height: 1.4; }
+.ml-mode-sub   { font-size: 0.6rem;  color: rgba(255,255,255,0.35); text-align: center; line-height: 1.4; }
+
+/* ── 難度卡片 ─────────────────────────────────────────── */
+
+.ml-diff-grid {
+  display: flex; gap: 10px; width: 100%; max-width: 420px;
+}
+
+.ml-diff-card {
+  flex: 1;
+  background: var(--ml-panel); border: 2px solid var(--ml-border);
+  border-radius: 16px; padding: 16px 8px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  transition: all 0.16s;
+}
+.ml-diff-card:hover, .ml-diff-card:active {
+  border-color: var(--ml-accent);
+  background: rgba(255,215,0,0.1);
+  transform: translateY(-3px);
+}
+
+.ml-diff-emoji { font-size: 2rem; line-height: 1; }
+.ml-diff-name  { font-size: 0.9rem; font-weight: 800; color: #fff; }
+.ml-diff-hint  { font-size: 0.65rem; color: var(--ml-dim); text-align: center; }
+
+/* ══ 遊戲畫面 ════════════════════════════════════════════ */
+
+#ml-game {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── 目標 + 計時列 ─────────────────────────────────────── */
+
+#ml-target-bar {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 9px 16px; flex-shrink: 0;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid var(--ml-border);
+}
+
+.ml-target-label {
+  font-size: 0.9rem; font-weight: 700; color: var(--ml-dim);
+  white-space: nowrap;
+}
+
+#ml-target-coin {
+  font-size: 1.2rem; font-weight: 900;
+  padding: 4px 16px; border-radius: 30px;
+  min-width: 64px; text-align: center;
+  animation: mlTargetPulse 1.3s ease-in-out infinite alternate;
+}
+@keyframes mlTargetPulse {
+  from { transform: scale(1);    box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+  to   { transform: scale(1.07); box-shadow: 0 0 22px rgba(255,215,0,0.65); }
+}
+
+.ml-target-flash { animation: mlTargetFlash 0.55s ease-out !important; }
+@keyframes mlTargetFlash {
+  0%   { transform: scale(1.35); filter: brightness(2.5); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+
+.ml-timer-sep  { color: var(--ml-dim); font-size: 0.8rem; }
+
+#ml-timer {
+  font-size: 1.2rem; font-weight: 900; color: var(--ml-accent);
+  min-width: 28px; text-align: center;
+  transition: color 0.3s;
+}
+#ml-timer.ml-timer-danger {
+  color: var(--ml-bad);
+  animation: mlTimerBlink 0.5s step-end infinite;
+}
+@keyframes mlTimerBlink { 50% { opacity: 0.25; } }
+
+.ml-timer-unit { font-size: 0.8rem; color: var(--ml-dim); }
+
+/* ── 地洞格 ─────────────────────────────────────────────── */
+
+#ml-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 14px 18px 20px;
+  align-content: center;
+  max-width: 440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── 地洞 ─────────────────────────────────────────────────*/
+
+.ml-hole {
+  aspect-ratio: 1;
+  position: relative;
+  background: radial-gradient(ellipse at 50% 65%, #4a341f 30%, #1e0e06 100%);
+  border-radius: 50%;
+  border: 3px solid #6b4c2e;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.75),
+    0 3px 8px rgba(0,0,0,0.5);
+  transition: border-color 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ml-hole:active { border-color: var(--ml-accent); transform: scale(0.96); }
+
+/* ── 地鼠 ─────────────────────────────────────────────────*/
+
+.ml-mole {
+  position: absolute; bottom: 0; left: 0; right: 0; top: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  transform: translateY(110%);
+  pointer-events: none;
+}
+
+.ml-mole-up {
+  animation: mlMoleRise 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes mlMoleRise {
+  to { transform: translateY(4%); }
+}
+
+.ml-mole-down {
+  animation: mlMoleSink 0.26s ease-in forwards;
+}
+@keyframes mlMoleSink {
+  to { transform: translateY(110%); }
+}
+
+.ml-mole-body {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; padding-bottom: 6%; gap: 2px;
+}
+
+.ml-mole-face {
+  font-size: clamp(1.5rem, 10vw, 2.4rem);
+  line-height: 1;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));
+}
+
+.ml-mole-coin {
+  font-size: clamp(0.68rem, 3.5vw, 0.9rem);
+  font-weight: 900;
+  padding: 2px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+  white-space: nowrap;
+}
+
+/* ══ Combo 移到上方（覆寫 games-base.css）══════════════ */
+
+.gue-combo-popup {
+  top: 108px;   /* HUD 56px + 目標列 ~44px + 間距 */
+}
+
+@keyframes gue-combo-anim {
+  0%   { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+  20%  { transform: translate(-50%, 0) scale(1.2); opacity: 1; }
+  65%  { transform: translate(-50%, -6px) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -18px) scale(0.85); opacity: 0; }
+}
+
+/* ══ 響應式 ══════════════════════════════════════════════ */
+
+@media (max-height: 640px) {
+  .ml-setup-body { gap: 8px; padding: 12px 14px 16px; }
+  #ml-grid { gap: 10px; padding: 10px 14px 14px; }
+  .ml-diff-card  { padding: 12px 8px; }
+  .ml-mode-card  { padding: 10px 8px; }
+  .ml-diff-emoji { font-size: 1.7rem; }
+  .ml-mode-emoji { font-size: 1.6rem; }
+}
+
+@media (min-width: 480px) {
+  #ml-grid { max-width: 380px; }
+}

@@ -1,0 +1,9 @@
+# 排除不該當成靜態資源上傳的檔案（wrangler 的 assets 上傳預設吃整個 directory，
+# 包含 .git 本身──455MB 的 pack 檔會直接被 25MiB 上限擋下，deploy 失敗）。
+# 語法同 .gitignore；此檔案只影響 wrangler 上傳範圍，不影響 git 版本控制。
+.git
+.gitignore
+.assetsignore
+.wrangler
+wrangler.jsonc
+node_modules

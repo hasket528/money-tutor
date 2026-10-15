@@ -1,0 +1,4612 @@
+/* ─── 基礎設定 ──────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+:root {
+  --blue:      #2563EB;
+  --blue-lt:   #EFF6FF;
+  --green:     #16A34A;
+  --green-lt:  #F0FDF4;
+  --orange:    #EA580C;
+  --orange-lt: #FFF7ED;
+  --red:       #DC2626;
+  --gray-900:  #1E293B;
+  --gray-600:  #475569;
+  --gray-200:  #E2E8F0;
+  --bg:        #F0F4FF;
+  --white:     #FFFFFF;
+  --radius:    16px;
+  --shadow:    0 2px 12px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.12);
+
+  /* 情境主題色（預設藍色，進入情境後由 JS 覆蓋） */
+  --scene-color: #2563EB;
+  --scene-lt:    #EFF6FF;
+  --scene-accent:#1D4ED8;
+}
+
+body {
+  font-family: 'Noto Sans TC', '微軟正黑體', sans-serif;
+  background: var(--bg);
+  color: var(--gray-900);
+  font-size: 18px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* ─── 畫面管理 ───────────────────────────────────── */
+
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active {
+  display: flex;
+  animation: screenIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── 首頁 ──────────────────────────────────────── */
+
+.home-header {
+  background: var(--bg);
+  color: var(--gray-900);
+  padding: 14px 20px 16px;
+  text-align: center;
+  position: relative;
+}
+
+.home-header h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--blue);
+}
+.home-header .subtitle {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  margin-top: 2px;
+}
+.home-header .header-tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blue-lt);
+  color: var(--blue);
+  font-weight: 600;
+  border-radius: 99px;
+  padding: 3px 14px;
+  font-size: 0.78rem;
+  margin-top: 8px;
+}
+/* 副標「選擇想要練習的情境」與標語「互動練習…」同一列 */
+.home-header .home-subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  position: relative;
+  z-index: 1;
+}
+.home-header .home-subtitle-row .subtitle,
+.home-header .home-subtitle-row .header-tagline { margin-top: 0; }
+
+/* ── 首頁角色雙卡：左＝金隊長（選學生）／右＝金好聊（角色介紹＋選學生語音）──
+   用 grid 而非 flex-basis：兩欄寬度由格線本身保證相等，不受兩張卡內文字長短不同影響。 */
+.home-duo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+  max-width: 900px;
+  margin: 16px auto 0;
+  padding: 0 16px;
+}
+.home-duo > .captain-banner,
+.home-duo > .chatdog-card { min-width: 0; height: 100%; }
+@media (min-width: 700px) {
+  .home-duo { grid-template-columns: 1fr 1fr; }
+}
+
+.captain-banner,
+.chatdog-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: inherit;
+}
+
+.captain-banner {
+  background: linear-gradient(135deg, #fffdf5, #fff7e0);
+  border: 2px solid #f5d576;
+}
+.captain-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(245, 158, 11, 0.22);
+  border-color: #f0b429;
+}
+.captain-banner .captain-name { color: #92400e; }
+.captain-banner .captain-line { color: #78350f; }
+
+.chatdog-card {
+  background: linear-gradient(135deg, #f5fdf3, #eafbe6);
+  border: 2px solid #a7e3a0;
+}
+.chatdog-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.2);
+  border-color: #7bcf72;
+}
+.chatdog-card .captain-name { color: #15803d; }
+.chatdog-card .captain-line { color: #166534; }
+
+.captain-avatar { width: clamp(56px, 12vw, 76px); height: clamp(56px, 12vw, 76px); flex-shrink: 0; }
+.captain-avatar img { width: 100%; height: 100%; object-fit: contain; }
+
+.captain-text { flex: 1; min-width: 0; }
+.captain-name { font-weight: 800; font-size: 1em; display: flex; align-items: center; gap: 6px; }
+.captain-line { font-size: 0.8em; margin-top: 3px; line-height: 1.5; }
+
+.captain-cta {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff; font-weight: 700; font-size: 0.85em;
+  padding: 8px 14px; border-radius: 24px; white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);
+}
+.chatdog-cta {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.35);
+}
+
+/* 卡片上的喇叭鈕（播放角色語音，點擊不觸發卡片本身的彈窗） */
+.ai-voice-btn {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 20px;
+  line-height: 1.4;
+  transition: background 0.15s;
+}
+.ai-voice-btn:hover  { background: rgba(255, 255, 255, 0.9); }
+.ai-voice-btn:active { transform: scale(0.94); }
+
+/* 彈窗頂部：角色大頭貼＋台詞泡泡（金隊長選學生彈窗／金好聊彈窗共用） */
+.captain-modal-head { display: flex; align-items: center; gap: 14px; }
+.captain-modal-head img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+.captain-modal-head .bubble {
+  flex: 1;
+  background: #fff7e0;
+  border: 1px solid #f5d576;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85em;
+  line-height: 1.55;
+  color: #78350f;
+}
+.chatdog-modal-head .bubble {
+  background: #eafbe6;
+  border-color: #a7e3a0;
+  color: #14532d;
+}
+
+@media (max-width: 600px) {
+  .captain-banner, .chatdog-card { flex-wrap: wrap; justify-content: center; text-align: center; }
+  .captain-banner .captain-text, .chatdog-card .captain-text { flex: 1 1 100%; }
+  .captain-banner .captain-name, .chatdog-card .captain-name { justify-content: center; }
+}
+
+.scenario-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 24px 32px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 場景卡片 + 店員頭像的容器 */
+.scenario-card-wrap {
+  flex: 0 1 280px;
+  position: relative;
+  padding-top: 36px; /* 為店員頭像預留空間 */
+  /* 同一行的卡片等高：自訂場景卡沒有場景底圖，內容也比「➕ 建立場景」少，
+     不撐開的話一排卡片高高低低（2026-09-16 使用者回報） */
+  display: flex;
+  flex-direction: column;
+}
+.scenario-card-wrap > .scenario-card { flex: 1; }
+
+.scenario-card {
+  width: 100%;
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 22px 22px 20px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 「➕ 自訂情境」入口卡：虛線框，與內容卡區隔 */
+.scenario-card-add {
+  border: 2px dashed var(--gray-300, #CBD5E1);
+  background: transparent;
+  box-shadow: none;
+}
+.scenario-card-add:hover {
+  border-color: var(--primary, #2563EB);
+  background: var(--white);
+}
+.scenario-card-add .card-badge {
+  background: var(--gray-100, #F1F5F9);
+  color: var(--gray-600, #475569);
+}
+
+/* 店員介紹按鈕（浮在卡片右上角） */
+.clerk-intro-btn {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  padding: 0;
+  cursor: pointer;
+  background: var(--gray-100);
+  overflow: hidden;
+  z-index: 5;   /* 需高於 .scenario-card::before（z-index:3）的頂部彩色裝飾條，避免頭像下緣被裝飾條蓋住 */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.clerk-intro-btn:hover {
+  transform: scale(1.1) translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+.clerk-intro-btn.speaking {
+  animation: clerkBob 0.5s ease infinite alternate;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.35), 0 4px 14px rgba(0,0,0,0.2);
+}
+.clerk-intro-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@keyframes clerkBob {
+  from { transform: scale(1.08) translateY(-2px); }
+  to   { transform: scale(1.14) translateY(-6px); }
+}
+
+/* 店員介紹彈窗 */
+.clerk-modal-card {
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.clerk-modal-img {
+  width: clamp(150px, 44vw, 300px);   /* 桌面最大 300px；小裝置依版面彈性縮放 */
+  height: clamp(150px, 44vw, 300px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid white;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.22);
+  background: var(--gray-100);
+  animation: clerkPopIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 內心獨白圖：泡泡在右上角，圓形裁切會切到泡泡裡的字 → 圓角方框（見 showPracticeClerkPopup） */
+.clerk-modal-img.is-inner { border-radius: 24px; }
+.clerk-modal-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--blue, #2563EB);
+}
+.clerk-modal-role {
+  font-size: 1rem;
+  color: var(--gray-600);
+  margin-top: -4px;
+}
+.clerk-modal-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--gray-800, #1F2937);
+  background: var(--gray-100, #F3F4F6);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 2px 0 0;
+  max-width: 100%;
+}
+.clerk-modal-text:empty { display: none; }
+.clerk-modal-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+.clerk-modal-actions .btn-primary,
+.clerk-modal-actions .btn-secondary {
+  flex: 1;
+}
+
+@keyframes clerkPopIn {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* 頂部彩色裝飾條 */
+.scenario-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: var(--card-color, var(--blue));
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: 3;
+}
+
+/* 商店場景圖：獨立橫幅置於卡片最上方（完整顯示，不加漸層遮罩）；店員頭像另為卡片外層兄弟節點，永遠疊在最上層 */
+.card-bg-img {
+  display: block;
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  object-position: center 38%;
+}
+.scenario-card.has-scene {
+  padding: 0;
+  gap: 0;
+}
+.scenario-card.has-scene .card-content {
+  padding: 14px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scenario-card.has-scene .card-icon-wrap { display: none; }   /* 有商店圖時不顯示 emoji */
+
+.scenario-card:hover,
+.scenario-card:focus-visible {
+  border-color: var(--card-color, var(--blue));
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+.scenario-card.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
+/* 卡片文字內容容器（無商店圖時＝卡片本身的 padding 直接套用；有商店圖時見 .has-scene 覆寫） */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* 圖示／開始練習徽章水平置中 */
+  gap: 8px;
+}
+
+/* 圖示圓框 */
+.card-icon-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: transparent;   /* emoji 圖示不再加底色方塊 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;         /* 無底色，圖示放大一點更清楚 */
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* 店名＋種情境數同一列：店名靠左對齊、種情境數靠右對齊（絕對定位） */
+.card-title-row {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 1.6em;
+  padding: 0 4.5rem 0 0;   /* 右側保留空間給絕對定位的種情境數，避免長店名重疊 */
+}
+.card-title-row .card-steps {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.card-icon  { font-size: 1.9rem; }
+.card-name  { font-size: 1.25rem; font-weight: 700; text-align: left; }
+.card-steps { font-size: 0.88rem; color: var(--gray-600); display: flex; align-items: center; gap: 4px; }
+.card-badge {
+  display: inline-block;
+  font-size: 0.82rem;
+  padding: 4px 14px;
+  border-radius: 99px;
+  font-weight: 700;
+  width: fit-content;
+  margin-top: 2px;
+  background: var(--card-bg, var(--blue-lt));
+  color: var(--card-color, var(--blue));
+}
+.card-badge.coming-soon {
+  background: var(--gray-200);
+  color: var(--gray-600);
+}
+
+/* ─── 語音選擇器 ─────────────────────────────────── */
+
+.voice-section {
+  padding: 20px 24px 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.btn-refresh {
+  background: none;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-refresh:hover { background: var(--gray-200); color: var(--gray-900); }
+
+.voice-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.voice-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+}
+.voice-card:hover,
+.voice-card:focus-visible {
+  border-color: var(--blue);
+  transform: translateY(-2px);
+  outline: none;
+}
+.voice-card.selected {
+  border-color: var(--blue);
+  background: var(--blue-lt);
+}
+
+.voice-avatar { font-size: 2rem; line-height: 1; }
+.voice-name   { font-size: 0.85rem; font-weight: 700; text-align: center; }
+.voice-lang   { font-size: 0.8rem; color: var(--gray-600); }
+.voice-none   { font-size: 0.9rem; color: var(--gray-600); padding: 8px 0; }
+.section-desc { font-size: 0.85rem; color: var(--gray-600); margin-top: 2px; }
+.user-voice-card { background: var(--green-lt); }
+.user-voice-card.selected { border-color: var(--green); background: var(--green-lt); }
+
+/* 店員頭像圖片（語音選擇器卡片） */
+.voice-avatar-img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+/* 職業標籤（語音卡片下方） */
+.voice-role {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* 學生頭像（emoji + 色圓） */
+.student-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* 語音未安裝的店員卡片：半透明，但仍可點選 */
+.voice-card.voice-unavailable {
+  opacity: 0.6;
+}
+.voice-card.voice-unavailable:hover,
+.voice-card.voice-unavailable:focus-visible {
+  opacity: 0.85;
+}
+.voice-na-badge {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+
+/* ─── 練習頁頂部 ─────────────────────────────────── */
+
+.practice-header {
+  background: var(--white);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.btn-icon {
+  background: none;
+  border: 2px solid var(--gray-200);
+  font-size: 1.2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-900);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-icon:hover { background: var(--gray-200); }
+
+/* ─── 統一標題列（滿版色條・左圖示名稱 / 中內容 / 右動作）─── */
+.app-header {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  /* 2026-10-10 起只剩練習頁用這條滿版色條；情境選擇頁／設定頁改成上方導覽列＋卡片（見 .dlg-card）。 */
+  background: var(--scene-color);
+  color: #fff;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+}
+/* 練習頁（測驗頁）的標題列高度＝F1 的 72px（2026-10-09 使用者定，同 24 單元 css/tablet-landscape.css 檔尾）：
+   金好聊、小金探兩個頭像（js/title-heroes.js 浮在標題列上，約 58px 高）剛好容納在標題列裡。情境選擇頁、設定頁不變 */
+#screen-practice .app-header { height: 72px; min-height: 72px; padding-top: 0; padding-bottom: 0; }
+/* 手機（≤600px）：標題列塞了 ← 上一頁、場所名稱、兩個頭像、題數、📥、🏠——場所名稱可縮成「…」、進度條收起，
+   題數與按鈕不縮（2026-10-10：原本 🏠 被擠到畫面外、整頁可左右捲、題數擠成直的「1/8」） */
+@media (max-width: 600px) {
+  #screen-practice .ah-left { flex: 1 1 auto; min-width: 0; }
+  #screen-practice .ah-left .ah-title { flex: 0 1 auto; min-width: 0; max-width: none; }
+  #screen-practice .ah-center { flex: 0 0 auto; }
+  #screen-practice .ah-center .progress-bar { display: none; }
+}
+.ah-left, .ah-right { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.ah-center { flex: 1 1 auto; min-width: 0; align-items: center; }
+.ah-center .progress-bar { flex: 1 1 auto; width: auto; max-width: 340px; background: rgba(255,255,255,0.3); }
+.ah-center .progress-fill { background: #fff; box-shadow: none; }
+.ah-icon { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+.ah-title {
+  font-weight: 700; font-size: 1.05rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw;
+}
+/* 標題列內按鈕：半透明白，配色條 */
+.app-header .btn-icon {
+  width: 40px; height: 40px; font-size: 1.05rem;
+  color: #fff; border-color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.14);
+}
+.app-header .btn-icon:hover { background: rgba(255,255,255,0.28); }
+.btn-back-text {
+  background: rgba(255,255,255,0.14);
+  border: 2px solid rgba(255,255,255,0.45);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-back-text:hover { background: rgba(255,255,255,0.28); }
+
+.progress-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.progress-bar {
+  height: 12px;
+  background: var(--gray-200);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--scene-color) 0%, #818CF8 100%);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--scene-color) 50%, transparent);
+}
+.step-counter {
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+/* ─── 練習頁主體 ─────────────────────────────────── */
+
+.practice-main {
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 店員區 */
+.shopkeeper-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  position: relative;   /* 讓 .student-avatar-dlg 用 absolute 相對這一列置中，不佔版面 */
+}
+.shopkeeper-row .shopkeeper-avatar { align-self: flex-start; }
+
+/* 目前學生頭像：跟店員頭像同一列（垂直對齊店員頭像中心），但用 absolute 脫離排版流獨立
+   水平置中——兩顆頭像互不影響對方位置（店員維持原本靠左，不因學生頭像的有無而跑位）。
+   比店員頭像(72px)小一號，主角仍是店員，學生頭像只是標示身分。可點放大看照片。 */
+.student-avatar-dlg {
+  position: absolute;
+  top: 36px;   /* 店員頭像 72px 高的垂直中心 */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  border: 3px solid color-mix(in srgb, var(--scene-color) 25%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--scene-color) 20%, transparent);
+  line-height: 1;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.student-avatar-dlg[hidden] { display: none; }
+.student-avatar-dlg img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+.student-avatar-dlg:hover { box-shadow: 0 4px 18px color-mix(in srgb, var(--scene-color) 45%, transparent); filter: brightness(1.05); }
+.student-avatar-dlg:focus-visible { outline: 3px solid var(--scene-accent, #1D4ED8); outline-offset: 3px; }
+
+/* 學生頭像放大彈窗：樣式比照 reward/script.js 的 showPhotoZoom、js/student-badge.js 的
+   .sbm-overlay，全站點頭像放大統一同一套視覺（黑底、名字在照片上方、原始比例不裁切）。 */
+.student-photo-zoom-overlay {
+  position: fixed; inset: 0; z-index: 10200;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.student-photo-zoom-overlay .spz-name {
+  color: #fff; font-size: 24px; font-weight: 900; margin-bottom: 15px; text-align: center;
+}
+.student-photo-zoom-overlay img {
+  max-width: 90vw; max-height: 80vh; border-radius: 10px;
+  box-shadow: 0 0 30px rgba(255,255,255,0.3); display: block;
+}
+.student-photo-zoom-overlay .spz-avatar {
+  width: min(60vw, 420px); height: min(60vw, 420px);
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  border-radius: 10px; box-shadow: 0 0 30px rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: min(30vw, 220px); line-height: 1;
+}
+.student-photo-zoom-overlay .spz-hint { color: #fff; font-size: 14px; margin-top: 15px; }
+/* 設定頁學生語音頭像：固定 300×300（窄螢幕縮到 80vw） */
+.student-photo-zoom-overlay.spz-fixed img,
+.student-photo-zoom-overlay.spz-fixed .spz-avatar {
+  width: min(300px, 80vw); height: min(300px, 80vw); object-fit: cover; object-position: top center;
+}
+.student-photo-zoom-overlay.spz-fixed .spz-avatar { font-size: min(180px, 48vw); }
+.student-photo-zoom-overlay .spz-x {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.student-photo-zoom-overlay .spz-x:hover, .student-photo-zoom-overlay .spz-x:focus-visible { background: rgba(255, 255, 255, 0.35); outline: none; }
+.student-photo-zoom-overlay .spz-x:active { background: rgba(255, 255, 255, 0.35); transform: none !important; }
+
+.shopkeeper-speech-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 商品圖片卡（置中獨立） */
+.step-image-card {
+  align-self: center;
+  /* 單張商品圖（2026-09-19 使用者定，只限商品圖）：桌機 300×300，手機與其他裝置依版面縮放（約畫面寬的六成）。
+     328＝300 圖＋左右內距 24＋框線 4。單張錢（.single-money）、多張並排、算式圖在下面另設固定尺寸，不吃這條 */
+  width: min(328px, 60vw);
+  border-radius: 16px;
+  background: var(--scene-lt);
+  border: 2px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 12px;
+  animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.step-image-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.step-image-card img {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+/* 多張並排（錢包內容：一張 100 元＋一個 50 元）：卡片放寬、單張縮小才排得下 */
+.step-image-card.multi { width: auto; max-width: 268px; }
+.step-image-card.multi img { width: 76px; height: 76px; }
+/* 6 張以上（數硬幣：10 個 10 元）：縮小、一行 5 個排兩行（十格框的排法，學生一眼數得清） */
+.step-image-card.many { max-width: 304px; }
+.step-image-card.many .step-image-row { display: grid; grid-template-columns: repeat(5, 48px); gap: 8px; }
+.step-image-card.many img { width: 48px; height: 48px; }
+/* 金錢圖：紙鈔（2:1 長方形）要比錢幣大（使用者定 2026-09-19）——原本放進同一個正方框，扁長的紙鈔反而比錢幣小 */
+/* 單張錢：維持原本大小，外框貼著圖（不套商品圖的 300×300） */
+.step-image-card.single-money { width: auto; }
+.step-image-card img.money-bill { width: 128px; height: 64px; }
+.step-image-card img.money-coin { width: 60px; height: 60px; }
+.step-image-card.multi img.money-bill { width: 104px; height: 52px; }
+.step-image-card.multi img.money-coin { width: 48px; height: 48px; }
+.step-image-card.many img.money-coin { width: 48px; height: 48px; }
+/* 算式圖（使用者定 2026-09-19）：🍎 ＋ 🍎 ＋ 🍎 ＝ 105 元。手機（390px）上整條算式要排在同一行，
+   答案掉到下一行就看不出是算式——三張圖＋三個符號＋答案約 290px，卡片內容寬 322px */
+.step-image-card.equation { max-width: 100%; }
+.step-image-card.equation .step-image-row { gap: 4px; }
+.step-image-card.equation img { width: 48px; height: 48px; }
+.step-image-card.equation img.money-bill { width: 88px; height: 44px; }
+.step-image-card.equation img.money-coin { width: 42px; height: 42px; }
+.step-eq-op { font-size: 1.4rem; font-weight: 800; line-height: 1; color: var(--scene-ink, var(--scene-color)); }
+.step-eq-text { font-size: 1.05rem; font-weight: 800; color: var(--gray-900); white-space: nowrap; }
+/* 算式裡的商品圖＋正下方的單價（「路徑::25 元」） */
+.step-eq-item { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.step-eq-cap { font-size: 0.9rem; font-weight: 800; color: var(--gray-900); white-space: nowrap; line-height: 1.2; }
+@media (min-width: 600px) {
+  .step-image-card.equation .step-image-row { gap: 4px 8px; }
+  .step-image-card.equation img { width: 72px; height: 72px; }
+  .step-image-card.equation img.money-bill { width: 120px; height: 60px; }
+  .step-image-card.equation img.money-coin { width: 52px; height: 52px; }
+  .step-eq-op { font-size: 1.7rem; }
+  .step-eq-text { font-size: 1.15rem; }
+}
+/* 桌機（≥768，與對話模組其他桌機規則同一條線）：算式提示整張放大（使用者定 2026-09-19）——
+   不是每張小圖都 300×300，而是整張框放大到跟單張商品圖（300×300）差不多的份量；框是橫長方形。
+   最長的「蘋果＋蘋果＋蘋果＝105 元」約 620px，練習頁內容寬約 670px，放得下一行。 */
+@media (min-width: 768px) {
+  .step-image-label { font-size: 0.95rem; }
+  .step-image-card.multi { max-width: 100%; }
+  .step-image-card.multi .step-image-row { gap: 10px; }
+  .step-image-card.multi img { width: 120px; height: 120px; }
+  .step-image-card.multi img.money-bill { width: 180px; height: 90px; }
+  .step-image-card.multi img.money-coin { width: 84px; height: 84px; }
+  .step-image-card.many { max-width: 100%; }
+  .step-image-card.many .step-image-row { grid-template-columns: repeat(5, 72px); gap: 10px; }
+  .step-image-card.many img, .step-image-card.many img.money-coin { width: 72px; height: 72px; }
+  .step-image-card.equation { padding: 18px 20px; }
+  .step-image-card.equation .step-image-row { gap: 6px 10px; }
+  .step-image-card.equation img { width: 120px; height: 120px; }
+  .step-image-card.equation img.money-bill { width: 180px; height: 90px; }
+  .step-image-card.equation img.money-coin { width: 84px; height: 84px; }
+  .step-eq-op { font-size: 2.4rem; }
+  .step-eq-text { font-size: 1.6rem; }
+  .step-eq-cap { font-size: 1.2rem; }
+}
+.step-image-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--scene-ink, var(--scene-color));
+  text-align: center;
+  line-height: 1.3;
+  /* 只在空格處換行（「大套餐150元」不會被拆成「大套／餐150元」），太長放不下才照舊硬斷 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.shopkeeper-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--scene-lt) 0%, #E0E7FF 100%);
+  border: 3px solid color-mix(in srgb, var(--scene-color) 25%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--scene-color) 20%, transparent);
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.shopkeeper-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+/* 練習頁頭像可點擊（放大店員＋重播台詞）：按下回饋只改陰影/亮度，不改幾何——
+   改變尺寸會讓元素在指標下位移，導致 click 不觸發 */
+.shopkeeper-avatar { cursor: pointer; touch-action: manipulation; }
+.shopkeeper-avatar:hover { box-shadow: 0 4px 18px color-mix(in srgb, var(--scene-color) 45%, transparent); filter: brightness(1.05); }
+.shopkeeper-avatar:focus-visible { outline: 3px solid var(--scene-accent, #1D4ED8); outline-offset: 3px; }
+
+.shopkeeper-avatar.speaking {
+  animation: avatarBob 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes avatarBob {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-4px); }
+}
+
+.speech-bubble {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: var(--shadow);
+  font-size: 1.1rem;
+  line-height: 1.65;
+  position: relative;
+}
+/* 旁白＋台詞的混合句由 bubbleText() 用換行分成兩行 */
+#shopkeeper-speech-text { white-space: pre-line; flex: 1; min-width: 0; }
+/* 🔊 放左邊、文字整塊在它右邊：換行後的台詞與第一行首字對齊（2026-10-10 使用者要求） */
+#shopkeeper-speech { display: flex; align-items: flex-start; }
+#shopkeeper-speech > .btn-speak-clerk { flex: none; }
+/* 店員頭像改置於對話框上方，取消原本指向左側的小三角 */
+.speech-bubble::before { display: none; }
+/* 店員對話左邊的「再聽」🔊 */
+.btn-speak-clerk {
+  border: none;
+  background: var(--scene-lt);
+  border-radius: 8px;
+  padding: 2px 7px;
+  margin-right: 8px;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  cursor: pointer;
+  vertical-align: baseline;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-speak-clerk:hover, .btn-speak-clerk:focus-visible {
+  background: color-mix(in srgb, var(--scene-lt) 70%, var(--scene-color) 30%);
+  transform: scale(1.08);
+  outline: none;
+}
+
+/* 任務框 */
+.task-box {
+  background: var(--scene-lt);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  border-left: 5px solid var(--scene-color);
+}
+.task-label {
+  font-size: 0.82rem;
+  color: var(--scene-ink, var(--scene-color));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* 任務框標頭：左「你的任務」、右小金探＋提示鈕（2026-09-27，比照 24 單元 .b1-hint-btn） */
+.task-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.task-hint-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.task-hint-wrap:has(> .task-hint-btn[hidden]) { display: none; }
+.task-hint-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 44px;
+}
+.task-hint-btn[hidden] { display: none; }
+/* 小金探用正常版 hint_detective.png（與 24 單元同一張，2026-09-30 使用者定，不用縮小版 _sm）；寬度 auto＋contain，不可套圓框裁切 */
+.task-hint-mascot {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  animation: tipsFloatBob 3.4s ease-in-out infinite;
+}
+.task-hint-pill {
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #92400e;
+  background: #FEF3C7;
+  border: 2px solid #FBBF24;
+  border-radius: 999px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.35);
+  transition: background 0.15s, border-color 0.15s;
+}
+/* 按下只改顏色、不縮放（命中區不能動，見主 CLAUDE.md「按下會位移」） */
+.task-hint-btn:hover .task-hint-pill { background: #FDE68A; border-color: #F59E0B; }
+.task-hint-btn[aria-expanded="true"] .task-hint-pill { background: #FFFFFF; border-color: #F59E0B; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .task-hint-pill { color: #F1F5F9; background: #2d2d44; border-color: #64748B; box-shadow: none; }
+  :root:not([data-theme="light"]) .task-hint-btn:hover .task-hint-pill { background: #3b3b58; border-color: #94A3B8; }
+  :root:not([data-theme="light"]) .task-hint-btn[aria-expanded="true"] .task-hint-pill { background: #1E293B; border-color: #94A3B8; }
+}
+[data-theme="dark"] .task-hint-pill { color: #F1F5F9; background: #2d2d44; border-color: #64748B; box-shadow: none; }
+[data-theme="dark"] .task-hint-btn:hover .task-hint-pill { background: #3b3b58; border-color: #94A3B8; }
+[data-theme="dark"] .task-hint-btn[aria-expanded="true"] .task-hint-pill { background: #1E293B; border-color: #94A3B8; }
+
+.task-text-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.btn-task-speak {
+  border: none;
+  background: var(--scene-color);
+  color: #fff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s, filter 0.15s;
+}
+.btn-task-speak:hover, .btn-task-speak:focus-visible { filter: brightness(1.12); transform: scale(1.06); outline: none; }
+.task-text {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* 提示框 */
+.hint-box {
+  background: var(--orange-lt);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-left: 5px solid var(--orange);
+  animation: slideUp 0.3s ease-out;
+}
+.hint-icon { font-size: 1.3rem; flex-shrink: 0; line-height: 1.7; }
+.hint-text-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.hint-text { font-size: 1rem; flex: 1; }
+.btn-hint-speak {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--orange);
+  background: var(--orange-lt);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-hint-speak:hover  { background: #FFD9B3; }
+
+/* 初級模式內嵌提示框（取代自動彈窗，不蓋住店員對話） */
+.easy-hint-box {
+  background: var(--orange-lt);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  border-left: 5px solid var(--orange);
+  animation: slideUp 0.3s ease-out;
+  /* 小金探那一行與提示句同列，中間留一段距離；手機窄的時候自動換行 */
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.easy-hint-box > .hint-text-row { flex: 1; min-width: 180px; }
+.easy-hint-label {
+  font-size: 0.85rem;
+  color: var(--orange);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 小金探／金好聊的小頭像（D：角色出場）。
+   刻意只出現在提示區、完成頁與編輯器——對話主區留給對話角色與任務，
+   學生的注意力不該被分散（見 docs/開發計畫_日常對話練習精進.md 第九節第 3 點）。
+   圖檔缺失時 inline onerror 會把 img 移掉，不留破圖。 */
+.hero-mini {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.6);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.hero-mini-lg { width: 44px; height: 44px; }
+
+/* 小金探在提示區是「提示的人」，不是裝飾——比編輯器裡的金好聊大一號才看得清楚 */
+.easy-hint-label .hero-mini,
+.hint-modal-header .hero-mini { width: 44px; height: 44px; }
+
+/* 完成頁的金好聊：這裡是他的舞台，給完整角色圖，不套 .hero-mini 的圓形裁切。
+   ⚠️ `.hero-mini` 是 `object-fit: cover` 的圓形小頭像——那是給提示區的小金探用的
+   （小、不搶戲）。把直式全身圖塞進圓框只會剩一顆頭，所以完成頁另開一個 class，
+   兩邊互不影響。圖仍可點（script.js 綁 `.complete-encourage img` 重聽鼓勵語）。 */
+.complete-encourage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: nowrap;   /* 角色與鼓勵語同一列：他是在「對學生說這句話」，拆兩行就不成立 */
+}
+.complete-hero {
+  width: auto;
+  height: 140px;
+  object-fit: contain;
+  flex-shrink: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.28));
+  /* 微幅上下浮動＝主頁金好聊同一個效果（10px、3.4s；2026-09-23）。keyframes 用本檔的 tipsFloatBob。
+     它可以點（重播鼓勵語），但 10px／1.7 秒的位移在一次點擊內不到 1px，不會讓 click 落空。 */
+  animation: tipsFloatBob 3.4s ease-in-out infinite;
+}
+.complete-encourage .dlg-perf-badge {
+  align-self: center;
+  text-align: center;
+}
+@media (max-width: 520px) {
+  .complete-hero { height: 108px; }
+  .complete-encourage { gap: 10px; }
+  .complete-encourage .dlg-perf-badge { padding: 10px 16px; font-size: 1rem; }
+}
+.easy-hint-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  flex: 1;
+}
+.btn-hint-speak:active { transform: scale(0.92); }
+
+/* 回饋框 */
+.feedback-box {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.feedback-heard {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  text-align: center;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 16px;
+  border: 2px solid var(--gray-200);
+}
+.feedback-heard .label {
+  color: var(--gray-600);
+  font-weight: 500;
+  font-size: 0.82rem;
+  display: block;
+  margin-bottom: 4px;
+}
+#heard-text {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--scene-ink, var(--scene-color));
+}
+
+.feedback-result {
+  font-weight: 700;
+  padding: 20px 16px;
+  border-radius: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.result-icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  display: block;
+}
+.result-text {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.feedback-result.perfect {
+  background: var(--green-lt);
+  color: var(--green);
+  animation: bounceIn 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.feedback-result.partial {
+  background: var(--orange-lt);
+  color: var(--orange);
+  animation: pulseOnce 0.5s ease-out;
+}
+.feedback-result.failed {
+  background: #FFF1F1;
+  color: var(--red);
+  animation: shake 0.45s ease-in-out;
+}
+
+.feedback-msg { font-size: 1rem; color: var(--gray-900); text-align: center; }
+
+/* 回饋訊息中的示範句：獨立一行、放大加粗，讓學生先看到重點 */
+.feedback-quote {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--scene-ink, var(--scene-color, var(--blue)));
+  margin-top: 6px;
+}
+
+/* ─── 動畫關鍵影格 ────────────────────────────────── */
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  80%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulseOnce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  18%  { transform: translateX(-7px); }
+  36%  { transform: translateX(7px); }
+  54%  { transform: translateX(-5px); }
+  72%  { transform: translateX(5px); }
+  90%  { transform: translateX(-2px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── 練習頁底部 ─────────────────────────────────── */
+
+.practice-footer {
+  background: transparent;
+  padding: 4px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 選項格 */
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.option-btn {
+  background: var(--scene-lt);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 14px 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.4;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.option-text {
+  flex: 1;
+  line-height: 1.4;
+}
+.btn-speak-option {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  opacity: 0.85;
+  /* 觸控命中區至少 44×44（Apple HIG／WCAG 2.5.5）：原本只有約 39×26，手指容易點空，
+     點空就會落到外層 .option-btn＝直接作答，對學生是「想聽卻誤答」 */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.05);
+  cursor: pointer;
+  touch-action: manipulation;   /* 消 300ms 點擊延遲 */
+  transition: opacity 0.15s, background 0.15s, transform 0.1s;
+  line-height: 1;
+  user-select: none;
+}
+/* 放大效果只給真的有游標的裝置：觸控裝置的 sticky hover 會在按下瞬間改變命中區，
+   讓 mousedown/mouseup 落在不同位置，click 就不會觸發 */
+@media (hover: hover) {
+  .btn-speak-option:hover { opacity: 1; background: rgba(0,0,0,0.1); transform: scale(1.08); }
+}
+.btn-speak-option:focus-visible { opacity: 1; background: rgba(0,0,0,0.1); outline: none; }
+.btn-speak-option:active { opacity: 1; background: rgba(0,0,0,0.14); }   /* 按下回饋只改顏色，不改幾何 */
+.option-btn:hover,
+.option-btn:focus-visible {
+  border-color: var(--scene-color);
+  background: color-mix(in srgb, var(--scene-lt) 80%, var(--scene-color) 20%);
+  transform: scale(1.02);
+  outline: none;
+}
+.option-btn.correct {
+  border-color: var(--green);
+  background: var(--green-lt);
+  pointer-events: none;
+  animation: bounceIn 0.4s ease-out;
+}
+.option-btn.wrong {
+  border-color: var(--red);
+  background: #FFF1F1;
+  pointer-events: none;
+  animation: shake 0.4s ease-in-out;
+}
+.option-btn:disabled { pointer-events: none; opacity: 0.7; }
+
+/* 看圖造句（句框填空）模式 */
+.frame-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.frame-sentence {
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--gray-900);
+  background: var(--scene-lt);
+  border-radius: 12px;
+  padding: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+.frame-blank {
+  display: inline-block;
+  min-width: 2.6em;
+  color: var(--scene-ink, var(--scene-color));
+  letter-spacing: 2px;
+}
+.frame-blank.active {
+  background: color-mix(in srgb, var(--scene-color) 18%, transparent);
+  border-radius: 6px;
+  animation: pulseAnswer 1.2s ease-in-out infinite;
+}
+.frame-fill {
+  color: var(--green);
+  border-bottom: 3px solid var(--green);
+  padding: 0 4px;
+  animation: bounceIn 0.35s ease-out;
+}
+.frame-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.frame-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 12px 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.frame-card-emoji { font-size: 2.4rem; line-height: 1; }
+.frame-card-img   { width: 56px; height: 56px; object-fit: contain; }
+.frame-card-text  { font-size: 1.05rem; font-weight: 600; color: var(--gray-900); }
+.frame-card:hover,
+.frame-card:focus-visible {
+  border-color: var(--scene-color);
+  background: var(--scene-lt);
+  transform: scale(1.03);
+  outline: none;
+}
+.frame-card {
+  position: relative;
+}
+.frame-card.correct {
+  border-color: var(--green);
+  background: var(--green-lt);
+  animation: bounceIn 0.4s ease-out;
+}
+.frame-card.correct::after {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  color: var(--green);
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+.frame-card.wrong {
+  border-color: var(--red);
+  background: #FFF1F1;
+  animation: shake 0.4s ease-in-out;
+}
+.frame-card:disabled { pointer-events: none; opacity: 0.85; }
+.frame-card.show-answer {
+  border-color: var(--green);
+  background: var(--green-lt);
+  opacity: 1;
+  animation: pulseAnswer 0.9s ease-in-out 2;
+}
+@keyframes pulseAnswer {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.0); }
+  50%      { box-shadow: 0 0 0 6px rgba(22,163,74,0.35); }
+}
+.frame-card.text-only { min-height: 60px; }
+.frame-card.text-only .frame-card-text { font-size: 1.15rem; }
+
+/* 詞庫組句模式（L2）*/
+.word-bank { display: flex; flex-direction: column; gap: 12px; }
+.wb-build {
+  min-height: 60px;
+  border: 2px dashed var(--gray-200);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--scene-lt);
+}
+.wb-build.correct { border-color: var(--green); border-style: solid; background: var(--green-lt); }
+.wb-build.wrong   { border-color: var(--red);   border-style: solid; background: #FFF1F1; animation: shake 0.4s ease-in-out; }
+.wb-placeholder { color: var(--gray-600); font-size: 0.95rem; }
+.wb-pool { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.wb-tile {
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--gray-900);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.wb-tile:hover, .wb-tile:focus-visible {
+  border-color: var(--scene-color); background: var(--scene-lt); transform: scale(1.05); outline: none;
+}
+.wb-tile.in-build { border-color: var(--scene-color); background: var(--scene-lt); }
+.wb-tile:disabled { pointer-events: none; opacity: 0.85; }
+
+/* 跟讀自評面板 */
+.echo-selfrate {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--scene-lt);
+  border-radius: 12px;
+  text-align: center;
+}
+.echo-target {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 10px;
+}
+.echo-selfrate-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn-echo-good,
+.btn-echo-again {
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--white);
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.btn-echo-good:hover, .btn-echo-good:focus-visible {
+  border-color: var(--green); background: var(--green-lt); transform: scale(1.03); outline: none;
+}
+.btn-echo-again:hover, .btn-echo-again:focus-visible {
+  border-color: var(--orange); background: var(--orange-lt); transform: scale(1.03); outline: none;
+}
+
+/* 文字輸入列 */
+.text-input-row {
+  display: flex;
+  gap: 8px;
+}
+.text-input {
+  flex: 1;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.text-input:focus {
+  border-color: var(--scene-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--scene-color) 15%, transparent);
+}
+
+.btn-send {
+  background: var(--scene-color);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btn-send:hover { filter: brightness(1.1); }
+
+/* 語音列 */
+.voice-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;   /* 中欄放麥克風 → 永遠水平置中 */
+  align-items: center;
+  gap: 8px;
+}
+.voice-row > .btn-tool { justify-self: start; }   /* 「💡 提示」留在左邊，不撐開 */
+.voice-row > .btn-mic  { grid-column: 2; }        /* 麥克風固定中欄：即使「💡 提示」隱藏(初級)仍水平置中 */
+.btn-tool {
+  background: var(--gray-200);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 80px;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-tool:hover { background: #CBD5E1; transform: scale(1.03); }
+
+/* 麥克風按鈕 */
+.btn-mic {
+  background: var(--scene-color);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--scene-color) 50%, transparent);
+  transition: transform 0.15s, box-shadow 0.15s;
+  gap: 2px;
+  flex-shrink: 0;
+  position: relative;
+}
+.btn-mic:hover { transform: scale(1.07); }
+.btn-mic.listening {
+  background: var(--red);
+  box-shadow: 0 4px 18px rgba(220, 38, 38, 0.5);
+}
+
+/* 聆聽時的漣漪動畫 */
+.btn-mic.listening::before,
+.btn-mic.listening::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(220, 38, 38, 0.5);
+  animation: micRipple 1.5s ease-out infinite;
+}
+.btn-mic.listening::after {
+  animation-delay: 0.5s;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+@keyframes micRipple {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(220, 38, 38, 0.45); transform: scale(1); }
+  50%       { box-shadow: 0 4px 28px rgba(220, 38, 38, 0.7); transform: scale(1.04); }
+}
+
+.mic-icon  { font-size: 1.7rem; line-height: 1; }
+.mic-label { font-size: 0.82rem; font-family: inherit; opacity: 0.95; font-weight: 700; }
+
+/* 模式切換 */
+.mode-switcher {
+  display: flex;
+  flex-wrap: wrap;          /* 跟讀鈕常駐後最多會有 5 顆（含詞庫排序），窄螢幕換行不擠爆 */
+  background: var(--gray-200);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.mode-btn {
+  flex: 1 1 30%;            /* 一列最多三顆，超出自動換行 */
+  min-height: 44px;         /* 觸控命中區 */
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--gray-600);
+  transition: background 0.15s, color 0.15s;
+}
+.mode-btn.active {
+  background: var(--white);
+  color: var(--scene-ink, var(--scene-color));
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 操作按鈕列 */
+.action-row {
+  display: flex;
+  gap: 10px;
+}
+.btn-primary {
+  flex: 2;
+  background: var(--scene-color);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 1.05rem;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: scale(1.02); }
+
+.btn-secondary {
+  flex: 1;
+  background: var(--gray-200);
+  color: var(--gray-900);
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-secondary:hover { background: #CBD5E1; }
+
+/* ─── 完成頁 ──────────────────────────────────── */
+
+#screen-complete {
+  background: linear-gradient(160deg, #EFF6FF 0%, #F0FDF4 50%, #FFF7ED 100%);
+}
+
+.complete-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  gap: 20px;
+  max-width: 620px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ─── 完成頁卡片（對齊 24 單元測驗結束卡片風格）────────── */
+.dlg-result-card {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  padding: 32px 24px 26px;
+  box-shadow: 0 20px 44px rgba(102, 90, 190, 0.38);
+  text-align: center;
+  animation: dlgCardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dlg-result-trophy {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  animation: dlgTrophyBounce 2s ease-in-out infinite;
+}
+
+@keyframes dlgTrophyBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@keyframes dlgCardIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 標題與星星在紫底上改白字 */
+.dlg-result-card .complete-title {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  margin: 0;
+}
+
+/* 白色內容容器 */
+.dlg-result-inner {
+  background: var(--white);
+  border-radius: 18px;
+  padding: 22px 18px 20px;
+  margin-top: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 三張統計卡片 */
+.dlg-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.dlg-stat-card {
+  border-radius: 14px;
+  padding: 16px 8px 14px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.dlg-stat-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+.dlg-stat-blue   { background: linear-gradient(135deg, #2980b9, #3498db); }
+.dlg-stat-orange { background: linear-gradient(135deg, #e67e22, #f39c12); }
+.dlg-stat-ico   { font-size: 1.7rem; line-height: 1; }
+.dlg-stat-label { font-size: 0.82rem; font-weight: 600; opacity: 0.95; }
+.dlg-stat-val   { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+
+/* 表現徽章（原 complete-msg 改造）*/
+.dlg-perf-badge {
+  align-self: center;
+  background: linear-gradient(45deg, #f39c12, #e67e22);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 24px;
+  box-shadow: 0 4px 14px rgba(230, 126, 34, 0.4);
+}
+.dlg-perf-badge:empty { display: none; }
+
+/* 步驟摘要區塊 */
+.dlg-summary-block {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.dlg-summary-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 6px;
+}
+
+/* 學生自評（完成頁內嵌，不自動消失） */
+.dlg-selfrate-block {
+  background: rgba(59, 130, 246, 0.10);
+  border: 1.5px solid rgba(59, 130, 246, 0.28);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.dlg-selfrate-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--blue, #2563EB);
+  margin-bottom: 10px;
+}
+.dlg-selfrate-btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dlg-selfrate-btn {
+  min-height: 44px;              /* 觸控命中區，與全站一致 */
+  min-width: 88px;
+  padding: 8px 16px;
+  border: 1.5px solid #dbe7f5;
+  border-radius: 22px;
+  background: #fff;
+  color: var(--gray-700, #334155);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;    /* 消 300ms 延遲 */
+  transition: background .15s, border-color .15s;
+}
+/* 按下回饋只改顏色，不改幾何——避免元素從指標下滑走導致 click 落空 */
+.dlg-selfrate-btn:hover   { background: #eff6ff; border-color: #93c5fd; }
+.dlg-selfrate-btn:active  { background: #dbeafe; }
+.dlg-selfrate-btn[aria-pressed="true"] {
+  background: #2563EB; border-color: #2563EB; color: #fff;
+}
+.dlg-selfrate-block.done .dlg-selfrate-title { color: #16a34a; }
+
+.complete-stars {
+  font-size: 3rem;
+  letter-spacing: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 3rem;
+}
+.complete-stars .star {
+  display: inline-block;
+  opacity: 0;
+  animation: starPop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.complete-stars .star:nth-child(1) { animation-delay: 0.1s; }
+.complete-stars .star:nth-child(2) { animation-delay: 0.32s; }
+.complete-stars .star:nth-child(3) { animation-delay: 0.54s; }
+
+@keyframes starPop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  60%  { transform: scale(1.35) rotate(8deg); opacity: 1; }
+  80%  { transform: scale(0.92) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.complete-title { font-size: 1.8rem; font-weight: 700; }
+.complete-msg   { font-size: 1.1rem; color: var(--gray-600); }
+
+.complete-summary {
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+}
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.95rem;
+}
+.summary-row:last-child { border-bottom: none; }
+.summary-row.ladder-achieve {
+  background: var(--green-lt);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  border-bottom: none;
+}
+.summary-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+.complete-actions {
+  display: flex;
+  flex-direction: row;          /* 2026-09-26 使用者定：再練習一次／換個情境／回到首頁 由左至右 */
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+.complete-actions > button { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+@media (max-width: 520px) {
+  .complete-actions { flex-wrap: nowrap; gap: 6px; }
+  .complete-actions > button { font-size: 0.9rem; padding: 12px 6px; }
+  .complete-actions > .btn-again-big { font-size: 1rem; }
+}
+.complete-actions > .btn-again-big { flex-grow: 1.5; }
+
+/* 完成頁主要動作：放大突顯，學生第一眼就找得到 */
+.btn-again-big {
+  font-size: 1.25rem;
+  padding: 18px;
+}
+
+/* ─── 彈窗（提示 / 回饋）────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: modalSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-overlay[hidden] { display: none; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modal-card {
+  position: relative;
+  background: var(--white);
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 32px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.14);
+  animation: modalCardUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 彈窗右上角的 ✕（使用者定 2026-09-19：日常對話的彈窗都要有）。樣子比照共用角色彈窗的 .hm-close；
+   小百科的標頭是彩色色帶，另用 .tips-x（白色半透明）。按下只改底色、不改幾何（見主 CLAUDE.md「可點元素按下會位移」）。 */
+.modal-x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--gray-600);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+.modal-x:hover, .modal-x:focus-visible { background: var(--gray-200); color: var(--gray-900); outline: none; }
+.modal-x:active { background: var(--gray-200); transform: none !important; }
+
+@keyframes modalSlideUp {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalCardUp {
+  from { transform: translateY(28px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* 提示彈窗 */
+.hint-modal-card {
+  padding: 24px 24px 28px;
+}
+.hint-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--orange);
+}
+
+/* 回饋彈窗 */
+.feedback-modal-card {
+  align-items: stretch;
+  /* 結果框是整寬的，上方留出右上角 ✕ 的位置（✕ 在 10～54px），否則 ✕ 壓在結果框的角上 */
+  padding-top: 58px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+/* 回饋彈窗最多三顆（← 上一步／再試一次／下一步 →，2026-09-18 加上一步）：文字不折行；
+   窄螢幕縮內距、依文字分寬度，否則 320px 時「上一步」「再試一次」會各擠成兩行 */
+#action-row button { white-space: nowrap; }
+@media (max-width: 400px) {
+  #action-row button { flex: 1 1 auto; padding: 14px 8px; font-size: 0.95rem; }
+}
+
+/* 桌面版：居中顯示 */
+@media (min-width: 640px) {
+  .modal-overlay { align-items: center; }
+  .modal-card {
+    border-radius: 24px;
+    max-width: 480px;
+    width: calc(100% - 48px);
+  }
+}
+
+/* ─── Confetti ─────────────────────────────────────── */
+
+.confetti-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 200;
+  overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  animation: confettiFall linear forwards;
+  border-radius: 2px;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg) scale(0.8); opacity: 0; }
+}
+
+/* ─── 響應式 ──────────────────────────────────── */
+
+@media (min-width: 768px) {
+  body { font-size: 20px; }
+  .practice-main   { padding: 24px 32px 0; }
+  .practice-footer { padding: 20px 32px; }
+  .btn-mic { width: 92px; height: 92px; }
+  .complete-wrap { padding: 60px 32px; }
+  .home-header { padding: 16px 24px 20px; }
+  .home-header h1 { font-size: 1.6rem; }
+}
+
+@media (min-width: 1025px) {
+  /* 練習頁不再限寬置中；標題列滿版，內容置中易讀 */
+  .practice-main,
+  .practice-footer {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  /* 首頁情境卡片：桌面端加寬到一列 3 張，6 張情境剛好排成 2 列不用下拉；
+     手機/平板維持原本較窄寬度（一列 2 張、多列下拉），較適合觸控捲動 */
+  .scenario-grid { max-width: 960px; }
+}
+
+/* ─── 無障礙 ──────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-mic.listening       { animation: none; }
+  .btn-mic.listening::before,
+  .btn-mic.listening::after { animation: none; }
+  .scenario-card           { transition: none; }
+  .progress-fill           { transition: none; }
+  .screen.active           { animation: none; }
+  .feedback-result         { animation: none; }
+  .complete-stars .star    { animation: none; opacity: 1; }
+  .dlg-result-trophy       { animation: none; }
+  .dlg-result-card         { animation: none; }
+  .shopkeeper-avatar.speaking { animation: none; }
+  .modal-overlay           { animation: none; }
+  .modal-card              { animation: none; }
+  .clerk-modal-img         { animation: none; }
+  .clerk-intro-btn.speaking { animation: none; }
+  .option-btn              { transition: none; }
+}
+
+:focus-visible {
+  outline: 3px solid var(--scene-color, var(--blue));
+  outline-offset: 2px;
+}
+
+/* ─── 螢幕閱讀器專用 ────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+
+/* ══════════════════════════════════════════════════
+   設定 / 編輯器共用
+══════════════════════════════════════════════════ */
+
+/* 首頁設定按鈕 */
+.btn-settings-icon {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s;
+  line-height: 1;
+  color: inherit;
+}
+.btn-settings-icon:hover { background: rgba(15, 23, 42, 0.12); }
+
+/* 編輯器共用 header */
+.editor-header {
+  background: var(--white);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+.editor-title {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.btn-header-action {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btn-header-action:hover { filter: brightness(1.12); }
+
+/* 編輯器 body */
+.editor-body {
+  flex: 1;
+  padding: 20px 20px 48px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+.editor-desc {
+  color: var(--gray-600);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+/* ─── 自訂情境列表 ──────────────────────────────── */
+
+.custom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.custom-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 60px 24px;
+  gap: 10px;
+}
+.empty-icon  { font-size: 3.2rem; }
+.empty-title { font-size: 1.15rem; font-weight: 700; }
+.empty-msg   { color: var(--gray-600); font-size: 0.92rem; }
+
+.custom-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.custom-card-icon {
+  width: 52px; height: 52px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem;
+  flex-shrink: 0;
+}
+.custom-card-info { flex: 1; min-width: 0; }
+.custom-card-name  { font-weight: 700; font-size: 1rem; }
+.custom-card-steps { font-size: 0.82rem; color: var(--gray-600); margin-top: 2px; }
+.custom-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.btn-card-action {
+  background: var(--gray-200);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-card-action:hover { background: #CBD5E1; }
+.btn-card-action.danger:hover { background: #FEE2E2; color: var(--red); }
+
+/* ─── 表單樣式 ─────────────────────────────────── */
+
+.form-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.form-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+.form-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.required { color: var(--red); margin-left: 2px; }
+
+.form-input {
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  background: var(--white);
+  color: var(--gray-900);
+}
+.form-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  line-height: 1.5;
+}
+
+/* 編輯器三分鐘上手說明（摺疊） */
+.editor-quickstart {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  color: var(--gray-700, #374151);
+}
+.editor-quickstart summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #92400E;
+}
+.editor-quickstart ol { margin: 8px 0 4px; padding-left: 20px; line-height: 1.7; }
+.editor-quickstart p  { margin: 6px 0 2px; color: var(--gray-600, #475569); }
+
+/* file:// 開啟時的限制警告條 */
+.file-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #FEF3C7;
+  color: #78350F;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-bottom: 2px solid #F59E0B;
+}
+.file-warn[hidden] { display: none; }
+.file-warn-go {
+  display: inline-block;
+  margin: 4px 4px 0 0;
+  padding: 4px 10px;
+  background: #78350F;
+  color: #FFFBEB;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.file-warn-go:hover { filter: brightness(1.2); }
+.file-warn-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+.file-warn-close:hover { background: rgba(120, 53, 15, 0.12); }
+
+/* 設定頁的版本資訊 */
+.version-info {
+  font-size: 0.85rem;
+  background: var(--gray-50, #F8FAFC);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.version-row {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+}
+.version-key { flex: 0 0 5.5em; color: var(--gray-600, #4b5563); }
+.version-val { flex: 1; font-weight: 700; word-break: break-all; }
+.version-warn {
+  margin: 4px 0 6px;
+  padding: 6px 8px;
+  background: #FEF3C7;
+  color: #78350F;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+/* 語音診斷清單（設定頁 → 版本資訊 → 檢查這台的語音） */
+.voice-diag { margin-top: 10px; font-size: 0.82rem; }
+.voice-diag[hidden] { display: none; }
+.voice-diag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+.voice-diag-play {
+  flex-shrink: 0;
+  border: 1px solid var(--gray-300, #CBD5E1);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+}
+.voice-diag-play:hover { background: #EFF6FF; border-color: var(--blue); }
+.voice-diag-tag  { flex-shrink: 0; color: var(--gray-600, #4b5563); white-space: nowrap; }
+.voice-diag-name { flex: 1; word-break: break-all; min-width: 120px; }
+
+/* 語音盤點：手機一列塞不下（試聽鈕＋三個標籤＋名稱＋設定鈕）→ 允許換行 */
+.voice-diag-row { flex-wrap: wrap; }
+.voice-diag-row.selected {
+  background: #EFF6FF;
+  border-radius: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* 語音角色頭像（一支語音＝一個角色）：老師挑聲音時看得到形象。
+   圖缺了 inline onerror 會移掉 img，退回只有名字的樣子，不留破圖。 */
+.voice-role-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.voice-role-name {
+  margin-left: 6px;
+  color: var(--gray-600, #4b5563);
+  font-size: 0.92em;
+}
+
+/* 「設為這個情境的聲音」：編輯器內嵌的精簡版才有 */
+.voice-pick-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--gray-300, #CBD5E1);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.voice-pick-btn:hover,
+.voice-pick-btn:focus-visible { background: #EFF6FF; border-color: var(--blue); outline: none; }
+.voice-diag-row.selected .voice-pick-btn { border-color: var(--blue); color: var(--blue); font-weight: 700; }
+
+/* 儲存情境：步驟卡片下方的大按鈕（取代原本標題列的小按鈕） */
+.save-section { text-align: center; }
+.btn-save-large {
+  width: 100%;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 1.05rem;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+  touch-action: manipulation;
+  transition: filter 0.15s;
+}
+.btn-save-large:hover { filter: brightness(1.1); }
+
+/* 泛用店員選擇（自訂情境編輯器）。
+   刻意不用 transform 做 hover/active 回饋——按下時改變幾何會讓 click 落空（見 CLAUDE.md 踩雷）。 */
+.clerk-role-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.clerk-role-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200, #e5e7eb);
+  border-radius: 14px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+.clerk-role-card:hover:not(:disabled),
+.clerk-role-card:focus-visible { border-color: var(--blue); outline: none; }
+.clerk-role-card.selected { border-color: var(--blue); background: var(--blue-lt); }
+.clerk-role-card.unavailable {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.clerk-role-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+.clerk-role-name { font-size: 0.9rem; font-weight: 700; }
+.clerk-role-na   { font-size: 0.72rem; color: var(--gray-600, #4b5563); }
+
+/* 對話角色列：頭像鈕＋語音下拉＋試聽鈕（2026-08-18 改版，取代小雯／小宇兩張卡片） */
+.role-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.role-select-row > select { flex: 1; min-width: 160px; }
+
+/* 情境編輯器「學生」設定：學段／層級／學習階段三個下拉＋需求特徵核取方塊。
+   範本與 AI 提示詞共用（選項定義在 data/topic_presets.js）。 */
+/* 一個設定一列（標籤在左、下拉佔滿剩下的寬度）；窄螢幕改成標籤在上，下拉才有整列寬度放完整選項文字 */
+.learner-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+}
+.learner-grid > label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  white-space: nowrap;
+}
+.learner-grid > select { min-width: 0; }
+/* 選「3 步驟對話」時學習階段不適用（script.js renderLearnerNote 設 disabled） */
+.learner-grid > select:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 480px) {
+  .learner-grid { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .learner-grid > select { margin-bottom: 8px; }
+}
+.learner-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+.learner-trait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  font-size: 0.85rem;
+  color: var(--gray-900);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.learner-trait input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; }
+/* 步驟區上方「目前是哪一組範本」＋剛換上的步驟亮一下（script.js renderStepList） */
+.step-list-source {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.step-item.just-filled { animation: stepJustFilled 1.4s ease-out; }
+/* 只亮外框、不換底色：換成淺藍底時，深色模式的灰字對比會掉到 4.49（2026-09-15 e2e 量到） */
+@keyframes stepJustFilled {
+  0%, 35% { box-shadow: 0 0 0 3px var(--blue); }
+  100%    { box-shadow: 0 0 0 3px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .step-item.just-filled { animation: none; } }
+
+/* 選類型／層級後「範本填好了／步驟沒換」的回報（script.js setLearnerStatus） */
+.learner-status {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.role-avatar-btn {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid var(--gray-200);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--white);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.role-avatar-btn:hover,
+.role-avatar-btn:focus-visible { border-color: var(--blue); outline: none; }
+.role-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* AI 區塊裡的精簡版店員角色選擇（同一份 selectedClerkGender，見 renderClerkRolePicker） */
+.ai-gen-gender-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.clerk-role-picker--compact {
+  gap: 6px;
+  margin-top: 0;
+}
+.clerk-role-picker--compact .clerk-role-card {
+  flex-direction: row;
+  padding: 4px 10px 4px 4px;
+  gap: 6px;
+  border-radius: 999px;
+}
+.clerk-role-picker--compact .clerk-role-img {
+  width: 26px;
+  height: 26px;
+}
+.clerk-role-picker--compact .clerk-role-name { font-size: 0.82rem; }
+
+/* 語音工作室（步驟編輯器：TTS 試聽／老師錄音） */
+.voice-studio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.photo-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 180px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  object-fit: contain;
+}
+.btn-vs {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--gray-300, #CBD5E1);
+  background: var(--white);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-vs:hover { border-color: var(--primary, #2563EB); background: #EFF6FF; }
+.btn-vs.danger:hover { border-color: #DC2626; background: #FEF2F2; }
+.btn-vs.recording {
+  border-color: #DC2626;
+  background: #FEF2F2;
+  color: #B91C1C;
+  animation: vsRecPulse 1.2s ease-in-out infinite;
+}
+@keyframes vsRecPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+}
+.step-rec-badge { font-size: 0.85em; }
+/* 任務說明原則的提醒（2026-09-17，只提醒不擋）：步驟清單的徽章＋步驟編輯頁的即時提示。
+   ⚠️ 提示同時掛 .form-hint，那條在深色模式有 (0,3,0) 的覆寫 → 這裡的選擇器要帶兩個 class 才壓得過 */
+.step-clarity-badge {
+  display: inline-block; font-size: 0.72em; font-weight: 700; padding: 1px 8px; border-radius: 10px;
+  background: #FEF3C7; color: #92400E; vertical-align: middle; white-space: nowrap;
+}
+.form-hint.task-clarity-hint { color: #92400E; font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .step-clarity-badge { background: rgba(251, 191, 36, 0.16); color: #FCD34D; }
+  :root:not([data-theme="light"]) .form-hint.task-clarity-hint { color: #FCD34D; }
+}
+[data-theme="dark"] .step-clarity-badge { background: rgba(251, 191, 36, 0.16); color: #FCD34D; }
+[data-theme="dark"] .form-hint.task-clarity-hint { color: #FCD34D; }
+.form-opts-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── 步驟列表 ─────────────────────────────────── */
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.step-empty {
+  text-align: left;
+  color: var(--gray-600);
+  font-size: 0.88rem;
+  padding: 16px 0 4px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 12px;
+  border: 2px solid var(--gray-200);
+  transition: border-color 0.15s;
+}
+.step-item:hover { border-color: #CBD5E1; }
+
+.step-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+/* 步驟文字本身是按鈕（點了進編輯）；文字完整換行顯示，不再截成「跟店員說你…」 */
+.step-info {
+  flex: 1; min-width: 0;
+  background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+  touch-action: manipulation;
+}
+.step-info:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.step-task {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--gray-900);
+  overflow-wrap: anywhere;
+}
+.step-prompt {
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  overflow-wrap: anywhere;
+  margin-top: 2px;
+}
+/* 「任務」「對方說」小標：對應步驟編輯頁的「學生的任務說明」「對方說的話」 */
+.step-field {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.step-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.btn-step-action.primary { border-color: var(--blue); color: var(--blue); font-weight: 600; }
+/* 窄螢幕：按鈕移到文字下方一整列，文字才有寬度完整顯示 */
+@media (max-width: 480px) {
+  .step-item { flex-wrap: wrap; }
+  .step-info { flex-basis: calc(100% - 44px); }
+  .step-actions { width: 100%; }
+  .btn-step-action { min-height: 36px; }
+}
+/* 步驟編輯頁最上方的標題「第 1 步：這一步的名稱」＋可直接編輯的名稱輸入框 */
+.step-editor-heading {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 6px;
+}
+.step-name-input { font-size: 1.1rem; font-weight: 700; }
+.btn-step-action {
+  background: none;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  color: var(--gray-600);
+}
+.btn-step-action:hover:not(:disabled) { background: var(--gray-200); color: var(--gray-900); }
+.btn-step-action.danger:hover { background: #FEE2E2; color: var(--red); border-color: #FECACA; }
+.btn-step-action:disabled { opacity: 0.35; cursor: default; }
+
+.btn-text-add {
+  background: none;
+  border: 2px dashed var(--blue);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.15s;
+}
+.btn-text-add:hover { background: var(--blue-lt); }
+
+
+/* ══════════════════════════════════════════════════
+   情境選擇頁
+══════════════════════════════════════════════════ */
+
+.situation-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.situation-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.situation-card:hover,
+.situation-card:focus-visible {
+  border-color: var(--scene-color, var(--blue));
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+
+.sit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 情境選擇頁：掛在這個場所底下的自訂情境（左緣加粗＋「自訂」徽章），
+   以及最後一張「➕ 自訂情境」入口卡。卡片本身是 <button>，✏️ 不能巢狀其中 →
+   包一層 .sit-card-wrap，✏️ 絕對定位浮上去（同首頁店員鈕的做法）。 */
+.sit-card-wrap {
+  position: relative;
+  display: flex;
+}
+.sit-card-wrap > .situation-card { flex: 1; }
+
+.situation-card-custom {
+  border-left: 6px solid var(--scene-color, var(--blue));
+  padding-right: 56px;
+}
+.situation-card-custom .sit-name::after {
+  content: '自訂';
+  margin-left: 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--gray-600, #475569);
+  background: var(--gray-100, #F1F5F9);
+  border-radius: 99px;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+
+/* 情境卡右上角的 ✏️（內建情境＝判定編輯器、自訂情境＝情境編輯器）。
+   卡片本身是 <button>，按鈕不能巢狀 → .sit-card-wrap 包一層、絕對定位浮上去。
+   命中區 44×44（手機手指點得到，見主 CLAUDE.md 的手機觸控規範） */
+.sit-edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+/* ⚠️ 底色用 --gray-200：--gray-100 這個專案沒定義，深色模式會掉回淺色 fallback */
+.sit-edit-btn:hover,
+.sit-edit-btn:focus-visible {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--gray-200);
+  outline: none;
+}
+/* ⚠️ 按下只變色、不改幾何（scale/translate 會讓元素從指標下滑走 → click 落空） */
+.sit-edit-btn:active { background: var(--gray-200); }
+
+/* ⭐ 自訂分部的**場景卡**右上角：✏️ 改名字／換圖示、🗑️ 刪掉整個場景。
+   內建那 42 個場所沒有這兩顆（不是老師的東西，改不得也刪不得）。
+   ⚠️ .scenario-card-wrap 上方留了 36px 給店員頭像，場景卡沒有頭像但 padding 還在 →
+      這兩顆要再往下 36px 才會落在卡片的右上角，而不是浮在卡片外面。 */
+.scene-admin-btn {
+  position: absolute;
+  top: 44px;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  z-index: 2;
+  transition: border-color 0.15s, background 0.15s;
+}
+.scene-edit-btn { right: 10px; }
+.scene-del-btn  { right: 60px; }
+.scene-admin-btn:hover,
+.scene-admin-btn:focus-visible { background: var(--gray-200); outline: none; }
+.scene-edit-btn:hover, .scene-edit-btn:focus-visible { border-color: var(--blue); }
+.scene-del-btn:hover,  .scene-del-btn:focus-visible  { border-color: var(--red); }
+/* ⚠️ 按下只變色、不改幾何（見主 CLAUDE.md「按下會位移 → click 落空」） */
+.scene-admin-btn:active { background: var(--gray-200); }
+
+/* 建立／編輯場景的小彈窗（名稱＋圖示；顏色自動配不給選，免得撞色） */
+.scene-modal-card { max-width: 460px; }
+.scene-modal-title { margin: 0 0 6px; font-size: 1.15rem; }
+.scene-modal-note { margin: 0 0 14px; font-size: 0.85rem; color: var(--gray-600); line-height: 1.6; }
+.scene-field { display: block; font-weight: 800; font-size: 0.9rem; margin-bottom: 14px; }
+.scene-field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  background: var(--white);
+  color: var(--gray-900);
+}
+.scene-icon-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.scene-icon-btn {
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  line-height: 1;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+.scene-icon-btn.on { border-color: var(--blue); background: var(--blue-lt); }
+.scene-icon-btn:active { background: var(--gray-200); }
+.scene-modal-msg {
+  min-height: 1.2em;
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--red);
+}
+.scene-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* 🗑️ 刪除（只有自訂情境卡有，排在 ✏️ 左邊）：外觀與 ✏️ 同一組，只有顏色是危險色。
+   命中區同樣 44×44，兩顆之間留 6px 免得手指點錯。 */
+.sit-del-btn {
+  position: absolute;
+  top: 10px;
+  right: 60px;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sit-del-btn:hover,
+.sit-del-btn:focus-visible {
+  border-color: var(--red, #DC2626);
+  background: var(--gray-200);
+  outline: none;
+}
+.sit-del-btn:active { background: var(--gray-200); }
+
+/* 有 ✏️ 的卡片要留出右邊空間，文字才不會被壓到按鈕底下；兩顆鈕的再多留一顆的寬度 */
+.sit-card-wrap > .situation-card { padding-right: 62px; }
+.sit-card-wrap.has-del > .situation-card { padding-right: 112px; }
+
+.situation-card-add {
+  border: 2px dashed var(--gray-300, #CBD5E1);
+  background: transparent;
+  box-shadow: none;
+}
+.situation-card-add:hover {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--white);
+}
+
+.sit-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sit-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.sit-desc {
+  font-size: 0.86rem;
+  color: var(--gray-600);
+  line-height: 1.5;
+  padding-left: 34px;
+}
+
+
+/* ══════════════════════════════════════════════════
+   難度選擇頁
+══════════════════════════════════════════════════ */
+
+.diff-main {
+  flex: 1;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* 情境選擇頁／設定頁＝F1 設定頁那樣的卡片（2026-10-10 使用者定）：上方是全站導覽列（js/nav-auth.js mtUnitNav），
+   金好聊＋場所名稱在卡片頂端、內容都在卡片裡。卡片底色＝var(--white)（深色模式自動變深），頁面底色仍是場所的淺色。 */
+.dlg-card {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: visible;
+  max-width: 600px;
+  width: calc(100% - 32px);
+  margin: 20px auto 40px;
+  padding: 28px 28px 32px;
+  background: var(--white);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+.dlg-card-head { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 4px 0 0; }
+/* 完整角色圖＝固定高度、寬度自動、contain（不要套圓形 cover，直式全身圖會被裁成一顆頭） */
+.dlg-hero { height: 88px; width: auto; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18)); }
+.dlg-card-titles { min-width: 0; }
+.dlg-card-title {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 1.6rem; font-weight: 800; line-height: 1.3; color: var(--gray-900);
+}
+.dlg-card-title .ah-icon { font-size: 1.8rem; }
+.dlg-card-sub { margin-top: 4px; font-size: 0.95rem; color: var(--gray-600); }
+/* 情境選擇頁：金好聊在左，右邊上下兩行＝場所名稱、「請選擇練習情境」（靠左對齊） */
+.dlg-card-head--sit .diff-prompt { margin-top: 4px; text-align: left; }
+/* 設定頁底部：← 上一頁｜▶ 開始練習 平均欄寬 */
+.dlg-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dlg-actions--center { grid-template-columns: minmax(0, 260px); justify-content: center; }   /* 情境選擇頁：只有「← 上一頁」一顆，置中 */
+.dlg-back-btn {
+  padding: 14px 0; border: 2px solid var(--gray-200); border-radius: var(--radius);
+  background: var(--white); color: var(--gray-900);
+  font-size: 1.15rem; font-weight: 800; font-family: inherit;
+  cursor: pointer; box-shadow: var(--shadow); touch-action: manipulation;
+}
+.dlg-back-btn:hover { border-color: var(--scene-color); }
+@media (max-width: 600px) {
+  .dlg-card { width: calc(100% - 20px); margin: 12px auto 28px; padding: 20px 16px 24px; border-radius: 18px; }
+  .dlg-hero { height: 64px; }
+  .dlg-card-head { gap: 10px; }
+  .dlg-card-title { font-size: 1.25rem; }
+}
+
+.diff-scenario-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.diff-scenario-icon {
+  width: 64px; height: 64px;
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem;
+  flex-shrink: 0;
+  background: var(--scene-lt, var(--blue-lt));
+}
+
+.diff-scenario-name  { font-size: 1.3rem; font-weight: 700; }
+.diff-scenario-steps { font-size: 0.88rem; color: var(--gray-600); margin-top: 4px; }
+
+.diff-prompt {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* 判定編輯器的儲存結果：一句成功 + 需要老師知道的提醒（可能多行）。
+   顏色只用來分輕重，訊息本身寫成完整的白話句子，不依賴顏色也讀得懂。 */
+.kw-save-status { margin-top: 10px; min-height: 1.2em; }
+.kw-save-status p { margin: 0 0 6px; font-size: 0.82rem; line-height: 1.7; }
+.kw-status-ok   { color: var(--green); font-weight: 600; }
+.kw-status-note { color: var(--gray-600); }
+.kw-status-warn {
+  color: var(--gray-700, #374151);
+  background: #FFF7ED;
+  border-left: 3px solid var(--orange, #EA580C);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+/* 判定編輯器的步驟卡（2026-09-19 使用者要求）：老師要一眼看出「這是第幾步」「上一步到哪裡結束」。
+   標題比一般 form-label 大一級；分隔線用相鄰選擇器，第一步上方才不會多一條線。
+   線用 var(--gray-200)＝深色模式自動跟著變，不要寫死淺色。 */
+.kw-step-title {
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin-bottom: 2px;
+}
+.kw-step-row + .kw-step-row {
+  border-top: 2px solid var(--gray-200);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+/* 旁白（心裡話）與店員台詞在編輯頁要一眼分得開：旁白用斜體＋偏灰，店員維持一般字。
+   兩種顏色都走變數，深色模式自動跟著換。 */
+.kw-step-os    { font-style: italic; color: var(--gray-600); }
+.kw-step-clerk { color: var(--gray-700, #374151); }
+.os-after-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--gray-700, #374151);
+  cursor: pointer;
+}
+.os-after-row input { width: 18px; height: 18px; flex: none; }
+
+.diff-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diff-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: var(--shadow);
+}
+.diff-card:hover,
+.diff-card:focus-visible {
+  border-color: var(--scene-color, var(--blue));
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+.diff-card--recommended {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--scene-lt, var(--blue-lt));
+}
+
+.diff-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.diff-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.diff-level-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.diff-tag {
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  background: var(--gray-200);
+  border-radius: 99px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.diff-tag--highlight {
+  background: var(--scene-color, var(--blue));
+  color: #fff;
+}
+
+.diff-desc {
+  font-size: 0.88rem;
+  color: var(--gray-600);
+  line-height: 1.55;
+}
+
+/* 難度標籤（練習頁 header） */
+.diff-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+.diff-badge.easy   { background: #16A34A; }
+.diff-badge.normal { background: #D97706; }
+.diff-badge.hard   { background: #DC2626; }
+
+
+/* ══════════════════════════════════════════════════
+   設定區塊 / 無障礙控制元件
+══════════════════════════════════════════════════ */
+
+.settings-block {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.settings-block-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.ai-key-warn {
+  background: #FFF8E1;
+  border: 1px solid #FFE082;
+  border-left: 4px solid #F9A825;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #6D4C00;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gray-200);
+}
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+.settings-row:first-of-type { padding-top: 0; }
+.settings-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.settings-row-label {
+  font-weight: 700;
+  font-size: 1rem;
+}
+.settings-row-desc {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+}
+
+/* 字體大小按鈕群 */
+.font-size-group {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.font-size-btn {
+  background: var(--gray-200);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+.font-size-btn.active,
+.font-size-btn[aria-pressed="true"] {
+  background: var(--blue-lt);
+  border-color: var(--blue);
+  color: var(--blue);
+  font-weight: 700;
+}
+.font-size-btn:hover:not(.active) { background: #CBD5E1; color: var(--gray-900); }
+
+/* 切換開關 */
+.toggle-switch {
+  width: 54px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--gray-200);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.22s;
+  flex-shrink: 0;
+}
+.toggle-switch[aria-checked="true"] { background: var(--blue); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+.toggle-switch[aria-checked="true"] .toggle-thumb { transform: translateX(24px); }
+.toggle-switch:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+
+/* ══════════════════════════════════════════════════
+   字體大小等級
+══════════════════════════════════════════════════ */
+
+body.font-large  { font-size: 21px; }
+body.font-xlarge { font-size: 25px; }
+
+
+/* ══════════════════════════════════════════════════
+   高對比模式
+══════════════════════════════════════════════════ */
+
+body.high-contrast {
+  --blue:      #60A5FA;
+  --blue-lt:   #1E2D4A;
+  --green:     #4ADE80;
+  --green-lt:  #0A2015;
+  --orange:    #FB923C;
+  --orange-lt: #221005;
+  --red:       #F87171;
+  --gray-900:  #F1F5F9;
+  --gray-600:  #94A3B8;
+  --gray-200:  #1E293B;
+  --bg:        #0B0F1A;
+  --white:     #131B2E;
+  --shadow:    0 2px 12px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+body.high-contrast .home-header {
+  background: linear-gradient(140deg, #060B18 0%, #0D1A40 55%, #121F55 100%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+body.high-contrast #screen-complete {
+  background: var(--bg);
+}
+
+body.high-contrast .progress-fill {
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.6);
+}
+
+body.high-contrast .speech-bubble::before {
+  border-right-color: var(--white);
+}
+
+body.high-contrast .btn-mic {
+  box-shadow: 0 4px 18px rgba(96, 165, 250, 0.4);
+}
+
+body.high-contrast .scenario-card:hover,
+body.high-contrast .scenario-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--blue);
+}
+
+body.high-contrast .ai-key-warn {
+  background: #2A1F05;
+  border-color: #6D4C00;
+  border-left-color: #FB923C;
+  color: #FCD34D;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle-switch,
+  .toggle-thumb { transition: none; }
+}
+
+
+/* ══════════════════════════════════════════════════
+   AAC 溝通板模式
+══════════════════════════════════════════════════ */
+
+body.aac-mode .option-btn {
+  min-height: 88px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 20px 14px;
+  line-height: 1.5;
+  border-width: 3px;
+}
+
+body.aac-mode .options-grid {
+  gap: 14px;
+}
+
+/* AAC 模式在完整說明旁加標籤 */
+body.aac-mode .practice-footer::before {
+  content: 'AAC 模式';
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--scene-ink, var(--scene-color, var(--blue)));
+  letter-spacing: 0.06em;
+  padding-bottom: 4px;
+}
+
+
+/* ─── 除錯面板 ───────────────────────────────────── */
+#debug-panel {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 99999;
+  background: rgba(15,23,42,0.93);
+  color: #E2E8F0;
+  font-family: monospace;
+  font-size: 0.75rem;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 230px;
+  max-width: 310px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dbg-header { font-weight: 700; font-size: 0.8rem; color: #FCD34D; margin-bottom: 2px; }
+.dbg-row    { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dbg-label  { color: #94A3B8; flex-shrink: 0; width: 56px; }
+.dbg-jump-input { width: 44px; background: #1E293B; border: 1px solid #475569; color: #E2E8F0; border-radius: 4px; padding: 2px 4px; font-size: 0.75rem; }
+.dbg-btn    { background: #1D4ED8; color: #fff; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.72rem; }
+.dbg-btn:hover { background: #2563EB; }
+.dbg-btn-warn { background: #B45309; }
+.dbg-btn-warn:hover { background: #D97706; }
+
+/* ─── 語音包下載按鈕 ─────────────────────────────── */
+.btn-cache-audio {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--blue-lt);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  position: relative;
+}
+.btn-cache-audio:hover  { background: #BFDBFE; }
+.btn-cache-audio.cached { background: #D1FAE5; }
+.btn-cache-audio.caching { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── 無障礙：減少動畫 ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .confetti-piece { display: none; }
+}
+
+/* ─── 深色模式：跟隨系統（未手動選淺色）＋強制深色 ──────────────
+   兩區塊數值逐字對應，只有外層 gate 不同（js/theme-switch.js 的三態機制，
+   全站統一寫法見 CLAUDE.md「深色模式規則」）。⚠️ 不要跟上面的
+   body.high-contrast（無障礙高對比，另一個獨立功能）搞混。
+   ⚠️ --white 在深色模式是「卡片表面色」(#1E293B)，不是白色——彩色底上的白字要寫 #fff，
+   寫 var(--white) 會在深色模式變成深字印在主題色上（標題列場所名、🔊任務鈕、主按鈕都曾這樣）。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #0F172A;
+    --white:    #1E293B;
+    --gray-900: #F1F5F9;
+    --gray-600: #94A3B8;
+    --gray-200: #334155;
+    --shadow:   0 2px 12px rgba(0,0,0,0.4);
+    --shadow-md:0 4px 20px rgba(0,0,0,0.5);
+    --blue-lt:  #1E3A5F;
+    --green-lt: #052E16;
+    --orange-lt:#431407;
+  }
+  :root:not([data-theme="light"]) .voice-card,
+  :root:not([data-theme="light"]) .scenario-card,
+  :root:not([data-theme="light"]) .modal-card {
+    background: #1E293B;
+    border-color: #334155;
+  }
+  :root:not([data-theme="light"]) .diff-card { background: #1E293B; border-color: #334155; }
+  :root:not([data-theme="light"]) .practice-header,
+  :root:not([data-theme="light"]) .home-header { background: #1E293B; }
+  :root:not([data-theme="light"]) .speech-bubble { background: #1E293B; }
+  :root:not([data-theme="light"]) .task-box { background: #1E293B; border-color: #334155; }
+  /* 場所淺色底：startScenario() 用 inline style 把 theme.bg（淺色）寫在這三個畫面上，
+     深色模式不蓋掉的話，選項／句框／跟讀／詞塊全變成「淺色字印在淺色底」（實測對比 1.00~1.10）。
+     改由主題色混入深色表面算出，42 個場所不必各配一組深色值；!important 才蓋得過 inline。
+     --scene-ink＝主題色當「文字色」時用的版本：底色變深後，深色系主題（警察局 #1E3A8A）
+     直接當字色會看不見，所以混淡；淺色模式不定義它，使用處一律寫 var(--scene-ink, var(--scene-color))。
+     ⚠️ 必須宣告在這三個畫面本身：var(--scene-color) 在哪個元素宣告就用哪個元素的值，只寫在 :root 會拿到預設藍。 */
+  :root:not([data-theme="light"]),
+  :root:not([data-theme="light"]) #screen-practice,
+  :root:not([data-theme="light"]) #screen-difficulty,
+  :root:not([data-theme="light"]) #screen-situation {
+    --scene-lt:  color-mix(in srgb, var(--scene-color) 20%, #1E293B) !important;
+    --scene-ink: color-mix(in srgb, var(--scene-color) 45%, #F1F5F9);
+  }
+  :root:not([data-theme="light"]) .option-btn.wrong,
+  :root:not([data-theme="light"]) .frame-card.wrong,
+  :root:not([data-theme="light"]) .wb-build.wrong { background: #3F1D24; }
+  :root:not([data-theme="light"]) .wb-placeholder { color: var(--gray-900); }
+  /* 完成頁大背景（淺藍→淺綠→淺橘漸層）：使用者 2026-09-23 回報深色下整片亮 → 同方向的極深漸層 */
+  :root:not([data-theme="light"]) #screen-complete { background: linear-gradient(160deg, #0F1A2E 0%, #0F1F1A 50%, #1F170F 100%); }
+}
+
+[data-theme="dark"] {
+  --bg:       #0F172A;
+  --white:    #1E293B;
+  --gray-900: #F1F5F9;
+  --gray-600: #94A3B8;
+  --gray-200: #334155;
+  --shadow:   0 2px 12px rgba(0,0,0,0.4);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.5);
+  --blue-lt:  #1E3A5F;
+  --green-lt: #052E16;
+  --orange-lt:#431407;
+}
+[data-theme="dark"] .voice-card,
+[data-theme="dark"] .scenario-card,
+[data-theme="dark"] .modal-card {
+  background: #1E293B;
+  border-color: #334155;
+}
+[data-theme="dark"] .diff-card { background: #1E293B; border-color: #334155; }
+[data-theme="dark"] .practice-header,
+[data-theme="dark"] .home-header { background: #1E293B; }
+[data-theme="dark"] .speech-bubble { background: #1E293B; }
+[data-theme="dark"] .task-box { background: #1E293B; border-color: #334155; }
+[data-theme="dark"],
+[data-theme="dark"] #screen-practice,
+[data-theme="dark"] #screen-difficulty,
+[data-theme="dark"] #screen-situation {
+  --scene-lt:  color-mix(in srgb, var(--scene-color) 20%, #1E293B) !important;
+  --scene-ink: color-mix(in srgb, var(--scene-color) 45%, #F1F5F9);
+}
+[data-theme="dark"] .option-btn.wrong,
+[data-theme="dark"] .frame-card.wrong,
+[data-theme="dark"] .wb-build.wrong { background: #3F1D24; }
+[data-theme="dark"] .wb-placeholder { color: var(--gray-900); }
+[data-theme="dark"] #screen-complete { background: linear-gradient(160deg, #0F1A2E 0%, #0F1F1A 50%, #1F170F 100%); }
+
+/* 手動切換時連瀏覽器內建色一起切：index.html 宣告 color-scheme="light dark"，
+   沒寫文字色的 <button>（選項鈕、難度卡）吃的是系統的 buttontext——
+   「系統深色＋手動切淺色」會變成白字印在淺底上（實測選項對比 1.03）。 */
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark; }
+
+/* ─── 學習歷程頁 ─────────────────────────────────── */
+.hist-stat-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.hist-stat {
+  flex: 1;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.hist-stat-num   { font-size: 1.5rem; font-weight: 700; color: var(--blue); }
+.hist-stat-label { font-size: 0.8rem; color: var(--gray-600); margin-top: 2px; }
+.hist-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+.hist-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.hist-scenario { font-weight: 700; font-size: 1rem; }
+.hist-stars    { font-size: 1rem; }
+.hist-card-meta { font-size: 0.8rem; color: var(--gray-600); margin-bottom: 2px; }
+.hist-card-date { font-size: 0.8rem; color: var(--gray-600); }
+.hist-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btn-hist-print {
+  background: none;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--gray-600);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-hist-print:hover { background: var(--gray-200); color: var(--gray-900); }
+.history-summary { padding: 0 2px; }
+.history-list    { padding: 0 2px; }
+.history-empty   { text-align: center; padding: 40px 0; }
+
+/* ─── 列印報告 ───────────────────────────────────── */
+@media print {
+  body > * { display: none !important; }
+  #print-report-sheet { display: block !important; }
+}
+#print-report-sheet {
+  display: none;
+  font-family: 'Noto Sans TC', sans-serif;
+  padding: 24px;
+  color: #1E293B;
+}
+#print-report-sheet h1 { font-size: 1.3rem; margin-bottom: 4px; }
+#print-report-sheet .rpt-meta { font-size: 0.85rem; color: #475569; margin-bottom: 16px; }
+#print-report-sheet table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+#print-report-sheet th, #print-report-sheet td {
+  border: 1px solid #CBD5E1; padding: 8px 10px; font-size: 0.85rem; text-align: left;
+}
+#print-report-sheet th { background: #EFF6FF; font-weight: 700; }
+
+/* ─── 完成頁獎勵點數 ─────────────────────────────── */
+.complete-reward {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--orange);
+  margin: 0;
+}
+.complete-reward:empty { display: none; }
+
+/* ─── 完成頁推薦遊戲 ─────────────────────────────── */
+.complete-recommend {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  background: var(--blue-lt);
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+.complete-recommend-title {
+  font-weight: 700;
+  color: var(--blue);
+  margin-bottom: 8px;
+}
+.recommend-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recommend-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--white);
+  border: 2px solid var(--blue);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.recommend-card:hover { background: var(--blue); color: #fff; }
+
+/* ─── 情境簡易版切換 ─────────────────────────────── */
+.sit-mode-row {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0 2px;
+}
+/* 關鍵字比對開關（情境頁）*/
+.sit-kw-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+}
+.sit-kw-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sit-kw-label { font-weight: 700; font-size: 0.9rem; }
+.sit-kw-desc { font-size: 0.75rem; color: var(--gray-600); line-height: 1.4; }
+.sit-mode-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 2px solid var(--gray-200);
+  background: var(--white);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--gray-600);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.sit-mode-btn.active {
+  border-color: var(--scene-color, var(--blue));
+  background: var(--scene-lt, var(--blue-lt));
+  color: var(--scene-ink, var(--scene-color, var(--blue)));
+}
+/* ─── 情境設定頁（2026-09-27，原難度頁；比照 24 單元設定頁）───────────
+   全部走變數（--white／--gray-*／--scene-*），深淺色自動跟著換，不另寫深色規則。 */
+.setup-group {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow);
+}
+.setup-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 10px;
+}
+.setup-group .sit-mode-row { margin: 0; padding: 0; }
+/* 難度框內的子項（輔助點擊，只在「簡單」時出現）：虛線隔開，標題比主標題小一階 */
+.setup-sub { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--gray-200); }
+.setup-sub[hidden] { display: none; }
+.setup-sub-label { font-size: 0.95rem; }
+.setup-mode-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.setup-wrap { flex-wrap: wrap; }
+.setup-wrap .sit-mode-btn { flex: 1 1 30%; min-width: 96px; }
+.setup-group .sit-mode-btn { padding: 10px 4px; font-size: 0.95rem; min-height: 44px; }
+.setup-rec { font-size: 0.8em; font-weight: 700; }
+.setup-desc {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--gray-600);
+}
+.setup-desc:empty { display: none; }
+.setup-voice-list { margin-top: 10px; padding-bottom: 0; }
+.setup-start-btn {
+  padding: 14px 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--scene-color, var(--blue));
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  touch-action: manipulation;
+}
+.setup-start-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.setup-start-btn:disabled { background: var(--gray-200); color: var(--gray-600); box-shadow: none; cursor: not-allowed; }
+.setup-missing { margin: -8px 0 0; text-align: center; font-size: 0.85rem; color: var(--gray-600); }
+.setup-missing:empty { display: none; }
+.setup-start-btn:active { filter: brightness(0.92); }
+
+.sit-card-mode-badge {
+  font-size: 0.78rem;
+  background: var(--orange-lt);
+  color: var(--orange);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ─── 無障礙：Skip-to-content ───────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 12px;
+  z-index: 999999;
+  background: var(--blue);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 8px 8px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus { top: 0; }
+
+/* ─── 無障礙：對比度強化 ────────────────────────── */
+/* 確保所有互動元素有足夠 focus 指示（WCAG 2.1 AA 2.4.7）*/
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+/* 提高灰色文字可讀性（部分地方使用了 --gray-600 #475569，在白底仍達 4.5:1）*/
+.voice-role, .hist-card-meta, .hist-card-date, .recent-meta,
+.section-desc, .form-hint, .w-meta {
+  color: #374151;   /* 比 --gray-600 深一階，對比度 ≥ 5.3:1 */
+}
+/* ⚠️ 上面那條寫死的是**淺色模式**的深灰字；深色模式沒覆寫的話是深字印在深底上
+   （2026-09-14 實測情境編輯器的說明文字對比 1.42，整片看不見）。改回吃變數：深色的 --gray-600 在卡片底上 ≥ 5.7。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .voice-role, :root:not([data-theme="light"]) .hist-card-meta,
+  :root:not([data-theme="light"]) .hist-card-date, :root:not([data-theme="light"]) .recent-meta,
+  :root:not([data-theme="light"]) .section-desc, :root:not([data-theme="light"]) .form-hint,
+  :root:not([data-theme="light"]) .w-meta { color: var(--gray-600); }
+}
+[data-theme="dark"] .voice-role, [data-theme="dark"] .hist-card-meta,
+[data-theme="dark"] .hist-card-date, [data-theme="dark"] .recent-meta,
+[data-theme="dark"] .section-desc, [data-theme="dark"] .form-hint,
+[data-theme="dark"] .w-meta { color: var(--gray-600); }
+/* 確保 diff-badge 文字在各難度色彩上達標 */
+.diff-badge.easy   { background: #166534; color: #DCFCE7; }
+.diff-badge.normal { background: #92400E; color: #FEF3C7; }
+.diff-badge.hard   { background: #991B1B; color: #FEE2E2; }
+
+
+/* ─── 學生選擇（與獎勵系統共用名冊）────────────────── */
+
+/* 👤／🗣️ 圖示底色：emoji 原生色偏深藍紫，疊在紫色標題列上幾乎看不見；
+   加一個暖金色圓底墊底，與紫色形成互補、清楚不混色（呼應金隊長主題色） */
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: #FDE68A;
+  font-size: 0.85em;
+  vertical-align: -0.35em;
+}
+
+/* 金好聊卡片內：選擇學生語音頭像列 */
+.home-student-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #d9f0d5;
+}
+.home-student-label { font-size: 0.85rem; color: var(--gray-900); font-weight: 700; }
+.home-student-note { font-size: 0.75rem; color: var(--gray-600); margin: 4px 0 8px; line-height: 1.5; }
+.home-student-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-student-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-200);
+  background: var(--white);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.home-student-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+.home-student-avatar .student-avatar { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+.home-student-avatar:hover { transform: scale(1.1); }
+.home-student-avatar.selected { border-color: #FBBF24; box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.55); }
+
+.student-select-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.student-select-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 2px solid var(--gray-200);
+  border-radius: 14px;
+  padding: 14px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.student-select-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+.student-select-card.selected { border-color: var(--blue); background: var(--blue-lt); }
+.student-select-photo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.student-select-photo--emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  background: var(--gray-200);
+}
+.student-select-name { font-size: 0.95rem; font-weight: 700; text-align: center; }
+.student-modal-hint  { font-size: 0.82rem; color: #374151; text-align: center; }
+
+/* ─── 學習歷程：學生篩選與成長趨勢 ─────────────────── */
+
+.hist-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.hist-filter-select {
+  flex: 1;
+  max-width: 240px;
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-900);
+}
+
+.hist-trend {
+  margin: 12px 0;
+}
+.trend-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.trend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+}
+.trend-name { font-weight: 600; }
+.trend-seq  { white-space: nowrap; color: #374151; }
+
+/* 班級總覽表 */
+.overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+  margin-bottom: 12px;
+}
+.overview-table th, .overview-table td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--gray-200);
+}
+.overview-table th { background: var(--scene-lt); font-weight: 700; }
+.overview-table td:first-child, .overview-table th:first-child { text-align: left; }
+.overview-table tr:last-child td { border-bottom: none; }
+
+/* 關於・教學設計區塊 */
+.about-block summary { cursor: pointer; list-style: revert; }
+.about-block .about-ladder {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--gray-900);
+}
+.about-ladder b { color: var(--scene-ink, var(--scene-color)); }
+
+/* ─── 完成頁步驟摘要的重試/提示標記 ─────────────────── */
+
+.summary-extra {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: #92400E;
+  background: var(--orange-lt);
+  border-radius: 99px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+/* ─── 語音不支援提示（練習頁底部）──────────────────── */
+
+.voice-unsupported-note {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #92400E;
+  background: var(--orange-lt);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
+}
+
+/* 停用的輸入模式切換鈕 */
+.mode-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* ── 跟讀模式（無語音辨識的瀏覽器）────────────────────── */
+.echo-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--scene-lt, #F1F5F9);
+  border-radius: 12px;
+}
+.echo-label { font-size: 0.9rem; color: var(--gray-600); font-weight: 700; }
+.echo-model {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--scene-ink, var(--scene-color, #0F172A));
+  text-align: center;
+  line-height: 1.5;
+}
+.echo-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.echo-tools .btn-tool { min-height: 44px; touch-action: manipulation; }
+/* 錄音中：只換顏色與文字，不改尺寸（改幾何會讓觸控 click 落空） */
+.btn-echo-rec.recording {
+  background: var(--red-lt, #FEE2E2);
+  border-color: var(--red, #DC2626);
+  color: var(--red, #DC2626);
+  font-weight: 700;
+}
+.echo-status {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  text-align: center;
+  line-height: 1.5;
+}
+.echo-ask { font-size: 0.9rem; color: var(--gray-600); margin-top: 4px; }
+.echo-rate-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* 次要動作：不錄音直接評分（現場吵、學生不想錄音時的出口） */
+.btn-echo-skip {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: var(--gray-600);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.echo-rate { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.btn-echo-rate {
+  min-height: 44px;              /* 觸控命中區 */
+  padding: 8px 14px;
+  border: 2px solid var(--gray-300, #CBD5E1);
+  border-radius: 10px;
+  background: var(--white, #fff);
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-echo-rate:active { background: var(--gray-200, #E2E8F0); }   /* 按下只變色，不改幾何 */
+.btn-echo-rate.rate-perfect { border-color: var(--green, #16A34A); }
+.btn-echo-rate.rate-partial { border-color: var(--orange, #F59E0B); }
+@media (hover: hover) {
+  .btn-echo-rate:hover { background: var(--gray-100, #F1F5F9); }
+}
+
+/* ── 逐字朗讀（2026-09-25）────────────────────────────────
+   顏色只用 --white／--gray-900／--gray-200／--green／--green-lt／--scene-ink，深色模式由根變數自動切換，不另寫深色規則。
+   ⚠️ 「下一顆」的提示只動外框光暈，**不縮放不位移**——字塊一改幾何，手機點下去 click 會落空（主 CLAUDE.md 踩雷）。
+   搖一下（.shake）只加在「點錯的那顆」，它本來就不會觸發動作，所以可以位移。 */
+.tapread-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--scene-lt, #F1F5F9);
+  border-radius: 12px;
+}
+.tapread-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.tapread-tile {
+  min-width: 56px;
+  min-height: 56px;
+  padding: 4px 10px;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--gray-900);
+  font-family: inherit;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.tapread-tile[aria-disabled="true"]:not(.is-done) { opacity: 0.55; }
+.tapread-tile.is-next {
+  border-color: var(--scene-ink, var(--scene-color, #2563EB));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--scene-ink, var(--scene-color, #2563EB)) 30%, transparent);
+  animation: tapreadGlow 1.4s ease-in-out infinite;
+}
+.tapread-tile.is-done {
+  background: var(--green-lt);
+  border-color: var(--green);
+}
+.tapread-tile:active { background: var(--gray-200); }       /* 按下只變色，不改幾何 */
+.tapread-punct {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  padding: 0 2px;
+}
+@keyframes tapreadGlow {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--scene-ink, var(--scene-color, #2563EB)) 20%, transparent); }
+  50%      { box-shadow: 0 0 0 7px color-mix(in srgb, var(--scene-ink, var(--scene-color, #2563EB)) 40%, transparent); }
+}
+.tapread-tile.shake { animation: tapreadShake 0.35s ease-in-out; }
+@keyframes tapreadShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.tapread-tile.is-next.flash { animation: tapreadFlash 0.5s ease-in-out 2; }
+@keyframes tapreadFlash {
+  50% { background: color-mix(in srgb, var(--scene-ink, var(--scene-color, #2563EB)) 25%, var(--white)); }
+}
+.btn-tapread-done {
+  min-height: 52px;
+  padding: 10px 28px;
+  border: none;
+  border-radius: 12px;
+  background: var(--green);
+  color: #fff;                     /* 彩色底上的白字寫死 #fff（--white 在深色模式是深色表面） */
+  font-family: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn-tapread-done:active { filter: brightness(0.92); }
+@media (prefers-reduced-motion: reduce) {
+  .tapread-tile.is-next, .tapread-tile.shake, .tapread-tile.is-next.flash { animation: none; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 手機頂列修正（2026-07-17）——練習頁 app-header 在 ≤600px 溢出視窗
+   實測 390px：ah-right 三顆 40px 圓鈕(132px)＋左側「← 上一頁」＋場所名
+   擠不下，🏠 返回主頁被切出畫面（right=419 > 390）。全部只縮尺寸，
+   桌面/平板（>600px）零影響。
+   ═════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .app-header { padding: 8px 8px; gap: 4px; }
+  .ah-left, .ah-right { gap: 4px; }
+  .app-header .btn-icon { width: 36px; height: 36px; font-size: 0.95rem; }
+  .btn-back-text { padding: 6px 8px; font-size: 0.82rem; }
+  .app-header .ah-title { font-size: 0.9rem; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   📖 情境小百科（金好聊講禮儀／金博士補充金錢常識）
+   資料＝data/tips.js；計畫＝docs/開發計畫_情境小百科.md
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── 入口：練習頁的小百科鈕 ──
+   （情境卡右上角原本也有 📖，2026-09-15 改成 ✏️ 編輯鈕，見 .sit-edit-btn）
+   手機＝標題列裡的一顆 btn-icon（沿用 .app-header .btn-icon 的樣式，不必再寫） */
+#btn-tips-fab { padding: 0; overflow: hidden; }
+#btn-tips-fab img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;   /* 完整角色圖，不裁切（同 .ah-hero 的理由） */
+  pointer-events: none;
+  display: block;
+}
+/* 桌面＝右下角的圓形浮動鈕。內容區置中、兩側是留白，所以擋不到對話泡泡與選項格。
+   z-index 30＝壓過標題列(20)、讓在彈窗(100/200)之下。 */
+@media (min-width: 768px) {
+  #btn-tips-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 3px solid var(--scene-color, var(--blue));
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+    z-index: 30;
+    padding: 6px;
+  }
+  #btn-tips-fab:hover { background: var(--gray-200); }
+  /* ⚠️ 同上：按下只改底色與陰影，不縮放 */
+  #btn-tips-fab:active { background: var(--gray-200); box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
+}
+
+/* ── 卡片彈窗 ──
+   版型參照 24 單元金博士的知識卡彈窗（`css/chatbot.css` 的 #chatbot-window）：
+   **漸層色帶標頭** → **淺色描邊的知識卡氣泡** → 動作鈕。差別是這裡有兩位角色，
+   色帶上左金好聊、右金博士，色帶與氣泡的顏色跟著「現在在說話的那位」走。
+   ⚠️ 卡片自己不留內距（色帶要貼齊邊），內距改由 .tips-sheet 負責。 */
+.tips-modal-card { max-width: 460px; text-align: left; padding: 0; gap: 0; }
+
+/* 漸層色帶標頭：金好聊藍、金博士紫（同 24 單元金博士彈窗那條紫色漸層標頭的作法）。
+   ⚠️ 圓角要自己寫：.modal-card 是 overflow-y:auto，子元素不會被裁掉。 */
+.tips-header {
+  position: relative;
+  padding: 12px 56px 12px 12px;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
+}
+.tips-modal-card[data-who="doctor"] .tips-header {
+  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+}
+/* 色帶下方的內容區（原本卡片的內距搬到這裡） */
+.tips-sheet { padding: 18px 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+/* 角色欄：左右各一半，**不畫格線**——靠色帶上的底色深淺分開。
+   ⚠️ 整個半邊都是按鈕（不是只有那張圖）：特教學生點得準比較重要。
+   ⚠️ 這個情境沒有金錢知識卡時加 .solo → 左半佔滿整列。 */
+.tips-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tips-picker.solo { grid-template-columns: 1fr; }
+
+/* 下半的文字區（說話者／標題／內文）＝上方點到的那位說的話。
+   ⚠️ 分界不再靠一條 3px 線，改由色帶與白底的落差交代（同 24 單元彈窗）。 */
+.tips-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 每一半的角色鈕：角色圖＋名字，兩邊一模一樣大。
+   🔴 **色帶上必須看得出現在是誰在講**：顯示中的那位＝白色底片（像分頁被選中），
+      另一位＝半透明白底＋白字，兩邊一樣大、都明顯可點。
+      ⚠️ 不用淡化／去色／縮放來表示——調暗看不清是誰，一大一小會讓小的看起來不能點。
+      （原本兩邊完全相同、只靠 aria-pressed 與下方名字交代；換成色帶後底色差異
+        本來就存在，不如讓它直接承擔「現在是誰」這件事。）
+   ⚠️ 完整角色圖＝方框＋object-fit:contain（全站小尺寸角色的標準做法），
+      不可套 .hero-mini 的圓形 cover——直式全身圖會被裁成一顆頭。 */
+.tips-avatar {
+  border: none;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 10px 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 44px;          /* 命中區底線；實際上整個半邊都可以點 */
+  transition: background 0.15s ease;
+}
+.tips-avatar[aria-pressed="true"] {
+  background: var(--white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+/* 關閉鈕：同 24 單元彈窗標頭那顆半透明圓鈕。
+   ⚠️ 命中區 44×44，且 :active 只改底色不改幾何。 */
+.tips-x {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tips-x:hover { background: rgba(255, 255, 255, 0.4); }
+.tips-x:active { background: rgba(255, 255, 255, 0.5); }
+.tips-x:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.tips-avatar img {
+  height: 75px;   /* 同金博士百科標頭的 75px（2026-10-06 使用者定：三位角色彈窗的圖一樣大） */
+  width: auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 角色微幅上下浮動（與站台主頁 index.html 的 floatBob 同一個效果與參數）。
+   ⚠️ 動的是 <img> 不是按鈕——按鈕的命中區必須固定不動，
+      會動的可點元素在 mousedown/mouseup 之間滑走就收不到 click
+      （見主 CLAUDE.md「可點元素按下會位移」）。img 本身是 pointer-events:none。
+   ⚠️ 兩位用不同週期＋負延遲錯相，才不會整齊劃一地一起跳。
+   ⚠️ 減少動畫的偏好由檔尾的 prefers-reduced-motion 全域規則接手，這裡不必再寫一次。 */
+@keyframes tipsFloatBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+#tips-av-chatdog img { animation: tipsFloatBob 3.4s ease-in-out infinite; }
+#tips-av-doctor  img { animation: tipsFloatBob 3.6s ease-in-out infinite; animation-delay: -1.8s; }
+/* 名字：站在漸層色帶上 → 未選中是白字；選中那顆是白底，字改成該角色的色票。
+   ⚠️ 白底上不可再用白字（對比度 1.00），這兩條要一起改。 */
+.tips-av-name { font-size: 0.95rem; font-weight: 800; color: #fff; line-height: 1.2; }
+.tips-modal-card[data-who="chatdog"] .tips-avatar[aria-pressed="true"] .tips-av-name { color: #1D4ED8; }
+.tips-modal-card[data-who="doctor"]  .tips-avatar[aria-pressed="true"] .tips-av-name { color: #6D28D9; }
+.tips-avatar:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* ⚠️ 按下只改亮度，不改幾何——縮放會讓元素從指標下滑走，click 就落空了
+   （見主 CLAUDE.md「可點元素按下會位移」）。 */
+.tips-avatar:active { filter: brightness(0.88); }
+
+/* 「說話者-情境名」＋卡片標題＝這張卡的**標題區**：兩行都水平置中，
+   說話者用該卡 axis 的顏色（與上面那條分界線同一色），標題放大加粗，
+   跟左對齊的內文明顯分開。 */
+.tips-head-text {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* 間距交給 .tips-body 的 gap，標題自己不再帶 margin */
+.tips-body .tips-title { margin: 0; text-align: center; font-size: 1.25rem; letter-spacing: 0.01em; }
+/* ⚠️ 顏色一律用 :root 有定義、且深色模式有覆寫的變數（--gray-900 / --gray-600 / --gray-200）。
+   --gray-800 / --gray-700 / --gray-100 在這個專案**不存在**，寫了會掉回 fallback 的淺色系值，
+   深色模式下就變成深色字印在深色底上（實測對比度 1.00＝完全看不見）。 */
+/* 說話者那行＝**標註成一顆色塊**（淡底＋深字），不是只換字色——
+   純換字色在小字級上很難察覺（實測使用者回報「看起來沒變色」）。
+   ⚠️ **兩位各一個固定色**：金好聊藍、金博士紫，與上面那條分界線同色。
+      顏色是用來認人的，**不要再讓它跟著卡片的 axis 變**。 */
+.tips-speaker {
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--gray-900);
+  background: var(--gray-200);
+  border-radius: 99px;
+  padding: 5px 14px;
+}
+.tips-modal-card[data-who="chatdog"] .tips-speaker { background: #DBEAFE; color: #1D4ED8; }
+.tips-modal-card[data-who="doctor"]  .tips-speaker { background: #EDE9FE; color: #6D28D9; }
+/* 知識卡氣泡：同 24 單元的 .chatbot-knowledge-card（淺色漸層底＋2px 描邊，
+   左下角收成小圓角當成「這是那位角色講出來的話」）。顏色跟著說話者：金好聊藍、金博士紫。 */
+.tips-card {
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border: 2px solid #60A5FA;
+  border-radius: 18px 18px 18px 6px;
+  padding: 14px 16px 16px;
+  /* 標題與內文的間距交給這裡的 gap：`.tips-body .tips-title` 把 margin 清成 0，
+     兩者又已經不是 .tips-body 的直接子層，少了這行會黏成一團。 */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tips-modal-card[data-who="doctor"] .tips-card {
+  background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+  border-color: #A78BFA;
+}
+.tips-title {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  line-height: 1.4;
+}
+.tips-text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.9;      /* 每行一個概念，行距放寬比較好讀 */
+  color: var(--gray-900);
+  white-space: pre-line; /* 資料用 \n 斷行，每行一個概念 */
+}
+
+.tips-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+.tips-actions button { flex: 1 1 30%; white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .tips-header { padding: 10px 52px 10px 10px; }
+  .tips-sheet { padding: 14px 16px 20px; }
+  .tips-avatar { padding: 8px 6px; gap: 6px; }
+  .tips-avatar img { height: 56px; }
+  .tips-av-name { font-size: 0.9rem; }
+  .tips-card { padding: 12px 13px 14px; }
+  .tips-body .tips-title { font-size: 1.12rem; }
+  .tips-text { font-size: 0.95rem; line-height: 1.8; }
+  /* 三顆鈕在窄螢幕會擠：「知道了」自己佔一整行 */
+  .tips-actions button { flex: 1 1 45%; }
+  .tips-actions .btn-primary { flex: 1 1 100%; }
+}
+
+/* 深色模式：分界線改用亮一階的同色系，深底上才看得出來
+   （淺色模式那組深色線在 #1E293B 的卡片上幾乎看不見）。 */
+@media (prefers-color-scheme: dark) {
+  /* 深色模式：色塊換成深底亮字，否則一片深色裡浮著一塊亮色，刺眼又不搭 */
+  :root:not([data-theme="light"]) .tips-modal-card[data-who="chatdog"] .tips-speaker { background: #1E3A5F; color: #93C5FD; }
+  :root:not([data-theme="light"]) .tips-modal-card[data-who="doctor"]  .tips-speaker { background: #2E1065; color: #C4B5FD; }
+
+  /* 知識卡氣泡：淺色那組是淺藍／淺紫底＋深字，深色模式要換成深底，
+     否則 --gray-900（深色模式是亮色）會印在淺底上，對比度掉到看不見。 */
+  :root:not([data-theme="light"]) .tips-card {
+    background: linear-gradient(135deg, #12243F 0%, #16304F 100%);
+    border-color: #3B6FB5;
+  }
+  :root:not([data-theme="light"]) .tips-modal-card[data-who="doctor"] .tips-card {
+    background: linear-gradient(135deg, #1E1440 0%, #2A1857 100%);
+    border-color: #6D4FB8;
+  }
+  /* 選中那顆角色片：深色模式用深色片＋亮字（白底片在深色介面裡太刺眼），
+     但深色片在深色介面裡看起來像「凹下去、被停用」→ 再加一圈**內框光圈**當選中標記。
+     ⚠️ 用 inset box-shadow 不用 border：border 會把按鈕撐高 4px，
+        「兩邊一樣大」那條驗收就掛了（e2e 有守）。 */
+  :root:not([data-theme="light"]) .tips-avatar[aria-pressed="true"] {
+    background: rgba(15, 23, 42, 0.55);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  }
+  :root:not([data-theme="light"]) .tips-modal-card[data-who="chatdog"] .tips-avatar[aria-pressed="true"] .tips-av-name { color: #BFDBFE; }
+  :root:not([data-theme="light"]) .tips-modal-card[data-who="doctor"]  .tips-avatar[aria-pressed="true"] .tips-av-name { color: #DDD6FE; }
+}
+
+[data-theme="dark"] .tips-modal-card[data-who="chatdog"] .tips-speaker { background: #1E3A5F; color: #93C5FD; }
+[data-theme="dark"] .tips-modal-card[data-who="doctor"]  .tips-speaker { background: #2E1065; color: #C4B5FD; }
+[data-theme="dark"] .tips-card {
+  background: linear-gradient(135deg, #12243F 0%, #16304F 100%);
+  border-color: #3B6FB5;
+}
+[data-theme="dark"] .tips-modal-card[data-who="doctor"] .tips-card {
+  background: linear-gradient(135deg, #1E1440 0%, #2A1857 100%);
+  border-color: #6D4FB8;
+}
+[data-theme="dark"] .tips-avatar[aria-pressed="true"] {
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .tips-modal-card[data-who="chatdog"] .tips-avatar[aria-pressed="true"] .tips-av-name { color: #BFDBFE; }
+[data-theme="dark"] .tips-modal-card[data-who="doctor"]  .tips-avatar[aria-pressed="true"] .tips-av-name { color: #DDD6FE; }
+
+/* ✨ AI 幫我寫步驟彈窗：寬一點、提示文字不折行（2026-09-21 使用者指示） */
+.ai-gen-modal-card { max-width: min(960px, 96vw); }
+.ai-gen-modal-card .form-hint, .ai-gen-modal-card .section-label { white-space: nowrap; }
+.ai-gen-modal-card #ai-gen-gender-note, .ai-gen-modal-card #ai-gen-topic-note, .ai-gen-modal-card #ai-gen-status { white-space: pre-line; }
+@media (max-width: 700px) { .ai-gen-modal-card .form-hint { white-space: normal; } }
+
+/* ── 離線語音包說明彈窗（#audio-pack-modal，2026-09-23）──────────────
+   按 📥 先看「什麼時候需要、下載哪些、不含哪些」，確認才下載。
+   ⚠️ 顏色只用 --gray-900／600／200（本專案 :root 只定義這三個，深色模式也只覆寫這三個）。 */
+.audio-pack-card { max-width: 460px; padding-top: 30px; }
+.audio-pack-title { margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--gray-900); }
+.audio-pack-lead { margin: 0; line-height: 1.6; color: var(--gray-900); }
+.audio-pack-box {
+  border: 1px solid var(--gray-200); border-radius: 14px; padding: 12px 16px;
+  color: var(--gray-900); line-height: 1.6;
+}
+.audio-pack-box ul { margin: 2px 0 10px; padding-left: 1.3em; }
+.audio-pack-box ul:last-child { margin-bottom: 0; }
+.audio-pack-box-hd { font-weight: 700; }
+.audio-pack-status { margin: 0; min-height: 1.5em; font-weight: 700; color: var(--gray-900); text-align: center; }
+.audio-pack-status:empty { display: none; }
+
+/* 首頁：Edge 提示條（行內 style，只有 !important 蓋得掉）、金隊長／金好聊卡（配色同主站 index.html 的同一張卡）、
+   標題與標語的藍字在深藍底上只有 2.2~2.8（2026-09-24 以 web-dark-mode 的 scan-dark.js 掃出） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #edge-banner { background: #1E293B !important; color: #fcd34d !important; border-bottom-color: #334155 !important; }
+  :root:not([data-theme="light"]) #edge-banner-link { color: #fcd34d !important; }
+  :root:not([data-theme="light"]) .captain-banner { background: linear-gradient(135deg, #3a2f14, #2d2410); border-color: #92400e; }
+  :root:not([data-theme="light"]) .captain-banner .captain-name { color: #fcd34d; }
+  :root:not([data-theme="light"]) .captain-banner .captain-line { color: #fbbf24; }
+  :root:not([data-theme="light"]) .chatdog-card { background: linear-gradient(135deg, #16281a, #122016); border-color: #16803d; }
+  :root:not([data-theme="light"]) .chatdog-card .captain-name { color: #6ee7a0; }
+  :root:not([data-theme="light"]) .chatdog-card .captain-line { color: #4ade80; }
+  :root:not([data-theme="light"]) .home-header h1 { color: #93c5fd; }
+  :root:not([data-theme="light"]) .home-header .header-tagline { color: #93c5fd; }
+}
+[data-theme="dark"] #edge-banner { background: #1E293B !important; color: #fcd34d !important; border-bottom-color: #334155 !important; }
+[data-theme="dark"] #edge-banner-link { color: #fcd34d !important; }
+[data-theme="dark"] .captain-banner { background: linear-gradient(135deg, #3a2f14, #2d2410); border-color: #92400e; }
+[data-theme="dark"] .captain-banner .captain-name { color: #fcd34d; }
+[data-theme="dark"] .captain-banner .captain-line { color: #fbbf24; }
+[data-theme="dark"] .chatdog-card { background: linear-gradient(135deg, #16281a, #122016); border-color: #16803d; }
+[data-theme="dark"] .chatdog-card .captain-name { color: #6ee7a0; }
+[data-theme="dark"] .chatdog-card .captain-line { color: #4ade80; }
+[data-theme="dark"] .home-header h1 { color: #93c5fd; }
+[data-theme="dark"] .home-header .header-tagline { color: #93c5fd; }
+
+/* 回饋視窗的按鈕（上一步／再試一次／下一步）寬度一樣（2026-09-26 使用者定）。藍色跟著作答結果切換（script.js） */
+#action-row { display: flex; gap: 10px; }
+#action-row > button { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+#action-row > button[hidden] { display: none; }
+
+/* ── 輔助點擊（選擇對話專用，2026-09-30）：下一個會被按的目標亮起來，樣式比照 24 單元的 .step-hint ──
+   只改 outline／box-shadow，不動 transform（按下會位移→click 落空，見主 CLAUDE.md） */
+.assist-target {
+  outline: 4px solid #FFC107 !important;
+  outline-offset: 2px;
+  animation: assistPulse 1.5s ease-in-out infinite !important;
+}
+@keyframes assistPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,193,7,0.5); }
+  50%      { box-shadow: 0 0 25px rgba(255,193,7,0.9); }
+}
+/* 輔助點擊中：提示鈕（答案本來就亮著）與小百科浮動鈕（pointerdown 觸發，攔不到 click）收起來 */
+body.dlg-assist #btn-hint-trigger,
+body.dlg-assist #btn-tips-fab { display: none !important; }
