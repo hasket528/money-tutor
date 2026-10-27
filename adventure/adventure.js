@@ -1,0 +1,2664 @@
+'use strict';
+
+// ── 語音分工（2026-09-28 使用者定，計畫見 doc/開發計畫/開發計畫_冒險角色與語音改版.md）──────
+// 角色：只說 ADV_LINES 裡自己的固定台詞，全部 Gemini 預錄（audio/adv/char_{角色id}_{句子代號}.mp3）。
+// 旁白：**全部即時 TTS**（Edge 曉臻優先），會變的數字、商品、找零都由旁白說。
+// 金博士：結算講評仍是 Gemini Charon 預錄（ADV_AUDIO_MAP）。
+// ⚠️ 角色句子改字＝要重錄該句（檔名用句子代號，不用文字）；產生器 voicegen/gen_char_lines.py。
+// 每位角色自己的台詞（2026-09-28 使用者：不要每個人都只說「太好了」「我做好了」；
+// 用國中生會說的簡單句子，帶一點各自的個性）。句子代號：
+//   hello 自我介紹｜go 開始冒險｜l1 數完零錢｜l3 選好東西｜l4 找零答對｜l5 找到最便宜
+//   l6 安全選擇答對｜l7 存錢答對｜yay 其他答對
+// 角色說完，會變的數字／商品由旁白（即時）接著說，所以台詞裡不放數字。
+// ⚠️ 第 3 關可能是飲料攤、禮品店，l3 不可以提到「吃」。
+const ADV_LINES = {
+    // 2026-09-28 使用者定稿（第三版）：統一成「角色說自己的想法或行動」。
+    // 安全題的具體做法由題目／旁白說，角色只給答對回饋；第 5 關比的是商店（「這家最便宜」），
+    // 若改成比商品要改錄「這個最便宜」；存錢說「一次存一點」，不限定每天存。
+    xiaoming: { hello:'我是小明！我最喜歡找好吃的！', go:'出發囉！看看有什麼好吃的。',
+        l1:'好，零錢都數清楚了。', l3:'嗯，我選好了。', l4:'嗯，找回來的錢沒錯。',
+        l5:'這家最便宜，可以省一點錢。', l6:'我知道怎麼保護自己了。', l7:'一次存一點，慢慢就存到了。',
+        yay:'原來是這樣，我懂了。' },
+    xiaohao:  { hello:'我是小豪！我喜歡運動，也喜歡挑戰！', go:'出發囉！走一走也算運動。',
+        l1:'數好了，沒有漏掉。', l3:'好，我決定了！', l4:'找的錢沒錯，可以收好了。',
+        l5:'比一比，這家最便宜！', l6:'好，我知道該怎麼做了！', l7:'存錢也要有耐心，我會繼續加油！',
+        yay:'好，這題我答對了！' },
+    xiaoxuan: { hello:'我是小軒，我喜歡觀察，也喜歡找答案。', go:'出發囉！我準備好了。',
+        l1:'我確認過了，零錢數好了。', l3:'我都看過了，選好了。', l4:'我算過了，找的錢是對的。',
+        l5:'我比過價錢了，這家最便宜。', l6:'嗯，我知道怎麼做比較安全了。', l7:'我想好了，照計畫慢慢存。',
+        yay:'嗯，這次我弄懂了。' },
+    xiaoling: { hello:'我是小玲！我最喜歡逛文具店了。', go:'出發囉！不知道今天會遇到什麼呢？',
+        l1:'好，零錢都數清楚囉。', l3:'我挑好了，是我喜歡的。', l4:'嗯，店員找的錢沒錯。',
+        l5:'找到了，這家最便宜。', l6:'我知道怎麼做比較安全了。', l7:'一次存一點，就會越來越多。',
+        yay:'太好了，我答對了。' },
+    xiaoting: { hello:'我是小婷，我買東西會先想一想。', go:'出發囉！錢包也帶好了。',
+        l1:'我確認過了，零錢沒有數錯。', l3:'價錢都看過了，我選好了。', l4:'我數過了，找的錢剛剛好。',
+        l5:'我都比過了，這家最便宜。', l6:'嗯，我知道該怎麼做了。', l7:'我有存錢計畫，慢慢存就好。',
+        yay:'仔細想一想，我答對了。' },
+    xiaoen:   { hello:'我是小恩！我最喜歡挑戰和冒險！', go:'出發囉！冒險開始！',
+        l1:'數完了！沒有漏掉！', l3:'好！我選好了！', l4:'沒錯！找的錢剛剛好！',
+        l5:'找到了！這家最便宜！', l6:'好！我知道怎麼保護自己了！', l7:'好！我要繼續存下去！',
+        yay:'耶！這題我會！' },
+};
+const ADV_HELLO = Object.fromEntries(Object.entries(ADV_LINES).map(([id, l]) => [id, l.hello]));
+// 角色台詞文字 → 句子代號（speak 用它找該角色自己的預錄檔：audio/adv/char_{角色id}_{代號}.mp3）
+const ADV_CHAR_LINE_KEY = Object.fromEntries(Object.entries(ADV_LINES).map(([id, l]) =>
+    [id, Object.fromEntries(Object.entries(l).map(([k, t]) => [t, k]))]));
+// 站台主頁金博士的招呼語（index.html SPEECH.doctor，預錄 audio/chatbot/index_doctor_intro.mp3）
+const ADV_DOC_HOME_LINE = '很高興見到你，我是金博士，學習與金錢及生活有關的知識，將能讓你受用一生，開始今天的課程吧！';
+const ADV_AUDIO_MAP = {
+    // 金博士的結算講評（Gemini Charon，與站台主頁的金博士同一個聲音）。
+    // 刻意不含角色名與數字 → 整句錄得起來（同 adventure 既有的教訓：動態內容不能預錄）。
+    '太厲害了！你是真正的金錢小達人！':                       'adv_doc_genius',
+    '非常好！每一關都難不倒你，繼續保持！':                   'adv_doc_perfect',
+    '很棒喔！你答得又快又好，繼續加油！':                     'adv_doc_fast',
+    '不錯喔！你很認真完成了整趟冒險，再多練習會更好！':       'adv_doc_good',
+    '沒關係，多冒險幾次就會越來越熟練，我們下次再挑戰！':     'adv_doc_try',
+    // 開啟冒險首頁時金博士的招呼＝站台主頁金博士同一段預錄（2026-10-15 使用者定）；路徑以 ../ 開頭＝不在 audio/adv/
+    [ADV_DOC_HOME_LINE]:                                         '../audio/chatbot/index_doctor_intro',
+};
+
+// ── 語音 ──────────────────────────────────────────────────────
+const ADV_SPEECH_MAX_MS = 30000;   // 等語音唸完的上限（瀏覽器 speaking 旗標卡住時的保險）
+const AdvSpeech = (() => {
+    let _voices   = [];      // 目前可用的所有語音
+    let _fallback = null;    // 主後備語音（挑一把最好的中文；沒有專屬語音時用它）
+    let _ready    = false;
+    let _pending  = null;
+
+    // 各說話者偏好的語音（名稱關鍵字，中英皆列）。Edge 瀏覽器＋聯網時 speechSynthesis 會列出
+    // 「Microsoft XXX Online (Natural)」這批神經語音＝與對話練習學生同款，可即時合成、隨機數字照唸；
+    // 匹配得到就給角色綁「真的不同人聲」，匹配不到才退回下方 PROFILES 的音高/語速變調。
+    const VOICE_PREFS = {
+        // 旁白全部即時（2026-09-28 使用者定：Edge 曉臻優先）
+        narrator: ['HsiaoChen', '曉臻', '晓臻', 'Yating', 'HsiaoYu', '曉雨', 'Xiaoxiao', '晓晓'],
+        retry:    ['HsiaoChen', '曉臻', '晓臻', 'Yating', 'HsiaoYu', '曉雨', 'Xiaoxiao', '晓晓'],
+        // 角色平常播 Gemini 預錄；下面只在缺檔時用（挑接近的 Edge 聲音，避開旁白的曉臻）
+        xiaoming: ['YunJhe', '雲哲', '云哲', 'Yunxi', '云希'],
+        xiaohao:  ['Yunxi', '云希', 'YunJhe', '雲哲', '云哲'],
+        xiaoxuan: ['Yunxia', '云夏', 'Yunxi', '云希', 'YunJhe', '雲哲'],
+        xiaoling: ['Xiaoxiao', '晓晓', 'Xiaoyi', '晓伊', 'HsiaoYu', '曉雨'],
+        xiaoting: ['Xiaoyi', '晓伊', 'HsiaoYu', '曉雨', 'Xiaoxiao', '晓晓'],
+        xiaoen:   ['HsiaoYu', '曉雨', '晓雨', 'Xiaoyi', '晓伊'],
+    };
+    // 音高/語速：只有單一語音的裝置，靠這裡的變調保底區分角色。
+    const PROFILES = {
+        narrator: { pitch: 1.0,  rate: 0.9  },  // 旁白・題目：沉穩說故事
+        retry:    { pitch: 1.05, rate: 0.95 },  // 答錯鼓勵：溫和不責備
+        xiaoming: { pitch: 0.95, rate: 1.0  },
+        xiaohao:  { pitch: 1.0,  rate: 1.0  },
+        xiaoxuan: { pitch: 1.05, rate: 0.95 },
+        xiaoling: { pitch: 1.25, rate: 1.0  },
+        xiaoting: { pitch: 1.15, rate: 0.95 },
+        xiaoen:   { pitch: 1.1,  rate: 1.05 },
+        doctor:   { pitch: 0.9,  rate: 0.9  },  // 金博士・穩重講評（預錄是 Charon，這裡只是後備）
+    };
+
+    const _load = () => {
+        const vs = window.speechSynthesis?.getVoices() || [];
+        if (!vs.length) return;
+        _voices = vs;
+        _fallback = vs.find(v => v.name.startsWith('Microsoft Yating')) ||
+                    vs.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) ||
+                    vs.find(v => /google/i.test(v.name) && v.lang.startsWith('zh')) ||
+                    vs.find(v => v.name.startsWith('Microsoft Hanhan')) ||
+                    vs.find(v => v.name === 'Google 國語（臺灣）') ||
+                    vs.find(v => v.lang === 'zh-TW') ||
+                    vs.find(v => v.lang && v.lang.startsWith('zh')) ||
+                    null;
+        _ready = true;
+        if (_pending) { const p = _pending; _pending = null; p(); }
+    };
+    if (window.speechSynthesis) {
+        _load();
+        speechSynthesis.addEventListener('voiceschanged', _load);
+        // 手機解鎖：首次使用者手勢時用一句靜音語音喚醒 speechSynthesis，
+        // 否則之後「過場自動播」等非手勢時機的即時旁白會被行動瀏覽器 autoplay 擋掉、不發聲。
+        const _unlock = () => {
+            try { const u = new SpeechSynthesisUtterance('。'); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+            document.removeEventListener('pointerdown', _unlock, true);
+        };
+        document.addEventListener('pointerdown', _unlock, true);
+    }
+
+    // 依說話者挑專屬語音：先找偏好清單裡實際存在的語音，找不到用主後備語音。
+    const _voiceFor = (who) => {
+        const prefs = VOICE_PREFS[who];
+        if (prefs) {
+            for (const kw of prefs) {
+                const v = _voices.find(x => x.name.includes(kw));
+                if (v) return v;
+            }
+        }
+        return _fallback;
+    };
+
+    let _audio   = null;   // 目前播放中的預錄音檔（供 cancel 停止）
+    // 徹底卸載一個 <audio>：只 pause 會留下「暫停中」的媒體工作階段，
+    // Android Chrome 通知欄那張媒體卡就會一直在（要關掉分頁才消失）。
+    // ⚠️ **播完（onended）和被打斷（cancel）都要走這裡**——2026-08-19 實機回報就是
+    //    播完那條路徑漏了，卡片停在 00:06/00:06 關不掉。
+    const _release = (a) => {
+        if (!a) return;
+        a.onended = a.onerror = null;
+        try { a.pause(); a.src = ''; a.load(); } catch {}
+    };
+    let _fbTimer = null;   // 兜底計時器：部分瀏覽器 onend/onended 不穩，靠它保證流程一定往下走
+    const _clearFb = () => { if (_fbTimer) { clearTimeout(_fbTimer); _fbTimer = null; } };
+    // 兜底計時「時間到」時若語音其實還在唸，就再等一下，不可把話切掉（2026-09-28 使用者定：
+    // 語音要正常播完才進下一頁）。估算時間只是下限；上限 ADV_SPEECH_MAX_MS 防瀏覽器 speaking 旗標卡住。
+    const _speaking = () => !!(_audio && !_audio.paused && !_audio.ended) ||
+        !!(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending));
+    const _armFb = (fn, ms) => {
+        const t0 = Date.now();
+        const tick = () => {
+            if (_speaking() && Date.now() - t0 < ADV_SPEECH_MAX_MS) { _fbTimer = setTimeout(tick, 400); return; }
+            fn();
+        };
+        _clearFb();
+        _fbTimer = setTimeout(tick, ms);
+    };
+
+    // 即時 TTS（缺預錄檔時的後備＋所有含數字的句子）。
+    // 不等 voices 載入就先發聲（沒載好就用瀏覽器預設聲），並加兜底計時器確保 cb 一定被呼叫——
+    // 否則 voiceschanged 沒觸發時會整個卡住（即時語音不播、推進關卡的回呼也不觸發）。
+    // 金額讀法（2026-09-23 使用者指定：220元 唸「兩佰貳拾元」）：各關把數字直接插進字串（`${paid}元`），
+    // 瀏覽器 TTS 會自己決定怎麼唸。統一交給全站的 NumberSpeechUtils（與 A 系列單元同一套「2」的規則），
+    // 不在這裡另寫一份。只轉即時 TTS 的那一份——預錄表以「原文」當鍵，查表前不能先改字。
+    // 「X減Y」算式裡的被減數/減數也是金額，一併轉成同一種讀法，免得同一句前後唸法不同。
+    const _speechText = (text) => {
+        if (typeof NumberSpeechUtils === 'undefined' || !text) return text;
+        return String(text)
+            .replace(/(\d+)\s*元/g, (m, d) => NumberSpeechUtils.convertToTraditionalCurrency(+d))
+            .replace(/(\d+)(?=\s*[減加])/g, (m, d) => NumberSpeechUtils.convertToChineseNumber(+d))
+            .replace(/([減加])\s*(\d+)(?!\d)(?![元\d])/g, (m, op, d) => op + NumberSpeechUtils.convertToChineseNumber(+d));
+    };
+
+    const _tts = (text, cb, who) => {
+        const prof = PROFILES[who] || PROFILES.narrator;
+        let done = false;
+        const fire = () => { if (done) return; done = true; _clearFb(); if (cb) cb(); };
+        // 優先挑中文語音；挑不到就「不指定語音、只設 lang=zh-TW」讓系統自己選中文。
+        // 一律發聲（不靜音，否則手機語音清單還沒載入完時會整個不唸）；但絕不主動指定非中文語音，
+        // 避免用英文腔把中文唸成「不知名語言」——那才是真正成因。
+        let v = _voiceFor(who);
+        const zh = x => x && x.lang && x.lang.toLowerCase().startsWith('zh');
+        if (!zh(v)) v = _voices.find(zh) || null;
+        try {
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(_speechText(text));
+            u.lang  = 'zh-TW';
+            u.rate  = prof.rate;
+            u.pitch = prof.pitch;
+            if (v) u.voice = v;   // 只有確定是中文語音才指定；否則靠 lang 讓系統挑中文
+            u.onend = fire;
+            u.onerror = fire;
+            speechSynthesis.speak(u);
+        } catch (e) { /* 發聲失敗也要推進 */ }
+        _armFb(fire, 1200 + (text ? String(text).length * 180 : 0));
+    };
+
+    return {
+        // who：'narrator'（預設，旁白/題目，一律即時）｜'retry'（答錯鼓勵）｜'doctor'｜角色 id（xiaoming…）。
+        // onBlocked：預錄語音被瀏覽器的自動播放政策擋掉時呼叫（頁面尚無使用者手勢，
+        //   例如從 ATM 頁面自動跳回的當下）。傳了就交由呼叫端處理（例如把按鈕暫時改成
+        //   「🔊 聽故事」），不退回即時 TTS 的機械音；沒傳則維持原本退 TTS 的行為。
+        speak(text, cb, who, onBlocked) {
+            if (!window.speechSynthesis) { cb?.(); return; }
+            // 一律先停掉正在播的（預錄 mp3 ＋ 即時 TTS）再開口：舊版只在命中預錄時才 cancel，
+            // 走即時 TTS 那條只 speechSynthesis.cancel()、停不掉 mp3 → 兩個聲音會疊著唸。
+            this.cancel();
+            who = who || 'narrator';
+            // 預錄：角色的固定短句（每位角色各一套）＋金博士講評；旁白一律即時
+            const lineKey = ADV_CHAR_LINE_KEY[who]?.[text];
+            const key = lineKey ? `char_${who}_${lineKey}` : ADV_AUDIO_MAP[text];
+            if (key) {   // 有預錄 mp3 → 優先播；缺檔/失敗/沒觸發事件都退回即時 TTS 或推進
+                const a = new Audio((key.startsWith('../') ? '' : 'audio/adv/') + key + '.mp3');
+                _audio = a;
+                let done = false;
+                const finish = (needTts) => {
+                    if (done) return; done = true;
+                    _clearFb();
+                    if (_audio === a) _audio = null;
+                    _release(a);   // 播完也要卸載，否則通知欄的媒體卡留著
+                    if (needTts) _tts(text, cb, who);   // 缺檔/播放失敗 → 即時補念並推進
+                    else if (cb) cb();
+                };
+                a.onended = () => finish(false);
+                a.onerror = () => finish(true);
+                // play() 的 Promise 無法像 onended/onerror 那樣被 cancel() 解除；若在 mp3 還沒
+                // 播起來時被 cancel（pause），它會以 AbortError reject，若直接 finish(true) 就會
+                // 用即時 TTS 把同一句「復活」重念——正是「按了繼續，上一張卡片的語音還在唸」。
+                // cancel() 會把 _audio 設為 null，故以 _audio === a 判斷「這次播放是否仍有效」。
+                a.play().catch(err => {
+                    if (_audio !== a) return;                       // 已被 cancel／已被新語音取代
+                    if (onBlocked && err && err.name === 'NotAllowedError') {
+                        done = true; _clearFb(); _audio = null;     // 自動播放被擋 → 別退機械音，交給呼叫端
+                        onBlocked();
+                        return;
+                    }
+                    finish(true);
+                });
+                _armFb(() => finish(false), 8000);   // 兜底：事件都沒來也推進（還在播就等播完）
+                return;
+            }
+            _tts(text, cb, who);
+        },
+        busy() { return _speaking(); },
+        cancel() {
+            _clearFb();
+            // pause 之外還要卸載媒體資源（src=''+load）：只 pause 會留下「暫停中」的
+            // 媒體工作階段，Android Chrome 通知欄的媒體控制卡會一直殘留到分頁關閉。
+            if (_audio) { _release(_audio); _audio = null; }
+            window.speechSynthesis?.cancel();
+            _pending = null;
+        }
+    };
+})();
+
+// ── Android 媒體控制卡殘留修復（2026-07-23）────────────────────
+// 症狀：離開冒險後，手機通知欄仍顯示「一日金錢冒險」的媒體播放卡（頁面進返回快取、
+// 音訊停在暫停狀態所致）。離頁/切背景時徹底停音並清掉媒體工作階段。
+(() => {
+    const release = () => {
+        AdvSpeech.cancel();
+        try {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.playbackState = 'none';
+            }
+        } catch (_) {}
+    };
+    window.addEventListener('pagehide', release);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+})();
+
+// 角色化過場短語：讓六位主角在同一段故事裡有不同反應（純文字，不影響任何數值/計分；旁白即時念）
+const ADV_QUIRK = {
+    start:   { xiaoming:'腦中已經開始盤算要吃什麼，', xiaohao:'把錢收進運動背包的小口袋，', xiaoxuan:'先把錢分類排好，',
+               xiaoling:'開心地把錢收進最喜歡的錢包，', xiaoting:'把錢仔細數了一遍才收好，', xiaoen:'一拿到錢就迫不及待想出門，' },
+    shop:    { xiaoming:'滿腦子都是最想吃的那一排，', xiaohao:'想買一瓶飲料補充水分，', xiaoxuan:'打算先看清楚每樣東西的標示，',
+               xiaoling:'順便看看有沒有可愛的文具，', xiaoting:'提醒自己要看清楚每樣的價格，', xiaoen:'期待著裡面有新奇的零食，' },
+    compare: { xiaoming:'想著省下的錢可以多買點吃的，', xiaohao:'把比價當成一場比賽，', xiaoxuan:'拿出筆記把四家的價格記下來，',
+               xiaoling:'細心地一家一家看過去，', xiaoting:'最愛比價，馬上認真算了起來，', xiaoen:'覺得找便宜的很像尋寶，' },
+    save:    { xiaoming:'心裡盤算了一下價格', xiaohao:'想像自己用它運動的樣子', xiaoxuan:'先查了查它的規格和價格',
+               xiaoling:'還在筆記本上把它畫了下來', xiaoting:'認真想了想要花多少錢', xiaoen:'越看越喜歡它' },
+};
+
+// ── 計時器 ────────────────────────────────────────────────────
+const AdvTimer = {
+    _ids: [],
+    set(fn, ms) { const id = setTimeout(fn, ms); this._ids.push(id); return id; },
+    clearAll() { this._ids.forEach(clearTimeout); this._ids = []; }
+};
+
+// ── 主遊戲 ────────────────────────────────────────────────────
+const Adventure = {
+
+    // ── 角色 ───────────────────────────────────────────────────
+    CHARACTERS: [
+        // 2026-09-28：與生活情境對話的學生一致（小明／小玲／小婷／小恩），另加小豪、小軒，3 男 3 女
+        { id:'xiaoming', emoji:'👦', img:'images/adv-xiaoming.png', name:'小明', desc:'最愛吃美食的斯文男生', budgetRange:[200,250],     quirk:'眼睛直接飄向最想吃的那排' },
+        { id:'xiaohao',  emoji:'👦', img:'images/adv-xiaohao.png',  name:'小豪', desc:'愛運動的陽光男生',     budgetRange:[150,200],     quirk:'先找找有沒有運動後喝的飲料' },
+        { id:'xiaoxuan', emoji:'👦', img:'images/adv-xiaoxuan.png', name:'小軒', desc:'喜歡研究的好奇男生',   budgetRange:[100,150],     quirk:'先把包裝上的標示看清楚' },
+        { id:'xiaoling', emoji:'👧', img:'images/adv-xiaoling.png', name:'小玲', desc:'愛逛文具店的溫柔女生', budgetRange:[150,200],     quirk:'邊逛邊看有沒有喜歡的文具' },
+        { id:'xiaoting', emoji:'👧', img:'images/adv-xiaoting.png', name:'小婷', desc:'節儉又細心的女生',     budgetRange:[80,100],      quirk:'仔細比了每樣的價格再決定' },
+        { id:'xiaoen',   emoji:'🧒', img:'images/adv-xiaoen.png',   name:'小恩', desc:'喜歡冒險的爽朗女生',   budgetRange:[100,150,200], quirk:'一看到新東西就躍躍欲試' },
+    ],
+
+    // 角色頭像 HTML：有圖片就顯示圖片（載入失敗自動退回 Emoji），沒設 img 則直接用 Emoji
+    _charFace(c) {
+        if (!c) return '';
+        return c.img
+            ? `<img src="${c.img}" class="adv-avatar-img" alt="${c.name}" onerror="this.outerHTML='${c.emoji}'">`
+            : c.emoji;
+    },
+
+    // ── 各地點主色（依關卡切換，讓「一路走過六個地點」有換場景的視覺感）──
+    // m=主accent d=深色標題 b=邊框 g1/g2=背景漸層。第 1 關＝預設暖黃（同 :root）。
+    LOC_THEME: {
+        1: { m:'#d97706', d:'#92400e', b:'#fbbf24', g1:'#fef3c7', g2:'#fcd34d' }, // 🌅 早晨・暖黃
+        2: { m:'#0284c7', d:'#075985', b:'#38bdf8', g1:'#e0f2fe', g2:'#7dd3fc' }, // 🏧 ATM・科技藍
+        3: { m:'#0d9488', d:'#0f766e', b:'#5eead4', g1:'#ccfbf1', g2:'#99f6e4' }, // 🍱 超商・清新青
+        4: { m:'#7c3aed', d:'#5b21b6', b:'#a78bfa', g1:'#ede9fe', g2:'#ddd6fe' }, // 💸 找零・紫
+        5: { m:'#ea580c', d:'#9a3412', b:'#fb923c', g1:'#ffedd5', g2:'#fed7aa' }, // 🏷️ 比價・橘
+        6: { m:'#4f46e5', d:'#3730a3', b:'#a5b4fc', g1:'#e0e7ff', g2:'#c7d2fe' }, // 🛡️ 安全・靛藍
+        7: { m:'#db2777', d:'#9d174d', b:'#f472b6', g1:'#fce7f3', g2:'#fbcfe8' }, // 🐷 存錢・粉
+    },
+    _applyTheme(levelId) {
+        const t = this.LOC_THEME[levelId] || this.LOC_THEME[1];
+        const r = document.documentElement.style;
+        r.setProperty('--loc-main',   t.m);
+        r.setProperty('--loc-deep',   t.d);
+        r.setProperty('--loc-border', t.b);
+        r.setProperty('--loc-bg1',    t.g1);
+        r.setProperty('--loc-bg2',    t.g2);
+    },
+
+    // ── 情境音效（沉浸換場＋各地點特色音；缺檔/被瀏覽器擋則靜默，不影響流程）──
+    _sfx(id) {
+        const el = document.getElementById(id);
+        if (el) { try { el.currentTime = 0; el.play().catch(() => {}); } catch {} }
+    },
+
+    // 答對：先播角色歡呼（預錄好音質、各角色聲），接著念數字報讀（即時，因含隨機數字）
+    _cheer(char, lineKey, tail, cb) {
+        const id = (char || this.CHARACTERS[0]).id;
+        const lines = ADV_LINES[id] || {};
+        const line = lines[lineKey] || lines.yay;
+        AdvSpeech.speak(line, tail ? () => AdvSpeech.speak(tail, cb, 'narrator') : cb, id);
+    },
+
+    // ── 卡死修正（2026-07-25）────────────────────────────────────
+    // 症狀：測驗中畫面莫名卡住、無法繼續。根因：每關「推進下一關／答錯後重置輸入」原本
+    // 只寫在語音的 onend 回呼裡，學生若在回饋語還在唸時按了 🔊 重聽（或其他會發聲的鈕），
+    // AdvSpeech.cancel() 會把還沒觸發的回呼直接丟掉 → 按鈕停在鎖定狀態、關卡永遠不推進＝卡死。
+    // 修法：語音照播，但「推進動作」改由「獨立計時器」保證執行——AdvSpeech.cancel() 不會動到
+    // AdvTimer，故就算語音被打斷，安全網計時器仍會把流程往下帶。兩路以 fired 旗標去重：
+    // 正常時語音唸完後 gap 毫秒推進；被打斷時安全網（估算語音長度）保底推進。
+    _sayThen(speech, who, action, gap) {
+        let fired = false;
+        const go = () => { if (fired) return; fired = true; action(); };
+        const g = (gap == null) ? 500 : gap;
+        AdvSpeech.speak(speech, () => AdvTimer.set(go, g), who);        // 正常：語音結束後推進
+        this._safetyNet(go, 1400 + (speech ? String(speech).length * 180 : 0) + g); // 安全網：被中斷也推進
+    },
+    // 同 _sayThen，但答對＝角色固定短句（預錄）＋旁白報讀會變的內容（即時）。
+    _cheerThen(char, lineKey, tail, action, gap) {
+        let fired = false;
+        const go = () => { if (fired) return; fired = true; action(); };
+        const g = (gap == null) ? 500 : gap;
+        this._cheer(char, lineKey, tail, () => AdvTimer.set(go, g));
+        this._safetyNet(go, 3200 + (tail ? String(tail).length * 180 : 0) + g);  // 安全網（含歡呼時長）
+    },
+    // 安全網只負責「語音被打斷、回呼被丟掉」的情況：時間到時語音若還在唸，就繼續等它唸完，
+    // 不可以提前換頁把話切掉（2026-09-28 使用者定）。上限 ADV_SPEECH_MAX_MS 防卡死。
+    _safetyNet(go, ms) {
+        const t0 = Date.now();
+        const tick = () => {
+            if (AdvSpeech.busy() && Date.now() - t0 < ADV_SPEECH_MAX_MS) { AdvTimer.set(tick, 400); return; }
+            go();
+        };
+        AdvTimer.set(tick, ms);
+    },
+
+    // ── 目前學生（決定學習歷程記給誰；與 reward / dialogue / 金隊長基地共用 sp_currentStudent）──
+    _loadRoster()  { try { return JSON.parse(localStorage.getItem('rewardSystemStudents') || '[]'); } catch { return []; } },
+    _getCurStudent() { try { return JSON.parse(localStorage.getItem('sp_currentStudent') || 'null'); } catch { return null; } },
+    _setCurStudent(stu) {
+        if (stu) localStorage.setItem('sp_currentStudent', JSON.stringify({ id: stu.id, name: stu.name }));
+        else localStorage.removeItem('sp_currentStudent');
+        this._renderStudentBar();
+    },
+    _renderStudentBar() {
+        const bar = document.getElementById('adv-student-bar');
+        if (!bar) return;
+        const cur = this._getCurStudent();
+        bar.classList.toggle('guest', !cur);
+        bar.innerHTML = cur
+            ? `📋 選擇練習的學生：<span style="color:var(--loc-main)">${cur.name}</span> <button class="adv-stu-change" id="adv-stu-change">更換</button>`
+            : `⚠️ 未選學生（記為訪客，老師看不到）<button class="adv-stu-change" id="adv-stu-change">選擇</button>`;
+        bar.onclick = () => this._openStudentPicker();
+        // 🏁 這位學生在一日金錢冒險的 IEP 目標（js/iep-reminder.js，與 24 單元設定頁同一支）
+        if (window.IepReminder) {
+            let note = document.getElementById('adv-iep-note');
+            if (!note) { note = document.createElement('div'); note.id = 'adv-iep-note'; bar.insertAdjacentElement('afterend', note); }
+            window.IepReminder.render(note, 'adventure');
+        }
+    },
+    _openStudentPicker() {
+        const modal = document.getElementById('adv-stu-modal');
+        const list  = document.getElementById('adv-stu-list');
+        if (!modal || !list) return;
+        const roster = this._loadRoster();
+        const cur    = this._getCurStudent();
+        if (!roster.length) {
+            list.innerHTML = `<p style="color:var(--adv-sub-text,#78350f);font-size:0.92rem;text-align:center;line-height:1.7">尚未建立學生名冊——<br>請先到主頁，找金婆婆新增學生，<br>或先以訪客身分練習。</p>`;
+        } else {
+            list.innerHTML = roster.map(s => `
+              <button class="adv-stu-item ${cur && String(cur.id)===String(s.id) ? 'current' : ''}" data-id="${s.id}">
+                <span class="adv-stu-avatar">${s.photo ? `<img src="${s.photo}" alt="">` : '🧑'}</span>
+                <span>${s.name}</span>
+              </button>`).join('')
+              + `<button class="adv-stu-item" data-id="__guest__"><span class="adv-stu-avatar">👤</span><span style="color:var(--adv-sub-text,#78350f)">訪客（不記錄）</span></button>`;
+            list.querySelectorAll('.adv-stu-item').forEach(el => el.addEventListener('click', () => {
+                const id = el.dataset.id;
+                if (id === '__guest__') this._setCurStudent(null);
+                else { const s = roster.find(x => String(x.id) === String(id)); if (s) this._setCurStudent(s); }
+                modal.hidden = true;
+            }));
+        }
+        modal.hidden = false;
+    },
+
+    // ── 關卡（scene 為接受角色名的函數）────────────────────────
+    LEVELS: [
+        { id:1, title:'數一數零用錢',   skill:'C2', icon:'💰', mapLabel:'數錢',
+          scene: n => `媽媽出門前，給了${n}一些零錢。` },
+        { id:2, title:'去 ATM 領錢',    skill:'A5', icon:'🏧', isAtm:true, mapLabel:'ATM',
+          scene: n => `${n}零錢不太夠用，決定去附近的 ATM 領錢。` },
+        { id:3, title:'出門買東西',      skill:'C5', icon:'🍱', mapLabel:'選購',
+          scene: n => `${n}出門去買想要的東西。` },
+        { id:4, title:'結帳找零錢',     skill:'C6', icon:'💸', mapLabel:'找零',
+          scene: n => `${n}拿出鈔票去付帳。` },
+        { id:5, title:'路邊比一比',     skill:'B4', icon:'🏷️', mapLabel:'比價',
+          scene: n => `${n}走在路上，看到四家店賣同樣的東西！` },
+        { id:6, title:'回家路上要小心', skill:'安全', icon:'🛡️', mapLabel:'安全',
+          scene: n => `${n}走在回家的路上，遇到了一些狀況⋯` },
+        { id:7, title:'存錢買物品',     skill:'B3', icon:'🐷', mapLabel:'存錢',
+          scene: n => `${n}看上了一個物品，決定每天存錢！` },
+    ],
+
+    // 首頁金博士的開場白（同時是 🔊 鈕唸的內容；改字要一起看預錄語音是否需重生）
+    DOC_INTRO: '今天要出門走七個地方：數零用錢、去 ATM 領錢、買東西、結帳找零、路邊比價、回家路上小心陌生人，最後把剩下的錢存起來。',
+
+    // ── 過場文字（text 接受 char 與 storyLog）─────────────────
+    TRANSITIONS: {
+        1: { icon:'🌅', text: (c)       => `今天是週六早上，媽媽出門前給了${c.name}一些零用錢，說可以自己去外面逛逛！${c.name}${ADV_QUIRK.start[c.id] || ''}先來數數看有多少錢吧！` },
+        2: { icon:'💰', text: (c, log)  => `${c.name}把零用錢數好了！想去外面玩，${c.name}覺得這些錢好像還不太夠用，決定去附近的 ATM 再領一些錢！` },
+        3: { icon:'✅', text: (c)       => Adventure._t3Text(c, Adventure._mealPick || Adventure.MEAL_TYPES[0]) },
+        4: { icon:'🛒', text: (c, log)  => `${c.name}挑好了想買的東西！走到櫃檯結帳，付了錢之後，來看看能找回多少零錢⋯` },
+        5: { icon:'💸', text: (c, log)  => `找回零錢了，${c.name}把錢收好繼續往前走。突然看到路邊四家店都在賣同一樣東西，價格卻不一樣！${c.name}${ADV_QUIRK.compare[c.id] || ''}準備找出最便宜的一家。` },
+        6: { icon:'🏷️', text: (c, log) => `找到最便宜的那一家了！${c.name}把「多比較不吃虧」這個祕訣記在心裡，收好錢往家的方向走。傍晚的路上，卻遇到幾個要小心的狀況⋯` },
+        7: { icon:'🛡️', text: (c)      => `${c.name}遇到狀況都做出聰明又安全的選擇，平安回到家！休息時看到了一樣超想買的東西，${c.name}${ADV_QUIRK.save[c.id] || ''}，決定開始存錢⋯` },
+    },
+
+    // ── 選購關（L3）場景池：venue＝店家、t3＝過場敘事（含角色名→預錄，改字要重生語音）──
+    // 每次冒險隨機抽一種場景（_renderLevel 於進 L3 前抽定，過場與關卡共用）。
+    // 夜市因故事時間線（中午前後）不合理，以「小吃攤」承載同樣的攤販情境。
+    MEAL_TYPES: [
+        {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
+            label:'早餐', scene: n => `${n}肚子餓了，走進便利商店買早餐。`,
+            // 便利商店改用符合超商風格的品項（超商即食品＋指定圖）。新增品項圖待補，暫以 emoji 後備。2026-07-25
+            items:[
+                { name:'三角飯糰', price:25, img:'images/items/adv-rice-ball.png',    icon:'🍙' },
+                { name:'茶葉蛋',   price:15, img:'images/items/adv-tea-egg.png',      icon:'🥚' },
+                { name:'三明治',   price:35, img:'../images/c6/icon-c6-club-sandwich.png',   icon:'🥪' },
+                { name:'地瓜',     price:30, img:'images/items/adv-sweet-potato.png', icon:'🍠' },
+                { name:'優酪乳',   price:30, img:'../images/b6/icon-b6-custard-yogurt.png',  icon:'🥛' },
+                { name:'香蕉',     price:15, img:'../images/c6/icon-c6-banana.png',          icon:'🍌' },
+                { name:'飲料',     price:25, img:'../images/c6/icon-c6-drink.png',           icon:'🥤' },
+                { name:'餅乾',     price:20, img:'../images/c6/icon-c6-cookie.png',          icon:'🍪' },
+            ]
+        },
+        {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
+            label:'午餐', scene: n => `到了中午，${n}走進便利商店挑午餐。`,
+            items:[
+                { name:'微波便當',     price:65, img:'images/items/adv-microwave-bento.png', icon:'🍱' },
+                { name:'微波義大利麵', price:55, img:'images/items/adv-microwave-pasta.png', icon:'🍝' },
+                { name:'三角飯糰',     price:25, img:'images/items/adv-rice-ball.png',        icon:'🍙' },
+                { name:'茶葉蛋',       price:15, img:'images/items/adv-tea-egg.png',          icon:'🥚' },
+                { name:'洋芋片',       price:35, img:'../images/a4/icon-a4-potato-chips-shop.png',   icon:'🥔' },
+                { name:'優酪乳',       price:30, img:'../images/b6/icon-b6-custard-yogurt.png',      icon:'🥛' },
+                { name:'飲料',         price:25, img:'../images/c6/icon-c6-drink.png',               icon:'🥤' },
+                { name:'巧克力',       price:40, img:'../images/a4/icon-a4-chocolate-shop.png',      icon:'🍫' },
+            ]
+        },
+        {
+            venue:'便利商店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，看到了一間便利商店，想去買點東西吃，${ADV_QUIRK.shop[c.id] || ''}於是走進了便利商店裡⋯`,
+            label:'晚餐', scene: n => `傍晚了，${n}走進便利商店選晚餐。`,
+            items:[
+                { name:'微波便當',     price:70, img:'images/items/adv-microwave-bento.png',    icon:'🍱' },
+                { name:'微波義大利麵', price:55, img:'images/items/adv-microwave-pasta.png',    icon:'🍝' },
+                { name:'地瓜',         price:30, img:'images/items/adv-sweet-potato.png',       icon:'🍠' },
+                { name:'茶葉蛋',       price:15, img:'images/items/adv-tea-egg.png',            icon:'🥚' },
+                { name:'洋芋片',       price:35, img:'../images/a4/icon-a4-potato-chips-shop.png',     icon:'🥔' },
+                { name:'巧克力聖代',   price:30, img:'../images/a4/icon-a4-chocolate-sundae-shop.png', icon:'🍨' },
+                { name:'巧克力',       price:40, img:'../images/a4/icon-a4-chocolate-shop.png',        icon:'🍫' },
+                { name:'優酪乳',       price:30, img:'../images/b6/icon-b6-custard-yogurt.png',        icon:'🥛' },
+            ]
+        },
+        {
+            venue:'小吃攤',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，路邊剛好有一排香噴噴的小吃攤，於是${c.name}走了過去⋯`,
+            label:'小吃', scene: n => `${n}來到香噴噴的小吃攤，想買點小吃。`,
+            // 小吃改用 B6 小吃攤的品項（現做台式小吃，風格一致）。2026-07-25
+            items:[
+                { name:'地瓜球',   price:30, img:'../images/b6/icon-b6-sweet-potato-ball.png', icon:'🟠' },
+                { name:'蔥抓餅',   price:35, img:'../images/b6/icon-b6-scallion-pancake.png',   icon:'🥞' },
+                { name:'魚丸湯',   price:40, img:'../images/b6/icon-b6-fishball-soup.png',      icon:'🍥' },
+                { name:'胡椒餅',   price:45, img:'../images/b6/icon-b6-pork-pepper-bun.png',    icon:'🫔' },
+                { name:'章魚燒',   price:50, img:'../images/b6/icon-b6-takoyaki.png',           icon:'🐙' },
+                { name:'鹹酥雞',   price:60, img:'../images/b6/icon-b6-popcorn-chicken.png',    icon:'🍗' },
+                { name:'雞排',     price:65, img:'../images/b6/icon-b6-chicken-chop.png',       icon:'🍖' },
+                { name:'牛肉麵',   price:80, img:'../images/b6/icon-b6-beef-noodle.png',        icon:'🍲' },
+            ]
+        },
+        {
+            venue:'飲料攤',
+            t3: c => `走著走著，${c.name}覺得有點口渴，前面剛好有一攤飲料店，於是走了過去⋯`,
+            label:'飲料', scene: n => `${n}來到飲料攤，想買杯好喝的。`,
+            // 飲料改用 B6 飲料攤的外賣飲料（杯裝、圖與品項一致；原本混了非飲料的冰淇淋）。2026-07-25
+            items:[
+                { name:'珍珠奶茶', price:55, img:'../images/b6/icon-b6-bubble-tea.png',       icon:'🧋' },
+                { name:'西瓜汁',   price:50, img:'../images/b6/icon-b6-watermelon-juice.png', icon:'🍉' },
+                { name:'奶茶',     price:45, img:'../images/b6/icon-b6-milk-tea.png',         icon:'🍵' },
+                { name:'檸檬茶',   price:40, img:'../images/b6/icon-b6-lemon-tea.png',        icon:'🍋' },
+                { name:'烏龍茶',   price:35, img:'../images/b6/icon-b6-oolong-tea.png',       icon:'🥛' },
+                { name:'甘蔗汁',   price:30, img:'../images/b6/icon-b6-sugarcane-juice.png',  icon:'🌿' },
+                { name:'紅茶',     price:30, img:'../images/b6/icon-b6-iced-black-tea.png',   icon:'🍶' },
+                { name:'冬瓜茶',   price:25, img:'../images/b6/icon-b6-winter-melon-tea.png', icon:'🍵' },
+            ]
+        },
+        {
+            venue:'速食店',
+            t3: c => `走著走著，肚子咕嚕咕嚕叫了起來，聞到前面速食店飄來的香味，${c.name}忍不住走了進去⋯`,
+            label:'餐點', scene: n => `${n}走進速食店，想點些好吃的。`,
+            items:[
+                { name:'起司漢堡', price:60, img:'../images/a3/icon-a3-cheese-burger.png',        icon:'🍔' },
+                { name:'薯條',     price:45, img:'../images/a4/icon-a4-french-fries-shop.png',    icon:'🍟' },
+                { name:'雞塊',     price:55, img:'../images/a4/icon-a4-chicken-nuggets-shop.png', icon:'🍗' },
+                { name:'雞翅',     price:65, img:'../images/a3/icon-a3-chicken-wings.png',        icon:'🍗' },
+                { name:'可樂',     price:35, img:'../images/a3/icon-a3-coke-medium.png',          icon:'🥤' },
+                { name:'蘋果派',   price:25, img:'../images/a3/icon-a3-apple-pie.png',            icon:'🥧' },
+                { name:'巧克力聖代', price:30, img:'../images/a4/icon-a4-chocolate-sundae-shop.png', icon:'🍨' },
+                { name:'甜甜圈',   price:35, img:'../images/a3/icon-a3-donut.png',                icon:'🍩' },
+            ]
+        },
+        {
+            venue:'超級市場',
+            // 超級市場：改為挑零食/飲料/水果（比家用雜貨更貼近孩子帶零用錢的情境）。2026-07-25
+            t3: c => `走著走著，${c.name}看到一間超級市場，想進去挑點愛吃的零食和飲料⋯`,
+            label:'點心', scene: n => `${n}走進超級市場，挑些想吃想喝的。`,
+            items:[
+                { name:'洋芋片',     price:35, img:'../images/a4/icon-a4-potato-chips-shop.png',        icon:'🥔' },
+                { name:'家庭號餅乾', price:55, img:'../images/a4/icon-a4-family-pack-cookies-shop.png', icon:'🍪' },
+                { name:'可樂',       price:30, img:'../images/a1/icon-a07-classic-coke.png',            icon:'🥤' },
+                { name:'沙士',       price:30, img:'../images/a1/icon-a08-sarsaparilla-drink.png',      icon:'🥤' },
+                { name:'草莓',       price:45, img:'../images/b6/icon-b6-strawberry.png',               icon:'🍓' },
+                { name:'豆漿',       price:20, img:'../images/b6/icon-b6-soy-milk.png',                 icon:'🥛' },
+                { name:'香蕉',       price:15, img:'../images/b6/icon-b6-banana.png',                   icon:'🍌' },
+                { name:'布丁',       price:25, img:'../images/b6/icon-b6-pudding.png',                  icon:'🍮' },
+            ]
+        },
+        {
+            venue:'禮品店',
+            t3: c => `走著走著，${c.name}看到一間擺滿可愛小東西的禮品店，想進去挑一個紀念品⋯`,
+            label:'紀念品', scene: n => `${n}走進禮品店，想挑個紀念品。`,
+            // 紀念品改用 B6 紀念品攤的品項。2026-07-25
+            items:[
+                { name:'書籤',     price:20, img:'../images/b6/icon-b6-bookmark.png',      icon:'📖' },
+                { name:'明信片',   price:25, img:'../images/b6/icon-b6-postcard.png',      icon:'📮' },
+                { name:'髮夾',     price:30, img:'../images/b6/icon-b6-hairpin.png',       icon:'💎' },
+                { name:'冰箱磁鐵', price:35, img:'../images/b6/icon-b6-fridge-magnet.png', icon:'🧲' },
+                { name:'掛繩',     price:40, img:'../images/b6/icon-b6-lanyard.png',       icon:'🎀' },
+                { name:'鑰匙圈',   price:45, img:'../images/b6/icon-b6-keychain.png',      icon:'🔑' },
+                { name:'手環',     price:60, img:'../images/b6/icon-b6-wristband.png',     icon:'🪬' },
+                { name:'可愛布偶', price:90, img:'../images/b6/icon-b6-plush-toy.png',     icon:'🧸' },
+            ]
+        },
+        {
+            venue:'麵包店',
+            // 新增場景：麵包店，用 B6 烘焙區的品項。2026-07-25
+            t3: c => `走著走著，一陣剛出爐的麵包香飄了過來，${c.name}循著香味走進了一間麵包店⋯`,
+            label:'麵包', scene: n => `${n}走進麵包店，想挑幾樣剛出爐的麵包。`,
+            items:[
+                { name:'小餐包', price:20, img:'../images/b6/icon-b6-dinner-bun.png', icon:'🥖' },
+                { name:'馬芬',   price:25, img:'../images/b6/icon-b6-muffin.png',     icon:'🧁' },
+                { name:'麵包',   price:30, img:'../images/b6/icon-b6-bread.png',      icon:'🍞' },
+                { name:'吐司',   price:35, img:'../images/b6/icon-b6-toast.png',      icon:'🍞' },
+                { name:'貝果',   price:40, img:'../images/b6/icon-b6-bagel.png',      icon:'🥯' },
+                { name:'可頌',   price:45, img:'../images/b6/icon-b6-croissant.png',  icon:'🥐' },
+                { name:'鬆餅',   price:50, img:'../images/b6/icon-b6-waffle.png',     icon:'🧇' },
+                { name:'蛋糕',   price:60, img:'../images/b6/icon-b6-cake-slice.png', icon:'🎂' },
+            ]
+        },
+        {
+            venue:'早餐店',
+            // 新增場景：台式早餐店，用 A4 早餐店圖示。放在陣列最後→ T3 索引為 3v7、不影響既有場景。2026-07-25
+            t3: c => `走著走著，一股蛋餅和奶茶的香味飄了過來，${c.name}看到一間早餐店，決定進去吃份早餐⋯`,
+            label:'早餐', scene: n => `${n}走進早餐店，想吃份熱騰騰的早餐。`,
+            items:[
+                { name:'吐司',   price:25, img:'../images/a4/icon-a4-toast-shop.png',       icon:'🍞' },
+                { name:'豆漿',   price:20, img:'../images/a4/icon-a4-soy-milk-shop.png',    icon:'🥛' },
+                { name:'蛋餅',   price:30, img:'../images/a4/icon-a4-egg-pancake-shop.png', icon:'🥞' },
+                { name:'蘿蔔糕', price:35, img:'../images/a4/icon-a4-radish-cake-shop.png', icon:'🍘' },
+                { name:'奶茶',   price:35, img:'../images/a4/icon-a4-milk-tea-shop.png',    icon:'🥤' },
+                { name:'飯糰',   price:40, img:'../images/a4/icon-a4-rice-ball-shop.png',   icon:'🍙' },
+                { name:'果汁',   price:30, img:'../images/a4/icon-a4-juice-shop.png',       icon:'🧃' },
+                { name:'三明治', price:45, img:'../images/a4/icon-a4-sandwich-shop.png',    icon:'🥪' },
+            ]
+        },
+    ],
+
+    DATA: {
+        L1: [
+            { coins:[100,50,10,5,5,1,1],   answer:172 },
+            { coins:[50,50,10,10,5,1],      answer:126 },
+            { coins:[100,10,10,5,1,1,1],    answer:128 },
+            { coins:[50,50,50,5,5],         answer:160 },
+            { coins:[100,50,50,10,5,1],     answer:216 },
+            { coins:[50,10,10,5,5,1,1],     answer:82  },
+            { coins:[100,100,50,10,5],      answer:265 },
+            { coins:[50,50,10,5,1,1],       answer:117 },
+            { coins:[50,10,5,5,1,1],         answer:72  },
+            { coins:[100,50,10,10,5],        answer:175 },
+            { coins:[50,50,50,10,1,1],       answer:162 },
+            { coins:[100,10,5,1,1,1],        answer:118 },
+            { coins:[100,100,50,5,5],        answer:260 },
+            { coins:[50,50,10,10,1],         answer:121 },
+            { coins:[100,50,5,5,1],          answer:161 },
+            { coins:[100,100,10,10,5,1],     answer:226 },
+            { coins:[50,10,10,5,1],          answer:76  },
+            { coins:[100,50,50,10,10],       answer:220 },
+            { coins:[50,50,10,5,5,1,1],      answer:122 },
+            { coins:[100,10,5,5,1,1,1],      answer:123 },
+            { coins:[100,100,10,5,5],        answer:220 },
+            { coins:[50,50,50,50,5,1],       answer:206 },
+            { coins:[100,50,10,10,10,1],     answer:181 },
+            { coins:[50,10,10,10,5,5,1],     answer:91  },
+            { coins:[100,100,50,50,10],      answer:310 },
+            { coins:[50,50,5,5,5,1,1],       answer:117 },
+            { coins:[100,50,50,5,1,1],       answer:207 },
+            { coins:[50,10,5,1,1,1,1],       answer:69  },
+            { coins:[100,100,100,10,5],      answer:315 },
+            { coins:[50,50,10,10,10,5],      answer:135 },
+        ],
+        // 比價題：每題最便宜的一家須唯一（_gen_adv_list2 會取最低價入慶祝語音）。
+        // ⚠️ 圖片沿用 24 單元素材，改動品項＝改圖與語音，需重跑 _gen_adv_list2.js。
+        L5: [
+            { name:'鉛筆盒', img:'../images/b4/icon-b4-pencil-case.png', icon:'✏️',
+              stores:[{name:'百貨公司',price:120},{name:'文具店',price:85},{name:'生活百貨',price:65},{name:'超市',price:90}] },
+            { name:'雨傘', img:'../images/b4/icon-b4-umbrella.png', icon:'☂️',
+              stores:[{name:'便利商店',price:180},{name:'百貨公司',price:250},{name:'生活百貨',price:140},{name:'藥局',price:160}] },
+            { name:'保溫瓶', img:'../images/b4/icon-b4-thermos.png', icon:'🫙',
+              stores:[{name:'超市',price:300},{name:'百貨公司',price:450},{name:'生活百貨',price:280},{name:'文具店',price:320}] },
+            { name:'巧克力', img:'../images/c6/icon-c6-chocolate.png', icon:'🍫',
+              stores:[{name:'便利商店',price:55},{name:'超市',price:42},{name:'藥局',price:48},{name:'量販店',price:38}] },
+            { name:'水壺', img:'../images/a4/icon-a4-water-bottle-shop.png', icon:'🫗',
+              stores:[{name:'超市',price:180},{name:'百貨公司',price:260},{name:'便利商店',price:220},{name:'藥局',price:195}] },
+            { name:'色鉛筆', img:'../images/c6/icon-c6-colored-pen.png', icon:'🖍️',
+              stores:[{name:'文具店',price:85},{name:'書店',price:95},{name:'量販店',price:72},{name:'便利商店',price:110}] },
+            { name:'筆記本', img:'../images/a4/icon-a4-notebook-shop.png', icon:'📔',
+              stores:[{name:'書店',price:65},{name:'文具店',price:55},{name:'便利商店',price:72},{name:'量販店',price:48}] },
+            { name:'耳機', img:'../images/c6/icon-c6-headphones.png', icon:'🎧',
+              stores:[{name:'百貨公司',price:450},{name:'量販店',price:320},{name:'網路商店',price:280},{name:'電器行',price:390}] },
+            { name:'籃球', img:'../images/a4/icon-a4-basketball-shop.png', icon:'🏀',
+              stores:[{name:'體育用品店',price:320},{name:'百貨公司',price:420},{name:'量販店',price:260},{name:'網路商店',price:290}] },
+            { name:'字典', img:'../images/a4/icon-a4-dictionary-shop.png', icon:'📕',
+              stores:[{name:'書店',price:280},{name:'文具店',price:250},{name:'網路商店',price:220},{name:'百貨公司',price:320}] },
+            { name:'充電器', img:'../images/a4/icon-a4-charger-shop.png', icon:'🔌',
+              stores:[{name:'電器行',price:180},{name:'量販店',price:150},{name:'便利商店',price:220},{name:'網路商店',price:130}] },
+            { name:'腳踏車', img:'../images/c6/icon-c6-bicycle.png', icon:'🚲',
+              stores:[{name:'百貨公司',price:3800},{name:'自行車行',price:3200},{name:'量販店',price:2800},{name:'網路商店',price:2500}] },
+            { name:'保鮮盒', img:'images/items/adv-food-container.png', icon:'🍱',
+              stores:[{name:'生活百貨',price:120},{name:'百貨公司',price:180},{name:'量販店',price:95},{name:'超市',price:110}] },
+            { name:'原子筆', img:'../images/c6/icon-c6-ballpoint-pen.png', icon:'🖊️',
+              stores:[{name:'文具店',price:25},{name:'便利商店',price:35},{name:'書店',price:30},{name:'量販店',price:18}] },
+            { name:'牙刷', img:'../images/b4/icon-b4-toothbrush.png', icon:'🪥',
+              stores:[{name:'藥局',price:45},{name:'超市',price:38},{name:'便利商店',price:55},{name:'量販店',price:30}] },
+            { name:'礦泉水', img:'../images/b4/icon-b4-mineral-water.png', icon:'💧',
+              stores:[{name:'便利商店',price:25},{name:'超市',price:18},{name:'量販店',price:15},{name:'藥局',price:22}] },
+            { name:'洋芋片', img:'../images/b4/icon-b4-potato-chips.png', icon:'🥔',
+              stores:[{name:'便利商店',price:45},{name:'超市',price:38},{name:'量販店',price:32},{name:'福利社',price:40}] },
+            { name:'毛巾', img:'../images/b4/icon-b4-towel.png', icon:'🧻',
+              stores:[{name:'生活百貨',price:80},{name:'百貨公司',price:120},{name:'量販店',price:65},{name:'超市',price:75}] },
+            { name:'雨衣', img:'../images/b4/icon-b4-raincoat.png', icon:'🧥',
+              stores:[{name:'便利商店',price:120},{name:'五金行',price:90},{name:'百貨公司',price:150},{name:'量販店',price:75}] },
+            { name:'拖鞋', img:'../images/b4/icon-b4-slippers.png', icon:'🩴',
+              stores:[{name:'生活百貨',price:90},{name:'夜市',price:60},{name:'百貨公司',price:150},{name:'量販店',price:75}] },
+            { name:'優格', img:'../images/b4/icon-b4-yogurt.png', icon:'🥛',
+              stores:[{name:'便利商店',price:35},{name:'超市',price:28},{name:'量販店',price:22},{name:'早餐店',price:40}] },
+            { name:'蛋糕', img:'../images/c6/icon-c6-cake.png', icon:'🍰',
+              stores:[{name:'蛋糕店',price:120},{name:'便利商店',price:65},{name:'超市',price:85},{name:'量販店',price:55}] },
+            { name:'餅乾', img:'../images/c6/icon-c6-cookie.png', icon:'🍪',
+              stores:[{name:'便利商店',price:45},{name:'超市',price:35},{name:'量販店',price:28},{name:'福利社',price:38}] },
+            { name:'牛奶', img:'../images/a4/icon-a4-milk-shop.png', icon:'🥛',
+              stores:[{name:'便利商店',price:35},{name:'超市',price:28},{name:'量販店',price:25},{name:'早餐店',price:32}] },
+            { name:'漫畫', img:'../images/c6/icon-c6-comic-book.png', icon:'📚',
+              stores:[{name:'書店',price:120},{name:'網路商店',price:95},{name:'二手書店',price:70},{name:'便利商店',price:110}] },
+            { name:'鬧鐘', img:'images/items/adv-alarm-clock.png', icon:'⏰',
+              stores:[{name:'百貨公司',price:180},{name:'生活百貨',price:120},{name:'量販店',price:95},{name:'網路商店',price:110}] },
+            { name:'襪子', img:'../images/a4/icon-a4-socks-shop.png', icon:'🧦',
+              stores:[{name:'百貨公司',price:80},{name:'夜市',price:40},{name:'量販店',price:55},{name:'網路商店',price:50}] },
+            { name:'貼紙', img:'../images/c6/icon-c6-star-sticker.png', icon:'✨',
+              stores:[{name:'文具店',price:30},{name:'書店',price:35},{name:'夜市',price:20},{name:'便利商店',price:40}] },
+            { name:'橡皮擦', img:'../images/c6/icon-c6-cute-eraser.png', icon:'🧽',
+              stores:[{name:'文具店',price:15},{name:'書店',price:20},{name:'量販店',price:10},{name:'便利商店',price:25}] },
+            { name:'書桌燈', img:'images/items/adv-desk-lamp.png', icon:'💡',
+              stores:[{name:'百貨公司',price:220},{name:'生活百貨',price:150},{name:'量販店',price:120},{name:'網路商店',price:135}] },
+        ],
+        // 存錢目標物：適用國中／高職，金額貼近真實行情（教材不宜給錯的價格概念）。
+        //（2026-09-28 起旁白全部即時，改這裡不必重生語音）
+        L6: [
+            { daily:15, goal:60,  item:'橡皮擦',   img:'../images/c6/icon-c6-cute-eraser.png',      icon:'🍬', answer:4 },
+            { daily:25, goal:100, item:'鉛筆',     img:'../images/c6/icon-c6-pencil.png',           icon:'✏️', answer:4 },
+            { daily:30, goal:150, item:'漫畫書',   img:'../images/c6/icon-c6-comic-book.png',       icon:'📚', answer:5 },
+            { daily:15, goal:90,  item:'日記本',   img:'../images/c6/icon-c6-diary.png',            icon:'📔', answer:6 },
+            { daily:25, goal:75,  item:'色鉛筆',   img:'../images/c6/icon-c6-colored-pen.png',      icon:'🖍️', answer:3 },
+            { daily:30, goal:120, item:'尺',       img:'../images/c6/icon-c6-ruler.png',            icon:'📏', answer:4 },
+            { daily:20, goal:80,  item:'筆記本',   img:'../images/c6/icon-c6-notebook.png',         icon:'📓', answer:4 },
+            { daily:30, goal:90,  item:'故事書',   img:'../images/c6/icon-c6-story-book.png',       icon:'📖', answer:3 },
+            { daily:35, goal:140, item:'計算機',   img:'../images/c6/icon-c6-calculator.png',       icon:'🧮', answer:4 },
+            { daily:20, goal:100, item:'鉛筆盒',   img:'../images/b4/icon-b4-pencil-case.png',      icon:'✏️', answer:5 },
+            { daily:40, goal:160, item:'保溫瓶',   img:'../images/b4/icon-b4-thermos.png',          icon:'🫙', answer:4 },
+            { daily:30, goal:180, item:'耳機',     img:'../images/c6/icon-c6-headphones.png',       icon:'🎧', answer:6 },
+            { daily:40, goal:240, item:'籃球',     img:'../images/a4/icon-a4-basketball-shop.png',  icon:'🏀', answer:6 },
+            { daily:35, goal:210, item:'羽球拍',   img:'../images/a4/icon-a4-badminton-racket-shop.png', icon:'🏸', answer:6 },
+            { daily:30, goal:150, item:'充電器',   img:'../images/a4/icon-a4-charger-shop.png',     icon:'🔌', answer:5 },
+            { daily:40, goal:200, item:'字典',     img:'../images/a4/icon-a4-dictionary-shop.png',  icon:'📕', answer:5 },
+            { daily:40, goal:200, item:'啞鈴',     img:'../images/a4/icon-a4-dumbbell-shop.png',    icon:'🏋️', answer:5 },
+            { daily:50, goal:250, item:'籃球鞋',   img:'../images/c6/icon-c6-basketball-shoes.png', icon:'👟', answer:5 },
+            { daily:50, goal:300, item:'腳踏車',   img:'../images/c6/icon-c6-bicycle.png',          icon:'🚲', answer:6 },
+            { daily:30, goal:210, item:'漫畫全集', img:'images/items/adv-comic-set.png',     icon:'📚', answer:7 },
+            { daily:50, goal:200, item:'滑板',     img:'../images/c6/icon-c6-skateboard.png',       icon:'🛹', answer:4 },
+            { daily:25, goal:150, item:'水彩筆',   img:'../images/c6/icon-c6-marker.png',           icon:'🖌️', answer:6 },
+            { daily:40, goal:280, item:'外套',     img:'images/items/adv-jacket.png',          icon:'🧥', answer:7 },
+            { daily:35, goal:175, item:'剪刀組',   img:'../images/c6/icon-c6-scissors.png',         icon:'✂️', answer:5 },
+            { daily:20, goal:160, item:'原子筆組', img:'../images/c6/icon-c6-ballpoint-pen.png',    icon:'🖊️', answer:8 },
+            { daily:45, goal:270, item:'球鞋',     img:'../images/a4/icon-a4-sneakers-shop.png',    icon:'👟', answer:6 },
+            { daily:30, goal:240, item:'長褲',     img:'../images/c6/icon-c6-pants.png',            icon:'👖', answer:8 },
+            { daily:40, goal:280, item:'平板',     img:'images/items/adv-tablet.png',        icon:'📱', answer:7 },
+            { daily:25, goal:125, item:'襯衫',     img:'../images/c6/icon-c6-shirt.png',            icon:'👔', answer:5 },
+            { daily:40, goal:160, item:'足球',     img:'../images/c6/icon-c6-ball.png',             icon:'⚽', answer:4 },
+        ],
+        // 關卡 6：金錢安全情境（回家路上）。options 標 safe，正解＝safe:true；每題三選一，隨機出題。
+        SAFETY: [
+            { icon:'🔑', tag:'保護密碼', hint:'密碼要保密', safeSpeak:'密碼絕對不能告訴別人！',
+              scene: n => `一個陌生人靠近${n}，說「告訴我你的提款卡密碼，我幫你去領錢」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不可以，密碼不能告訴別人，快步離開', safe:true,  fb:'密碼只有自己知道' },
+                { text:'把密碼告訴他',                     safe:false, fb:'密碼給別人，錢會被領走' },
+                { text:'帶他一起去 ATM',                   safe:false, fb:'不要和陌生人去 ATM' },
+              ] },
+            { icon:'📱', tag:'不點可疑連結', hint:'中獎訊息是假的', safeSpeak:'不明的中獎訊息不要點！',
+              scene: n => `${n}的手機收到簡訊：「恭喜中獎十萬元！快點連結領獎」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不點連結，拿給爸媽或老師看', safe:true,  fb:'可疑訊息先問大人' },
+                { text:'馬上點連結、填自己的資料',   safe:false, fb:'點了會被騙個資和錢' },
+                { text:'回撥電話給那個號碼',         safe:false, fb:'不要聯絡陌生號碼' },
+              ] },
+            { icon:'👛', tag:'拾金不昧', hint:'撿到錢要送警察', safeSpeak:'撿到錢要交給警察招領！',
+              scene: n => `${n}在路邊撿到一個錢包，裡面有不少錢。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'交給警察或附近商店招領', safe:true,  fb:'拾金不昧是好品德' },
+                { text:'把錢拿走自己用',         safe:false, fb:'撿到的錢不是自己的' },
+                { text:'丟在原地不管它',         safe:false, fb:'應該幫忙送還失主' },
+              ] },
+            { icon:'📞', tag:'退費是詐騙', hint:'退費不用去 ATM', safeSpeak:'叫你去 ATM 退費的都是詐騙！',
+              scene: n => `${n}接到電話：「你的網購訂單有問題要退費，請去 ATM 照我說的按」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'掛掉電話，問家人或打官方客服電話', safe:true,  fb:'真的退費不會叫你去 ATM' },
+                { text:'照對方說的去 ATM 操作',           safe:false, fb:'這樣會把錢轉給詐騙集團' },
+                { text:'把銀行帳號和密碼告訴他',           safe:false, fb:'帳號密碼不能給別人' },
+              ] },
+            { icon:'🏧', tag:'ATM 自保', hint:'不讓陌生人靠近', safeSpeak:'在 ATM 不要讓陌生人靠近！',
+              scene: n => `${n}正要用路邊的 ATM，一個陌生人說「我來教你領錢」，想靠得很近。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'婉拒他，請他離開或找店員幫忙', safe:true,  fb:'操作 ATM 要保持距離' },
+                { text:'讓他靠過來幫忙操作',           safe:false, fb:'陌生人可能偷看或偷卡' },
+                { text:'把提款卡交給他',               safe:false, fb:'卡片不能交給別人' },
+              ] },
+            { icon:'🎮', tag:'代儲是陷阱', hint:'帳號密碼不外流', safeSpeak:'不要讓別人幫你代儲，帳號密碼不能給！',
+              scene: n => `${n}的手機彈出一則訊息，網友說：「把遊戲帳號密碼給我，我幫你代儲點數，比官方便宜一半！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不給帳密，要儲值就自己去官方買', safe:true,  fb:'代儲很多是騙帳號的' },
+                { text:'把帳號密碼給他，等他儲好',       safe:false, fb:'帳號會被偷走賣掉' },
+                { text:'先把錢轉給他',                   safe:false, fb:'錢給了對方就消失了' },
+              ] },
+            { icon:'📦', tag:'假繳費簡訊', hint:'沒買過就別付', safeSpeak:'沒買過東西卻要你繳費，是詐騙簡訊！',
+              scene: n => `${n}的手機收到簡訊：「您有一筆包裹貨款一千兩百元未付，請點連結繳費。」但${n}根本沒買東西。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不理它，沒買過東西就不用付', safe:true,  fb:'沒訂過就是詐騙簡訊' },
+                { text:'點連結去繳一千兩百元',       safe:false, fb:'點了會被騙錢和個資' },
+                { text:'回撥簡訊裡的電話問',         safe:false, fb:'不要聯絡陌生號碼' },
+              ] },
+            { icon:'💝', tag:'募款留個資', hint:'捐款不用留個資', safeSpeak:'捐款不需要留身分證字號！',
+              scene: n => `路上有人拿著愛心箱請${n}捐款，還要${n}留下身分證字號和電話。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'婉拒，捐款不需要留個人資料', safe:true,  fb:'真的募款不會要身分證字號' },
+                { text:'把身分證字號寫給他',         safe:false, fb:'個資會被拿去辦壞事' },
+                { text:'把身分證拿給他拍照',         safe:false, fb:'證件絕對不能給別人拍' },
+              ] },
+            { icon:'🧾', tag:'找錯錢要說', hint:'當場核對找零', safeSpeak:'找錯錢要有禮貌地當場說出來！',
+              scene: n => `${n}買了六十五元的東西，拿一百元給店員，店員卻只找了二十五元。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'有禮貌地說「應該找三十五元喔」', safe:true,  fb:'當場核對，客氣說出來' },
+                { text:'算了，收下就走',                 safe:false, fb:'自己的錢要顧好' },
+                { text:'大聲罵店員騙人',                 safe:false, fb:'先別生氣，好好說就好' },
+              ] },
+            { icon:'💳', tag:'不借錢買東西', hint:'想買就存錢', safeSpeak:'不要借錢買東西，想買就慢慢存！',
+              scene: n => `同學跟${n}說：「我認識人可以借你錢買新手機，每個月還一點點就好！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不借，想買就自己存錢慢慢買', safe:true,  fb:'借錢買東西會越欠越多' },
+                { text:'先借來買，之後再想辦法還',   safe:false, fb:'利息會讓你還不完' },
+                { text:'把身分證給他幫忙辦',         safe:false, fb:'證件借人會背上債務' },
+              ] },
+            { icon:'📲', tag:'解約金詐騙', hint:'官方不會叫你去ATM', safeSpeak:'叫你去ATM解除設定的都是詐騙！',
+              scene: n => `${n}接到電話：「你不小心開通了會員，每月會扣款，要到ATM解除設定才不會扣！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'掛掉，打官方客服或問家人查證', safe:true,  fb:'真的解約不會叫你去ATM' },
+                { text:'照他說的去ATM按',             safe:false, fb:'那是把錢轉出去給詐騙' },
+                { text:'先給他銀行帳號',               safe:false, fb:'帳號給了會被盜用' },
+              ] },
+            { icon:'🛒', tag:'代購先付款', hint:'不先付全額給陌生人', safeSpeak:'不認識的代購，不要先付全額！',
+              scene: n => `${n}的手機看到有人PO文說能幫忙代購限量球鞋，但要先付全額三千元，貨才會寄。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不先付，找有保障的正規賣場買', safe:true,  fb:'先付全額常收不到貨' },
+                { text:'馬上把三千元轉給他',           safe:false, fb:'錢轉了人就消失' },
+                { text:'再加錢請他快點寄',             safe:false, fb:'越加越多還是收不到' },
+              ] },
+            { icon:'🎣', tag:'免費點數陷阱', hint:'天下沒有白吃的午餐', safeSpeak:'免費送點數要你先付錢，是騙人的！',
+              scene: n => `${n}滑手機時看到廣告：「填問卷免費送遊戲點數！只要先付六十元運費。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不理它，免費卻要先付錢就是詐騙', safe:true,  fb:'先收費的免費都是假的' },
+                { text:'付運費領點數',                   safe:false, fb:'付了也拿不到點數' },
+                { text:'填問卷留下個資',                 safe:false, fb:'個資會被拿去騙人' },
+              ] },
+            { icon:'📈', tag:'穩賺是騙局', hint:'保證獲利都是假', safeSpeak:'保證穩賺的投資，一定是騙局！',
+              scene: n => `${n}的手機彈出訊息，網友說：「跟我投資虛擬貨幣，一週保證賺一倍，穩賺不賠！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不投資，保證穩賺一定是騙局',   safe:true,  fb:'穩賺不賠的都是詐騙' },
+                { text:'先投一點試試看',               safe:false, fb:'嚐到甜頭會被騙更多' },
+                { text:'把存款全部投進去',             safe:false, fb:'錢會全部拿不回來' },
+              ] },
+            { icon:'📷', tag:'亂掃QR碼', hint:'來路不明別掃', safeSpeak:'來路不明的QR碼不要掃！',
+              scene: n => `路邊貼著一張QR碼：「掃描立即領取超商禮券一百元！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不掃，來路不明的條碼有風險',   safe:true,  fb:'亂掃可能連到詐騙網站' },
+                { text:'掃了輸入自己的帳號',           safe:false, fb:'帳號會被盜' },
+                { text:'掃了照著頁面付款',             safe:false, fb:'那是騙你付錢的假頁面' },
+              ] },
+            { icon:'🏪', tag:'代收不明款', hint:'不幫陌生人收錢', safeSpeak:'不要幫陌生人代收或轉交錢！',
+              scene: n => `陌生人請${n}：「幫我用你的帳號收一筆錢，再領現金給我，給你五百元謝禮。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'拒絕，帳號幫人收錢可能變人頭', safe:true,  fb:'這很可能是詐騙洗錢' },
+                { text:'幫他收，賺五百元',             safe:false, fb:'帳號會被列警示戶' },
+                { text:'把提款卡借他用',               safe:false, fb:'卡片借人會變共犯' },
+              ] },
+            { icon:'🔒', tag:'私訊借帳號', hint:'帳號不外借', safeSpeak:'再好的朋友，帳號也不能外借！',
+              scene: n => `${n}的手機收到好友私訊：「我手機壞了，借你的遊戲帳號登入一下，急！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'先打電話確認是不是本人',       safe:true,  fb:'帳號可能被盜，要先查證' },
+                { text:'直接把帳密貼給他',             safe:false, fb:'盜帳號的最常這樣騙' },
+                { text:'順便幫他儲值',                 safe:false, fb:'錢會有去無回' },
+              ] },
+            { icon:'🎁', tag:'抽獎要運費', hint:'中獎不必先付錢', safeSpeak:'中獎還要你先付錢，就是詐騙！',
+              scene: n => `${n}的手機跳出通知：「恭喜抽中最新手機！請先付八百元運費和稅金來領取。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不理它，中獎不會要你先付錢',   safe:true,  fb:'先付費的中獎都是假的' },
+                { text:'付運費等收手機',               safe:false, fb:'付了根本收不到' },
+                { text:'提供信用卡號扣款',             safe:false, fb:'卡號會被盜刷' },
+              ] },
+            { icon:'💵', tag:'高薪先繳費', hint:'正當工作不先收費', safeSpeak:'工作要你先繳費買材料，是陷阱！',
+              scene: n => `${n}滑手機時看到打工廣告：「在家打包賺高薪！需先繳三千元購買材料包。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不做，正當工作不會要你先繳費', safe:true,  fb:'先繳費的高薪都是騙局' },
+                { text:'繳三千元領材料',               safe:false, fb:'繳了對方就消失' },
+                { text:'借錢也要先繳',                 safe:false, fb:'越陷越深' },
+              ] },
+            { icon:'🤝', tag:'二手先確認', hint:'面交驗貨再付款', safeSpeak:'網路二手交易，驗到貨再付錢！',
+              scene: n => `${n}在網路上想買二手手機，賣家說：「你先匯款，我明天就寄，不然不賣了。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'約面交，看到手機再付錢',       safe:true,  fb:'先匯款容易被騙' },
+                { text:'趕快匯款怕買不到',             safe:false, fb:'催你匯款的多半是詐騙' },
+                { text:'加錢請他保留',                 safe:false, fb:'錢加了貨還是沒有' },
+              ] },
+            { icon:'💳', tag:'點數卡詐騙', hint:'點數卡序號就是錢', safeSpeak:'叫你買點數卡把序號給他，都是詐騙！',
+              scene: n => `${n}的手機彈出訊息：「你的帳號被鎖，去超商買三千元遊戲點數卡，把序號拍給我就能解鎖。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不理它，序號給別人等於把錢送人', safe:true,  fb:'點數卡序號就是錢' },
+                { text:'去超商買點數卡把序號拍給他',     safe:false, fb:'這是最常見的詐騙手法' },
+                { text:'先買一張小額的試試看',           safe:false, fb:'一給就被騙走' },
+              ] },
+            { icon:'💬', tag:'假冒家人借錢', hint:'先打電話確認本人', safeSpeak:'收到家人急借錢的訊息，先打電話確認本人！',
+              scene: n => `${n}的手機收到「媽媽」的訊息：「我手機壞了，這是新號碼，快匯五千元幫我周轉，很急！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'先打電話跟媽媽本人確認',       safe:true,  fb:'帳號被盜常假冒家人借錢' },
+                { text:'馬上匯五千元過去',             safe:false, fb:'可能是詐騙冒充的' },
+                { text:'先匯一部分再說',               safe:false, fb:'匯了就拿不回來' },
+              ] },
+            { icon:'💸', tag:'不亂點內購', hint:'手遊課金要節制', safeSpeak:'遊戲抽卡要控制預算，不能一直課！',
+              scene: n => `${n}在回家路上玩手機遊戲，畫面跳出：「限時抽卡！再花三百元就可能抽到稀有角色！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'照先前設好的預算，抽完就停',   safe:true,  fb:'課金要設上限並說到做到' },
+                { text:'一直儲值直到抽到',             safe:false, fb:'會花掉遠超過預算的錢' },
+                { text:'用家人的信用卡狂刷',           safe:false, fb:'那是家人的錢不能亂用' },
+              ] },
+            { icon:'📃', tag:'合約先看清', hint:'簽名前看清楚', safeSpeak:'任何要簽名的東西，先看清楚再說！',
+              scene: n => `路邊推銷員請${n}：「這裡簽個名就送你耳機，免費的啦！」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不簽，先問家人這是什麼',       safe:true,  fb:'不明的簽名可能是合約' },
+                { text:'簽名領耳機',                   safe:false, fb:'可能簽下要付錢的合約' },
+                { text:'留下個資換贈品',               safe:false, fb:'個資會被拿去用' },
+              ] },
+            { icon:'🎫', tag:'黃牛票有詐', hint:'透過正規管道買', safeSpeak:'私下買票容易被騙，要走正規售票！',
+              scene: n => `${n}的手機收到訊息，網友說能便宜賣演唱會門票，但要先付款且不能面交。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不買，透過正規售票平台購買',   safe:true,  fb:'私下賣票常是假票或詐騙' },
+                { text:'先付款等他給票',               safe:false, fb:'付了拿到假票或沒票' },
+                { text:'給他訂金保留',                 safe:false, fb:'訂金也拿不回來' },
+              ] },
+            { icon:'🏧', tag:'密碼別設生日', hint:'密碼要難猜', safeSpeak:'提款卡密碼不要用生日，容易被猜到！',
+              scene: n => `${n}要設定提款卡密碼，想用自己的生日比較好記。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'設別人猜不到的數字，記在安全的地方', safe:true,  fb:'生日太容易被猜中' },
+                { text:'就用生日當密碼',                     safe:false, fb:'撿到卡的人一猜就中' },
+                { text:'把密碼寫在卡片上',                   safe:false, fb:'卡和密碼絕不能放一起' },
+              ] },
+            { icon:'📞', tag:'假網拍客服', hint:'官方不會要你重設', safeSpeak:'叫你重新設定付款的客服電話，是假的！',
+              scene: n => `${n}接到自稱網拍客服的電話：「你的訂單設定錯誤，要重新操作付款設定。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'掛掉，自己上官方APP查訂單',    safe:true,  fb:'真客服不會這樣打來' },
+                { text:'照他說的重新設定',             safe:false, fb:'那是要盜你的錢' },
+                { text:'提供銀行帳號和密碼',           safe:false, fb:'帳密給了錢就沒了' },
+              ] },
+            { icon:'🎮', tag:'遊戲交易詐騙', hint:'虛寶交易要小心', safeSpeak:'遊戲寶物交易，先收到錢再給東西！',
+              scene: n => `${n}的手機收到訊息，有人想買你的遊戲寶物，說：「你先把寶物給我，我馬上轉錢給你。」`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'先確認收到錢，再給寶物',       safe:true,  fb:'先給東西常收不到錢' },
+                { text:'先把寶物給他',                 safe:false, fb:'寶物給了對方就跑了' },
+                { text:'把帳號借他自己拿',             safe:false, fb:'帳號會被整個偷走' },
+              ] },
+            { icon:'🛡️', tag:'個資不亂填', hint:'網站個資要保護', safeSpeak:'來路不明的網站，不要填個人資料！',
+              scene: n => `${n}的手機突然彈出訊息，一個陌生網站要你填姓名、電話、地址才能「查看成績」。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'不填，關掉網站問老師',         safe:true,  fb:'不明網站要個資很可疑' },
+                { text:'全部填進去',                   safe:false, fb:'個資會被拿去詐騙' },
+                { text:'連家人資料一起填',             safe:false, fb:'害到自己也害家人' },
+              ] },
+            { icon:'💰', tag:'找的錢先點清', hint:'離開前先數找零', safeSpeak:'拿到找的錢，先當場數清楚再走！',
+              scene: n => `${n}買東西找了一些零錢，店員很忙，後面還有人在排隊。`,
+              question:'這時候應該怎麼做？',
+              options:[
+                { text:'當場快速點一下找的錢對不對',   safe:true,  fb:'離開前先確認找零' },
+                { text:'塞進口袋直接走',               safe:false, fb:'找錯了就來不及了' },
+                { text:'回家才慢慢數',                 safe:false, fb:'離開後很難再反映' },
+              ] },
+        ],
+    },
+
+    _l3Result: null,
+    _storyLog: {},
+    _mealPick: null,   // L3 這一趟抽到的選購場景（進 L3 的過場前抽定，過場敘事與關卡共用）
+    state: { level:0, score:0, mistakes:0, startTime:null, char:null, easy:false, levelMiss:{} },
+
+    // T3 過場全文＝固定前綴＋場景專屬敘事（旁白即時念；2026-09-28 起旁白不再預錄）
+    _t3Text(c, meal) {
+        return `提款成功！${c.name}口袋裡的錢變多了！${meal.t3(c)}`;
+    },
+
+    // ── init ────────────────────────────────────────────────────
+    init() {
+        const p = new URLSearchParams(location.search);
+        // 場景預覽模式：?preview=<索引或店名>，直接跳到該選購(L3)場景，供檢視各店頁面（不用一關一關玩）。
+        // 例：?preview=早餐店、?preview=9、?preview=0（第一個）；下方帶 ◀▶ 可翻看全部場景。
+        const pv = p.get('preview');
+        if (pv !== null) { this._previewScene(pv); return; }
+        // 站台主頁的「一日金錢冒險」大框會帶 ?start=1&char=<角色id> 進來：
+        // 學生在主頁已經選好角色了，這裡就直接開場，不用再看一次設定頁。
+        // 主頁金博士區塊的角色方格會帶 ?prep=1&char=<角色id> 進來（2026-09-28）：
+        // 角色已經在主頁選好了 → 準備頁只剩「選學生」與「今天的冒險」＋開始冒險。
+        if (p.get('prep') === '1') {
+            const cid = p.get('char') || localStorage.getItem('adv_selectedChar');
+            const c = this.CHARACTERS.find(x => x.id === cid) || this.CHARACTERS[0];
+            try { localStorage.setItem('adv_selectedChar', c.id); } catch (e) {}
+            this.showPrep(c);
+            return;
+        }
+        if (p.get('start') === '1') {
+            const cid = p.get('char') || localStorage.getItem('adv_selectedChar');
+            this.state.char = this.CHARACTERS.find(c => c.id === cid) || this.CHARACTERS[0];
+            history.replaceState(null, '', location.pathname);
+            this._startGame();
+            return;
+        }
+        const resume = parseInt(p.get('resume') || '0');
+        if (resume > 0) {
+            const saved = JSON.parse(sessionStorage.getItem('adv_state') || 'null');
+            if (saved) {
+                Object.assign(this.state, saved);
+                if (saved.charId) {
+                    this.state.char = this.CHARACTERS.find(c => c.id === saved.charId) || this.CHARACTERS[0];
+                }
+                if (saved.storyLog) this._storyLog = saved.storyLog;
+                if (saved.atmTarget) this._storyLog.l2Amount = saved.atmTarget;
+            }
+            this.state.char = this.state.char || this.CHARACTERS[0];
+            this.state.score++;
+            this.state.level = resume;
+            sessionStorage.removeItem('adv_state');
+            history.replaceState(null, '', location.pathname);
+            this._renderLevel();
+        } else {
+            this.showSettings();
+            this._greetOnOpen();
+        }
+    },
+
+    // 開啟冒險首頁＝播主頁金博士的招呼語（同一段預錄，2026-10-15 使用者定）。
+    // 從主頁點進來放得出聲；被自動播放政策擋下（直接開網址、iOS）就在第一次點擊時播——
+    // 用捕獲階段先開口：那一下若點到本身會講話的東西（角色、🔊），它的 speak 會照常蓋掉招呼語。
+    // （不能等點擊後再看 busy：audio-unlocker 在同一下點擊會唸一句無聲的解鎖句，busy 一定是 true）
+    _greetOnOpen() {
+        const later = () => {
+            window.addEventListener('click', () => AdvSpeech.speak(ADV_DOC_HOME_LINE, null, 'doctor'),
+                { once: true, capture: true });
+        };
+        setTimeout(() => AdvSpeech.speak(ADV_DOC_HOME_LINE, null, 'doctor', later), 300);
+    },
+
+    // ── 場景預覽（供檢視各選購店家頁面，不用實際玩過每一關）──────────
+    _previewScene(key) {
+        // key 可為索引（0..N）或店名（venue，可含 label，如「便利商店早餐」）
+        let idx = parseInt(key, 10);
+        if (isNaN(idx)) {
+            idx = this.MEAL_TYPES.findIndex(m => m.venue === key || (m.venue + m.label) === key);
+        }
+        if (isNaN(idx) || idx < 0 || idx >= this.MEAL_TYPES.length) idx = 0;
+        const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = 'none';
+        Object.assign(this.state, { level: 3, score: 0, mistakes: 0, char: this.CHARACTERS[0], levelMiss: {} });
+        this._storyLog = {};
+        this._mealPick = this.MEAL_TYPES[idx];
+        this._applyTheme(3);
+        this._level3();
+        this._renderPreviewBar(idx);
+    },
+
+    _renderPreviewBar(idx) {
+        const total = this.MEAL_TYPES.length;
+        const m = this.MEAL_TYPES[idx];
+        const prev = (idx - 1 + total) % total;
+        const next = (idx + 1) % total;
+        if (!document.getElementById('adv-preview-style')) {
+            const st = document.createElement('style');
+            st.id = 'adv-preview-style';
+            st.textContent = `
+                .adv-preview-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;
+                    align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+                    padding:10px 14px;background:rgba(30,58,95,0.96);box-shadow:0 -3px 14px rgba(0,0,0,.25);}
+                .adv-preview-bar .adv-pv-label{color:#fff;font-size:.95rem;font-weight:700;}
+                .adv-preview-bar .adv-pv-label b{color:#fcd34d;}
+                .adv-pv-btn{border:none;border-radius:10px;padding:9px 16px;font-size:.95rem;font-weight:800;
+                    cursor:pointer;background:#f59e0b;color:#fff;text-decoration:none;touch-action:manipulation;}
+                .adv-pv-btn:active{filter:brightness(.9);}
+                .adv-pv-exit{background:#64748b;}`;
+            document.head.appendChild(st);
+        }
+        const bar = document.createElement('div');
+        bar.className = 'adv-preview-bar';
+        bar.innerHTML =
+            `<button class="adv-pv-btn" data-go="${prev}">◀ 上一個</button>`
+          + `<span class="adv-pv-label">🔎 場景預覽　<b>${m.venue}・${m.label}</b>　(${idx + 1}/${total})</span>`
+          + `<button class="adv-pv-btn" data-go="${next}">下一個 ▶</button>`
+          + `<a class="adv-pv-btn adv-pv-exit" href="index.html">✕ 離開預覽</a>`;
+        document.body.appendChild(bar);
+        bar.querySelectorAll('button[data-go]').forEach(b =>
+            b.addEventListener('pointerdown', e => { e.preventDefault(); location.search = '?preview=' + b.dataset.go; }));
+    },
+
+    // ── 首頁的冒險路徑（方格由左至右，中間彎曲斜線＋箭頭）────────
+    // 方格用 HTML/grid 排（文字可縮放、換行交給瀏覽器），連線用 SVG 依「實際量到的座標」畫，
+    // 所以無論一行排幾格、視窗怎麼縮放，箭頭都會接在正確的兩格之間。
+    _roadHTML() {
+        const nodes = this.LEVELS.map((l, i) => `
+          <div class="adv-road-node" title="${l.title}">
+            <div class="adv-road-num">${i + 1}</div>
+            <div class="adv-road-icon">${l.icon}</div>
+            <div class="adv-road-title">${l.title}</div>
+          </div>`).join('');
+        return `<div class="adv-road" id="adv-road">
+            <div class="adv-road-inner" id="adv-road-inner">
+              <svg class="adv-road-svg" id="adv-road-svg" aria-hidden="true"></svg>
+              <div class="adv-road-grid">${nodes}</div>
+            </div>
+          </div>
+          <div class="adv-road-hint">← 左右滑動看完整路線 →</div>`;
+    },
+
+    _drawRoad() {
+        // 座標一律相對 inner（不是相對會捲動的外框），橫向捲動時連線才不會跟方格錯開
+        const inner = document.getElementById('adv-road-inner');
+        const svg   = document.getElementById('adv-road-svg');
+        if (!inner || !svg) return;
+        const nodes = [...inner.querySelectorAll('.adv-road-node')];
+        const box = inner.getBoundingClientRect();
+        if (nodes.length < 2 || !box.width) return;
+
+        // 桌面大螢幕 #app 有 CSS zoom（index.html 檔尾）：getBoundingClientRect 是放大後的值，
+        // SVG 卻畫在版面座標裡 → 除以放大倍率 k（無 zoom 時 k＝1）
+        const k = inner.offsetWidth ? box.width / inner.offsetWidth : 1;
+        const r = nodes.map(n => {
+            const b = n.getBoundingClientRect();
+            return { x: (b.left - box.left) / k, y: (b.top - box.top) / k, w: b.width / k, h: b.height / k };
+        });
+        const GAP = 9;    // 箭頭與方格之間留的空隙
+        let paths = '';
+        for (let i = 0; i < r.length - 1; i++) {
+            const a = r[i], b = r[i + 1];
+            const ac = a.y + a.h / 2, bc = b.y + b.h / 2;
+            let d;
+            if (b.x > a.x && Math.abs(ac - bc) < Math.max(a.h, b.h)) {
+                // 同一列：右緣 → 左緣，二次貝茲往「行進方向的外側」鼓起
+                const x1 = a.x + a.w + GAP, y1 = ac;
+                const x2 = b.x - GAP,       y2 = bc;
+                // 鼓起幅度隨兩格距離縮放：間距窄時別彎成尖角，間距寬時才彎得明顯
+                const bow = (y2 <= y1 ? -1 : 1) * Math.min(30, Math.max(10, Math.hypot(x2 - x1, y2 - y1) * 0.34));
+                d = `M${x1},${y1} Q${(x1 + x2) / 2},${(y1 + y2) / 2 + bow} ${x2},${y2}`;
+            } else {
+                // 換行：從上一格下緣繞到下一格上緣（走在兩列之間的空白帶）
+                const x1 = a.x + a.w / 2, y1 = a.y + a.h + GAP;
+                const x2 = b.x + b.w / 2, y2 = b.y - GAP;
+                const mid = (y1 + y2) / 2;
+                d = `M${x1},${y1} C${x1},${mid} ${x2},${mid} ${x2},${y2}`;
+            }
+            paths += `<path d="${d}" fill="none" stroke="var(--loc-main)" stroke-width="3"
+                        stroke-linecap="round" stroke-dasharray="8 7" marker-end="url(#adv-road-arrow)"/>`;
+        }
+        // viewBox 要跟上面的座標同一套單位（版面座標＝畫面座標 ÷ k）；原本用畫面座標，zoom≠1 時連線會錯位
+        // （桌面首頁內容高、從沒被放大過所以沒發現；2026-10-03 iPad 版首頁縮到 0.87 才出現）
+        svg.setAttribute('viewBox', `0 0 ${box.width / k} ${box.height / k}`);
+        svg.innerHTML =
+            `<defs><marker id="adv-road-arrow" viewBox="0 0 10 10" refX="7" refY="5"
+                 markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+               <path d="M0,0 L10,5 L0,10 z" fill="var(--loc-main)"/>
+             </marker></defs>${paths}`;
+    },
+
+    // 版面一變（換行數、視窗縮放、字型載入）就重畫；重進首頁時先斷開舊的 observer
+    _watchRoad() {
+        this._roadRO?.disconnect();
+        const wrap = document.getElementById('adv-road-inner');
+        if (!wrap) return;
+        this._drawRoad();
+        requestAnimationFrame(() => this._drawRoad());   // 圖片/字型就位後再畫一次
+        if (window.ResizeObserver) {
+            this._roadRO = new ResizeObserver(() => this._drawRoad());
+            this._roadRO.observe(wrap);
+        }
+    },
+
+    // 選學生彈窗（設定頁與準備頁共用；畫面只有這一份）
+    _stuModalHTML() {
+        return `<div class="adv-char-modal" id="adv-stu-modal" hidden role="dialog" aria-modal="true">
+    <div class="adv-cm-backdrop" id="adv-stu-backdrop"></div>
+    <div class="adv-cm-card" style="max-width:340px;text-align:left">
+      <button class="adv-cm-close" id="adv-stu-close" aria-label="關閉">✕</button>
+      <div class="adv-cm-name" style="text-align:center;margin-bottom:14px">選擇學生（記錄學習歷程）</div>
+      <div id="adv-stu-list" style="display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto"></div>
+      <p style="font-size:0.74rem;color:var(--adv-sub-text,#78350f);margin:12px 0 0;text-align:center">新增學生，請至主頁，找金婆婆。</p>
+    </div>
+  </div>`;
+    },
+    _bindStuModal() {
+        const stuModal = document.getElementById('adv-stu-modal');
+        const hide = () => { stuModal.hidden = true; };
+        document.getElementById('adv-stu-close').addEventListener('click', hide);
+        document.getElementById('adv-stu-backdrop').addEventListener('click', hide);
+    },
+
+    // ── 準備頁（2026-09-28 使用者定）：主頁點角色方格進來，角色已定 ──
+    //    上方＝選要練習的學生，下方＝今天的冒險（七站）＋開始冒險。
+    showPrep(c) {
+        AdvTimer.clearAll(); AdvSpeech.cancel();
+        this._applyTheme(1);
+        { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = ''; }
+        Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:c, levelMiss:{} });
+        this._l3Result = null;
+        this._storyLog = {};
+        this._mealPick = null;
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-settings">
+  <div class="adv-settings-card adv-home-card adv-prep-card">
+    <div class="adv-prep-top">
+      <a class="adv-prep-back" href="../index.html?hero=doctor" title="回主頁換一位角色">← 換角色</a>
+    </div>
+    <div class="adv-prep-char">
+      <div class="adv-co-circle adv-prep-face">${this._charFace(c)}</div>
+      <div>
+        <h1 class="adv-title" style="margin:0">一日金錢冒險</h1>
+        <p class="adv-sub" style="margin:4px 0 0">今天和 <b>${c.name}</b> 一起出發！</p>
+      </div>
+    </div>
+
+    <div class="adv-student-bar" id="adv-student-bar"></div>
+
+    <div class="adv-section-lbl">今天的冒險</div>
+    ${this._roadHTML()}
+
+    <div class="adv-btn-row" style="justify-content:center">
+      <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
+    </div>
+  </div>
+  ${this._stuModalHTML()}
+</div>`;
+
+        this._renderStudentBar();
+        this._bindStuModal();
+        this._watchRoad();
+        document.getElementById('adv-start').addEventListener('click', e => {
+            // 等角色把「出發囉」唸完才進第一關（2026-09-28 使用者定；原本固定 700ms 會把話切掉）。
+            // speak 的回呼在播完／缺檔補念完／兜底計時到都會觸發，不會卡住。
+            if (e.currentTarget.disabled) return;
+            e.currentTarget.disabled = true;
+            AdvSpeech.speak(ADV_LINES[c.id]?.go, () => this._startGame(), c.id);
+        });
+        AdvSpeech.speak(ADV_HELLO[c.id] || `${c.name}，${c.desc}`, null, c.id);
+    },
+
+    // ── 設定頁（含選角）────────────────────────────────────────
+    showSettings() {
+        AdvTimer.clearAll(); AdvSpeech.cancel();
+        this._applyTheme(1);   // 設定頁回到預設暖黃
+        { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = ''; }   // 首頁顯示導覽列
+        Object.assign(this.state, { level:0, score:0, mistakes:0, startTime:null, char:null, levelMiss:{} });
+        this._l3Result = null;
+        this._storyLog = {};
+        this._mealPick = null;
+
+        // 預選＝上次選的角色（站台主頁的金博士彈窗也寫同一個鍵），沒有才用第一位
+        const savedChar = localStorage.getItem('adv_selectedChar');
+        const preIdx = Math.max(0, this.CHARACTERS.findIndex(c => c.id === savedChar));
+        const charGrid = this.CHARACTERS.map((c, i) => `
+            <div class="adv-char-opt ${i===preIdx?'selected':''}" data-id="${c.id}" tabindex="0" role="button" aria-label="${c.name}">
+                <div class="adv-co-circle">${this._charFace(c)}</div>
+                <div class="adv-co-name">${c.name}</div>
+            </div>`).join('');
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-settings">
+  <div class="adv-settings-card adv-home-card">
+    <div class="adv-logo">🗺️</div>
+    <h1 class="adv-title title-jump-wrap">一日金錢冒險<a class="title-jump" href="../index.html"
+          title="按下去可以切換回「金錢小達人」主頁" aria-label="切換回金錢小達人主頁"><span class="tj-tri" aria-hidden="true"></span></a><span
+          class="title-tip">按下 ▶ 可以切換回「金錢小達人」主頁</span></h1>
+    <p class="adv-sub">選擇喜歡的角色 體驗有趣的金錢故事！</p>
+
+    <!-- 左：金隊長（記錄給誰＋今天由誰去冒險）／右：金博士（今天的任務）-->
+    <div class="adv-duo">
+      <div class="adv-hero-card cap">
+        <div class="adv-hero-head">
+          <div class="adv-hero-ava"><img src="../images/common/captain_gold.png" alt="金隊長"></div>
+          <div class="adv-hero-txt">
+            <div class="adv-hero-name">🤖 金隊長・冒險準備
+              <button class="adv-voice-btn" id="adv-cap-voice" type="button" title="播放語音">🔊</button>
+            </div>
+            <div class="adv-hero-line">先選好要練習的學生，這趟冒險的表現才會記進學習歷程。</div>
+          </div>
+        </div>
+        <div class="adv-student-bar" id="adv-student-bar"></div>
+        <div class="adv-pick-lbl">今天由誰去冒險？（點頭像先認識他們）</div>
+        <div class="adv-char-grid">${charGrid}</div>
+      </div>
+
+      <div class="adv-hero-card doc">
+        <div class="adv-hero-head">
+          <div class="adv-hero-ava"><img src="../images/common/money_doctor.png" alt="金博士"></div>
+          <div class="adv-hero-txt">
+            <div class="adv-hero-name">🔬 金博士・今天的任務
+              <button class="adv-voice-btn" id="adv-doc-voice" type="button" title="播放語音">🔊</button>
+            </div>
+            <div class="adv-hero-line">${this.DOC_INTRO}</div>
+          </div>
+        </div>
+        <ul class="adv-doc-tips">
+          <li>🧭 一趟走完 ${this.LEVELS.length} 站，從數零用錢到把錢存起來。</li>
+          <li>💡 每一站都會先講故事，答錯可以再試一次。</li>
+          <li>🏆 全部走完會看到成績，金博士會告訴你哪幾項可以再多練。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="adv-section-lbl">今天的冒險</div>
+    ${this._roadHTML()}
+
+    <div class="adv-btn-row" style="justify-content:center">
+      <button class="adv-start-btn" id="adv-start" style="flex:0 1 auto; min-width:240px">開始冒險！</button>
+    </div>
+  </div>
+  <div class="adv-char-modal" id="adv-char-modal" hidden role="dialog" aria-modal="true">
+    <div class="adv-cm-backdrop" id="adv-cm-backdrop"></div>
+    <div class="adv-cm-card">
+      <button class="adv-cm-close" id="adv-cm-close" aria-label="關閉">✕</button>
+      <div class="adv-cm-circle" id="adv-cm-avatar"></div>
+      <div class="adv-cm-name" id="adv-cm-name"></div>
+      <div class="adv-cm-desc" id="adv-cm-desc"></div>
+      <button class="adv-start-btn" id="adv-cm-select">選這位角色</button>
+    </div>
+  </div>
+  ${this._stuModalHTML()}
+</div>`;
+
+        this._renderStudentBar();
+        this._watchRoad();
+
+        // 兩張角色卡的 🔊：金隊長講「記錄給誰」、金博士講今天要走哪幾站
+        document.getElementById('adv-cap-voice')?.addEventListener('click', e => {
+            e.stopPropagation();
+            const cur = this._getCurStudent();
+            AdvSpeech.speak(cur
+                ? `我是金隊長。這趟冒險會記在${cur.name}的學習歷程裡。`
+                : '我是金隊長。還沒選學生喔，先選好學生，冒險的表現才記得起來。');
+        });
+        document.getElementById('adv-doc-voice')?.addEventListener('click', e => {
+            e.stopPropagation();
+            AdvSpeech.speak('我是金博士。' + this.DOC_INTRO);
+        });
+
+        this._bindStuModal();
+
+        // 點角色圓圈 → 出現詳情彈窗；彈窗「選這位」才套用選取
+        const self = this;
+        const charModal = document.getElementById('adv-char-modal');
+        let _popupId = null;
+        const openCharModal = (c) => {
+            _popupId = c.id;
+            document.getElementById('adv-cm-avatar').innerHTML = self._charFace(c);
+            document.getElementById('adv-cm-name').textContent = c.name;
+            document.getElementById('adv-cm-desc').textContent = c.desc;
+            charModal.hidden = false;
+            AdvSpeech.speak(ADV_HELLO[c.id] || `${c.name}，${c.desc}`, null, c.id);
+        };
+        const closeCharModal = () => { charModal.hidden = true; _popupId = null; };
+        document.querySelectorAll('.adv-char-opt').forEach(el => {
+            const c = self.CHARACTERS.find(x => x.id === el.dataset.id);
+            const open = () => { openCharModal(c); window.gameAudio?.play('game-btn-click'); };
+            el.addEventListener('click', open);
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+            });
+        });
+        document.getElementById('adv-cm-close').addEventListener('click', closeCharModal);
+        document.getElementById('adv-cm-backdrop').addEventListener('click', closeCharModal);
+        document.getElementById('adv-cm-select').addEventListener('click', () => {
+            if (_popupId) {
+                document.querySelectorAll('.adv-char-opt').forEach(e =>
+                    e.classList.toggle('selected', e.dataset.id === _popupId));
+            }
+            closeCharModal();
+            window.gameAudio?.play('game-btn-click');
+        });
+
+        document.getElementById('adv-start').addEventListener('click', e => {
+            const sel = document.querySelector('.adv-char-opt.selected');
+            const charId = sel?.dataset.id || this.CHARACTERS[0].id;
+            try { localStorage.setItem('adv_selectedChar', charId); } catch (e) {}   // 與主頁金博士彈窗共用
+            this.state.char = this.CHARACTERS.find(c => c.id === charId) || this.CHARACTERS[0];
+            if (e.currentTarget.disabled) return;
+            e.currentTarget.disabled = true;
+            // 等「出發囉」唸完才進第一關（同準備頁）
+            AdvSpeech.speak(ADV_LINES[this.state.char.id]?.go, () => this._startGame(), this.state.char.id);
+        });
+        AdvSpeech.speak('一日金錢冒險！選好角色，和我一起學習用錢吧！');
+    },
+
+    _startGame() {
+        { const nav = document.querySelector('.site-nav'); if (nav) nav.style.display = 'none'; }   // 進入練習隱藏導覽列
+        this.state.level    = 1;
+        this.state.score    = 0;
+        this.state.mistakes = 0;
+        this.state.levelMiss = {};   // 每關錯誤數（供結算「統整診斷」）
+        this._mealPick = null;       // 每趟重抽選購場景
+        // 冒險是熟悉 24 單元後的進階統整活動，不設難度分級（2026-07-16 取消）：
+        // 固定普通模式，計算機預設收合、學生仍可用 🧮 鈕自行開啟。
+        this.state.easy     = false;
+        this.state.startTime = Date.now();
+        this._renderLevel();
+    },
+
+    // ── 旅程地圖 + 標題列 helpers ───────────────────────────────
+    _mapHTML() {
+        const n = this.state.level;
+        const steps = [
+            { icon:'🏠', label:'出發' },
+            ...this.LEVELS.map(l => ({ icon: l.icon, label: l.mapLabel })),
+            { icon:'🏆', label:'完成' },
+        ];
+        let html = '<div class="adv-journey-map">';
+        steps.forEach((s, i) => {
+            if (i > 0) html += `<div class="adv-jm-line${i <= n ? ' done' : ''}"></div>`;
+            const cls = i === 0 ? 'done' : i < n ? 'done' : i === n ? 'current' : 'future';
+            const dot = (i > 0 && i < n) ? '✓' : s.icon;
+            html += `<div class="adv-jm-node ${cls}"><div class="adv-jm-dot">${dot}</div><div class="adv-jm-lbl">${s.label}</div></div>`;
+        });
+        return html + '</div>';
+    },
+
+    _topbarHTML(hasBack = true) {
+        const char = this.state.char || this.CHARACTERS[0];
+        const back = hasBack
+            ? '<button class="adv-back-btn" id="adv-back">← 返回</button>'
+            : '<div style="width:56px;flex-shrink:0;"></div>';
+        return `<div class="adv-topbar">${back}${this._mapHTML()}<div class="adv-char-badge" title="${char.name}">${this._charFace(char)}</div></div>`;
+    },
+
+    // ── 關卡路由 ────────────────────────────────────────────────
+    _renderLevel() {
+        AdvTimer.clearAll(); AdvSpeech.cancel();
+        const n = this.state.level;
+        // 進 L3 前抽定選購場景（T3 過場敘事與關卡內容要一致，所以在過場前抽）
+        if (n === 3 && !this._mealPick) {
+            this._mealPick = this.MEAL_TYPES[Math.floor(Math.random() * this.MEAL_TYPES.length)];
+        }
+        this._applyTheme(n);   // 過場與本關共用該地點主色
+        const t = this.TRANSITIONS[n];
+        if (t) {
+            this._showTransition(t, () => this._doRenderLevel(n));
+        } else {
+            this._doRenderLevel(n);
+        }
+    },
+
+    _doRenderLevel(n) {
+        if      (n === 1) this._level1();
+        else if (n === 2) this._levelAtm();
+        else if (n === 3) this._level3();
+        else if (n === 4) this._level4();
+        else if (n === 5) this._level5();
+        else if (n === 6) this._levelSafety();
+        else if (n === 7) this._level6();
+        else              this._victory();
+    },
+
+    _showTransition({ icon, text }, cb) {
+        const char = this.state.char || this.CHARACTERS[0];
+        const textStr = text(char, this._storyLog);
+        document.getElementById('app').innerHTML = `
+<div class="adv-transition">
+  <div class="adv-trans-card">
+    <div class="adv-trans-body">
+      <div class="adv-trans-char">${this._charFace(char)}</div>
+      <div class="adv-trans-info">
+        <div class="adv-trans-icon">${icon}</div>
+        <p class="adv-trans-text">${textStr}</p>
+      </div>
+    </div>
+    <div class="adv-trans-btns">
+      <button class="adv-trans-replay" id="adv-trans-replay" aria-label="聽故事" title="聽故事">🔊</button>
+      <button class="adv-trans-btn" id="adv-trans-next">繼續 →</button>
+    </div>
+  </div>
+</div>`;
+        let gone = false;
+        const proceed = () => {
+            if (gone) return;
+            gone = true;
+            AdvTimer.clearAll();
+            AdvSpeech.cancel();
+            cb();
+        };
+        const btn    = document.getElementById('adv-trans-next');
+        const replay = document.getElementById('adv-trans-replay');
+        btn.addEventListener('click', proceed);
+        // 🔊 重聽：點擊當下播放＝一定有使用者手勢，故絕不會被擋（也是被擋時的解鎖途徑）
+        replay.addEventListener('click', () => {
+            replay.classList.remove('hint');
+            AdvSpeech.speak(textStr);
+        });
+        this._sfx('adv-sfx-warp');
+        // 載入即自動播語音。若被瀏覽器自動播放政策擋掉（唯一時機＝ATM 用 location.href
+        // 自動跳回、新頁面尚無手勢，手機／iPad 尤其），**不劫持「繼續」按鈕**——繼續隨時
+        // 可直接按往下（不強迫先聽）；只讓 🔊 鈕閃爍提示「想聽故事點我」。這樣識字量低的
+        // 學生點 🔊 補聽劇情，想快的直接繼續，不再被強制「先聽故事再繼續」兩次點擊。
+        AdvSpeech.speak(textStr, null, null, () => {
+            replay.classList.add('hint');
+        });
+    },
+
+    // ── 共用框架（多選題關卡用）────────────────────────────────
+    _frame(contentHTML, question, choices) {
+        const lv    = this.LEVELS[this.state.level - 1];
+        const total = this.LEVELS.length;
+        const char  = this.state.char || this.CHARACTERS[0];
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML()}
+  <div class="adv-card">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${lv.title}</div>
+        <div class="adv-card-scene">${lv.scene(char.name)}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content">${contentHTML}</div>
+    <div class="adv-question">${question}</div>
+    <div class="adv-choices${choices.length === 2 ? ' adv-choices-2' : ''}" id="adv-choices">
+      ${choices.map((c,i)=>`<button class="adv-choice-btn" data-i="${i}">${c.label}</button>`).join('')}
+    </div>
+    <div class="adv-feedback" id="adv-fb"></div>
+  </div>
+</div>`;
+
+        document.getElementById('adv-back').addEventListener('click', () => {
+            if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
+        });
+        document.querySelectorAll('.adv-choice-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.i);
+                this._onChoice(choices[idx], idx, choices, btn);
+            });
+        });
+        return choices;
+    },
+
+    _lock() { document.querySelectorAll('.adv-choice-btn').forEach(b => b.disabled = true); },
+
+    _correct(btn, speech) {
+        this._lock();
+        btn.classList.add('adv-ok');
+        const fb = document.getElementById('adv-fb');
+        if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
+        this.state.score++;
+        document.getElementById('correct-sound')?.play();
+        if (typeof confetti === 'function') {
+            confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, zIndex: 9999 });
+        }
+        this._cheerThen(this.state.char || this.CHARACTERS[0], 'yay', speech, () => {
+            this.state.level++;
+            this._renderLevel();
+        }, 500);
+    },
+
+    _wrong(btn, correctBtn, speech, hint) {
+        this._lock();
+        btn.classList.add('adv-ng');
+        if (correctBtn) correctBtn.classList.add('adv-ok');
+        this._miss();
+        document.getElementById('error-sound')?.play();
+        const fb = document.getElementById('adv-fb');
+        if (fb) {
+            fb.innerHTML = `❌ 再想想！${hint ? `<span class="adv-hint"> ${hint}</span>` : ''}`;
+            fb.className = 'adv-feedback adv-fb-ng';
+        }
+        this._sayThen(speech, 'retry', () => {
+            document.querySelectorAll('.adv-choice-btn').forEach(b => {
+                b.disabled = false;
+                b.classList.remove('adv-ok', 'adv-ng');
+            });
+            if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
+        }, 800);
+    },
+
+    _makeChoices(answer, dists) {
+        const pool = [...new Set(dists.filter(d => d > 0 && d !== answer))].slice(0, 3);
+        let off = 1;
+        while (pool.length < 3) {
+            const v = answer + off * (answer > 10 ? 5 : 1);
+            if (!pool.includes(v) && v > 0) pool.push(v);
+            off++;
+        }
+        return [answer, ...pool]
+            .sort(() => Math.random() - 0.5)
+            .map(v => ({ label: String(v), value: v }));
+    },
+
+    _btn(idx) { return document.querySelector(`.adv-choice-btn[data-i="${idx}"]`); },
+
+    _walletToDisplay(amount) {
+        const denoms = [500, 100, 50, 10, 5, 1];
+        const result = [];
+        let rem = amount;
+        for (const d of denoms) {
+            const cnt = Math.floor(rem / d);
+            if (cnt > 0) {
+                for (let i = 0; i < Math.min(cnt, 4); i++) result.push(d);
+                rem -= d * cnt;
+            }
+        }
+        return result;
+    },
+
+    // 記一次答錯：累加全域 mistakes 與「當前關」錯誤數（供結算的統整診斷用）
+    _miss() {
+        this.state.mistakes++;
+        const L = this.state.level;
+        this.state.levelMiss[L] = (this.state.levelMiss[L] || 0) + 1;
+    },
+
+    _getPerf(score, elapsed) {
+        const fast = elapsed <= 240;
+        if (score >= 8 && fast) return { icon:'🌟', label:'金錢天才' };
+        if (score >= 8)         return { icon:'🏆', label:'完美通關' };
+        if (score >= 6 && fast) return { icon:'⚡', label:'快手玩家' };
+        if (score >= 6)         return { icon:'⭐', label:'認真完成' };
+        return { icon:'💪', label:'繼續練習' };
+    },
+
+    _buildRecap(char) {
+        const log = this._storyLog;
+        if (!Object.keys(log).length) return '';
+        const items = [];
+        if (log.l1Amount) {
+            items.push({ icon:'💰', html:`數了媽媽給的零用錢，共有 <strong>${log.l1Amount}</strong> 元`, plain:`數了媽媽給的零用錢，共有${log.l1Amount}元` });
+        }
+        if (log.l2Amount) {
+            const pocket = (log.l1Amount || 0) + log.l2Amount;
+            items.push({ icon:'🏧', html:`去 ATM 領了 <strong>${log.l2Amount}</strong> 元，口袋共有 <strong>${pocket}</strong> 元`, plain:`去ATM領了${log.l2Amount}元，口袋共有${pocket}元` });
+        }
+        if (log.l3Items) {
+            const v = log.l3Venue || '便利商店';
+            items.push({ icon:'🍱', html:`來到${v}買了${log.l3Items}，共花 <strong>${log.l3Spent}</strong> 元`, plain:`來到${v}買了${log.l3Items}，共花${log.l3Spent}元` });
+        }
+        if (log.l4Change !== undefined) {
+            items.push(log.l4Change > 0
+                ? { icon:'💸', html:`結帳找回 <strong>${log.l4Change}</strong> 元零錢`,   plain:`結帳找回${log.l4Change}元零錢` }
+                : { icon:'💸', html:`結帳剛好用完，不用找零！`, plain:`結帳剛好用完，不用找零` });
+        }
+        if (log.l5Store) {
+            items.push({ icon:'🏷️', html:`發現在 <strong>${log.l5Store}</strong> 買${log.l5Item}最便宜！`, plain:`發現在${log.l5Store}買${log.l5Item}最便宜` });
+        }
+        if (log.lSafeTag) {
+            items.push({ icon:'🛡️', html:`回家路上遇到狀況，做出安全的選擇（<strong>${log.lSafeTag}</strong>）`, plain:`回家路上遇到狀況，做出安全的選擇，${log.lSafeTag}` });
+        }
+        if (log.l6Item) {
+            items.push({ icon:'🐷', html:`決定每天存錢，再 <strong>${log.l6Days}</strong> 天就能買到${log.l6Item}！`, plain:`決定每天存錢，再${log.l6Days}天就能買到${log.l6Item}` });
+        }
+        if (!items.length) return '';
+        this._recapText = `${char.name}今天的故事。` + items.map(i => i.plain).join('。') + '。';
+        return `
+        <div style="width:100%;background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.7);border:2px solid #fbbf24;border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:left;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:0.85rem;font-weight:800;color:var(--adv-accent-text,#b45309);">📖 ${char.name}今天的故事</div>
+            <button id="adv-recap-speak" style="background:none;border:1.5px solid #fbbf24;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:1rem;" title="朗讀故事">🔊</button>
+          </div>
+          ${items.map(i => `<div style="display:flex;align-items:baseline;gap:6px;font-size:0.88rem;color:var(--adv-sub-text,#78350f);padding:5px 0;border-bottom:1px dashed var(--adv-tint-2,#fde68a);line-height:1.6;"><span>${i.icon}</span><span>${i.html}</span></div>`).join('')}
+        </div>`;
+    },
+
+    // 金錢圖片：隨機正面或反面
+    _moneyImg(value, size) {
+        const face = Math.random() < 0.5 ? 'front' : 'back';
+        return `<img src="../images/money/${value}_yuan_${face}.png" alt="${value}元"
+            style="width:${size};height:${size};object-fit:contain;"
+            onerror="this.outerHTML='<span class=adv-fallback-coin>${value}</span>'">`;
+    },
+
+    // ── 數字鍵盤彈窗 ──────────────────────────────────────────
+    _advNumpadOpen(currentVal, onConfirm) {
+        AdvSpeech.cancel();   // 叫出鍵盤＝學生要開始作答了，停掉還在唸的情境／題目語音（要重聽按 🔊）
+        document.getElementById('adv-np-overlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'adv-np-overlay';
+        ov.className = 'adv-np-overlay';
+        let val = String(currentVal || '');
+        ov.innerHTML = `
+            <div class="adv-np-popup">
+                <button class="adv-np-close">✕</button>
+                <div class="adv-np-disp">${val || '0'}</div>
+                <div class="adv-np-grid">
+                    ${[7,8,9,4,5,6,1,2,3,'←',0,'清除'].map(k=>
+                        `<button class="adv-np-key" data-k="${k}">${k}</button>`
+                    ).join('')}
+                </div>
+                <button class="adv-np-ok-btn">確認</button>
+            </div>`;
+        document.body.appendChild(ov);
+        const disp = ov.querySelector('.adv-np-disp');
+        const close = () => ov.remove();
+        ov.querySelector('.adv-np-close').addEventListener('click', close);
+        ov.addEventListener('click', e => { if (e.target === ov) close(); });
+        ov.querySelectorAll('.adv-np-key').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const k = btn.dataset.k;
+                if (k === '←') { val = val.slice(0,-1); }
+                else if (k === '清除') { val = ''; }
+                else { if (val.length < 5) val += k; }
+                disp.textContent = val || '0';
+            });
+        });
+        ov.querySelector('.adv-np-ok-btn').addEventListener('click', () => { ov.remove(); onConfirm(val); });
+    },
+
+    // ── 計算機 HTML ───────────────────────────────────────────
+    _advCalcHTML() {
+        return `
+            <div class="adv-calc" id="adv-calc" style="display:${this.state.easy ? 'block' : 'none'};">
+                <div class="adv-calc-expr" id="adv-calc-expr"></div>
+                <div class="adv-calc-disp" id="adv-calc-disp">0</div>
+                <div class="adv-calc-grid">
+                    <button class="adv-cb" data-v="7">7</button>
+                    <button class="adv-cb" data-v="8">8</button>
+                    <button class="adv-cb" data-v="9">9</button>
+                    <button class="adv-cb op" data-v="÷">÷</button>
+                    <button class="adv-cb" data-v="4">4</button>
+                    <button class="adv-cb" data-v="5">5</button>
+                    <button class="adv-cb" data-v="6">6</button>
+                    <button class="adv-cb op" data-v="×">×</button>
+                    <button class="adv-cb" data-v="1">1</button>
+                    <button class="adv-cb" data-v="2">2</button>
+                    <button class="adv-cb" data-v="3">3</button>
+                    <button class="adv-cb op" data-v="-">−</button>
+                    <button class="adv-cb" data-v="0">0</button>
+                    <button class="adv-cb sp" data-v="C">C</button>
+                    <button class="adv-cb eq" data-v="=">=</button>
+                    <button class="adv-cb op" data-v="+">+</button>
+                </div>
+            </div>`;
+    },
+
+    _advCalcBind() {
+        const calcEl = document.getElementById('adv-calc');
+        const toggle = document.getElementById('adv-calc-toggle');
+        if (!calcEl || !toggle) return;
+        // 2026-09-23 使用者：計算機原本在卡片下方，桌面要往下捲才按得到 → 🧮 鈕移到標題列喇叭左側、
+        // 計算機改成彈窗（外觀沿用答題數字鍵盤 .adv-np-overlay／.adv-np-popup）。三個呼叫點（L4／L5／L7）
+        // 都經過這裡，HTML 仍照舊產生，由這裡搬位置，不必改三處。
+        // ⚠️ 彈窗放在 .adv-game 裡（不是 body）：換關卡時 #app.innerHTML 會把它一起清掉；
+        //    放 body 會殘留，而 L5 是靠「找不到 #adv-calc」才加計算機 → 下一關就不出現了。
+        const replay = document.querySelector('.adv-card .adv-card-hdr .adv-replay-btn');
+        const host = calcEl.closest('.adv-game');
+        if (replay && host) {
+            toggle.className = 'adv-calc-hdr-btn';
+            toggle.textContent = '🧮';
+            toggle.title = '計算機';
+            toggle.setAttribute('aria-label', '計算機');
+            replay.before(toggle);
+            const sec = calcEl.closest('.adv-calc-section');
+            const ov = document.createElement('div');
+            ov.className = 'adv-np-overlay adv-calc-overlay';
+            ov.hidden = true;
+            ov.innerHTML = `<div class="adv-np-popup adv-calc-popup" role="dialog" aria-label="計算機">
+                <div class="adv-calc-pop-title">🧮 計算機</div>
+                <button class="adv-np-close" aria-label="關閉">✕</button></div>`;
+            ov.firstElementChild.appendChild(calcEl);
+            calcEl.style.display = 'block';
+            host.appendChild(ov);
+            sec?.remove();
+            const close = () => { ov.hidden = true; };
+            toggle.addEventListener('click', () => { ov.hidden = !ov.hidden; });
+            ov.querySelector('.adv-np-close').addEventListener('click', close);
+            ov.addEventListener('click', e => { if (e.target === ov) close(); });
+        } else {
+            toggle.addEventListener('click', () => {
+                calcEl.style.display = calcEl.style.display !== 'none' ? 'none' : 'block';
+            });
+        }
+        const dEl = document.getElementById('adv-calc-disp');
+        const eEl = document.getElementById('adv-calc-expr');
+        let S = { v:'0', prev:null, op:null, wait:false, expr:'' };
+        const upd = () => { dEl.textContent = S.v; eEl.textContent = S.expr; };
+        const ops = { '+': (a,b)=>a+b, '-': (a,b)=>a-b, '×': (a,b)=>a*b, '÷': (a,b)=>b?a/b:0 };
+        calcEl.querySelectorAll('.adv-cb').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const v = btn.dataset.v;
+                if (v === 'C') { S = { v:'0', prev:null, op:null, wait:false, expr:'' }; }
+                else if (v === '←') { S.v = S.v.length > 1 ? S.v.slice(0,-1) : '0'; }
+                else if ('0123456789.'.includes(v)) {
+                    if (v === '.' && S.v.includes('.')) {}
+                    else S.v = (S.wait || S.v === '0') ? v : S.v + v;
+                    S.wait = false;
+                } else if (v === '=') {
+                    if (S.op && S.prev !== null) {
+                        const r = ops[S.op]?.(S.prev, parseFloat(S.v)) ?? parseFloat(S.v);
+                        S.v = String(Number.isInteger(r) ? r : parseFloat(r.toFixed(4)));
+                        S.prev = null; S.op = null; S.expr = ''; S.wait = true;
+                    }
+                } else {
+                    S.prev = parseFloat(S.v); S.op = v;
+                    S.expr = `${S.v} ${v}`; S.wait = true;
+                }
+                upd();
+            });
+        });
+    },
+
+    // ── 關卡 1：數零錢 ─────────────────────────────────────────
+    _level1() {
+        const d    = this.DATA.L1[Math.floor(Math.random() * this.DATA.L1.length)];
+        const lv   = this.LEVELS[0];
+        const char = this.state.char || this.CHARACTERS[0];
+
+        const coinsHTML = d.coins.map(c =>
+            this._moneyImg(c, c >= 100 ? '88px' : '48px')
+        ).join('');
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML()}
+  <div class="adv-card">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${lv.title}</div>
+        <div class="adv-card-scene">${lv.scene(char.name)}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content">
+      <div class="adv-coins">${coinsHTML}</div>
+    </div>
+    <div class="adv-question">這些零錢加起來是多少元？</div>
+    <div class="adv-formula-row" style="justify-content:center;">
+      <div class="adv-ans-display" id="adv-ans-display">點擊輸入金額</div>
+      <span class="adv-fml-unit">元</span>
+    </div>
+    <div class="adv-feedback" id="adv-fb"></div>
+    <button class="adv-confirm-btn" id="adv-confirm" disabled>確認答案</button>
+  </div>
+</div>`;
+
+        let entered = '', submitted = false;
+        const display    = document.getElementById('adv-ans-display');
+        const confirmBtn = document.getElementById('adv-confirm');
+
+        display.addEventListener('click', () => {
+            if (submitted) return;
+            this._advNumpadOpen(entered, val => {
+                entered = val;
+                display.textContent = val || '點擊輸入金額';
+                display.classList.remove('adv-input-ok', 'adv-input-ng');
+                confirmBtn.disabled = !val;
+            });
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            if (submitted || !entered) return;
+            const val = parseInt(entered, 10);
+            const fb  = document.getElementById('adv-fb');
+            if (val === d.answer) {
+                submitted = true;
+                this._storyLog.l1Amount = d.answer;
+                display.textContent = entered;
+                display.classList.add('adv-input-ok');
+                if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
+                this.state.score++;
+                document.getElementById('correct-sound')?.play();
+                if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                this._cheerThen(char, 'l1', `共有${d.answer}元。`, () => {
+                    this.state.level++;
+                    this._renderLevel();
+                }, 500);
+            } else {
+                this._miss();
+                document.getElementById('error-sound')?.play();
+                display.classList.add('adv-input-ng');
+                if (fb) { fb.innerHTML = '❌ 再算算！<span class="adv-hint"> 把每一枚硬幣加起來</span>'; fb.className = 'adv-feedback adv-fb-ng'; }
+                this._sayThen('不對喔，再數一次！', 'retry', () => {
+                    entered = '';
+                    display.textContent = '點擊輸入金額';
+                    display.classList.remove('adv-input-ok', 'adv-input-ng');
+                    confirmBtn.disabled = true;
+                    if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
+                }, 800);
+            }
+        });
+
+        document.getElementById('adv-back').addEventListener('click', () => {
+            if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
+        });
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak('這些零錢加起來是多少元？'));
+        AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}這些零錢加起來是多少元？`), 300);
+    },
+
+    // ── 關卡 2：ATM ────────────────────────────────────────────
+    _levelAtm() {
+        const lv    = this.LEVELS[1];
+        const total = this.LEVELS.length;
+        const char  = this.state.char || this.CHARACTERS[0];
+        const _hun  = [1,2,3,4,5,6,7,8,9];
+        const atmTarget = _hun[Math.floor(Math.random() * _hun.length)] * 100;
+        const atmUrl = `../html/a5_atm_simulator.html?adv=1&diff=hard&resume=3&target=${atmTarget}`;
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML(false)}
+  <div class="adv-card">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${lv.title}</div>
+        <div class="adv-card-scene">${lv.scene(char.name)}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content" style="text-align:center;padding:18px 0 10px;">
+      <div style="font-size:72px;line-height:1;margin-bottom:14px;">🏧</div>
+      <div style="font-size:0.95rem;color:var(--adv-sub-text,#78350f);line-height:1.7;margin-bottom:14px;">
+        ${char.name}走到附近的 ATM 前，<br>需要完成一次<strong>提款任務</strong>才能繼續！
+      </div>
+      <div style="background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.85);border:3px solid #d97706;border-radius:16px;padding:14px 20px;display:inline-block;">
+        <div style="font-size:0.85rem;color:var(--adv-sub-text,#78350f);margin-bottom:4px;">🎯 本次任務</div>
+        <div style="font-size:1.8rem;font-weight:900;color:#d97706;">提領 ${atmTarget} 元</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:6px;">
+      <a href="${atmUrl}" id="adv-atm-go" class="adv-start-btn" style="display:inline-block;text-decoration:none;font-size:1.05rem;">
+        🏧 前往 ATM 提款
+      </a>
+    </div>
+    <div class="adv-feedback" id="adv-fb" style="margin-top:10px;"></div>
+  </div>
+</div>`;
+
+        document.getElementById('adv-atm-go').addEventListener('click', () => {
+            AdvSpeech.cancel();
+            sessionStorage.setItem('adv_state', JSON.stringify({
+                level:     this.state.level,
+                score:     this.state.score,
+                mistakes:  this.state.mistakes,
+                startTime: this.state.startTime,
+                charId:    char.id,
+                storyLog:  this._storyLog,
+                levelMiss: this.state.levelMiss,
+                atmTarget: atmTarget,
+            }));
+        });
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(lv.scene(char.name)));
+        this._sfx('adv-sfx-keypad');
+        AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}請完成提款任務！`), 300);
+    },
+
+    // ── 關卡 3：便利商店選購 ────────────────────────────────────
+    _level3() {
+        const lv    = this.LEVELS[2];
+        const total = this.LEVELS.length;
+        const char  = this.state.char || this.CHARACTERS[0];
+        const budgetRange = char.budgetRange;
+        const budget = budgetRange[Math.floor(Math.random() * budgetRange.length)];
+        // 場景已於 _renderLevel 進 L3 前抽定（與 T3 過場敘事一致）；防禦性補抽
+        const meal   = this._mealPick
+            || (this._mealPick = this.MEAL_TYPES[Math.floor(Math.random() * this.MEAL_TYPES.length)]);
+        const items  = meal.items;
+        this._l3Result = null;
+        let selected = [];
+
+        const renderItems = () => {
+            const spent = selected.reduce((s, i) => s + items[i].price, 0);
+            document.getElementById('adv-l3-spent').textContent   = spent;
+            document.getElementById('adv-l3-remain').textContent  = budget - spent;
+            document.querySelectorAll('.adv-l3-item').forEach(el => {
+                const i = parseInt(el.dataset.i);
+                const inCart = selected.includes(i);
+                el.classList.toggle('adv-l3-selected', inCart);
+                el.querySelector('.adv-l3-toggle').textContent = inCart ? '−移除' : '+選取';
+            });
+        };
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML()}
+  <div class="adv-card adv-l3-wide">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${meal.venue}買${meal.label}</div>
+        <div class="adv-card-scene">${meal.scene(char.name)}${char.quirk ? `（${char.quirk}）` : ''}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content">
+      <div class="adv-l3-budget-bar">
+        <span>💰 預算 <strong>${budget}</strong> 元</span>
+        <span>已選 <strong id="adv-l3-spent">0</strong> 元</span>
+        <span>剩餘 <strong id="adv-l3-remain">${budget}</strong> 元</span>
+      </div>
+      <div class="adv-l3-grid">
+        ${items.map((it, i) => `
+        <div class="adv-l3-item" data-i="${i}">
+          <img src="${it.img}" class="adv-l3-img" onerror="this.outerHTML='<span class=adv-l3-emoji>${it.icon}</span>'" alt="${it.name}">
+          <div class="adv-l3-name">${it.name}</div>
+          <div class="adv-l3-price">${it.price} 元</div>
+          <button class="adv-l3-toggle" data-i="${i}">+選取</button>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="adv-feedback" id="adv-fb"></div>
+    <div style="display:flex;justify-content:center;margin-top:12px;">
+      <button class="adv-start-btn" id="adv-l3-confirm" style="max-width:200px;width:100%;">結帳 →</button>
+    </div>
+  </div>
+</div>`;
+
+        document.querySelectorAll('.adv-l3-item').forEach(el => {
+            el.addEventListener('click', e => {
+                if (e.target.closest('.adv-l3-toggle')) return;
+                const i = parseInt(el.dataset.i);
+                AdvSpeech.speak(`${items[i].name}，${items[i].price}元`);
+            });
+        });
+
+        document.querySelectorAll('.adv-l3-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const i     = parseInt(btn.dataset.i);
+                const spent = selected.reduce((s, j) => s + items[j].price, 0);
+                if (selected.includes(i)) {
+                    selected = selected.filter(j => j !== i);
+                    AdvSpeech.speak(`移除${items[i].name}`);
+                } else {
+                    if (spent + items[i].price > budget) {
+                        const fb = document.getElementById('adv-fb');
+                        if (fb) { fb.textContent = '⚠️ 超出預算囉！'; fb.className = 'adv-feedback adv-fb-ng'; }
+                        AdvTimer.set(() => { const fb2 = document.getElementById('adv-fb'); if (fb2) { fb2.textContent=''; fb2.className='adv-feedback'; } }, 1200);
+                        return;
+                    }
+                    selected.push(i);
+                    this._sfx('adv-sfx-select');
+                    AdvSpeech.speak(`選擇${items[i].name}，${items[i].price}元`);
+                }
+                renderItems();
+            });
+        });
+
+        document.getElementById('adv-l3-confirm').addEventListener('click', () => {
+            if (selected.length === 0) {
+                const fb = document.getElementById('adv-fb');
+                if (fb) { fb.textContent = `請至少選一樣${meal.label}！`; fb.className = 'adv-feedback adv-fb-ng'; }
+                return;
+            }
+            const spent     = selected.reduce((s, i) => s + items[i].price, 0);
+            const itemNames = selected.map(i => items[i].name).join('、');
+            this._l3Result  = { budget, spent, paid: budget, change: budget - spent, mealLabel: meal.label };
+            this._storyLog.l3Items = itemNames;
+            this._storyLog.l3Spent = spent;
+            this._storyLog.l3Meal  = meal.label;
+            this._storyLog.l3Venue = meal.venue;
+            this.state.score++;
+            document.getElementById('correct-sound')?.play();
+            if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+            const fb = document.getElementById('adv-fb');
+            if (fb) {
+                const coinsHTML = this._walletToDisplay(spent).map(c => this._moneyImg(c, c >= 100 ? '44px' : '34px')).join('');
+                fb.innerHTML = `✅ 共花 <strong>${spent}</strong> 元<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px;">${coinsHTML}</div>`;
+                fb.className = 'adv-feedback adv-fb-ok';
+            }
+            this._sfx('adv-sfx-cash');
+            // 本關是「選自己想吃的」，沒有標準答案（score 為參與即得），角色只說「我選好了！」（不是答對歡呼），
+            // 旁白再複述選了什麼、花多少錢。
+            this._cheerThen(char, 'l3', `${char.name}選了${itemNames}，共花${spent}元。`,
+                () => { this.state.level++; this._renderLevel(); }, 500);
+        });
+
+        document.getElementById('adv-back').addEventListener('click', () => {
+            if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
+        });
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(`${char.name}有${budget}元，請幫${char.name}選${meal.label}！`));
+        AdvTimer.set(() => AdvSpeech.speak(`${meal.scene(char.name)}${char.name}有${budget}元預算，幫${char.name}選想要的${meal.label}吧！`), 300);
+    },
+
+    // ── 關卡 4：結帳找零 ────────────────────────────────────────
+    _level4() {
+        const r         = this._l3Result || { budget:100, spent:68, paid:100, change:32, mealLabel:'早餐' };
+        const paid      = r.paid, price = r.spent, change = r.change, mealLabel = r.mealLabel || '餐點';
+        const lv        = this.LEVELS[3];
+        const total     = this.LEVELS.length;
+        const char      = this.state.char || this.CHARACTERS[0];
+        let entered = '', submitted = false;
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML()}
+  <div class="adv-card">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${lv.title}</div>
+        <div class="adv-card-scene">${lv.scene(char.name)}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content">
+      <div class="adv-change">
+        <div class="adv-cw-row"><span class="adv-cw-lbl">${mealLabel}合計</span><span class="adv-cw-price">${price} 元</span></div>
+        <div class="adv-cw-row"><span class="adv-cw-lbl">付了多少錢</span><span class="adv-cw-paid">${paid} 元</span></div>
+      </div>
+    </div>
+    <div class="adv-question">付了 ${paid} 元，${mealLabel}要 ${price} 元，應找回多少錢？</div>
+    <div class="adv-formula-row">
+      <span class="adv-fml-text">${paid} − ${price} =</span>
+      <div class="adv-ans-display" id="adv-ans-display">?</div>
+      <span class="adv-fml-unit">元</span>
+    </div>
+    <div class="adv-feedback" id="adv-fb"></div>
+    <button class="adv-confirm-btn" id="adv-confirm" disabled>確認答案</button>
+  </div>
+  <div class="adv-calc-section">
+    <button class="adv-calc-toggle-btn" id="adv-calc-toggle">🧮 計算機</button>
+    ${this._advCalcHTML()}
+  </div>
+</div>`;
+
+        const display    = document.getElementById('adv-ans-display');
+        const confirmBtn = document.getElementById('adv-confirm');
+        display.addEventListener('click', () => {
+            if (submitted) return;
+            this._advNumpadOpen(entered, val => {
+                entered = val;
+                display.textContent = val ? val + ' 元' : '?';
+                display.classList.remove('adv-input-ok','adv-input-ng');
+                confirmBtn.disabled = !val;
+            });
+        });
+        confirmBtn.addEventListener('click', () => {
+            if (submitted || !entered) return;
+            const val = parseInt(entered, 10);
+            const fb  = document.getElementById('adv-fb');
+            if (val === change) {
+                submitted = true;
+                this._storyLog.l4Change = change;
+                display.textContent = entered + ' 元'; display.classList.add('adv-input-ok');
+                if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
+                this.state.score++;
+                document.getElementById('correct-sound')?.play();
+                if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                this._sfx('adv-sfx-cash');
+                this._cheerThen(char, 'l4', `${paid}減${price}，找回${change}元。`,
+                    () => { this.state.level++; this._renderLevel(); }, 500);
+            } else {
+                this._miss();
+                document.getElementById('error-sound')?.play();
+                display.classList.add('adv-input-ng');
+                if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${paid} − ${price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
+                this._sayThen('再算算！', 'retry', () => {
+                    entered = ''; display.textContent = '?';
+                    display.classList.remove('adv-input-ok','adv-input-ng');
+                    confirmBtn.disabled = true;
+                    if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
+                }, 800);
+            }
+        });
+        this._advCalcBind();
+        document.getElementById('adv-back').addEventListener('click', () => {
+            if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
+        });
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(`付了${paid}元，${mealLabel}要${price}元，應找回多少錢？`));
+        AdvTimer.set(() => AdvSpeech.speak(`${lv.scene(char.name)}付了${paid}元，${mealLabel}要${price}元，應找回多少錢？`), 300);
+    },
+
+    // ── 關卡 5：比價 ────────────────────────────────────────────
+    _level5() {
+        const d       = this.DATA.L5[Math.floor(Math.random() * this.DATA.L5.length)];
+        const stores  = [...d.stores].sort(() => Math.random() - 0.5);
+        const cheapest  = stores.reduce((a, b) => a.price < b.price ? a : b);
+        const expensive = stores.reduce((a, b) => a.price > b.price ? a : b);
+        const diff      = expensive.price - cheapest.price;
+        const char      = this.state.char || this.CHARACTERS[0];
+        this._level5Phase = 1;
+
+        const storesHTML = `<div class="adv-multi-grid">
+            ${stores.map(s=>`<div class="adv-ms-store"><div class="adv-ms-name">${s.name}</div><div class="adv-ms-price">${s.price} 元</div></div>`).join('')}
+        </div>`;
+
+        const content = `
+<div class="adv-cmp-center">
+  <img src="${d.img}" class="adv-cmp-img" onerror="this.outerHTML='<span style=font-size:56px>${d.icon}</span>'" alt="${d.name}">
+  <div class="adv-cmp-name">${d.name}</div>
+</div>
+${storesHTML}`;
+
+        const choicesP1 = stores.map((s, i) => ({ label: s.name, value: i }));
+        const correctI  = stores.findIndex(s => s.name === cheapest.name);
+
+        this._frame(content, `${d.name} 在哪家商店比較便宜？`, choicesP1);
+        this._onChoice = (c, idx, _, btn) => {
+            if (this._level5Phase === 1) {
+                if (idx === correctI) {
+                    this._storyLog.l5Item  = d.name;
+                    this._storyLog.l5Store = cheapest.name;
+                    this.state.score++;   // 比價 Phase1（選對最便宜的店）計 1 分；與 MAX_SCORE=7 及最高徽章門檻對齊
+                    this._lock();
+                    btn.classList.add('adv-ok');
+                    const fb = document.getElementById('adv-fb');
+                    if (fb) { fb.textContent = `✅ 對！${cheapest.name}最便宜！`; fb.className = 'adv-feedback adv-fb-ok'; }
+                    document.getElementById('correct-sound')?.play();
+                    if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                    this._cheerThen(char, 'l5', `${cheapest.name}只要${cheapest.price}元。`,
+                        () => this._level5Phase2(d, stores, cheapest, diff), 600);
+                } else {
+                    this._wrong(btn, null, '再看看！', '比比看哪個數字比較小');
+                }
+            }
+        };
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(`${d.name}在哪家商店比較便宜？`));
+        AdvTimer.set(() => AdvSpeech.speak(`${this.LEVELS[4].scene(char.name)}${d.name}在哪家商店比較便宜？`), 300);
+    },
+
+    _level5Phase2(d, stores, cheapest, diff) {
+        this._level5Phase = 2;
+        const expensive = stores.reduce((a, b) => a.price > b.price ? a : b);
+        let entered = '', submitted = false;
+
+        const qEl      = document.querySelector('.adv-question');
+        const choicesEl = document.getElementById('adv-choices');
+        const fb       = document.getElementById('adv-fb');
+        if (qEl) qEl.textContent = `在 ${cheapest.name} 買，總共便宜了多少錢？`;
+        if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
+
+        if (choicesEl) {
+            choicesEl.className = 'adv-l5p2-area';
+            choicesEl.innerHTML = `
+                <div class="adv-formula-info">
+                    最貴的${expensive.name} <strong>${expensive.price}</strong> 元 −
+                    ${cheapest.name} <strong>${cheapest.price}</strong> 元 =
+                </div>
+                <div class="adv-formula-row" style="margin-top:8px;">
+                    <div class="adv-ans-display" id="adv-ans-display">?</div>
+                    <span class="adv-fml-unit">元</span>
+                </div>
+                <button class="adv-confirm-btn" id="adv-confirm" disabled>確認答案</button>`;
+
+            const display    = document.getElementById('adv-ans-display');
+            const confirmBtn = document.getElementById('adv-confirm');
+            display.addEventListener('click', () => {
+                if (submitted) return;
+                this._advNumpadOpen(entered, val => {
+                    entered = val;
+                    display.textContent = val || '?';
+                    display.classList.remove('adv-input-ok','adv-input-ng');
+                    confirmBtn.disabled = !val;
+                });
+            });
+            confirmBtn.addEventListener('click', () => {
+                if (submitted || !entered) return;
+                const val = parseInt(entered, 10);
+                if (val === diff) {
+                    submitted = true;
+                    display.textContent = entered; display.classList.add('adv-input-ok');
+                    if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
+                    this._correct(confirmBtn, `便宜了${diff}元。`);
+                } else {
+                    this._miss();
+                    document.getElementById('error-sound')?.play();
+                    display.classList.add('adv-input-ng');
+                    if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${expensive.price} − ${cheapest.price} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
+                    this._sayThen('再算算！', 'retry', () => {
+                        entered = ''; display.textContent = '?';
+                        display.classList.remove('adv-input-ok','adv-input-ng');
+                        confirmBtn.disabled = true;
+                        if (fb) { fb.textContent=''; fb.className='adv-feedback'; }
+                    }, 800);
+                }
+            });
+        }
+
+        const gameEl = document.querySelector('.adv-game');
+        if (gameEl && !document.getElementById('adv-calc')) {
+            const calcSec = document.createElement('div');
+            calcSec.className = 'adv-calc-section';
+            calcSec.innerHTML = `<button class="adv-calc-toggle-btn" id="adv-calc-toggle">🧮 計算機</button>${this._advCalcHTML()}`;
+            gameEl.appendChild(calcSec);
+            this._advCalcBind();
+        }
+
+        const oldReplay = document.getElementById('adv-replay');
+        if (oldReplay) {
+            const newReplay = oldReplay.cloneNode(true);
+            oldReplay.replaceWith(newReplay);
+            newReplay.addEventListener('click', () =>
+                AdvSpeech.speak(`在${cheapest.name}買，總共便宜了多少錢？`));
+        }
+        AdvSpeech.speak(`在${cheapest.name}買，總共便宜了多少錢？`);
+    },
+
+    // ── 關卡 6：回家路上・金錢安全（情境判斷）──────────────────
+    _levelSafety() {
+        const d    = this.DATA.SAFETY[Math.floor(Math.random() * this.DATA.SAFETY.length)];
+        const char = this.state.char || this.CHARACTERS[0];
+
+        // 選項洗牌（正解＝safe:true，位置隨機）
+        const opts = [...d.options]
+            .sort(() => Math.random() - 0.5)
+            .map(o => ({ label: o.text, safe: o.safe, fb: o.fb }));
+
+        const content = `
+<div class="adv-cmp-center">
+  <div style="font-size:56px;line-height:1;margin-bottom:8px;">${d.icon}</div>
+  <div style="font-size:0.98rem;color:var(--loc-deep);line-height:1.7;text-align:center;max-width:460px;font-weight:600;">${d.scene(char.name)}</div>
+</div>`;
+
+        this._frame(content, d.question, opts);
+        // 安全題選項文字較長，改單欄呈現
+        const choicesEl = document.getElementById('adv-choices');
+        if (choicesEl) choicesEl.style.gridTemplateColumns = '1fr';
+
+        this._onChoice = (c, idx, all, btn) => {
+            if (c.safe) {
+                this._storyLog.lSafeTag = d.tag;
+                this._lock();
+                btn.classList.add('adv-ok');
+                const fb = document.getElementById('adv-fb');
+                if (fb) { fb.innerHTML = `✅ 做得好！${c.fb ? `<span class="adv-hint"> ${c.fb}</span>` : ''}`; fb.className = 'adv-feedback adv-fb-ok'; }
+                this.state.score++;
+                document.getElementById('correct-sound')?.play();
+                if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                this._cheerThen(char, 'l6', d.safeSpeak,
+                    () => { this.state.level++; this._renderLevel(); }, 700);
+            } else {
+                const safeIdx = all.findIndex(o => o.safe);
+                this._wrong(btn, safeIdx >= 0 ? this._btn(safeIdx) : null, '再想想，這樣安全嗎？', c.fb || d.hint);
+            }
+        };
+
+        // 進關先唸引導語鋪陳「回家路上」情境（曉臻預錄），再接實際狀況，學生更順暢融入情境。
+        // 引導語字串須與 voicegen/_gen_adv_list2.js 完全一致（LEVELS[5].scene 帶「⋯」）才命中預錄。
+        const introText     = `回家路上要小心。${this.LEVELS[5].scene(char.name)}`;
+        const situationText = `${d.scene(char.name)} ${d.question}`;
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(situationText));
+        AdvTimer.set(() => AdvSpeech.speak(introText, () => AdvSpeech.speak(situationText), 'narrator'), 300);
+    },
+
+    // ── 關卡 7：存錢 ────────────────────────────────────────────
+    _level6() {
+        const d    = this.DATA.L6[Math.floor(Math.random() * this.DATA.L6.length)];
+        const lv   = this.LEVELS[6];   // 第 7 關＝存錢（LEVELS[6]）；先前誤用 [5] 會顯示安全關標題
+        const char = this.state.char || this.CHARACTERS[0];
+        const sceneText = `${char.name}看上了一個${d.item}，決定每天存錢把它買下來！`;   // 講物品名、不含金額 → 可預錄
+        let entered = '', submitted = false;
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-game">
+  ${this._topbarHTML()}
+  <div class="adv-card">
+    <div class="adv-card-hdr">
+      <span class="adv-card-icon">${lv.icon}</span>
+      <div class="adv-card-info">
+        <div class="adv-card-title">${lv.title}</div>
+        <div class="adv-card-scene">${sceneText}</div>
+      </div>
+      <button class="adv-replay-btn" id="adv-replay">🔊</button>
+    </div>
+    <div class="adv-content">
+      <div class="adv-save">
+        <div class="adv-sv-item">
+          <img src="${d.img}" class="adv-item-img" onerror="this.outerHTML='<span style=font-size:56px>${d.icon}</span>'" alt="${d.item}">
+          <div class="adv-sv-name">${d.item}</div>
+          <div class="adv-sv-price">需要 ${d.goal} 元</div>
+        </div>
+        <div class="adv-sv-daily">💰 每天存 <strong>${d.daily}</strong> 元</div>
+      </div>
+    </div>
+    <div class="adv-question">每天存 ${d.daily} 元，存到 ${d.goal} 元要幾天？</div>
+    <div class="adv-formula-row">
+      <span class="adv-fml-text">${d.goal} ÷ ${d.daily} =</span>
+      <div class="adv-ans-display" id="adv-ans-display">?</div>
+      <span class="adv-fml-unit">天</span>
+    </div>
+    <div class="adv-feedback" id="adv-fb"></div>
+    <button class="adv-confirm-btn" id="adv-confirm" disabled>確認答案</button>
+  </div>
+  <div class="adv-calc-section">
+    <button class="adv-calc-toggle-btn" id="adv-calc-toggle">🧮 計算機</button>
+    ${this._advCalcHTML()}
+  </div>
+</div>`;
+
+        const display    = document.getElementById('adv-ans-display');
+        const confirmBtn = document.getElementById('adv-confirm');
+        display.addEventListener('click', () => {
+            if (submitted) return;
+            this._advNumpadOpen(entered, val => {
+                entered = val;
+                display.textContent = val || '?';
+                display.classList.remove('adv-input-ok','adv-input-ng');
+                confirmBtn.disabled = !val;
+            });
+        });
+        confirmBtn.addEventListener('click', () => {
+            if (submitted || !entered) return;
+            const val = parseInt(entered, 10);
+            const fb  = document.getElementById('adv-fb');
+            if (val === d.answer) {
+                submitted = true;
+                this._storyLog.l6Item = d.item;
+                this._storyLog.l6Days = d.answer;
+                display.textContent = entered; display.classList.add('adv-input-ok');
+                if (fb) { fb.textContent = '✅ 答對了！'; fb.className = 'adv-feedback adv-fb-ok'; }
+                this.state.score++;
+                document.getElementById('correct-sound')?.play();
+                if (typeof confetti === 'function') confetti({ particleCount:60, spread:70, origin:{y:0.6}, zIndex:9999 });
+                this._sfx('adv-sfx-drop');
+                this._cheerThen(char, 'l7', `每天存${d.daily}元，${d.answer}天就能存到${d.goal}元。`,
+                    () => { this.state.level++; this._renderLevel(); }, 500);
+            } else {
+                this._miss();
+                document.getElementById('error-sound')?.play();
+                display.classList.add('adv-input-ng');
+                if (fb) { fb.innerHTML = `❌ 再算算！<span class="adv-hint"> ${d.goal} ÷ ${d.daily} = ？</span>`; fb.className = 'adv-feedback adv-fb-ng'; }
+                this._sayThen('再算算！', 'retry', () => {
+                    entered = ''; display.textContent = '?';
+                    display.classList.remove('adv-input-ok','adv-input-ng');
+                    confirmBtn.disabled = true;
+                    if (fb) { fb.textContent = ''; fb.className = 'adv-feedback'; }
+                }, 800);
+            }
+        });
+        this._advCalcBind();
+        document.getElementById('adv-back').addEventListener('click', () => {
+            if (confirm('確定返回設定頁？進度將不保留。')) this.showSettings();
+        });
+        document.getElementById('adv-replay')?.addEventListener('click', () =>
+            AdvSpeech.speak(sceneText, () => AdvSpeech.speak(`每天存${d.daily}元，存到${d.goal}元要幾天？`)));
+        // 情境（含物品名、無金額）先預錄自動播，再接算式題目（含數字、即時）
+        AdvTimer.set(() => AdvSpeech.speak(sceneText, () => AdvSpeech.speak(`每天存${d.daily}元，存到${d.goal}元要幾天？`)), 300);
+    },
+
+    // ── 勝利畫面 ────────────────────────────────────────────────
+    // 統整診斷：金博士講評（圖＋泡泡）＋七項金錢技能逐項列出（✅ 一次過關／💪 答錯過，附練習連結）。
+    // 2026-09-23 使用者指定改成與生活情境對話完成頁同一套樣式（金好聊＋橘色泡泡、📋 每一步的表現清單），
+    // 原本的四格技能磚＋「這幾項再練一下會更棒」拆掉。泡泡文字＝金博士唸的那一句（_doctorLine），畫面與語音一致。
+    _buildDiagnosis(perfLabel) {
+        const SKILL_UNIT = {
+            'C2':   { name:'數錢',     url:'../html/c2_money_counting.html' },
+            'A5':   { name:'ATM 提款', url:'../html/a5_atm_simulator.html' },
+            'C5':   { name:'算夠不夠', url:'../html/c5_sufficient_payment.html' },
+            'C6':   { name:'找零',     url:'../html/c6_making_change.html' },
+            'B4':   { name:'比價',     url:'../html/b4_sale_comparison.html' },
+            '安全': { name:'金錢安全', url:'../dialogue/index.html' },
+            'B3':   { name:'存錢',     url:'../html/b3_savings_plan.html' },
+        };
+        const rows = this.LEVELS.map(lv => {
+            const miss = this.state.levelMiss[lv.id] || 0;
+            const u = SKILL_UNIT[lv.skill];
+            return `<div class="adv-sum-row">
+              <span class="adv-sum-icon">${miss === 0 ? '✅' : '💪'}</span>
+              <span class="adv-sum-task">${lv.icon} ${lv.mapLabel}</span>
+              ${miss > 0 && u ? `<a class="adv-sum-link" href="${u.url}">去練「${u.name}」→</a>` : ''}
+            </div>`;
+        }).join('');
+        // 金博士的全身圖：這一區是他的講評（本來就是他的工作），跟對話完成頁的金好聊同一個版型。
+        // 缺圖時 inline onerror 移掉，不留破圖。
+        return `<div class="adv-encourage">
+            <img class="adv-encourage-hero" src="../images/common/money_doctor.png" alt="金博士" onerror="this.remove()">
+            <div class="adv-perf-badge">${this._doctorLine(perfLabel)}</div>
+          </div>
+          <div class="adv-sum-block">
+            <div class="adv-sum-title">📋 今天的七項金錢技能</div>
+            ${rows}
+          </div>`;
+    },
+
+    _victory() {
+        AdvTimer.clearAll();
+        this._applyTheme(1);   // 慶祝畫面回到暖黃
+        const elapsed  = Math.floor((Date.now() - this.state.startTime) / 1000);
+        const mins     = Math.floor(elapsed / 60), secs = elapsed % 60;
+        const perfect  = this.state.mistakes === 0;
+        const MAX_SCORE = 8;
+        const char     = this.state.char || this.CHARACTERS[0];
+        const perf     = this._getPerf(this.state.score, elapsed);
+        const timeStr  = (mins > 0 ? mins + '分' : '') + secs + '秒';
+        const recapHTML = this._buildRecap(char);
+        const diagHTML  = this._buildDiagnosis(perf.label);
+
+        // 寫入學習歷程（教師「學習歷程總覽」可見；studentId 由 tracker 自動帶目前學生）＝IEP／成效佐證
+        try {
+            window.LearningTracker?.save({
+                unit: 'adventure', unitName: '🗺️ 一日金錢冒險（七關統整應用）', series: 'A',
+                score: this.state.score, total: MAX_SCORE, difficulty: this.state.easy ? 'easy' : 'normal',
+                settings: { char: this.state.char?.id || '' },   // 設定快照：角色＝預算大小（IEP 範本 v2 的 setup「角色」）
+                durationSec: elapsed,
+            });
+        } catch (e) {}
+
+        document.getElementById('app').innerHTML = `
+<div class="adv-victory">
+  <div class="adv-settings-card adv-v-card-wrap">
+    <div class="adv-v-trophy">🏆</div>
+    <h1 class="adv-v-title">🎉 冒險完成！🎉</h1>
+    ${perfect ? '' : `<p class="adv-v-sub">完成所有關卡，共答錯 ${this.state.mistakes} 次</p>`}<!-- 零失誤那句拿掉（2026-10-03 使用者：跟「全程無錯通過」徽章與金博士講評重複） -->
+    <div class="adv-v-stats">
+      <div class="adv-v-card adv-vc-green">
+        <div class="adv-v-ico">⭐</div>
+        <div class="adv-v-lbl">通關數</div>
+        <div class="adv-v-val">${this.state.score}/${MAX_SCORE}</div>
+      </div>
+      <div class="adv-v-card adv-vc-blue">
+        <div class="adv-v-ico">⏱️</div>
+        <div class="adv-v-lbl">完成時間</div>
+        <div class="adv-v-val">${timeStr}</div>
+      </div>
+      <div class="adv-v-card adv-vc-orange">
+        <div class="adv-v-ico">${perf.icon}</div>
+        <div class="adv-v-lbl">表現</div>
+        <div class="adv-v-val">${perf.label}</div>
+      </div>
+    </div>
+    ${diagHTML}
+    ${recapHTML}
+    <div class="adv-btn-row">
+      <a href="../index.html" class="adv-start-btn adv-home-btn">🏠 返回首頁</a>
+      <button class="adv-start-btn" id="adv-replay2">🔄 再玩一次</button>
+    </div>
+  </div>
+</div>`;
+
+        document.getElementById('adv-replay2').addEventListener('click', () => this.showSettings());
+        document.getElementById('adv-recap-speak')?.addEventListener('click', () => {
+            if (this._recapText) AdvSpeech.speak(this._recapText);
+        });
+
+        // 音效 → 金博士的講評（2026-09-23 使用者指定：結算只播金博士，主角的勝利結語與頭像都拿掉）。
+        // ⚠️ 原本音效與語音同時發，鼓勵語被音效蓋掉 → 語音要等音效結束（onended／兜底計時）才開口。
+        const _speakVictory = () => AdvSpeech.speak(this._doctorLine(perf.label), null, 'doctor');
+        const _sfx = document.getElementById('success-sound');
+        if (_sfx) {
+            let _went = false;
+            const _go = () => { if (_went) return; _went = true; _sfx.onended = null; _speakVictory(); };
+            _sfx.onended = _go;
+            const _pr = _sfx.play();
+            if (_pr && _pr.catch) _pr.catch(_go);   // 音效被擋（沒有使用者手勢）→ 別跟著卡住
+            AdvTimer.set(_go, 4000);                // 兜底：onended 沒來也要開口
+        } else {
+            _speakVictory();
+        }
+        if (typeof confetti === 'function') {
+            confetti({ particleCount:100, spread:70, origin:{y:0.6}, zIndex:9999 });
+            AdvTimer.set(() => confetti({ particleCount:50, angle:60,  spread:55, origin:{x:0}, zIndex:9999 }), 400);
+            AdvTimer.set(() => confetti({ particleCount:50, angle:120, spread:55, origin:{x:1}, zIndex:9999 }), 700);
+        }
+    },
+
+    // 金博士的結算講評：接在主角的勝利結語之後（主角先為自己歡呼，導師再講評）。
+    // ⚠️ 改字要同步 ADV_AUDIO_MAP 的鍵並重生 adv_doc_* 音檔——那張表是以「文字」當鍵，
+    //    改了字就查不到預錄，會靜靜退回即時 TTS 的機械音，畫面上看不出來。
+    _doctorLine(label) {
+        if (label === '金錢天才') return '太厲害了！你是真正的金錢小達人！';
+        if (label === '完美通關') return '非常好！每一關都難不倒你，繼續保持！';
+        if (label === '快手玩家') return '很棒喔！你答得又快又好，繼續加油！';
+        if (label === '認真完成') return '不錯喔！你很認真完成了整趟冒險，再多練習會更好！';
+        return '沒關係，多冒險幾次就會越來越熟練，我們下次再挑戰！';
+    },
+
+    // 勝利結語（含角色名）。
+    // ⚠️ 2026-09-23 起結算畫面只播金博士（使用者指定），這支目前沒有呼叫點；
+    //    要恢復主角勝利結語時接回 _victory() 的 _speakVictory 即可（會用即時語音）。
+    _victorySpeech(label, name) {
+        if (label === '金錢天才') return `哇！${name}是金錢天才！超厲害！`;
+        if (label === '完美通關') return `太棒了！${name}完美通關！`;
+        if (label === '快手玩家') return `${name}答得又快又好！`;
+        return `冒險完成！${name}真棒！`;
+    },
+};
+
+// ── 桌面大螢幕：依畫面內容自動放大（2026-09-23 使用者：桌面沒佔滿視窗，儘量大一點）──────
+// 各畫面是手機優先設計（卡片 480～600px），1900 寬的桌面只佔中間一小塊。
+// 固定倍率不行：首頁、L3 選購、結算頁內容本來就高，放大 1.3 倍就多出一截捲動。
+// 做法：每換一個畫面（#app 的直接子節點被換掉）量一次「不放大時的內容高」，
+// 在「不必捲動」的前提下放到最大（上限 MAX），寬度也不可超出視窗。倍率寫進 CSS 變數 --adv-zoom，
+// index.html 檔尾用它設 #app 的 zoom，並把各畫面 min-height:100vh 除回去（否則 100vh 也被放大）。
+// 本來就要捲動的畫面（內容高於視窗）維持原尺寸。手機與寬度 < MIN_W 的螢幕不動。
+// ⚠️ zoom 下 getBoundingClientRect 回傳放大後的值——依座標畫圖的程式要換算（見 _drawRoad 的 k）。
+(() => {
+    const app = document.getElementById('app');
+    if (!app) return;
+    const MIN_W = 1280, MAX = 1.45, HEADROOM = 0.96;   // HEADROOM：留一點給答題回饋等後長出來的字
+    // iPad 橫放（js/tablet-layout.js 判斷，2026-10-03 使用者要冒險也有 iPad 版）：寬度不到 1280 也套用，
+    // 而且內容太高時可以「縮小」到一個畫面放得下（桌面版維持只放大不縮小），最小 MIN_Z，再小就讓它捲。
+    const MIN_Z = 0.68;
+    const isTablet = () => !!(window.MTLayout && window.MTLayout.isTablet());
+    const root = document.documentElement;
+    const fit = () => {
+        let z = 1;
+        const tablet = isTablet();
+        if (innerWidth >= MIN_W || tablet) {
+            root.style.setProperty('--adv-zoom', '1');
+            app.classList.add('adv-fit-measure');           // 暫時拿掉 min-height:100vh，量真正的內容高
+            const h = app.getBoundingClientRect().height;
+            app.classList.remove('adv-fit-measure');
+            const nav = document.querySelector('.site-nav');
+            const navH = nav && nav.offsetParent !== null ? nav.getBoundingClientRect().height : 0;
+            const availH = innerHeight - navH;
+            if (h > 0 && h <= availH) {
+                z = Math.max(1, Math.min(MAX, (availH * HEADROOM) / h));
+                root.style.setProperty('--adv-zoom', String(z));
+                // 寬度保護：放大後若出現橫向捲動就往回縮（冒險路徑七站是自己橫向捲的框，也要看它；
+                // 2026-10-03 iPad 準備頁放大 1.27 倍後第 6、7 站被切到框外才補上）
+                const road = document.getElementById('adv-road');
+                const overflowX = () => root.scrollWidth > innerWidth || (road && road.scrollWidth > road.clientWidth + 1);
+                for (let i = 0; i < 8 && z > 1 && overflowX(); i++) {
+                    z = Math.max(1, z - 0.08);
+                    root.style.setProperty('--adv-zoom', String(z));
+                }
+            }
+            // 平板，或桌面寬螢幕的結算頁（2026-10-05 起桌面也用兩欄排法，1280×720 可能差一點放不下）→ 允許縮小
+            else if ((tablet || (root.classList.contains('desk-wide') && app.querySelector('.adv-victory'))) && h > availH) {
+                z = Math.max(MIN_Z, (availH * HEADROOM) / h);
+            }
+        }
+        root.style.setProperty('--adv-zoom', String(Math.round(z * 100) / 100));
+        // 冒險路徑的連線依座標畫，倍率變了要重畫
+        if (document.getElementById('adv-road-inner')) Adventure._drawRoad();
+    };
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); };
+    new MutationObserver(schedule).observe(app, { childList: true });
+    addEventListener('resize', schedule);
+    try { matchMedia('(orientation: landscape)').addEventListener('change', schedule); } catch (e) {}
+    // 圖片載入後高度會變（首頁角色圖、店家商品圖）→ 載入完再量一次
+    app.addEventListener('load', e => { if (e.target.tagName === 'IMG') schedule(); }, true);
+})();
+
+Adventure.init();

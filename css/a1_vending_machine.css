@@ -1,0 +1,1770 @@
+/* A5 - 自動販賣機測驗程式 */
+
+/* ===== CSS 變數定義 ===== */
+:root {
+    --vm-primary: #00884d;      /* 主綠色 */
+    --vm-primary-dark: #006938;
+    --vm-bg: #ffffff;
+    --vm-accent: #e60012;       /* 強調紅色 */
+    --vm-warning: #ffc700;      /* 警告黃色 */
+    --vm-text-dark: #333333;
+    --vm-text-light: #666666;
+    --vm-border: #dddddd;
+    --vm-success: #4caf50;
+    --vm-shadow: rgba(0, 0, 0, 0.15);
+}
+
+/* ===== 全域樣式 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== 主容器 ===== */
+.main-container {
+    display: flex;
+    gap: 10px;
+    width: 100vw;
+    height: 100vh;
+    background: var(--vm-bg);
+    overflow: hidden;
+    box-shadow: none;
+}
+
+/* ===== 販賣機主體 (左側) ===== */
+.machine-front {
+    flex: 3;
+    background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 0;
+    /* 移除 justify-content: space-between; 改用 gap 控制間距 */
+}
+
+.machine-header {
+    text-align: center;
+    padding: 8px 20px;
+    background: var(--vm-primary);
+    color: white;
+    border-radius: 10px;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.machine-header h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* 提示按鈕 (困難模式專用) */
+.hint-button {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    border-radius: 50px;
+    padding: 10px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.hint-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.hint-button:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.hint-button svg {
+    width: 24px;
+    height: 24px;
+}
+
+.hint-button span {
+    font-size: 1.1rem;
+}
+
+/* ===== 商品展示區 ===== */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 3px;
+    flex: 1;
+    align-content: space-evenly;
+    padding: 10px;
+    /* 移除 max-height: 55vh; 讓飲料窗口自然填滿空間 */
+    background: white;
+    border-radius: 10px;
+    border: 3px solid var(--vm-primary);
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.product-item {
+    background: white;
+    border: 2px solid var(--vm-border);
+    border-radius: 10px;
+    padding: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.product-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px var(--vm-shadow);
+    border-color: var(--vm-primary);
+}
+
+.product-item.selected {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 3px solid var(--vm-success);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    transform: translateY(-5px);
+}
+
+/* 先投幣模式 - 飲料鎖定狀態 */
+.product-item.coin-first-locked {
+    filter: grayscale(80%) brightness(0.5);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* 先投幣模式 - 飲料剛解鎖動畫 */
+.product-item.coin-first-unlocking {
+    animation: drinkLightUp 0.6s ease-out forwards;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+@keyframes drinkLightUp {
+    0%   { filter: grayscale(80%) brightness(0.5); }
+    40%  { filter: grayscale(0%)  brightness(1.4) drop-shadow(0 0 12px #FFD700); }
+    100% { filter: grayscale(0%)  brightness(1.0) drop-shadow(0 0 6px #FFD700); }
+}
+
+/* 先投幣模式 - 飲料已解鎖（亮起狀態） */
+.product-item.coin-first-available {
+    filter: none;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.product-item img {
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+    margin-bottom: 2px;
+}
+
+.product-name {
+    font-size: 0.9rem;
+    color: var(--vm-text-dark);
+    margin-bottom: 2px;
+    font-weight: 500;
+}
+
+.product-price {
+    font-size: 1.1rem;
+    color: var(--vm-accent);
+    font-weight: bold;
+}
+
+/* ===== 取物口 ===== */
+.retrieval-bin {
+    background: linear-gradient(to bottom, #2c3e50 0%, #34495e 100%);
+    border-radius: 10px;
+    padding: 8px;
+    height: 200px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.bin-label {
+    color: var(--vm-warning);
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.bin-content {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    padding: 10px;
+    min-height: 100px;
+    max-height: calc(100% - 30px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.vended-product {
+    animation: dropDown 0.8s ease-out;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.vended-product:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes dropDown {
+    from {
+        transform: translateY(-300px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.vended-product img {
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+}
+
+/* ===== 操作面板 (右側) ===== */
+.control-panel {
+    flex: 1;
+    background: var(--vm-primary);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: white;
+    justify-content: space-between;
+}
+
+/* ===== 顯示螢幕 ===== */
+.display-screen {
+    background: #1a2332;
+    border: 5px solid #2c3e50;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 100px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.screen-content {
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#screenProductImage {
+    height: 130px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+}
+
+#screenTitle {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#screenMessage {
+    font-size: 1rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* ===== 金額顯示器 ===== */
+.amount-display {
+    background: #1a2332;
+    border: 3px solid #2c3e50;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #2c3e50;
+}
+
+.amount-row:last-child {
+    border-bottom: none;
+}
+
+.amount-label {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.amount-value {
+    color: #00ff00;
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.currency {
+    color: #00ff00;
+    font-size: 1rem;
+}
+
+/* ===== 投幣區 ===== */
+.payment-area {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.payment-area h3 {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+/* 投幣孔 */
+.coin-slot {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border: 3px solid #1a252f;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+    box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.coin-slot:hover {
+    background: linear-gradient(145deg, #34495e, #3d566e);
+    transform: translateY(-2px);
+    box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.coin-slot-icon {
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+}
+
+.coin-slot-text {
+    color: var(--vm-warning);
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.refund-btn {
+    width: 100%;
+    background: var(--vm-accent);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 15px;
+}
+
+.refund-btn:hover {
+    background: #c40010;
+    transform: translateY(-2px);
+}
+
+/* 退幣口 */
+.refund-slot {
+    background: linear-gradient(to bottom, #1a2332, #0f1419);
+    border: 3px solid #2c3e50;
+    border-radius: 8px;
+    padding: 8px;
+    height: 120px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    max-height: 120px;
+    margin-top: auto;
+}
+
+.refund-slot-label {
+    color: var(--vm-warning);
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.refund-slot-output {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    padding: 10px;
+    min-height: 70px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.refund-coin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 55px;
+    height: 55px;
+    cursor: pointer;
+    animation: coinRefund 0.6s ease-out;
+    transition: transform 0.2s;
+}
+
+.refund-coin:hover {
+    transform: scale(1.2);
+}
+
+.refund-coin img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes coinRefund {
+    from {
+        transform: translateY(-50px) scale(0.5);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ===== 測驗區 ===== */
+.quiz-area {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--vm-text-dark);
+}
+
+.quiz-area.hidden {
+    display: none;
+}
+
+.quiz-area h3 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: var(--vm-primary);
+    text-align: center;
+}
+
+.quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quiz-option {
+    background: white;
+    border: 2px solid var(--vm-border);
+    padding: 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.quiz-option:hover {
+    background: #f0f8ff;
+    border-color: var(--vm-primary);
+    transform: translateX(5px);
+}
+
+.quiz-option.correct {
+    background: var(--vm-success);
+    color: white;
+    border-color: var(--vm-success);
+}
+
+.quiz-option.incorrect {
+    background: var(--vm-accent);
+    color: white;
+    border-color: var(--vm-accent);
+}
+
+/* ===== 操作按鈕 ===== */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-btn {
+    background: var(--vm-success);
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.confirm-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.cancel-btn {
+    background: #757575;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #616161;
+    transform: translateY(-2px);
+}
+
+/* ===== 設定按鈕 ===== */
+.settings-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.setting-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== 動畫效果 ===== */
+@keyframes coinInsert {
+    0% {
+        transform: translateY(-50px) scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+    }
+}
+
+.coin-animation {
+    position: absolute;
+    animation: coinInsert 0.6s ease-out;
+    pointer-events: none;
+}
+
+/* ===== 投幣選擇彈跳視窗 ===== */
+.coin-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.coin-modal.hidden {
+    display: none;
+}
+
+.coin-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.coin-modal-content {
+    position: relative;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.coin-modal-content h3 {
+    text-align: center;
+    color: var(--vm-primary);
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.coin-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.coin-option {
+    background: #f8f9fa;
+    border: 3px solid var(--vm-border);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.coin-option:hover {
+    border-color: var(--vm-primary);
+    background: #e8f5e9;
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 136, 77, 0.2);
+}
+
+.coin-option.bill-option {
+    grid-column: 1 / -1;
+}
+
+.coin-img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.coin-label {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--vm-text-dark);
+}
+
+.modal-close-btn {
+    width: 100%;
+    background: #757575;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    background: #616161;
+}
+
+/* ===== 響應式設計 ===== */
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 2px;
+        padding: 5px;
+    }
+
+    .product-item img {
+        width: 80px;
+        height: 80px;
+    }
+
+    .machine-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .coin-selection-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== 平板響應式（769px-1024px） ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .product-item img {
+        width: 100px;
+        height: 100px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
+}
+
+/* ===== 設定頁面樣式 (參考 A1) ===== */
+.unit-welcome {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    transition: all 0.3s ease;
+    /* 🔧 [滾動修復] 確保在手機端可以滾動 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.welcome-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 600px;
+    animation: slideUp 0.6s ease;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.welcome-content h1 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.game-settings {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.setting-group {
+    margin-bottom: 20px;
+}
+
+.setting-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.selection-btn {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: #000;
+    font-weight: bold;
+}
+
+a.selection-btn {
+    color: #000 !important;
+    font-weight: bold !important;
+    text-decoration: none;
+}
+
+.selection-btn:hover:not(.disabled) {
+    border-color: #667eea;
+    background: #f0f3ff;
+}
+
+.setting-description {
+    margin-top: 8px;
+    text-align: left;
+}
+
+.setting-description small {
+    color: #666;
+    font-style: italic;
+}
+
+.selection-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.selection-btn.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #ffebee;
+    border-color: #f44336;
+    color: #c62828;
+}
+
+/* 遊戲按鈕容器 */
+.game-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+/* 返回主畫面按鈕 - 淡紅色 */
+.back-to-main-btn {
+    background: #e57373;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(229, 115, 115, 0.3);
+}
+
+.back-to-main-btn:hover {
+    background: #ef5350;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(229, 115, 115, 0.4);
+}
+
+.back-to-main-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(229, 115, 115, 0.3);
+}
+
+/* 開始按鈕 - 綠色 */
+.start-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.start-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(40, 167, 69, 0.4);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+}
+
+/* 禁用狀態 - 灰色 */
+.start-btn.disabled, .start-btn:disabled {
+    background: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.start-btn.disabled:hover, .start-btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 響應式 - 設定頁面 */
+@media (max-width: 768px) {
+    .welcome-content {
+        padding: 30px 20px;
+    }
+
+    .game-buttons {
+        gap: 8px;
+    }
+
+    .game-buttons .start-btn,
+    .game-buttons .back-to-main-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 12px 8px;
+        font-size: 14px;
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+    }
+}
+
+/* =====================================================
+   設定頁面 — 吉祥物標題列（圖片在左，標題真正置中）
+   ===================================================== */
+.settings-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.settings-title-row h1 {
+    margin: 0;
+    text-align: center;
+}
+.settings-title-row::after {
+    display: none;
+}
+.settings-mascot-img {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+    flex-shrink: 0;
+    animation: settingsBounce 2.5s ease-in-out infinite;
+}
+@keyframes settingsBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-10px); }
+}
+@media (max-width: 600px) {
+    .settings-mascot-img { width: 48px; height: 48px; }
+}
+
+/* 完成畫面 — 吉祥物標題列 */
+.results-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.results-title-row .results-title {
+    margin: 0;
+}
+/* ⚠️ A1 不載入 ai-theme.css（見 CLAUDE.md），所以這一份是它自己的副本——
+   數值必須與 ai-theme.css 的同名規則一致，改尺寸要兩邊一起動。 */
+.performance-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+.performance-section h3 { flex-basis: 100%; }
+.results-mascot-img {
+    width: clamp(80px, 16vw, 120px);
+    height: clamp(80px, 16vw, 120px);
+    object-fit: contain;
+    flex-shrink: 0;
+    /* 微幅上下浮動＝主頁金隊長同一個效果（floatBob：10px、3.2s；2026-09-23 由 2.5s 對齊主頁） */
+    animation: settingsBounce 3.2s ease-in-out infinite;
+}
+/* 窄螢幕要讓金隊長與評價徽章**留在同一列**（比照對話完成頁的金好聊：
+   他是在「對這個成績說話」，拆成上下兩行就不成立了）。
+   實測 390px 差 7px 就換行：區塊內容寬 230，而 圖80 + gap14 + 徽章143 = 237。
+   所以窄螢幕縮 gap 並把徽章的內距與字級調小——圖本身不縮（clamp 下限 80 是可讀性底線）。
+   ⚠️ 徽章的 padding/font-size 定義在**各單元 JS 內嵌的 <style>**（innerHTML 注入晚於外部 CSS），
+      所以這裡非用 !important 不可，否則蓋不過去。 */
+@media (max-width: 480px) {
+    .performance-section { gap: 8px; }
+    .performance-badge {
+        padding: 10px 16px !important;
+        font-size: 1.05em !important;
+    }
+}
+
+@media (max-width: 600px) {
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   📱 行動裝置版面修正（2026-07-17）——全部寫在 media query 內，桌面（>900px）零影響
+   問題實測（五視窗截圖）：
+   ・測驗畫面 .main-content-wrapper 無響應式，≤600 販賣機/操作面板並排成
+     164px/186px 兩條細長欄、頁高近 3000px，飲料單欄小圖無限捲
+   ・768 操作面板僅 200px，「請投幣」等文字被擠成直排；標題列被 JS 注入的
+     @media 堆成三行（161px 高）
+   注意：標題列與 .main-content-wrapper 樣式由 showShoppingScreen() 以 <style>
+   注入（晚於本檔），同名屬性必須 !important 才蓋得過。
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── 601–900（iPad 直式）：保留左右欄，操作面板固定 300px 防壓扁；標題列壓回一行 ── */
+@media (min-width: 601px) and (max-width: 900px) {
+    .title-bar { flex-direction: row !important; gap: 8px !important; padding: 10px 12px !important; }
+    .title-bar-left > span:nth-of-type(2) { display: none; } /* 系統名稱 */
+    .title-bar-center { font-size: 16px !important; white-space: nowrap; }
+    .title-bar-right { gap: 8px !important; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .back-to-menu-btn { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
+
+    .control-panel { flex: 0 0 300px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .product-item img { width: 96px; height: 96px; }
+}
+
+/* ── ≤600（手機）：直向堆疊——飲料窗在上（3欄），操作面板全寬在下；
+      標題列兩行制（第一行＝🥤＋任務名，第二行＝題數＋按鈕） ── */
+@media (max-width: 600px) {
+    .title-bar {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        row-gap: 4px !important;
+        padding: 8px 10px !important;
+    }
+    .title-bar-left { flex: 0 0 auto !important; }
+    .title-bar-left > span:nth-of-type(2) { display: none; } /* 系統名稱 */
+    .title-bar-center { flex: 0 1 auto !important; font-size: 15px !important; white-space: nowrap; }
+    .title-bar-right { flex: 1 1 100% !important; justify-content: center; gap: 8px !important; }
+    .title-bar-right > span { white-space: nowrap; font-size: 13px; }
+    .back-to-menu-btn { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
+
+    .main-content-wrapper { flex-direction: column !important; gap: 10px !important; }
+    .machine-front { flex: none; }
+    .control-panel { flex: none; }
+
+    .product-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px; }
+    .product-item img { width: 84px; height: 84px; }
+    .product-name { font-size: 0.85rem; }
+    .product-price { font-size: 1rem; }
+
+    .retrieval-bin { height: 150px; }
+    .vended-product img { width: 96px; height: 96px; }
+
+    /* 操作面板內部緊湊（指示螢幕商品圖 128px 為 inline style，需 !important） */
+    .screen-content { min-height: 150px; }
+    #screenProductImage { height: 100px; }
+    .display-screen img { width: 96px !important; height: 96px !important; }
+}
+
+
+/* ===== 設定頁：原本寫死在 HTML 的行內樣式（2026-09-22 搬進 CSS）=====
+   為什麼搬：行內 style 的色值只有 !important 蓋得掉，深色模式想改就得一條一條打架。
+   搬進來後淺色模式的數值**逐字不變**，深色規則才有地方接手。 */
+.a1-settings-subtitle {
+    font-size: 1em;
+    color: #666;
+    margin-top: 15px;
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.a1-task-subhead {
+    font-size: 0.8em;
+    color: #888;
+    font-weight: 600;
+    padding: 2px 4px;
+    margin-top: 2px;
+}
+
+.a1-task-subhead-2nd {
+    margin-top: 4px;
+}
+
+.a1-clickmode-desc {
+    font-size: 0.9em;
+    color: #666;
+    margin: 8px 0 12px 0;
+    line-height: 1.5;
+}
+
+#difficulty-description {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.95em;
+    color: #666;
+    text-align: left;
+}
+
+/* =================================================================
+   A1 深色模式（2026-09-22）
+   —— 使用者回報「深色模式太亮、文字不清」：結算／交易摘要／購買成功彈窗
+
+   🔴 根因不是「沒寫深色樣式」，是**只有一半變深**：
+   共用的 css/dark-mode-simple.css 把 h1~h6／p／label／span 統一染成近白（--dm-text），
+   但這幾個畫面的卡片底色寫死在各自的內嵌 <style> 裡（#fff／rgba(255,255,255,.9)），
+   沒有任何規則把它們變深 → 白底＋近白字＝看不見（使用者截圖的「購買成功！」「交易摘要」
+   「表現評價」整排消失）；剩下的白卡片就是「太亮」的來源。
+   所以這裡補的是**底色**，連帶把底色一變就讀不到的字一起調亮。
+
+   ⚠️ 兩塊（@media 跟隨系統／[data-theme="dark"] 強制深色）**逐字對應**，只有外層 gate 不同
+   ——照 CLAUDE.md「深色模式規則」的定則，改一邊就要改另一邊。
+   ⚠️ 特異性要贏過兩個對手：畫面自己的內嵌 <style>（同名 class、後載入）與 dark-mode-simple.css
+   的 `:root:not([data-theme="light"]) span` 之類；所以每條都帶著 gate 前綴寫，不靠 !important。
+   ⚠️ 淺色模式（含 data-theme="light"）完全不受影響——本節所有規則都在深色 gate 內。
+   ================================================================= */
+
+/* ── 跟隨系統（沒有手動選淺色，且瀏覽器偏好深色）──────────────── */
+@media (prefers-color-scheme: dark) {
+    /* 設定頁：說明文字（原本是寫死在 HTML 的 #666／#888，淺底上讀得到、深底上讀不到） */
+    :root:not([data-theme="light"]) .a1-settings-subtitle,
+    :root:not([data-theme="light"]) .a1-clickmode-desc,
+    :root:not([data-theme="light"]) .setting-description small {
+        color: #b8c2d0;
+    }
+    :root:not([data-theme="light"]) .a1-task-subhead {
+        color: #aab4c4;
+    }
+    :root:not([data-theme="light"]) #difficulty-description {
+        background: #383a52;
+        color: #c9d2e0;
+    }
+
+    /* 設定頁：白底卡片與白底按鈕（深色下是整頁最大的亮源） */
+    :root:not([data-theme="light"]) .welcome-content {
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    :root:not([data-theme="light"]) .selection-btn {
+        background: #383a52;
+        color: #e8ecf3;
+        border-color: #4e5270;
+    }
+    :root:not([data-theme="light"]) a.selection-btn {
+        color: #e8ecf3 !important;
+    }
+    :root:not([data-theme="light"]) .selection-btn:hover:not(.disabled) {
+        background: #444864;
+        border-color: #7b86e8;
+    }
+    /* 選中＝整顆紫底白字（同 A2；2026-09-24 使用者定，原本只剩框線看得出選了哪個） */
+    :root:not([data-theme="light"]) .selection-btn.active,
+    :root:not([data-theme="light"]) .selection-btn.active:hover:not(.disabled) {
+        background: #667eea;
+        color: #ffffff;
+        border-color: #667eea;
+    }
+    :root:not([data-theme="light"]) .start-btn.disabled,
+    :root:not([data-theme="light"]) .start-btn:disabled {
+        background: #4a4d66;
+        color: #b7c0d0;
+    }
+
+    /* 「列印教具卡」的字色寫死在 js/scan-pay/settings-tools.js 的注入樣式裡
+       （`#settings-money-cards-link{color:#000!important}`，六個單元共用）→ 只有 id + !important
+       壓得過，而那支要留給其他五個單元（它們的 .selection-btn 在深色下仍是白底黑字）。 */
+    :root:not([data-theme="light"]) a#settings-money-cards-link {
+        color: #e8ecf3 !important;
+    }
+
+    /* 購買成功彈窗（pickUpProduct 的內嵌 <style> 寫死白底＋深字；深色下字被共用樣式染成近白＝白底白字） */
+    :root:not([data-theme="light"]) .pickup-overlay {
+        background: rgba(0, 0, 0, 0.82);
+    }
+    :root:not([data-theme="light"]) .pickup-card {
+        background: linear-gradient(135deg, #2d2d44 0%, #262637 100%);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    }
+    :root:not([data-theme="light"]) .pickup-title {
+        color: #e8ecf3;
+        text-shadow: none;
+    }
+    :root:not([data-theme="light"]) .product-showcase {
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    :root:not([data-theme="light"]) .product-glow {
+        opacity: 0.25;
+    }
+    :root:not([data-theme="light"]) .info-card {
+        background: #383a52;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    }
+    :root:not([data-theme="light"]) .info-card h3 {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .price-tag span {
+        color: #b8c2d0;
+    }
+    :root:not([data-theme="light"]) .price-tag strong {
+        color: #ff8f80;
+    }
+    :root:not([data-theme="light"]) .success-msg {
+        background: linear-gradient(135deg, #1e3a29 0%, #24472f 100%);
+        border-color: #3f8f5c;
+    }
+    :root:not([data-theme="light"]) .success-msg p {
+        color: #9ae6b4;
+    }
+
+    /* 交易摘要畫面（showTransactionSummary） */
+    :root:not([data-theme="light"]) .transaction-summary-screen {
+        background: linear-gradient(135deg, #123524 0%, #0c2418 100%);
+    }
+    :root:not([data-theme="light"]) .summary-content {
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    :root:not([data-theme="light"]) .summary-card {
+        background: #2d2d44;
+        color: #e8ecf3;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    }
+    :root:not([data-theme="light"]) .summary-card h2 {
+        color: #6ee7a8;
+    }
+    :root:not([data-theme="light"]) .summary-item span {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .summary-item:last-of-type span {
+        color: #6ee7a8;
+    }
+    :root:not([data-theme="light"]) .a1-money-icons-row {
+        border-bottom-color: rgba(255, 255, 255, 0.14);
+    }
+
+    /* 完成挑戰畫面（showResults）。⚠️ 卡片那幾條（.results-container／.result-card／.performance-section／
+       .learning-achievements／.achievement-item…）**2026-09-22 已搬到 css/dark-mode-simple.css 的共用區**
+       ——A2~A4、A6 與 C／F 系列用的是同一批 class，留在這裡就是等著其他單元各自重蹈覆轍。
+       這裡只留 A1 自己的外框漸層（.results-screen 則由 dark-mode-simple.css 既有規則負責）。 */
+    :root:not([data-theme="light"]) .results-wrapper {
+        background: linear-gradient(135deg, #252549 0%, #32204a 100%);
+    }
+
+    /* 販賣機本體與商品櫥窗（2026-09-22 使用者提議：中間那塊白色也改深）。
+       右側控制面板／取物口／標題列本來就是深色，櫥窗是畫面上唯一的大白塊——改深之後整台機器才是同一台。
+       ⚠️ 商品圖是去背 PNG，淺色瓶身在深底上更跳；純黑罐裝靠 .product-item 的邊框與標籤色分辨。 */
+    :root:not([data-theme="light"]) .main-container {
+        background: #1a1a2e;
+    }
+    :root:not([data-theme="light"]) .machine-front {
+        background: linear-gradient(to bottom, #262637 0%, #1f1f2e 100%);
+    }
+    :root:not([data-theme="light"]) .product-grid {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .product-item {
+        background: #383a52;
+        border-color: #4e5270;
+    }
+    :root:not([data-theme="light"]) .product-item:hover {
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.45);
+    }
+    :root:not([data-theme="light"]) .product-item.selected {
+        background: linear-gradient(135deg, #1e3a29 0%, #24472f 100%);
+    }
+    :root:not([data-theme="light"]) .product-name {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .product-price {
+        color: #ff8f80;
+    }
+
+    /* 購買任務彈窗（showTargetItemModal，指定任務每一輪開頭都會跳）。全部用 .target-item-modal 前綴限定，
+       `.modal-content`／`.modal-header`／`.item-name` 這些名字太通用，不限定會掃到別的彈窗。
+       ⚠️ 商品圖的襯底寫在 <img> 的行內 style（`background:white`）→ 只有 !important 蓋得掉。
+       商品 PNG 是去背的（有 tRNS），所以改了背景就真的看得到效果。 */
+    :root:not([data-theme="light"]) .target-item-modal .item-image img {
+        background: #3f4258 !important;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .modal-content {
+        background: #2d2d44;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55);
+    }
+    :root:not([data-theme="light"]) .target-item-modal .modal-header {
+        border-bottom-color: rgba(255, 255, 255, 0.14);
+    }
+    :root:not([data-theme="light"]) .target-item-modal .modal-header h2 {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .close-modal-btn {
+        color: #b8c2d0;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .close-modal-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .target-item-display {
+        background: #383a52;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .item-name {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .item-price {
+        color: #ff8f80;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .task-instruction {
+        background: #3c3620;
+        border-color: #a98c1f;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .task-instruction p {
+        color: #ecdfbe;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .task-instruction strong {
+        color: #6ee7a8;
+    }
+    :root:not([data-theme="light"]) .target-item-modal .modal-footer {
+        border-top-color: rgba(255, 255, 255, 0.14);
+    }
+
+    /* 錢包介紹畫面（showWalletIntroScreen）。2026-09-22 使用者指定：硬幣卡的白底改黑、面額文字改白。
+       連同那片亮綠一起壓暗——交易摘要早一步改成深綠了，同一個綠留一亮一暗會很突兀。
+       ⚠️ `.coin-name`／`.coin-count` 是 <div>，不在 dark-mode-simple.css 染色的 p／span／label 之列，
+       底色一改黑就是深字黑底，字色非自己補不可。 */
+    :root:not([data-theme="light"]) .wallet-intro-screen {
+        background: linear-gradient(135deg, #123524 0%, #0c2418 100%);
+    }
+    :root:not([data-theme="light"]) .wallet-intro-content {
+        background: rgba(255, 255, 255, 0.06);
+    }
+    :root:not([data-theme="light"]) .wallet-amount h2 {
+        background: rgba(255, 255, 255, 0.08);
+    }
+    :root:not([data-theme="light"]) .coin-group {
+        background: #1e1e2a;
+    }
+    :root:not([data-theme="light"]) .coin-info {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .coin-count {
+        color: #ff8f80;
+        background: rgba(255, 143, 128, 0.14);
+    }
+
+    /* 數字輸入彈窗（showNumberInput）。標題 h3 寫死 #333，深色下被共用樣式染成近白＝白底白字；
+       ⚠️ 三顆功能鍵（清除／退格／確認）的彩底白字是內嵌 <style> 用 !important 寫的，這裡刻意不碰。
+       改完要跑 node tests/_e2e_numpad_contrast.js（它守 6 種明暗組合下數字鍵的對比）。 */
+    :root:not([data-theme="light"]) .number-input-container {
+        background: #2d2d44;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    }
+    :root:not([data-theme="light"]) .number-input-header {
+        border-bottom-color: rgba(255, 255, 255, 0.14);
+    }
+    :root:not([data-theme="light"]) .number-input-header h3 {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .close-btn {
+        color: #b8c2d0;
+    }
+    :root:not([data-theme="light"]) .close-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
+    :root:not([data-theme="light"]) #number-display {
+        background: #383a52;
+        color: #e8ecf3;
+        border-color: #4e5270;
+    }
+    :root:not([data-theme="light"]) .number-input-buttons button {
+        background: #383a52;
+        color: #e8ecf3;
+        border-color: #4e5270;
+    }
+    :root:not([data-theme="light"]) .number-input-buttons button:hover {
+        background: #444864;
+    }
+    :root:not([data-theme="light"]) .number-input-buttons button:active {
+        background: #4e5270;
+    }
+
+    /* 找零彈窗（內嵌 <style> 寫死白底／黃底，深色下只有字被染淺 → 白底淺字；2026-09-25） */
+    :root:not([data-theme="light"]) .change-card {
+        background: linear-gradient(135deg, #2d2d44 0%, #262637 100%);
+    }
+    :root:not([data-theme="light"]) .change-header h2 {
+        color: #e8ecf3;
+    }
+    :root:not([data-theme="light"]) .change-amount-display {
+        background: #383a52;
+        box-shadow: none;
+    }
+    :root:not([data-theme="light"]) .change-label {
+        color: #c9d2e0;
+    }
+    :root:not([data-theme="light"]) .change-total {
+        color: #f5cfa3;
+    }
+    :root:not([data-theme="light"]) .change-coins-container {
+        background: #383a52;
+    }
+    :root:not([data-theme="light"]) .change-coins-label {
+        color: #b8c2d0;
+    }
+    :root:not([data-theme="light"]) .change-coin-item {
+        background: #444864;
+    }
+    :root:not([data-theme="light"]) .change-coin-value {
+        color: #90caf9;
+    }
+    :root:not([data-theme="light"]) .change-message {
+        background: #1c4a34;
+    }
+    :root:not([data-theme="light"]) .change-message p {
+        color: #a5d6a7;
+    }
+}
+
+/* ── 強制深色（[data-theme="dark"]）───────────────────────────── */
+
+/* 設定頁：說明文字（原本是寫死在 HTML 的 #666／#888，淺底上讀得到、深底上讀不到） */
+[data-theme="dark"] .a1-settings-subtitle,
+[data-theme="dark"] .a1-clickmode-desc,
+[data-theme="dark"] .setting-description small {
+    color: #b8c2d0;
+}
+[data-theme="dark"] .a1-task-subhead {
+    color: #aab4c4;
+}
+[data-theme="dark"] #difficulty-description {
+    background: #383a52;
+    color: #c9d2e0;
+}
+
+/* 設定頁：白底卡片與白底按鈕（深色下是整頁最大的亮源） */
+[data-theme="dark"] .welcome-content {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .selection-btn {
+    background: #383a52;
+    color: #e8ecf3;
+    border-color: #4e5270;
+}
+[data-theme="dark"] a.selection-btn {
+    color: #e8ecf3 !important;
+}
+[data-theme="dark"] .selection-btn:hover:not(.disabled) {
+    background: #444864;
+    border-color: #7b86e8;
+}
+/* 選中＝整顆紫底白字（同 A2；2026-09-24 使用者定，原本只剩框線看得出選了哪個） */
+[data-theme="dark"] .selection-btn.active,
+[data-theme="dark"] .selection-btn.active:hover:not(.disabled) {
+    background: #667eea;
+    color: #ffffff;
+    border-color: #667eea;
+}
+[data-theme="dark"] .start-btn.disabled,
+[data-theme="dark"] .start-btn:disabled {
+    background: #4a4d66;
+    color: #b7c0d0;
+}
+
+/* 「列印教具卡」的字色寫死在 js/scan-pay/settings-tools.js 的注入樣式裡
+   （`#settings-money-cards-link{color:#000!important}`，六個單元共用）→ 只有 id + !important
+   壓得過，而那支要留給其他五個單元（它們的 .selection-btn 在深色下仍是白底黑字）。 */
+[data-theme="dark"] a#settings-money-cards-link {
+    color: #e8ecf3 !important;
+}
+
+/* 購買成功彈窗（pickUpProduct 的內嵌 <style> 寫死白底＋深字；深色下字被共用樣式染成近白＝白底白字） */
+[data-theme="dark"] .pickup-overlay {
+    background: rgba(0, 0, 0, 0.82);
+}
+[data-theme="dark"] .pickup-card {
+    background: linear-gradient(135deg, #2d2d44 0%, #262637 100%);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .pickup-title {
+    color: #e8ecf3;
+    text-shadow: none;
+}
+[data-theme="dark"] .product-showcase {
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+}
+[data-theme="dark"] .product-glow {
+    opacity: 0.25;
+}
+[data-theme="dark"] .info-card {
+    background: #383a52;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .info-card h3 {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .price-tag span {
+    color: #b8c2d0;
+}
+[data-theme="dark"] .price-tag strong {
+    color: #ff8f80;
+}
+[data-theme="dark"] .success-msg {
+    background: linear-gradient(135deg, #1e3a29 0%, #24472f 100%);
+    border-color: #3f8f5c;
+}
+[data-theme="dark"] .success-msg p {
+    color: #9ae6b4;
+}
+
+/* 交易摘要畫面（showTransactionSummary） */
+[data-theme="dark"] .transaction-summary-screen {
+    background: linear-gradient(135deg, #123524 0%, #0c2418 100%);
+}
+[data-theme="dark"] .summary-content {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .summary-card {
+    background: #2d2d44;
+    color: #e8ecf3;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+[data-theme="dark"] .summary-card h2 {
+    color: #6ee7a8;
+}
+[data-theme="dark"] .summary-item span {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .summary-item:last-of-type span {
+    color: #6ee7a8;
+}
+[data-theme="dark"] .a1-money-icons-row {
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+/* 完成挑戰畫面（showResults）。⚠️ 卡片那幾條（.results-container／.result-card／.performance-section／
+   .learning-achievements／.achievement-item…）**2026-09-22 已搬到 css/dark-mode-simple.css 的共用區**
+   ——A2~A4、A6 與 C／F 系列用的是同一批 class，留在這裡就是等著其他單元各自重蹈覆轍。
+   這裡只留 A1 自己的外框漸層（.results-screen 則由 dark-mode-simple.css 既有規則負責）。 */
+[data-theme="dark"] .results-wrapper {
+    background: linear-gradient(135deg, #252549 0%, #32204a 100%);
+}
+
+/* 販賣機本體與商品櫥窗（2026-09-22 使用者提議：中間那塊白色也改深）。
+   右側控制面板／取物口／標題列本來就是深色，櫥窗是畫面上唯一的大白塊——改深之後整台機器才是同一台。
+   ⚠️ 商品圖是去背 PNG，淺色瓶身在深底上更跳；純黑罐裝靠 .product-item 的邊框與標籤色分辨。 */
+[data-theme="dark"] .main-container {
+    background: #1a1a2e;
+}
+[data-theme="dark"] .machine-front {
+    background: linear-gradient(to bottom, #262637 0%, #1f1f2e 100%);
+}
+[data-theme="dark"] .product-grid {
+    background: #2d2d44;
+}
+[data-theme="dark"] .product-item {
+    background: #383a52;
+    border-color: #4e5270;
+}
+[data-theme="dark"] .product-item:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.45);
+}
+[data-theme="dark"] .product-item.selected {
+    background: linear-gradient(135deg, #1e3a29 0%, #24472f 100%);
+}
+[data-theme="dark"] .product-name {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .product-price {
+    color: #ff8f80;
+}
+
+/* 購買任務彈窗（showTargetItemModal，指定任務每一輪開頭都會跳）。全部用 .target-item-modal 前綴限定，
+   `.modal-content`／`.modal-header`／`.item-name` 這些名字太通用，不限定會掃到別的彈窗。
+   ⚠️ 商品圖的襯底寫在 <img> 的行內 style（`background:white`）→ 只有 !important 蓋得掉。
+   商品 PNG 是去背的（有 tRNS），所以改了背景就真的看得到效果。 */
+[data-theme="dark"] .target-item-modal .item-image img {
+    background: #3f4258 !important;
+}
+[data-theme="dark"] .target-item-modal .modal-content {
+    background: #2d2d44;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55);
+}
+[data-theme="dark"] .target-item-modal .modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .target-item-modal .modal-header h2 {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .target-item-modal .close-modal-btn {
+    color: #b8c2d0;
+}
+[data-theme="dark"] .target-item-modal .close-modal-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e8ecf3;
+}
+[data-theme="dark"] .target-item-modal .target-item-display {
+    background: #383a52;
+}
+[data-theme="dark"] .target-item-modal .item-name {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .target-item-modal .item-price {
+    color: #ff8f80;
+}
+[data-theme="dark"] .target-item-modal .task-instruction {
+    background: #3c3620;
+    border-color: #a98c1f;
+}
+[data-theme="dark"] .target-item-modal .task-instruction p {
+    color: #ecdfbe;
+}
+[data-theme="dark"] .target-item-modal .task-instruction strong {
+    color: #6ee7a8;
+}
+[data-theme="dark"] .target-item-modal .modal-footer {
+    border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+/* 錢包介紹畫面（showWalletIntroScreen）。2026-09-22 使用者指定：硬幣卡的白底改黑、面額文字改白。
+   連同那片亮綠一起壓暗——交易摘要早一步改成深綠了，同一個綠留一亮一暗會很突兀。
+   ⚠️ `.coin-name`／`.coin-count` 是 <div>，不在 dark-mode-simple.css 染色的 p／span／label 之列，
+   底色一改黑就是深字黑底，字色非自己補不可。 */
+[data-theme="dark"] .wallet-intro-screen {
+    background: linear-gradient(135deg, #123524 0%, #0c2418 100%);
+}
+[data-theme="dark"] .wallet-intro-content {
+    background: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .wallet-amount h2 {
+    background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .coin-group {
+    background: #1e1e2a;
+}
+[data-theme="dark"] .coin-info {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .coin-count {
+    color: #ff8f80;
+    background: rgba(255, 143, 128, 0.14);
+}
+
+/* 數字輸入彈窗（showNumberInput）。標題 h3 寫死 #333，深色下被共用樣式染成近白＝白底白字；
+   ⚠️ 三顆功能鍵（清除／退格／確認）的彩底白字是內嵌 <style> 用 !important 寫的，這裡刻意不碰。
+   改完要跑 node tests/_e2e_numpad_contrast.js（它守 6 種明暗組合下數字鍵的對比）。 */
+[data-theme="dark"] .number-input-container {
+    background: #2d2d44;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+[data-theme="dark"] .number-input-header {
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .number-input-header h3 {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .close-btn {
+    color: #b8c2d0;
+}
+[data-theme="dark"] .close-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] #number-display {
+    background: #383a52;
+    color: #e8ecf3;
+    border-color: #4e5270;
+}
+[data-theme="dark"] .number-input-buttons button {
+    background: #383a52;
+    color: #e8ecf3;
+    border-color: #4e5270;
+}
+[data-theme="dark"] .number-input-buttons button:hover {
+    background: #444864;
+}
+[data-theme="dark"] .number-input-buttons button:active {
+    background: #4e5270;
+}
+
+/* 找零彈窗（內嵌 <style> 寫死白底／黃底，深色下只有字被染淺 → 白底淺字；2026-09-25） */
+[data-theme="dark"] .change-card {
+    background: linear-gradient(135deg, #2d2d44 0%, #262637 100%);
+}
+[data-theme="dark"] .change-header h2 {
+    color: #e8ecf3;
+}
+[data-theme="dark"] .change-amount-display {
+    background: #383a52;
+    box-shadow: none;
+}
+[data-theme="dark"] .change-label {
+    color: #c9d2e0;
+}
+[data-theme="dark"] .change-total {
+    color: #f5cfa3;
+}
+[data-theme="dark"] .change-coins-container {
+    background: #383a52;
+}
+[data-theme="dark"] .change-coins-label {
+    color: #b8c2d0;
+}
+[data-theme="dark"] .change-coin-item {
+    background: #444864;
+}
+[data-theme="dark"] .change-coin-value {
+    color: #90caf9;
+}
+[data-theme="dark"] .change-message {
+    background: #1c4a34;
+}
+[data-theme="dark"] .change-message p {
+    color: #a5d6a7;
+}

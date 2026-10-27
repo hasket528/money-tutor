@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+    <meta charset="UTF-8">
+    <script src="js/emoji-font.js"></script>
+    <script src="js/teacher-res-embed.js"></script>
+    <meta name="darkreader-lock"><!-- 本站自帶深淺色切換：請 Dark Reader 等外掛別再疊一層（2026-09-24） -->
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem("mt_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師指南｜金錢小達人</title>
+    <style>
+        :root {
+            --primary: #007bff; --text: #334e68; --bg: #f0f7ff;
+            --card: #ffffff; --line: #dbe7f5; --accent: #28a745; --warn: #92400e;
+        }
+        /* 深色模式：跟隨系統／強制（[data-theme="dark"]）兩區塊逐字對應，只差外層 gate，
+           寫法同 teacher.html。⚠️ 兩塊都包一層 @media screen——本頁 @media print 強制白底列印，
+           不加 screen 限定的話 [data-theme="dark"] 選擇器特異性較高會蓋掉列印規則，印出來變黑底。 */
+        @media screen and (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --primary: #60A5FA; --text: #E2E8F0; --bg: #0F172A;
+                --card: #1E293B; --line: #334155; --accent: #4ADE80; --warn: #FB923C;
+            }
+            :root:not([data-theme="light"]) th { background: #1E3A5F; }
+            :root:not([data-theme="light"]) tr:nth-child(even) td { background: #1a2332; }
+            :root:not([data-theme="light"]) .tag { background: #1E3A5F; color: #93C5FD; }
+            :root:not([data-theme="light"]) .note { background: #1E293B; border-color: #78350f; }
+            :root:not([data-theme="light"]) .card-mini { background: #1a2332; }
+            :root:not([data-theme="light"]) .card-mini b { color: #93C5FD; }
+            :root:not([data-theme="light"]) h3 { color: #93C5FD; }
+            :root:not([data-theme="light"]) .wrap a { color: #93C5FD; }
+            :root:not([data-theme="light"]) .print-btn { background: #2563EB; }
+            :root:not([data-theme="light"]) .formula { background: #111827; }
+        }
+        @media screen {
+            [data-theme="dark"] {
+                --primary: #60A5FA; --text: #E2E8F0; --bg: #0F172A;
+                --card: #1E293B; --line: #334155; --accent: #4ADE80; --warn: #FB923C;
+            }
+            [data-theme="dark"] th { background: #1E3A5F; }
+            [data-theme="dark"] tr:nth-child(even) td { background: #1a2332; }
+            [data-theme="dark"] .tag { background: #1E3A5F; color: #93C5FD; }
+            [data-theme="dark"] .note { background: #1E293B; border-color: #78350f; }
+            [data-theme="dark"] .card-mini { background: #1a2332; }
+            [data-theme="dark"] .card-mini b { color: #93C5FD; }
+            [data-theme="dark"] h3 { color: #93C5FD; }
+            [data-theme="dark"] .wrap a { color: #93C5FD; }
+            [data-theme="dark"] .print-btn { background: #2563EB; }
+            [data-theme="dark"] .formula { background: #111827; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            line-height: 1.75;
+        }
+        .wrap { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
+        header.guide-head { text-align: center; margin-bottom: 28px; }
+        header.guide-head h1 { color: var(--primary); font-size: 2.1em; margin: 0 0 6px; }
+        header.guide-head p  { margin: 0; opacity: 0.85; }
+        .top-nav { text-align: center; margin: 14px 0 4px; font-size: 0.92em; }
+        .top-nav a { color: var(--primary); text-decoration: none; margin: 0 10px; }
+        section { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+                  padding: 22px 26px; margin-bottom: 22px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); }
+        h2 { color: var(--primary); font-size: 1.35em; margin: 0 0 12px; border-left: 5px solid var(--primary);
+             padding-left: 10px; }
+        h3 { font-size: 1.05em; margin: 18px 0 6px; color: #1d4ed8; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+        th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+        th { background: #eaf3ff; white-space: nowrap; }
+        tr:nth-child(even) td { background: #f8fbff; }
+        .tag { display: inline-block; background: #eaf3ff; color: #1d4ed8; border-radius: 12px;
+               padding: 1px 10px; font-size: 0.85em; margin-right: 4px; white-space: nowrap; }
+        .note { font-size: 0.85em; color: var(--warn); background: #fffbeb; border: 1px solid #fde68a;
+                border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+        .card-mini { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fbfdff; }
+        .card-mini b { color: #1d4ed8; }
+        ol.flow { padding-left: 22px; } ol.flow li { margin-bottom: 6px; }
+        .print-btn { position: fixed; right: 18px; bottom: 18px; background: var(--primary); color: #fff;
+                     border: none; border-radius: 30px; padding: 12px 20px; font-size: 0.95em; cursor: pointer;
+                     box-shadow: 0 4px 14px rgba(0,123,255,0.4); }
+        .table-scroll { overflow-x: auto; }
+        /* 指標計算說明（2026-10-09）：公式框 */
+        .formula { font-family: Consolas, 'Microsoft JhengHei', monospace; background: #f1f5f9; border: 1px solid var(--line);
+                   border-radius: 10px; padding: 10px 14px; margin: 8px 0 12px; white-space: pre-wrap; line-height: 1.9; font-size: 0.92em; }
+        td.num, th.num { text-align: center; white-space: nowrap; }
+        @media print {
+            body { background: #fff; }
+            section { box-shadow: none; border-color: #bbb; page-break-inside: avoid; }
+            .print-btn, .top-nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+<style>
+  .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+  .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); white-space:nowrap; transition:background .15s; }
+  .site-nav a:hover { background:rgba(255,255,255,0.30); }
+  .site-nav a.current { background:#f59e0b; }
+  .theme-toggle-btn { color:#fff; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(255,255,255,0.14); border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s; }
+  .theme-toggle-btn:hover { background:rgba(255,255,255,0.30); }
+</style>
+<nav class="site-nav">
+  <a href="index.html">🏠 主頁(金錢核心課程)</a>
+  <a href="index.html?hero=chatdog">💬 生活情境對話</a>
+  <a href="index.html?hero=doctor">🗺️ 一日金錢冒險</a>
+  <a href="index.html?hero=detective">🎮 小遊戲</a>
+  <a href="reward/index.html?page=growth">🌟 成就與寵物</a>
+  <a href="reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+  <a href="teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+  <button type="button" class="theme-toggle-btn" id="theme-toggle-btn"></button>
+  <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
+</nav>
+<script src="js/theme-switch.js"></script>
+<script src="js/nav-auth.js"></script>
+<div class="wrap">
+
+    <header class="guide-head">
+        <h1>💰 金錢小達人・教師指南</h1>
+        <p>特殊教育金錢教學互動教材｜課綱對應・IEP 目標範例・使用建議</p>
+        <nav class="top-nav">
+            <a href="#units">單元對照表</a>
+            <a href="#dialogue">生活情境對話</a>
+            <a href="#studio">教師自編工具</a>
+            <a href="#iep">IEP 目標與評量</a>
+            <a href="#metrics">指標怎麼算</a>
+            <a href="#privacy">資料與隱私</a>
+        </nav>
+    </header>
+
+    <section>
+        <h2>一、教材定位與適用對象</h2>
+        <p><strong>金錢小達人</strong>是一套針對<strong>認知功能輕度至中度障礙學生</strong>設計的金錢教育互動教材，涵蓋「數學基礎 → 金錢認知 → 預算規劃 → 生活應用 → 溝通泛化」完整學習路徑。適用於國小至國中特教班、資源班之個別化教學與小組教學，亦可供家長在家延伸練習。</p>
+        <div class="grid2">
+            <div class="card-mini"><b>設計原則</b><br>大按鈕與高對比介面、全程語音支持（台灣中文）、立即回饋、無錯學習（errorless learning）、系統性提示褪除、可調難度與題數。</div>
+            <div class="card-mini"><b>環境需求</b><br>電腦或平板＋Edge / Chrome 瀏覽器即可，無需安裝軟體。角色台詞多為預錄真人化語音，其餘由瀏覽器語音朗讀（Edge 的台灣中文語音效果最佳）；開過的頁面可離線使用（PWA）。</div>
+        </div>
+        <h3>系統組成</h3>
+        <p>
+            <span class="tag">📚 24 個學習單元（F/C/A/B 四系列）</span>
+            <span class="tag">💬 生活情境對話（42 個場所）</span>
+            <span class="tag">🗺️ 一日金錢冒險</span>
+            <span class="tag">🎮 小遊戲</span>
+            <span class="tag">🌟 成就與寵物</span>
+            <span class="tag">🏆 優良表現獎勵板</span>
+            <span class="tag">📝 作業單產生器（可印/PDF）</span>
+            <span class="tag">📊 學習歷程總覽與 IEP 目標</span>
+        </p>
+    </section>
+
+    <section>
+        <h2>一之二、設計理念：實證教學法（EBP）的系統化實作</h2>
+        <p>本教材的每個功能都對應特殊教育實證教學法，並以軟體將其「自動化、一致化」：</p>
+        <div class="table-scroll"><table>
+            <tr><th>系統功能</th><th>對應教學理論</th><th>實作方式</th></tr>
+            <tr><td>🪙 金幣 → 💎 寶石 → 🐷 寵物/寶物</td><td><strong>代幣制度（Token Economy）</strong></td><td>三層增強：金幣＝努力（完成任務即得）、寶石＝品質（🌟全程無錯才得）、寵物進化與寶物＝後援增強物（backup reinforcer），將立即增強與延宕滿足串成系統</td></tr>
+            <tr><td>簡單／普通／困難三段難度＋💡 提示</td><td><strong>系統性提示褪除（Prompt Fading）</strong></td><td>簡單模式提供最多支持（對話直接顯示「你可以這樣說」、各單元可開輔助點擊），普通、困難逐步減少；學生自己按提示與錯誤三次自動提示都會記錄，作為褪除的依據；精熟標準可調（ABA 精熟原則）</td></tr>
+            <tr><td>簡單模式示範句、錯誤三次自動提示</td><td><strong>無錯學習（Errorless Learning）</strong></td><td>簡單模式先看示範再作答；普通模式連錯 3 次自動亮出正確位置，把錯誤轉為示範、降低錯誤練習的固著；🌟無錯通過另予品質增強</td></tr>
+            <tr><td>A 系列步驟化流程＋輔助點擊</td><td><strong>工作分析（Task Analysis）</strong></td><td>販賣機/點餐/ATM 拆解為可教學的步驟鏈，逐步褪除輔助</td></tr>
+            <tr><td>真幣圖像、模擬情境、實地延伸</td><td><strong>CRA 序列與泛化設計</strong></td><td>具體（實物教具卡）→ 表徵（擬真模擬）→ 抽象（數字計算）；教案含社區實地任務促進類化</td></tr>
+            <tr><td>學習歷程＋錯誤次數＋精熟標記</td><td><strong>資料本位決策（Data-Based Decision Making）</strong></td><td>每題記錄答對、答錯、用了哪種提示，算出無錯答對率／無提示答對率／答對率（含提示）三個指標；教師依數據調整目標，並用 IEP 目標自動判定達成（IEP 檢核）</td></tr>
+            <tr><td>😀😐😣 學生自評</td><td><strong>自我決策／後設認知（Self-Determination）</strong></td><td>每次練習後自評，教師觀察「自評與實際表現落差」</td></tr>
+            <tr><td>🧭 能力快篩</td><td><strong>起點行為評估（課程本位評量 CBA）</strong></td><td>12 題技能階梯，最早失誤處＝教學起點；另有前測／後測（每技能 2 題、共 24 題、難度固定），教學前後各施測一次對照成效</td></tr>
+        </table></div>
+        <p style="margin-top:10px">📚 <a href="lesson-plans.html"><strong>單元教案包（三大單元共 32 份：金錢核心課程 24＋生活情境對話 7＋一日金錢冒險 1，每份一頁可列印）</strong></a>——含教學目標、先備能力、教學流程、評量方式、課綱代碼與 IEP 目標例句。</p>
+    </section>
+
+    <section id="units">
+        <h2>二、金錢核心課程 24 單元 × 課綱對應 × IEP 目標範例</h2>
+        <p style="font-size:0.9em">學習路徑建議依主頁的四個部分推進：F 基礎技能 → C 核心課程 → B 預算規劃 → A 進階應用；各單元皆有難度設定與輔助點擊模式，可依學生能力起點切入。課綱代碼（核心素養／學習表現／學習內容）列在📚 單元教案包。</p>
+
+        <h3>F 系列｜第一部分：基礎技能（數與量前備能力）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>F1 數量與物品的對應</td><td>一對一對應概念</td><td>數學：數與量（低年段調整）</td><td data-iep="f1"></td></tr>
+            <tr><td>F2 數量與點數</td><td>唱數與理性計數</td><td>數學：數與量</td><td data-iep="f2"></td></tr>
+            <tr><td>F3 認識數字與數量</td><td>數字認讀與數量連結</td><td>數學：數與量</td><td data-iep="f3"></td></tr>
+            <tr><td>F4 數字排序</td><td>數序概念</td><td>數學：數與量</td><td data-iep="f4"></td></tr>
+            <tr><td>F5 數量大小的比較</td><td>多少／大小比較</td><td>數學：數與量、關係</td><td data-iep="f5"></td></tr>
+            <tr><td>F6 數的合成與分解</td><td>10 以內合成分解</td><td>數學：數與量</td><td data-iep="f6"></td></tr>
+        </table></div>
+
+        <h3>C 系列｜第二部分：核心課程（金錢認知）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>C1 金錢的種類與面額</td><td>辨識硬幣與紙鈔</td><td>生活管理：財物管理／數學：數與量</td><td data-iep="c1"></td></tr>
+            <tr><td>C2 金錢的點數與加總</td><td>點數金額</td><td>生活管理：財物管理／數學</td><td data-iep="c2"></td></tr>
+            <tr><td>C3 金錢面額的兌換</td><td>等值兌換概念</td><td>生活管理：財物管理</td><td data-iep="c3"></td></tr>
+            <tr><td>C4 正確的金額</td><td>依標價拿出正確金額</td><td>生活管理：財物管理</td><td data-iep="c4"></td></tr>
+            <tr><td>C5 足額付款</td><td>「夠不夠買」判斷</td><td>生活管理：財物管理</td><td data-iep="c5"></td></tr>
+            <tr><td>C6 找零與計算</td><td>找零概念與驗算</td><td>生活管理：財物管理／數學</td><td data-iep="c6"></td></tr>
+        </table></div>
+        <h3>B 系列｜第三部分：預算規劃（理財素養）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>B1 今天帶多少錢</td><td>依行程估算所需金額</td><td>生活管理：財物管理</td><td data-iep="b1"></td></tr>
+            <tr><td>B2 零用錢日記</td><td>收支記錄習慣</td><td>生活管理：財物管理</td><td data-iep="b2"></td></tr>
+            <tr><td>B3 存錢計畫</td><td>儲蓄目標與延宕滿足</td><td>生活管理：財物管理</td><td data-iep="b3"></td></tr>
+            <tr><td>B4 商品價格比較</td><td>比價與優惠判斷</td><td>生活管理：財物管理</td><td data-iep="b4"></td></tr>
+            <tr><td>B5 派對活動採購</td><td>預算內完成多項採購</td><td>生活管理：財物管理</td><td data-iep="b5"></td></tr>
+            <tr><td>B6 菜市場買菜</td><td>傳統市場交易與找零</td><td>生活管理：社區生活</td><td data-iep="b6"></td></tr>
+        </table></div>
+
+
+        <h3>A 系列｜第四部分：進階應用（真實情境模擬）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>單元</th><th>學習目標</th><th>課綱對應＊</th><th>IEP 目標範例</th></tr>
+            <tr><td>A1 自動飲料販賣機</td><td>投幣、選商品、取找零完整流程</td><td>生活管理：社區生活</td><td data-iep="a1"></td></tr>
+            <tr><td>A2 理髮店售票機</td><td>售票機操作與服務消費</td><td>生活管理：社區生活</td><td data-iep="a2"></td></tr>
+            <tr><td>A3 美式速食自助點餐</td><td>自助點餐機操作、套餐選擇</td><td>生活管理：社區生活／社會技巧</td><td data-iep="a3"></td></tr>
+            <tr><td>A4 模擬購物</td><td>多商店購物、挑選與結帳</td><td>生活管理：財物管理</td><td data-iep="a4"></td></tr>
+            <tr><td>A5 ATM提款機</td><td>提款流程與金融安全</td><td>生活管理：財物管理（金融機構）</td><td data-iep="a5"></td></tr>
+            <tr><td>A6 火車購票</td><td>購票機操作、車票資訊判讀</td><td>生活管理：行動與交通安全／社區生活</td><td data-iep="a6"></td></tr>
+        </table></div>
+
+        <p class="note">＊課綱對應為<strong>建議層級</strong>（十二年國教特殊需求領域課程「生活管理」「社會技巧」及數學領域調整應用），請依貴校校本課程計畫與學生 IEP 微調具體學習表現代碼。具體代碼與官方條文見單元教案包。<br>IEP 目標範例取自學習歷程總覽的「⚡ IEP 目標範本」（同一份資料；生活管理進階單元取「獨立」層，其餘取「進展」層），通過標準依各校規定填寫（例：花特 80%）。</p>
+    </section>
+
+    <section id="dialogue">
+        <h2>三、生活情境對話 — 溝通泛化模組</h2>
+        <p>以 42 個社區場所（便利商店、早餐店、超市、藥局、郵局、捷運⋯）、336 個情境，分七大部分（含金錢安全與防詐騙），訓練學生「開口買東西、辦事情」的功能性溝通。每個情境另有「情境小百科」，由金好聊講禮儀、金博士補充金錢常識。對應課綱：<span class="tag">社會技巧：基本溝通與互動</span><span class="tag">語文：口語表達（調整）</span></p>
+        <div class="grid2">
+            <div class="card-mini"><b>五種作答方式</b><br>🎤 說話（語音辨識）／🗣️ 跟讀（開口念、可錄音回放，念完自評；沒有語音辨識的瀏覽器自動改用）／👆 逐字朗讀（照順序點字，系統唸一個字、學生跟著念）／🔘 選擇對話／⌨️ 打字——依學生口語能力選擇，同一教材多種近端目標。</div>
+            <div class="card-mini"><b>三段難度（判定寬鬆度可調）</b><br>簡單—有講就鼓勵（講到關鍵詞才算答對）／普通—關鍵字（講到重點詞就算對，推薦）／困難—完整語句（關鍵詞與金額要對、句子要說完整，用字不必一模一樣）。依學生口語程度選擇，支持無錯學習與立即回饋。</div>
+            <div class="card-mini"><b>IEP 數據</b><br>每一步記錄答對、答錯與提示來源（手動按下提示／錯誤三次提示），和 24 單元用同一套指標；可列印<strong>個別學習報告</strong>（週報／月報），直接作為 IEP 檢核佐證。輔助點擊完成的練習會標 👆，不算無錯通過與精熟。</div>
+            <div class="card-mini"><b>學生名冊共用</b><br>全站共用同一份學生名冊（主頁金婆婆或學習歷程總覽的「👥 學生名冊」管理）；練習紀錄、金幣與寵物都跟著學生走。</div>
+        </div>
+    </section>
+
+    <section id="studio">
+        <h2>四、教師自編工具：對話工作室 🎙️（本教材特色）</h2>
+        <p>老師<strong>不需任何技術背景</strong>，即可自編貼近班級生活的對話教材：</p>
+        <ol class="flow">
+            <li>購物練習首頁點「<strong>➕ 自訂情境</strong>」，輸入情境名稱（例：合作社買午餐）。</li>
+            <li>逐步填入「店員說的話」與「學生的標準答案」，錯誤選項可留空自動補齊。</li>
+            <li>每一步可按 <strong>🎙️ 錄音</strong> 錄下老師自己的聲音（學生對熟悉聲音反應更佳）；不錄則由電腦語音自動朗讀。</li>
+            <li>儲存後立即出現在首頁，所有作答方式與難度設定<strong>全部自動適用</strong>。</li>
+            <li>到「設定 → <strong>對話包分享</strong>」可將自編情境連同錄音匯出成單一檔案，分享給其他老師匯入使用。</li>
+        </ol>
+        <p class="note">自編情境與錄音都儲存在瀏覽器本機，不需網路帳號；換電腦請使用「對話包」匯出／匯入搬移。</p>
+    </section>
+
+    <section>
+        <h2>四之二、金隊長成長生態系 🤖（評量・動機・增強的整合系統）</h2>
+        <p>主頁的 <strong>金隊長</strong>負責學習紀錄，搭配「🌟 成就與寵物」頁，整合了特教實證教學法中的「代幣制度（token economy）」與資料本位決策：</p>
+        <div class="grid2">
+            <div class="card-mini"><b>🧭 能力快篩與前後測</b><br>12 題階梯式快篩（數概念→金錢認知），最早失誤處＝建議學習起點，直接對應「起點行為評估」流程。學習歷程總覽另有「🧭 前測／📅 後測」：每技能 2 題、共 24 題、難度固定，教學前後各施測一次對照成效。</div>
+            <div class="card-mini"><b>🚀 今日任務＋📌 教師指派任務</b><br>系統每天自動出今日任務（瞄準正確率較低的單元）；老師另可在學習歷程總覽的「📌 指派任務」為個別學生指定單元、一日金錢冒險或生活情境對話（每位最多 3 個，差異化教學）。完成領金幣。</div>
+            <div class="card-mini"><b>🪙💎 三層代幣</b><br>金幣＝努力（完成單元練習，預設每個單元 5 金幣，老師可在「🎁 單元獎勵設定」調整）、寶石＝品質（🌟無錯通過，或用金幣兌換）、寶物／寵物＝後援增強物。學生在「🌟 成就與寵物」從 60 種寵物中挑選，用金幣餵養，從蛋一路進化到最終型態。</div>
+            <div class="card-mini"><b>📏 精熟標準＋😀 學生自評</b><br>系統精熟標準＝同一難度最近 10 題的無錯答對率 ≥ 80%，且至少 2 次完整練習（生活情境對話預設最近 5 題、設定答對率・可錯 1 步；老師可調）；曾經達到會標 🏅 曾達精熟。每次練習後學生在總結頁自評（😀😐😣），教師可觀察「自評與實際表現的落差」＝後設認知指標。</div>
+        </div>
+        <p class="note">📦 <strong>資料保全</strong>：所有資料存於瀏覽器本機。請定期到學習歷程總覽按「📦 備份」匯出單一備份檔（含名冊、紀錄、錄音、寵物）；換電腦用「📥 還原」即可搬家。</p>
+    </section>
+
+    <section id="iep">
+        <h2>四之三、IEP 目標與評量</h2>
+        <p>在 <a href="teacher.html">學習歷程總覽</a> 按「🎯 IEP 學習單元與目標」，可替每位學生設定 IEP 學習單元與 IEP 目標，系統依練習紀錄自動判定：</p>
+        <div class="grid2">
+            <div class="card-mini"><b>⚡ 目標範本與快速套用</b><br>每個單元都有「起步／進展／獨立」三層目標範本（含寫進 IEP 的句子、系統評量方式、練習設定），選好 IEP 學習單元後可一次套用給勾選的學生，再逐條修改。</div>
+            <div class="card-mini"><b>🏁 IEP 精熟標準</b><br>每個目標有自己的條件：評量指標、達成門檻、最近幾題、至少幾次完整練習、難度、評量期間。有 IEP 目標的單元，學習歷程的精熟進度與答對率改看這個條件（寫「IEP 普通✅ 已精熟」）。和系統精熟標準各自判斷；🏅 達標日期照目前的條件從作答紀錄重算，改條件就跟著重算。</div>
+            <div class="card-mini"><b>三個能力指標</b><br><strong>無錯答對率</strong>（沒答錯也沒用提示）／<strong>無提示答對率</strong>（答錯後自己改對也算）／<strong>答對率（含提示）</strong>。提示分「手動按下提示」與「錯誤三次提示」兩種來源。</div>
+            <div class="card-mini"><b>單元設定頁提醒＋老師確認</b><br>學生進入單元時，設定頁會列出他在本單元的 IEP 目標與老師寫的練習設定，以及目前是否達到標準。系統只判斷記錄得到的作答；口語提示、真實情境表現請記在「📝 觀察紀錄」，由老師按「確認達成」。</div>
+        </div>
+    </section>
+
+    <section id="metrics">
+        <h2>四之四、指標怎麼算（計算公式與實例）</h2>
+        <p>系統先替<strong>每一題</strong>判定「最後狀態」，再算三個比例。三個比例的分母都是<strong>題數</strong>，不是作答次數：一題不管錯幾次，都只佔分母的 1 題。</p>
+
+        <h3>1. 每一題的最後狀態（依序判斷，先符合哪一條就是哪一種）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>這一題的情況</th><th>狀態</th><th class="num">算不算進分母</th></tr>
+            <tr><td>開了 👆 輔助點擊（系統代按）</td><td>🤖 輔助</td><td class="num">不算</td></tr>
+            <tr><td>練習中途離開，這題還沒做完</td><td>⏸ 中斷</td><td class="num">不算</td></tr>
+            <tr><td>最後還是沒答對</td><td>❌ 未通過</td><td class="num">算</td></tr>
+            <tr><td>有用到提示（手動按下提示，或錯誤三次提示）</td><td>💡 提示後完成</td><td class="num">算</td></tr>
+            <tr><td>答錯過，但沒用提示就自己改對</td><td>🔧 自行修正</td><td class="num">算</td></tr>
+            <tr><td>沒答錯、沒用提示，一次答對</td><td>✅ 無錯答對</td><td class="num">算</td></tr>
+        </table></div>
+        <p style="font-size:0.88em;opacity:0.85">「一題」＝畫面標題列的「第 N 題」（設定頁選的題目數量）。生活情境對話每一步算一題；一日金錢冒險整次算一題。</p>
+
+        <h3>2. 三個比例的公式</h3>
+        <div class="formula">分母 ＝ ✅ ＋ 🔧 ＋ 💡 ＋ ❌（🤖、⏸ 不算）
+
+無錯答對率       ＝ ✅ ÷ 分母
+無提示答對率     ＝（✅ ＋ 🔧）÷ 分母
+答對率（含提示） ＝（✅ ＋ 🔧 ＋ 💡）÷ 分母</div>
+
+        <h3>3. 實例一：C6 找零（普通模式，做 6 題）</h3>
+        <div class="table-scroll"><table>
+            <tr><th class="num">題</th><th>學生怎麼做</th><th>狀態</th></tr>
+            <tr><td class="num">1</td><td>一次答對</td><td>✅</td></tr>
+            <tr><td class="num">2</td><td>錯 1 次，自己改對</td><td>🔧</td></tr>
+            <tr><td class="num">3</td><td>連錯 3 次，跳出提示後完成</td><td>💡（錯誤三次提示）</td></tr>
+            <tr><td class="num">4</td><td>自己按 💡 提示後答對</td><td>💡（手動按下提示）</td></tr>
+            <tr><td class="num">5</td><td>一次答對</td><td>✅</td></tr>
+            <tr><td class="num">6</td><td>做到一半離開</td><td>⏸（不算）</td></tr>
+        </table></div>
+        <div class="formula">統計：✅ 2、🔧 1、💡 2、❌ 0　→　分母 ＝ 2 ＋ 1 ＋ 2 ＋ 0 ＝ 5
+
+無錯答對率       ＝ 2 ÷ 5           ＝ 40%
+無提示答對率     ＝（2 ＋ 1）÷ 5     ＝ 60%
+答對率（含提示） ＝（2 ＋ 1 ＋ 2）÷ 5 ＝ 100%</div>
+        <p class="note">為什麼不用「答對次數 ÷（答對次數＋答錯次數）」？同一份資料這樣算是 5 ÷（5 ＋ 1 ＋ 3）＝ 55.6%：第 3 題一題錯 3 次，分母就多了 3，只要某一題卡很久，整份練習都會被拉低。這個數字比較像「操作嘗試正確率」，可以參考，但不適合拿來判定精熟。</p>
+
+        <h3>4. 實例二：A4 模擬購物（一題有 3 個步驟）</h3>
+        <div class="table-scroll"><table>
+            <tr><th>步驟</th><th>學生怎麼做</th><th>步驟狀態</th></tr>
+            <tr><td>選商品</td><td>一次答對</td><td>✅</td></tr>
+            <tr><td>付款</td><td>錯 1 次，自己改對</td><td>🔧</td></tr>
+            <tr><td>找零</td><td>一次答對</td><td>✅</td></tr>
+        </table></div>
+        <p>整題的狀態是 <strong>🔧</strong>（裡面有一步答錯過）。看的單位不同，數字就不同：</p>
+        <div class="table-scroll"><table>
+            <tr><th>看的單位</th><th class="num">無錯答對率</th><th class="num">無提示答對率</th></tr>
+            <tr><td>整題（📏 系統精熟用這個）</td><td class="num">0 ÷ 1 ＝ 0%</td><td class="num">1 ÷ 1 ＝ 100%</td></tr>
+            <tr><td>每個步驟各算一個</td><td class="num">2 ÷ 3 ＝ 67%</td><td class="num">3 ÷ 3 ＝ 100%</td></tr>
+            <tr><td>只看「付款」這一步（🏁 IEP 目標可以這樣設）</td><td class="num">0 ÷ 1 ＝ 0%</td><td class="num">1 ÷ 1 ＝ 100%</td></tr>
+        </table></div>
+        <p style="font-size:0.88em;opacity:0.85">系統不把每個步驟都當成一題：C1 一題只有 1 個步驟、A4 一題有 3～4 個，如果每步都算一題，同樣是「10 題」，各單元的份量會差很多，反而難以比較。需要看某一步時，用 IEP 目標的「只看這些步驟」。</p>
+
+        <h3>5. 實例三：題數不同時</h3>
+        <div class="table-scroll"><table>
+            <tr><th>兩位學生都只錯 1 次，其他題都一次答對</th><th class="num">用作答次數算</th><th class="num">系統的無錯答對率</th></tr>
+            <tr><td>做 3 題、錯 1 次</td><td class="num">3 ÷（3 ＋ 1）＝ 75%</td><td class="num">2 ÷ 3 ＝ 67%</td></tr>
+            <tr><td>做 10 題、錯 1 次</td><td class="num">10 ÷（10 ＋ 1）＝ 90.9%</td><td class="num">9 ÷ 10 ＝ 90%</td></tr>
+        </table></div>
+        <p>不管哪種算法，題數少的一次練習，錯 1 題的影響都很大。所以系統精熟不看「這一次練習」，而是固定看<strong>同一難度最近 10 題</strong>。</p>
+
+        <h3>6. 📏 系統精熟怎麼判定</h3>
+        <div class="formula">條件一　同一難度「最近 10 題」的無錯答對率 ≥ 80%
+條件二　這些題來自至少 2 次完整做完的練習
+兩個都符合 → 達到系統精熟（指標、10 題、80%、2 次都可以在學習歷程總覽調整；生活情境對話預設看最近 5 題、設定答對率・可錯 1 步）</div>
+        <p>例：學生在 C6 普通模式最近 10 題的狀態是 ✅ ✅ 🔧 ✅ ✅ ✅ 💡 ✅ ✅ ✅，來自 3 次練習。</p>
+        <div class="formula">無錯答對率 ＝ 8 ÷ 10 ＝ 80% ≥ 80%（條件一符合）
+來自 3 次完整練習 ≥ 2 次（條件二符合）　→　📏 達到系統精熟</div>
+        <p style="font-size:0.88em;opacity:0.85">如果用作答次數算同樣這 10 題（🔧 那題錯 1 次、💡 那題錯 3 次）：10 ÷（10 ＋ 4）＝ 71%，就會判成「未精熟」。差別一樣在第 7 題一題錯了 3 次。曾經達到精熟的單元會標 🏅 曾達精熟，不因後來掉下來而取消。</p>
+
+        <h3>7. 設定答對率：一題錯幾步還算對</h3>
+        <p>生活情境對話一段對話算一題，常有 5～8 個步驟。如果只要錯一步整題就不算對，偶爾一次收音沒收好，學生明明說對了也會被扣分。所以評量指標多了第四個「<strong>設定答對率</strong>」：就是無錯答對率再放寬幾步——選了它才會出現「<strong>每一題 容錯程度</strong>」（可錯 1 步、可錯 2 步）。📏 系統精熟標準與 🏁 IEP 目標都可以選。</p>
+        <div class="formula">生活情境對話　預設「設定答對率・可錯 1 步」
+24 個金錢單元　預設「無錯答對率」（題目短、沒有收音問題，錯一步就是真的還不會）</div>
+        <p>「錯」是指<strong>沒有一次就對</strong>的步驟：說錯後重講對（🔧）、用了提示（💡）、最後沒過（❌）都算錯 1 步。步數少的題目會自動少容許一些——一題至少要對六成的步驟：</p>
+        <div class="table-scroll"><table>
+            <tr><th>一題有幾步</th><th class="num">1～2 步</th><th class="num">3～4 步</th><th class="num">5 步以上</th></tr>
+            <tr><td>選「可錯 1 步」實際可錯</td><td class="num">0</td><td class="num">1</td><td class="num">1</td></tr>
+            <tr><td>選「可錯 2 步」實際可錯</td><td class="num">0</td><td class="num">1</td><td class="num">2</td></tr>
+        </table></div>
+        <p><strong>例：一段對話錯 1 步、設定答對率・可錯 1 步，算什麼？</strong></p>
+        <ul>
+            <li><strong>題目的結果照實記錄</strong>：題數分析、步驟分析不會改。錯的那步是說錯後重講對的，記 🔧 自行修正；那步用了提示，記 💡 提示後完成。</li>
+            <li><strong>答對率算這題對</strong>：學習歷程的「📊 答對率」「📊 累計」和學習報告，都照老師選的指標算，所以這題算一題答對。精熟也看同一個數字。</li>
+        </ul>
+        <p style="font-size:0.88em;opacity:0.85">學習歷程與學習報告的答對率一律照老師選的指標（有 IEP 目標的單元照那個目標的條件），用的是哪一種寫在數字下面。程度較低的學生若一直看無錯答對率，可能長期都是 0%、看不出進步，可以改選無提示答對率、答對率（含提示）或設定答對率。想知道學生有幾題是真的 ✅ 無錯答對，看展開列的 📊 題數分析；哪一步常卡住，看 🧩 步驟分析。</p>
+
+        <h3>8. 哪些數字跟著老師的設定、哪些是學生的真實狀況</h3>
+        <p>學習歷程總覽分成兩種數字：<strong>答對率</strong>是「照老師選的精熟標準打分數」，老師換指標，分數就跟著變；<strong>題數分析與步驟分析</strong>記錄學生每一題、每一步實際怎麼做，不管選哪個指標都一樣。</p>
+        <div class="table-scroll"><table>
+            <tr><th>照老師的設定（判斷學會了沒）</th><th>學生的真實狀況（實際怎麼做）</th></tr>
+            <tr><td>主表的 📏 精熟進度、📊 答對率、📊 累計、答對率篩選<br>學習週報／月報的答對率、📈 答對率變化圖、精熟判定</td>
+                <td>按 ▸ 展開的 📊 題數分析（✅ 無錯答對、🔧 自行修正、💡 提示後完成、❌ 未通過各幾題；「最近 10 題」寫無錯答對幾題，生活情境對話看最近 5 題）<br>🧩 步驟分析（每一步 ✅🔧💡❌ 各幾題、一次就對幾題）</td></tr>
+        </table></div>
+        <p>「照老師的設定」用的是學習歷程裡「📏 系統精熟標準」選的指標；這個單元有 IEP 目標時，改用那個目標的「🏁 IEP 精熟標準」（畫面上寫「IEP」）。用的是哪一種，寫在答對率數字的下面。</p>
+        <p><strong>例：同一段 6 步的對話，最近 5 題，選不同指標的答對率</strong></p>
+        <div class="table-scroll"><table>
+            <tr><th>題</th><th>這題的步驟狀況</th><th>答對率（含提示）</th><th>設定答對率・可錯 1 步</th></tr>
+            <tr><td class="num">1</td><td>6 步都 ✅</td><td>對</td><td>對</td></tr>
+            <tr><td class="num">2</td><td>1 步 💡，其他 ✅</td><td>對</td><td>對</td></tr>
+            <tr><td class="num">3</td><td>3 步 🔧／💡，其他 ✅</td><td>對</td><td>錯（超過 1 步）</td></tr>
+            <tr><td class="num">4</td><td>2 步 🔧，其他 ✅</td><td>對</td><td>錯</td></tr>
+            <tr><td class="num">5</td><td>1 步 ❌（跳過），其他 ✅</td><td>錯</td><td>對（只錯 1 步）</td></tr>
+            <tr><td></td><td><b>答對率</b></td><td class="num"><b>80%</b>（4/5）</td><td class="num"><b>40%</b>（2/5）</td></tr>
+        </table></div>
+        <p>答對率（含提示）看的是「有沒有完成」——學生每一段都靠提示撐過去也可能 100%；設定答對率看的是「大部分步驟能不能自己一次說對」，只放寬偶爾的 1 步，所以通常比含提示低、比無錯答對率高。24 個金錢單元差得更明顯：C／F 大多只有 1 步，設定答對率要那一步一次就對（＝無錯答對率），含提示則 🔧💡 都算對。</p>
+        <p style="font-size:0.88em;opacity:0.85">兩邊對照著看：答對率 80%，但題數分析大多是 💡，就知道學生在這個標準下過關、但還需要提示；哪一步常卡住，看步驟分析。程度較低的學生若一直看無錯答對率可能長期是 0%，可以改選其他指標，答對率就看得出進步，而題數分析仍保留真實狀況。</p>
+    </section>
+
+    <section>
+        <h2>五、獎勵系統與作業單</h2>
+        <div class="grid2">
+            <div class="card-mini"><b>🏆 優良表現獎勵板</b><br>全班學生（可放照片）一起顯示在獎勵板上，老師依課堂表現手動加分 → 累積分數兌換班級增強物。支援自訂加分圖示與音效；單元練習自動給的是「🌟 成就與寵物」的金幣，不會動到獎勵板分數。</div>
+            <div class="card-mini"><b>📝 作業單產生器</b><br>各單元設定頁可一鍵產生對應紙本作業單（含金錢圖示），支援難度與題數調整、直接列印或下載 PDF，作為課後評量與家庭練習。</div>
+        </div>
+        <h3>📊 學習歷程總覽（全站）</h3>
+        <p>24 個單元、生活情境對話與一日金錢冒險的練習紀錄（每題對錯、提示、時間、學生）都會自動存入同一份本機學習資料庫，
+           開啟 <a href="teacher.html">學習歷程總覽</a> 即可檢視精熟進度與 IEP 目標、列印 📬 學習報告（週報／月報）、匯出 CSV，作為 IEP 佐證資料。</p>
+
+        <h3>建議教學流程</h3>
+        <ol class="flow">
+            <li><strong>起點評估</strong>：以能力快篩或前測，搭配 F、C 系列確認數概念與金錢認知起點，再設定 IEP 學習單元與目標。</li>
+            <li><strong>情境教學</strong>：依 IEP 目標選擇 A 系列單元，先「輔助點擊模式」再褪除為普通模式。</li>
+            <li><strong>素養延伸</strong>：B 系列建立預算與儲蓄概念。</li>
+            <li><strong>溝通泛化</strong>：生活情境對話，從選擇對話、逐字朗讀、跟讀進階到說話，再到真實社區情境演練；一日金錢冒險把各項技能串成一天的情境。</li>
+            <li><strong>評量與增強</strong>：作業單檢核學習成效；金幣、寵物與獎勵板維持動機；後測、IEP 目標判定與學習報告佐證 IEP。</li>
+        </ol>
+    </section>
+
+    <section id="privacy">
+        <h2>六、資料與隱私聲明</h2>
+        <p>本教材為純前端網頁：<strong>學生姓名、照片、成績、錄音全部只儲存在該台電腦的瀏覽器中（localStorage / IndexedDB），不會上傳到任何伺服器</strong>。清除瀏覽器資料會一併清除上述紀錄，重要資料請以學習歷程總覽的「📦 備份」與對話練習的「對話包分享」功能定期匯出保存。</p>
+    </section>
+
+    <button class="print-btn" onclick="window.print()">🖨️ 列印本指南</button>
+</div>
+
+<!-- IEP 目標範例：從 ⚡ IEP 目標範本取（唯一來源 js/iep-goal-templates.js，2026-10-09），本頁不另外寫一份 -->
+<script src="js/iep-goal-templates.js"></script>
+<script>
+    document.querySelectorAll('td[data-iep]').forEach(td => {
+        const ex = window.IEP_UNIT_EXAMPLE(td.dataset.iep);
+        td.textContent = ex ? ex.iep : '—';
+    });
+</script>
+
+<!-- ── 註冊主站 Service Worker（沿用根目錄 sw.js，同一份快取策略）。fetch 規則依副檔名判斷、
+     不是寫死路徑清單，這裡只是讓本頁也被同一顆 SW 控制。────────────────────────────── -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+    }
+</script>
+</body>
+</html>

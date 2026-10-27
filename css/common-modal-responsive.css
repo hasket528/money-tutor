@@ -1,0 +1,115 @@
+/* 全專案彈窗響應式滾動修復 */
+/* 僅在螢幕高度較窄時啟用 */
+
+@media (max-height: 700px) {
+    /* A1 投幣選擇彈窗 */
+    .coin-modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A1 購買成功彈窗 */
+    .pickup-card {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A2 付款彈窗 */
+    .money-selection-modal .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A5 ATM 彈窗 */
+    .numeric-input-modal .modal-content,
+    .cash-modal-content,
+    .hint-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* A6 火車票彈窗 */
+    .step-modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 通用 modal-content 類別 */
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== F 系列彈窗 ===== */
+
+    /* 數字輸入彈窗（F4, F6, C1-C6 共用） */
+    #number-input-popup {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 範圍輸入彈窗（F5, F6） */
+    #range-input-popup,
+    #custom-range-popup {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 排序/數字選擇彈窗（F4） */
+    #sorting-count-input-popup,
+    #number-selector-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 語音播放/圖片預覽彈窗（F4, F5, F6） */
+    .voice-playback-modal,
+    .image-preview-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== C 系列彈窗 ===== */
+
+    /* 指導/錯誤/計算彈窗（C4, C6） */
+    #instruction-modal-overlay,
+    .error-modal-overlay,
+    #calculation-modal-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 數字鍵盤遮罩（C6） */
+    #number-pad-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 通用模態遮罩（F4, F5, F6, C1-C6） */
+    .modal-overlay {
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* ── 完成畫面「🎁 開啟獎勵系統」連結按鈕（2026-09-23）──────────────────────
+   各單元把它寫成粉紅漸層＋color: white，但 ai-theme.css 的 a:not(.selection-btn):not(.choice-btn)
+   （特異性 0,3,1）把 <a> 的字染成連結藍 → 粉紅底藍字，淺深模式都看不清。
+   這裡還原設計本意的白字；24 個單元都載入這一份，所以寫在這裡一次處理。 */
+a.reward-btn-link,
+a.b-res-reward-link {
+    color: #fff !important;
+}

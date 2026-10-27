@@ -1,0 +1,8795 @@
+// 對話腳本資料庫
+// 結構：場所 → situations[] → steps[]
+
+// ─── 精簡步驟建構器 mkStep（可漸進採用；舊步驟維持純物件，完全不受影響）──────────
+// 目的：新步驟只寫必要欄位，其餘由預設補齊，減少重複與前後不一致（見 docs/dialogue_keyword_map.md §5）。
+// 產出＝完整 step 物件，下游 script.js／稽核／產生器皆視為一般步驟，不需知道精簡格式。
+// 因定義於本檔頂端，所有 `new Function(scenarios.js)` 的載入器（稽核/產生器）與瀏覽器都自動可用。
+//
+// 用法：
+//   steps: [
+//     mkStep({ id:'greeting', say:'你好！請問需要幫忙嗎？', task:'跟店員打招呼',
+//              options:['你好！','謝謝再見','多少錢？','在哪裡？'], kw:'greet' }),
+//     mkStep({ id:'purchase', say:'這包餅乾 35 元。', task:'告訴店員你要買餅乾',
+//              options:['我要買餅乾','廁所在哪裡？','謝謝再見','餅乾在哪？'], kw:['我要買','要買'],
+//              accepted:['我要買餅乾','我要這包餅乾'] }),
+//   ]
+// 欄位：id* / say(或 shopkeeper_prompt)* / task* / options[]*（[0]=正解）；
+//       kw（或 keywords）＝預設集字串｜關鍵字陣列；mode（或 keywords_mode）預設 'any'；
+//       accepted（或 accepted_phrases）預設 [正解]、且一定含正解；feedback 可只覆寫部分；
+//       透傳選用欄位：image / image_label / frame / frame_ref / slots / grow_slots / clerkImage / clerkName。
+const KW_PRESETS = {
+  greet:  ['你好', '您好', '哈囉', '嗨', '早', '早安', 'hi'],
+  bye:    ['謝謝', '謝了', '多謝', '感謝', '謝囉', '再見', '掰掰', '掰啦', '拜拜', 'bye'],
+  thanks: ['謝謝', '謝了', '多謝', '感謝', '謝囉', '再見', '掰掰', '掰啦', '拜拜', 'bye'],
+  // pay／cash：2026-09-19 起內建教材已沒有步驟在用（使用者定：台灣一般店家只講總共多少錢、不問付款方式，
+  // 付錢那一步改成講出給多少錢＝[...KW_PRESETS.hand, "100", "一百"]；只有服飾店問付款方式，那步自己寫關鍵字）。
+  // 留著給自訂情境與日後真的要選付款方式的場合（pay＝各種付款方式都算對；cash＝只收現金，刷卡會讓「錢不夠」的教學目標垮掉）。
+  pay:    ['現金', '刷卡', '悠遊卡', '付現', '信用卡', '行動支付'],
+  cash:   ['現金', '付現'],
+  price:  ['怎麼賣', '多少錢', '多少元', '費多少'],
+};
+// 「X好」這種招呼只有部分稱謂講得通：「老闆好」「藥師好」是人在講的話，
+// 「店員好」「館員好」「收銀員好」不是——所以不放進通用的 greet，改由通用組衍生兩個子集，
+// 只給任務點名老闆／藥師的步驟用。（「老闆你好」「老闆早安」本來就過，含「你好」「早安」。）
+KW_PRESETS.greetBoss  = [...KW_PRESETS.greet, '老闆好'];
+KW_PRESETS.greetPharm = [...KW_PRESETS.greet, '藥師好'];
+// hand＝把錢或東西遞給對方時會說的話（2026-09-18 使用者要求：早餐店換零錢那步只認「100元」，
+// 學生說「給你」「麻煩你了」卻判錯）。⚠️ **「找零錯了」那批不可以用**——那些情境刻意把單講
+// 「給你」設成錯誤選項（要教的是講出金額）；同理，某一步的干擾選項若含其中一個詞，那步改用 handPolite。
+KW_PRESETS.hand       = ['給你', '給您', '拿去', '收下', '麻煩你', '麻煩您', '麻煩了'];
+KW_PRESETS.handPolite = KW_PRESETS.hand.filter(k => !k.startsWith('給'));
+function mkStep(c) {
+  const opt0 = (c.options && c.options[0]) || '';
+  // 正解一律納入 accepted_phrases（滿足守門員規則 options[0]∈accepted_phrases）
+  let accepted = c.accepted_phrases || c.accepted || [opt0];
+  if (opt0 && !accepted.includes(opt0)) accepted = [opt0, ...accepted];
+  // keywords：字串＝套預設集；陣列＝直接用；省略＝退回「正解全句」（安全但較嚴，鼓勵改填 kw）
+  let keywords = c.keywords || c.kw;
+  if (typeof keywords === 'string') keywords = KW_PRESETS[keywords] || [keywords];
+  if (!keywords) keywords = [opt0.replace(/[！？。，、!?.,\s「」]/g, '')].filter(Boolean);
+  const step = {
+    id: c.id,
+    shopkeeper_prompt: c.shopkeeper_prompt != null ? c.shopkeeper_prompt : c.say,
+    task: c.task,
+    options: c.options,
+    accepted_phrases: accepted,
+    keywords,
+    // 全 213 步慣例為 'any'（命中任一關鍵字即算）；省略時採此預設而非引擎的 'all'
+    keywords_mode: (c.keywords_mode != null ? c.keywords_mode : c.mode) || 'any',
+    feedback: { perfect: '說得很清楚！', partial: '說出了重點！', failed: `可以這樣說：「${opt0}」`, ...(c.feedback || {}) },
+  };
+  for (const k of ['image', 'image_label', 'frame', 'frame_ref', 'slots', 'grow_slots', 'clerkImage', 'clerkName'])
+    if (c[k] != null) step[k] = c[k];
+  return step;
+}
+
+const SCENARIOS_DATA = {
+  scenarios: [
+
+    // ══════════════════════════════════════════
+    // 便利商店
+    // ══════════════════════════════════════════
+    {
+      id: "convenience_store", name: "便利商店", icon: "🏪", available: true,
+      theme: { color: '#16A34A', bg: '#DCFCE7', accent: '#15803D' },
+      situations: [
+        {
+          id: "basic", name: "基本購物", icon: "🛍️",
+          simple_steps: ["pick_item", "purchase", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "從找商品、看標價、確認錢包到結帳的完整購物流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","這個多少錢？","廁所在哪裡？"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"這個多少錢？", emoji:"💰" }, { text:"廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_location", shopkeeper_prompt:"請問你要找什麼呢？", task:"用「請問」問店員巧克力在哪裡",
+              image:"images/a4/icon-a4-chocolate-shop.png", image_label:"巧克力",
+              keywords:["巧克力"], keywords_mode:'any',
+              accepted_phrases:["請問巧克力在哪裡？","巧克力在哪裡？","巧克力放在哪？"],
+              options:["請問巧克力在哪裡？","我要結帳","謝謝再見","這個多少錢？"],
+              frame:{ template:"請問 {item} 在哪裡？", slots:{ item:{ answer:"巧克力", choices:[
+                { text:"巧克力", emoji:"🍫" }, { text:"飲料", emoji:"🥤" },
+                { text:"麵包", emoji:"🍞" }, { text:"報紙", emoji:"📰" } ] } } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問巧克力在哪裡？」", failed:"可以這樣說：「請問巧克力在哪裡？」" } },
+            mkStep({ id:"no_more", say:"巧克力在第二排喔，請問還需要什麼嗎？", task:"跟店員說：「沒有」，再說「謝謝你」",
+              options:["沒有，謝謝你！","我要買巧克力","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買巧克力", emoji:"🍫" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"pick_item", say:"（你走到第二排，拿起一包巧克力，看了一下標價，上面寫著 50 元。）",
+              task:"說出巧克力多少錢：50 元", image:"images/a4/icon-a4-chocolate-shop.png", image_label:"巧克力 50 元",
+              options:["巧克力是 50 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["50"],
+              accepted:["巧克力是 50 元","巧克力 50 元","一包 50 元","50 元，我知道了"],
+              frame:{ template:"巧克力是 {price}", slots:{ price:{ answer:"50 元", choices:[
+                { text:"50 元", emoji:"💵" }, { text:"15 元", emoji:"🪙" },
+                { text:"5 元", emoji:"🪙" }, { text:"100 元", emoji:"💴" } ] } } },
+              feedback:{ perfect:"很好！買之前先看清楚標價！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「巧克力是 50 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 100 元，錢夠買。）",
+              task:"說出你有多少錢", image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["我有 100 元","我沒有錢","我要買巧克力","請問廁所在哪裡？"], kw:["100","一百"],
+              accepted:["我有 100 元","我有一百元","我帶了 100 元","錢包裡有 100 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"100 元", choices:[
+                { text:"100 元", emoji:"💵" }, { text:"50 元", emoji:"💴" },
+                { text:"10 元", emoji:"🪙" }, { text:"5 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買東西前先數清楚錢包裡有多少錢！", partial:"說出了重點！記得說清楚有多少錢", failed:"可以這樣說：「我有 100 元」" } }),
+            { id:"purchase", shopkeeper_prompt:"巧克力一包 50 元。請問要買嗎？", task:"告訴店員你要買巧克力",
+              image:"images/a4/icon-a4-chocolate-shop.png::50 元", image_label:"巧克力",
+              keywords:["我要買","要買"], keywords_mode:'any',
+              accepted_phrases:["我要買巧克力","我要買這個","要買巧克力","我要買"],
+              options:["我要買巧克力","請問廁所在哪裡？","謝謝再見","巧克力在哪裡？"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"巧克力", choices:[
+                { text:"巧克力", emoji:"🍫" }, { text:"飲料", emoji:"🥤" },
+                { text:"報紙", emoji:"📰" }, { text:"雨傘", emoji:"☂️" } ] } },
+              grow_slots:{ item2:{ answer:"牛奶", choices:[
+                { text:"牛奶", emoji:"🥛" }, { text:"報紙", emoji:"📰" },
+                { text:"雨傘", emoji:"☂️" }, { text:"電池", emoji:"🔋" } ] } },
+              feedback:{ perfect:"很好！購買的說法很清楚！", partial:"說出了重點！可以說完整一點", failed:"可以這樣說：「我要買這個！」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！一共 50 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              keywords:[...KW_PRESETS.hand, "100", "一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","我不買了","巧克力在哪裡？"],
+              frame:{ template:"這是 {money}", slots:{ money:{ answer:"100 元", choices:[
+                { text:"100 元", emoji:"💵" }, { text:"50 元", emoji:"🪙" },
+                { text:"10 元", emoji:"🪙" }, { text:"5 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"goodbye", shopkeeper_prompt:"收您 100 元，找您 50 元，謝謝光臨！", task:"跟店員說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝再見！","謝謝！再見！","掰掰！謝謝！","謝謝拜拜！","謝謝bye！"],
+              image:"images/money/50_yuan_front.png", image_label:"找您 50 元",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"],
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } }
+          ]
+        },
+        {
+          id: "microwave_meal", name: "購買微波食品", icon: "🍱",
+          simple_steps: ["order", "ask_total", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "挑選午餐和飲料、看標價，再確認錢包夠不夠，接著請店員微波、詢問總價、付款與找零",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","我要結帳","請問廁所在哪裡？"], kw:'greet',
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"我要結帳", emoji:"🧾" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！" } }),
+            mkStep({ id:"pick_lunchbox", say:"（中午了，你走到鮮食區，拿起一個排骨便當，看了一下標價，上面寫著 75 元。）",
+              task:"說出便當多少錢：75 元", image:"images/a4/icon-a4-bento-shop.png", image_label:"排骨便當 75 元",
+              options:["便當是 75 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["75"],
+              accepted:["便當是 75 元","便當 75 元","排骨便當 75 元","75 元，我知道了"],
+              frame:{ template:"便當是 {price}", slots:{ price:{ answer:"75 元", choices:[
+                { text:"75 元", emoji:"💵" }, { text:"20 元", emoji:"🪙" },
+                { text:"95 元", emoji:"💴" }, { text:"200 元", emoji:"💵" } ] } } },
+              feedback:{ perfect:"很好！挑東西的時候先看標價！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「便當是 75 元」" } }),
+            mkStep({ id:"pick_drink", say:"（你又走到飲料櫃，拿了一杯紅茶，看了一下標價，上面寫著 20 元。）",
+              task:"說出紅茶多少錢：20 元", image:"images/a4/icon-a4-iced-lemon-tea-shop.png", image_label:"紅茶 20 元",   // 瓶裝凍檸紅茶，比較像便利商店賣的（使用者定 2026-09-19；原圖 images/a1/icon-a12-iced-lemon-tea.png 縮 600px）
+              // kw 必須帶「元」：keywords 是字面 includes，裸的「20」會被同情境 check_money／pay
+              // 的「200 元」包含（200 ⊃ 20），學生講錯位數也判對。文字進判定前已去空白，故寫「20元」。
+              options:["紅茶是 20 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["20元"],
+              accepted:["紅茶是 20 元","紅茶 20 元","一杯 20 元","20 元，我知道了"],
+              frame:{ template:"紅茶是 {price}", slots:{ price:{ answer:"20 元", choices:[
+                { text:"20 元", emoji:"🪙" }, { text:"75 元", emoji:"💵" },
+                { text:"95 元", emoji:"💴" }, { text:"200 元", emoji:"💵" } ] } } },
+              feedback:{ perfect:"很好！兩樣東西的價錢都看清楚了！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「紅茶是 20 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有兩張 100 元，共 200 元，錢夠買。）",   // 台灣常見流通的是 100 元紙鈔（使用者定 2026-09-19）
+              task:"說出你有多少錢", image:["images/money/100_yuan_front.png","+","images/money/100_yuan_front.png","=","200 元"], image_label:"錢包裡的錢",
+              options:["我有 200 元","我沒有錢","我要買便當","請問廁所在哪裡？"], kw:["200","兩百","二百"],
+              accepted:["我有 200 元","我有兩百元","我帶了 200 元","錢包裡有 200 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"200 元", choices:[
+                { text:"200 元", emoji:"💵" }, { text:"100 元", emoji:"💴" },
+                { text:"20 元", emoji:"🪙" }, { text:"5 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買東西前先數清楚錢包裡有多少錢！", partial:"說出了重點！記得說清楚有多少錢", failed:"可以這樣說：「我有 200 元」" } }),
+            mkStep({ id:"order", say:"（你把便當和紅茶拿到櫃檯前面。）",
+              task:"告訴店員你要買便當和紅茶",
+              options:["我要買便當和紅茶","我不買了","謝謝再見","請問廁所在哪裡？"], kw:["便當","紅茶"],
+              accepted:["我要買便當和紅茶","我要買便當跟紅茶","你好，我要買便當和紅茶","便當和紅茶我要買"],
+              image:["images/a4/icon-a4-bento-shop.png","images/a4/icon-a4-iced-lemon-tea-shop.png"], image_label:"便當 ＋ 紅茶",
+              frame:{ template:"我要買 {item1} 和 {item2}", slots:{
+                item1:{ answer:"便當", choices:[
+                  { text:"便當", emoji:"🍱" }, { text:"報紙", emoji:"📰" },
+                  { text:"雨傘", emoji:"☂️" }, { text:"電池", emoji:"🔋" } ] },
+                item2:{ answer:"紅茶", choices:[
+                  { text:"紅茶", emoji:"🧋" }, { text:"餅乾", emoji:"🍪" },
+                  { text:"牛奶", emoji:"🥛" }, { text:"麵包", emoji:"🍞" } ] } } },
+              feedback:{ perfect:"很好！兩樣東西都說清楚了！", partial:"說出了重點！兩樣東西都要說喔", failed:"可以這樣說：「我要買便當和紅茶」" } }),
+            // 外部審閱第一輪（使用者改判 2026-09-25）：店員先問要不要微波；難度分流——中級講到「要」或「微波」就過，高級看標準句。
+            // 關鍵字含萬用詞「要」→ 干擾項不可再有「我要結帳」；「我不要微波」靠否定意圖擋。
+            mkStep({ id:"microwave", say:"便當需要幫你微波嗎？", task:"請店員幫忙微波",
+              options:["要，麻煩幫我微波。","我不要微波","謝謝再見","請問廁所在哪裡？"], kw:["要","微波"],
+              accepted:["要，麻煩幫我微波。","要，請幫我微波","好，請幫我微波","要微波，謝謝","我的便當要微波","請幫我微波","便當要微波，謝謝","可以幫我微波嗎？"],
+              feedback:{ perfect:"說得很清楚！店員知道要幫你微波了！", partial:"說出了重點！試著說完整：「要，麻煩幫我微波。」", failed:"可以這樣說：「要，麻煩幫我微波。」" } }),
+            mkStep({ id:"ask_total", say:"好的，我幫你微波，請稍等一下。", task:"用「請問」問店員總共多少錢",
+              options:["請問總共多少錢？","我的便當要微波","謝謝再見","請問廁所在哪裡？"], kw:'price',
+              accepted:["請問總共多少錢？","總共多少錢？","請問一共多少錢？","多少錢？","總共多少元？","多少元？"],
+              frame:{ template:"請問總共 {q}？", slots:{ q:{ answer:"多少錢", choices:[
+                { text:"多少錢", emoji:"💰" }, { text:"在哪裡", emoji:"❓" },
+                { text:"要微波", emoji:"♨️" }, { text:"要袋子", emoji:"🛍️" } ] } } },
+              feedback:{ perfect:"問得很好！記得問總共多少錢！", partial:"說出了重點！可以加上「請問」會更有禮貌", failed:"可以這樣說：「請問總共多少錢？」" } }),
+            mkStep({ id:"pay", say:"便當 75 元，紅茶 20 元，總共 95 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              // 95 元只要給一張 100 元、找 5 元；錢包裡的 200 元刻意不全給（教「有 200 不必全給」）。
+              // 給多少照下一句的找零推回去（使用者定 2026-09-20）。
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","我的便當要微波","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","我付現金，這是 100 元","我用現金付，這是 100 元","付現金，給你 100 元","這是 100 元，我付現金","總共 95 元，我付現金，這是 100 元","這是 100 元"],
+              frame:{ template:"這是 {money}", slots:{ money:{ answer:"100 元", choices:[
+                { text:"100 元", emoji:"💵" }, { text:"75 元", emoji:"💴" },
+                { text:"20 元", emoji:"🪙" }, { text:"5 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 100 元」" } }),
+            mkStep({ id:"goodbye", say:"收您 100 元，找您 5 元。便當很燙，小心拿喔，謝謝光臨！", task:"收好找的 5 元，跟店員說「謝謝」，再說「再見」",
+              options:["謝謝，再見！","我的便當要微波","請問總共多少錢？","我要買便當和紅茶"], kw:'bye',
+              accepted:["謝謝，再見！","謝謝！","謝謝你，再見","拜拜"],
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝，再見！", choices:[
+                { text:"謝謝，再見！", emoji:"🙏" }, { text:"我的便當要微波", emoji:"♨️" },
+                { text:"請問總共多少錢？", emoji:"💰" }, { text:"我要買便當和紅茶", emoji:"🍱" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝，再見！」" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "結帳時發現錢不夠，如何禮貌地向店員說明",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","這個多少錢？","廁所在哪裡？"],
+              feedback:{ perfect:"很好！打招呼很有禮貌！", partial:"不錯！可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_price", shopkeeper_prompt:"請問要找什麼呢？", task:"用「請問」問店員餅乾多少錢",
+              image:"images/a4/icon-a4-cookies-shop.png", image_label:"餅乾",
+              keywords:["怎麼賣","多少錢","多少元","費多少"], keywords_mode:'any',
+              accepted_phrases:["請問餅乾多少錢？","請問這個多少錢？","餅乾多少錢？","多少錢？","餅乾多少元？","多少元？"],
+              options:["請問餅乾多少錢？","我要買這個","有沒有飲料？","謝謝"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌", failed:"可以這樣說：「請問這個多少錢？」" } },
+            { id:"want_buy", shopkeeper_prompt:"這包餅乾是 60 元喔！", task:"告訴店員你要買",
+              image:"images/a4/icon-a4-cookies-shop.png::60 元", image_label:"餅乾",
+              keywords:["買","我要","要買","給","來","拿","需要"], keywords_mode:'any',
+              accepted_phrases:["我要買！","好，我要這個！","我要一包！"],
+              options:["我要買！","請問廁所在哪裡？","餅乾在哪裡？","謝謝再見"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！", failed:"可以這樣說：「我要買！」" } },
+            { id:"not_enough", shopkeeper_prompt:"好的！60 元。（你打開錢包，發現只有 40 元）",
+              task:"先說「不好意思」，再告訴店員你的錢不夠",
+              keywords:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我的錢不夠","不好意思，我錢不夠，不能買","我只有 40 元，錢不夠","我的錢差一點","錢差一點","不好意思，還差 20 元","還差 20 元","我的錢不到 60 元","我的錢不夠"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 40 元",
+              options:["不好意思，我的錢不夠","哼，那我不要了！","可以少一點嗎？","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很有禮貌！誠實說出來很棒！", partial:"說出了重點！可以說：「不好意思，我的錢不夠」", failed:"可以這樣說：「不好意思，我的錢不夠」" } },
+            { id:"goodbye", shopkeeper_prompt:"沒關係！那你可以把餅乾放回去，下次再來喔！", task:"跟店員說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝，下次再來！","好的，謝謝！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              options:["謝謝！再見！","你好！","我要買餅乾！","廁所在哪裡？"],
+              feedback:{ perfect:"說得很有禮貌！下次記得多帶一點錢喔！", partial:"有說謝謝！可以再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } },
+            // 事後反思兩步：這次「結帳才發現不夠」的補救學完了，再教下次怎麼避免。
+            // 拆兩步是為了把「看自己的錢」與「看商品的錢」分開教，關鍵詞的區辨軸也照這條線切：
+            // 第一步只認自己的錢（錢包／皮夾／口袋／身上），不放任何含「多少錢」的詞，
+            // 否則同一句話兩步都能過關，拆步驟就沒有意義了。
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去結帳就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去櫃檯再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "cant_find_item", name: "找不到商品", icon: "🔍",
+          desc: "在店裡找不到想買的商品，向店員求助",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","廁所在哪？","多少錢？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_help", shopkeeper_prompt:"請問需要幫忙嗎？", task:"用「請問」問店員有沒有賣牛奶",
+              keywords:["牛奶"], keywords_mode:'any',
+              accepted_phrases:["請問你們有賣牛奶嗎？","請問牛奶在哪裡？","我在找牛奶"],
+              image:"images/a4/icon-a4-milk-shop.png", image_label:"牛奶",
+              options:["請問你們有賣牛奶嗎？","我要結帳","謝謝再見","請問多少錢？"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問你們有賣牛奶嗎？」", failed:"可以這樣說：「請問你們有賣牛奶嗎？」" } },
+            { id:"out_of_stock", shopkeeper_prompt:"不好意思，我們的牛奶今天賣完了，要等明天才有喔！",
+              task:"先說「我知道了」，再說你要買其他的飲料，最後說「謝謝」",
+              keywords:["其他","別的","還有","飲料","豆漿","果汁"], keywords_mode:'any',
+              accepted_phrases:["我知道了，那我買其他的飲料，謝謝！","好的，那有沒有其他飲料？","謝謝，那我看看其他的","知道了，有沒有豆漿？","知道了，我買別的飲料，謝謝！"],
+              options:["我知道了，那我買其他的飲料，謝謝！","哼，怎麼都沒有！","請問廁所在哪裡？","你好！"],
+              feedback:{ perfect:"很好！懂得改買其他的東西！", partial:"說出了重點！試著說完整：「我知道了，那我買其他的飲料，謝謝！」", failed:"可以這樣說：「我知道了，那我買其他的飲料，謝謝！」" } },
+            { id:"alternative", shopkeeper_prompt:"我們還有豆漿和果汁，就在飲料櫃裡喔！", task:"先說「好」，再說你要去看看，最後說「謝謝」",
+              keywords:["去看","看看","謝謝"], keywords_mode:'any',
+              accepted_phrases:["好，我去看看！謝謝！","謝謝，我去飲料櫃看看！","好，謝謝你！","好的，我去看看！謝謝！"],
+              options:["好，我去看看！謝謝！","哼，不用你管！","我要結帳","謝謝再見"],
+              feedback:{ perfect:"很好！知道怎麼解決問題！", partial:"說出了重點！加上謝謝更有禮貌", failed:"可以這樣說：「好，我去看看！謝謝！」" } },
+            { id:"goodbye", shopkeeper_prompt:"不客氣！需要幫忙隨時說喔！", task:"跟店員說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝你！","好的，謝謝再見！"],
+              options:["謝謝！再見！","喂，我走了！","你好！","謝謝你幫忙！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！可以再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "expired_product", name: "商品過期了", icon: "📦",
+          desc: "發現商品已過期，如何禮貌地向店員反映",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","我要結帳","多少錢？"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"report_problem", image:"images/b6/icon-b6-jelly-expired.png", image_label:"果凍的保存期限", shopkeeper_prompt:"（你拿起一盒果凍，發現保存期限已過了）",
+              task:"先說「不好意思」，再告訴店員這個好像過期了",
+              keywords:["過期","日期","壞了","不能","問題","期限","過了"], keywords_mode:'any',
+              accepted_phrases:["不好意思，這個好像過期了","這個保存期限過了","這個商品過期了"],
+              options:["不好意思，這個好像過期了","我要買這個","請問多少錢？","謝謝再見"],
+              feedback:{ perfect:"很好！勇敢說出來！保護自己很重要！", partial:"說出了重點！讓店員知道商品有問題是正確的！", failed:"可以這樣說：「不好意思，這個好像過期了」" } },
+            { id:"wait", shopkeeper_prompt:"非常感謝！不好意思，請稍等，我馬上幫你換一個新的！",
+              task:"先說「好」，再說「謝謝」",
+              keywords:["好","謝謝","可以","等","行","沒問題","沒關係","ok"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","可以，我等你！","好，沒關係！","行，謝謝！","沒問題，謝謝！","ok，謝謝！","好的，謝謝！"],
+              options:["好，謝謝！","快一點啦！","哼，不用你管！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！有耐心等待！", partial:"說出了重點！", failed:"可以這樣說：「好，謝謝！」" } },
+            { id:"thanks", shopkeeper_prompt:"這是新的！謝謝你告訴我們！",
+              task:"跟店員說「謝謝」",
+              keywords:["謝謝","太好了","感謝","很好","太棒了"], keywords_mode:'any',
+              accepted_phrases:["謝謝！","謝謝！太好了！","謝謝你！","謝謝，再見！"],
+              options:["謝謝！","哼，不用你管！","這樣可以嗎？謝謝！","喂，我走了！"],
+              feedback:{ perfect:"說得很有禮貌！謝謝你讓店家改善商品品質！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！」" } }
+          ]
+        },
+        {
+          id: "wrong_change", name: "找零錯了", icon: "💰",
+          desc: "店員找錯零錢，如何禮貌地指出並核對",
+          steps: [
+            { id:"pay", shopkeeper_prompt:"（你有 50 元，在便利商店拿了一瓶 25 元的飲料，要去櫃臺結帳。）飲料 25 元，謝謝！", task:"告訴店員「給你 50 元」",
+              keywords:["50","五十"], keywords_mode:'any',
+              accepted_phrases:["給你 50 元","這是 50 元","我給你 50 元"],
+              image:"images/money/50_yuan_front.png", image_label:"你有 50 元",
+              options:["給你 50 元","我不想付錢","給你","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「給你 50 元」" } },
+            { id:"wrong_change", shopkeeper_prompt:"好的！找您 15 元。（店員找回 15 元，但正確應找 25 元）",
+              task:"先說「不好意思」，再告訴店員找零好像不對",
+              keywords:["不對","錯","應該","少找","少給","多找","找錯","好像","差一點","還差","差了","再算"], keywords_mode:'any',
+              accepted_phrases:["不好意思，找零好像不對","應該找我 25 元","不好意思，少找了 10 元","可以再算一次嗎？"],
+              image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"店員找回 15 元",
+              options:["不好意思，找零好像不對","謝謝，沒關係","哼，你是不是故意的！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！禮貌指出來很重要！", partial:"說出了重點！有「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，找零好像不對」" } },
+            { id:"corrected", shopkeeper_prompt:"啊，不好意思！我再數一次……對，找您 25 元，非常抱歉！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"補好了，找您 25 元",
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","再見！"],
+              feedback:{ perfect:"說得很有禮貌！大度說「沒關係」很棒！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
+          ]
+        },
+        {
+          id: "need_bag", name: "需要袋子", icon: "🛍️",
+          desc: "結帳後才想到要袋子，如何補充請求",
+          steps: [
+            { id:"after_pay", shopkeeper_prompt:"（你在便利商店買了一瓶綠茶和一碗泡麵，付了 100 元。東西太多，兩手拿不好，你想到需要袋子。）綠茶和泡麵共 60 元，收您 100 元，找您 40 元，謝謝！",
+              task:"用「請問」問店員可以給你袋子嗎",
+              keywords:["袋子","袋","裝","打包","包裝","塑膠袋"], keywords_mode:'any',
+              accepted_phrases:["請問可以給我袋子嗎？","不好意思，我需要袋子","可以給我一個袋子嗎？","請問可以買一個袋子嗎？"],
+              image:["images/b6/icon-b6-green-tea.png","images/a4/icon-a4-instant-noodles-shop.png"], image_label:"綠茶 ＋ 泡麵",
+              options:["請問可以給我袋子嗎？","不用了，謝謝","謝謝再見","好的，可以！"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！可以說：「請問可以給我袋子嗎？」", failed:"可以這樣說：「請問可以給我袋子嗎？」" } },
+            { id:"bag_cost", shopkeeper_prompt:"好的！袋子要 2 元，可以嗎？", task:"先說「好」，再把 2 元給店員，說「給你 2 元」",
+              keywords:["2元","兩元","二元","給你","給您"], keywords_mode:'any',
+              accepted_phrases:["好，給你 2 元","給你 2 元","好，這是 2 元","可以，給你 2 元"],
+              image:["images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"2 元",
+              options:["好，給你 2 元","哼，不用你管！","快點給我袋子啦！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！袋子要錢，就要付錢！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「好，給你 2 元」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的！袋子在這裡，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝，掰掰！","好的，謝謝！","謝謝！拜拜！","謝謝！bye！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "pickup_cod", name: "超商取貨付款", icon: "📦",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "新主題「網購取貨」：在指定門市櫃台報取件人名字和手機後三碼，核對包裹，付款",
+          steps: [
+            mkStep({ id:"greeting", image:"images/b6/icon-b6-pickup-notice-258-5917.png", image_label:"取貨通知", say:"（你網購的故事書到了。你帶著取貨通知和 500 元來到門市，通知上寫：後三碼 258、取貨編號 5917。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼呢？", task:"說你要取貨",
+              options:["我要取貨","我要買巧克力","隨便啦","謝謝再見"], kw:["要取貨"] }),
+            mkStep({ id:"s3", say:"好的，請問取件人的名字，還有手機號碼後三碼？（你正在指定門市的取貨櫃台，向處理這件包裹的店員提供取件資料。訂單上的手機號碼最後三碼是 258。）", task:"先說你的名字，再說手機號碼後三碼是 258",
+              options:["我叫{名字}，後三碼是 258","你自己找啦","我不告訴你","後三碼是 852"], accepted:["我是{名字}，後三碼是 258","我的名字是{名字}，後三碼是 258"], kw:["258","{名字}"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-parcel-box.png", image_label:"取貨的包裹", say:"（包裹標籤上寫著：手機後三碼 258、取貨編號 5917。）是這個嗎？", task:"看一看包裹標籤上的手機後三碼和取貨編號，跟取貨通知對一對，一樣就說「對，是我的」",
+              options:["對，是我的","不用看了，快給我","這不是我的，可是我要拿走","隨便啦"], kw:["對是我的"] }),
+            mkStep({ id:"pay", image:["images/money/500_yuan_front.png"], image_label:"500 元", say:"好的，一共 399 元。", task:"把 500 元拿給店員，說「給你 500 元」",
+              options:["給你 500 元","我不想付錢","包裹先給我，錢下次再說","我要結帳"], kw:[...KW_PRESETS.hand, "500", "五百"] }),
+            mkStep({ id:"change", image:["images/money/100_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 101 元", say:"收您 500 元，找您 101 元，包裹請拿好！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["101 元，對了，謝謝！","錢我不用數","91 元，對了，謝謝！","（直接走掉）"], kw:["101","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）去超商取貨付款，要準備什麼？", task:"說出要準備的：取貨通知、取件人的名字、手機後三碼，還有要付的錢",
+              options:["取貨通知、取件人的名字、手機後三碼，還有要付的錢","什麼都不用準備","帶包包就好","到了再想"], kw:["手機後三碼","取貨通知","還有要付"], feedback:{ perfect:"答對了！取貨通知、取件人的名字、手機後三碼，還有要付的錢。", failed:"記住：取貨通知、取件人的名字、手機後三碼，還有要付的錢。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 早餐店
+    // ══════════════════════════════════════════
+    {
+      id: "breakfast_shop", name: "早餐店", icon: "🍳", available: true,
+      theme: { color: '#D97706', bg: '#FEF3C7', accent: '#B45309' },
+      situations: [
+        {
+          id: "basic", name: "基本點餐", icon: "🍳",
+          simple_steps: ["order_main", "order_drink", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點蛋餅和飲料，完整的早餐點餐流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"（今天早上你想吃蛋餅。）早安！歡迎光臨！", task:"跟店員打招呼，說「早安」",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["早安！","你好！","您好！","哈囉！","嗨！","hi！"],
+              options:["早安！","謝謝再見","我要結帳","這個多少錢？"],
+              feedback:{ perfect:"說得很好！早安打招呼很有禮貌！", partial:"不錯！可以加上「早安」讓招呼更完整", failed:"可以這樣說：「早安！」" } },
+            { id:"order_main", shopkeeper_prompt:"請問要點什麼呢？", task:"點一份蛋餅",
+              image:"images/a4/icon-a4-egg-pancake-shop.png", image_label:"蛋餅",
+              keywords:["蛋餅"], keywords_mode:'any',
+              accepted_phrases:["我要一份蛋餅","給我蛋餅","我要蛋餅"],
+              options:["我要一份蛋餅","我要一杯豆漿","謝謝再見","請問廁所在哪裡？"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"蛋餅", choices:[
+                { text:"蛋餅", emoji:"🥞" }, { text:"漢堡", emoji:"🍔" },
+                { text:"三明治", emoji:"🥪" }, { text:"飯糰", emoji:"🍙" } ] } },
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了重點！試著說完整：「我要一份蛋餅」", failed:"可以這樣說：「我要一份蛋餅」" } },
+            { id:"customize", shopkeeper_prompt:"好的！蛋餅要加醬油膏嗎？", task:"回答店員：「要加醬油膏」",
+              image:"images/a4/icon-a4-egg-pancake-shop.png", image_label:"蛋餅",
+              keywords:["醬油膏"], keywords_mode:'any',
+              accepted_phrases:["要加醬油膏！","請幫我加醬油膏","加醬油膏","要，加醬油膏"],
+              options:["要加醬油膏！","請問廁所在哪裡？","請問多少錢？","我要奶茶"],
+              feedback:{ perfect:"說得很清楚！", partial:"有說出重點！可以說：「要加醬油膏！」", failed:"可以這樣說：「要加醬油膏！」" } },
+            { id:"order_drink", shopkeeper_prompt:"好的！請問要配什麼飲料？我們有豆漿和奶茶。", task:"點一杯熱豆漿",
+              image:"images/a4/icon-a4-soy-milk-shop.png", image_label:"熱豆漿",
+              keywords:["豆漿"], keywords_mode:'any',
+              accepted_phrases:["我要熱豆漿","熱豆漿一杯","給我熱豆漿","一杯熱豆漿"],
+              options:["我要熱豆漿","我要奶茶","請問廁所在哪裡？","我要可樂"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"豆漿", choices:[
+                { text:"豆漿", emoji:"🥛" }, { text:"奶茶", emoji:"🧋" },
+                { text:"紅茶", emoji:"🍵" }, { text:"咖啡", emoji:"☕" } ] } },
+              feedback:{ perfect:"點飲料說得很好！", partial:"說出了飲料名稱！可以加上「我要」會更完整", failed:"可以這樣說：「我要熱豆漿」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！蛋餅加醬油膏和熱豆漿，總共 55 元。",
+              task:"把 100 元拿給店員，說「給你 100 元」",
+              keywords:[...KW_PRESETS.hand, "100", "一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","我不買了","我沒帶錢"],
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的，找您 45 元，餐點馬上好，請稍等一下！", task:"先說「好」，再說「謝謝」",
+              keywords:["謝謝","感謝","謝了","多謝"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","謝謝！","謝謝，我等一下！","感謝！","好的，感謝！","好的，謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 45 元",
+              options:["好，謝謝！","再見","我要走了","還要加東西"],
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"有說謝謝！可以再加上「好的」更自然", failed:"可以這樣說：「好，謝謝！」" } }
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "adjust", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "結帳時發現錢不夠，如何跟老闆說明並做調整",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"早安！歡迎光臨！", task:"跟老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","老闆好"], keywords_mode:'any',
+              accepted_phrases:["早安！","你好！","您好！","哈囉！","嗨！","hi！","老闆好！"],
+              options:["早安！","謝謝再見","我要點餐","多少錢？"],
+              feedback:{ perfect:"早安說得很好！", partial:"不錯！可以加上「早安」更應景", failed:"可以這樣說：「早安！」" } },
+            { id:"order", shopkeeper_prompt:"請問要點什麼？", task:"點一份漢堡和一杯奶茶",
+              image:["images/a4/icon-a4-hamburger-shop.png","images/a4/icon-a4-milk-tea-shop.png"], image_label:"漢堡 ＋ 奶茶",
+              keywords:["漢堡","奶茶"], keywords_mode:'any',
+              accepted_phrases:["我要一份漢堡和一杯奶茶","給我漢堡，還有奶茶","我要漢堡加奶茶"],
+              options:["我要一份漢堡和一杯奶茶","我要蛋餅","謝謝再見","請問廁所在哪裡？"],
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了部分！試著說完整：「我要一份漢堡和一杯奶茶」", failed:"可以這樣說：「我要一份漢堡和一杯奶茶」" } },
+            { id:"hear_total", shopkeeper_prompt:"好的！漢堡加奶茶，總共 55 元！", task:"說「好」，準備付錢",
+              keywords:["好","付","現金","給你"], keywords_mode:'any',
+              accepted_phrases:["好！","我付現金！","好，給你！","好的！"],
+              options:["好！","我不吃了","有沒有刷卡？","可以便宜嗎？"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！", failed:"可以這樣說：「好！」" } },
+            { id:"not_enough", shopkeeper_prompt:"（你打開錢包，發現只有 40 元）",
+              task:"先說「不好意思」，再告訴老闆你的錢不夠，不能買",
+              keywords:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我錢不夠，不能買","不好意思，我只有 40 元，不夠","我錢不夠，對不起","我的錢差一點","錢差一點","不好意思，還差 15 元","還差 15 元","我的錢不到 55 元"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 40 元",
+              options:["不好意思，我錢不夠，不能買","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很誠實！這樣很棒！", partial:"說出了重點！誠實說出來才能讓老闆幫你", failed:"可以這樣說：「不好意思，我錢不夠，不能買」" } },
+            { id:"adjust", shopkeeper_prompt:"沒關係！奶茶 25 元，你要嗎？",
+              task:"先說「好」，再說你只要奶茶，最後說「謝謝」",
+              keywords:["好","可以","奶茶"], keywords_mode:'any',
+              accepted_phrases:["好，那我只要奶茶，謝謝！","可以，謝謝！","好，謝謝你！","好的，謝謝！那我要奶茶！","好的，那我只要奶茶，謝謝！"],
+              image:"images/a4/icon-a4-milk-tea-shop.png", image_label:"奶茶 25 元",
+              options:["好，那我只要奶茶，謝謝！","快點算便宜一點啦！","哼，不用你管！","喂，我走了！"],
+              feedback:{ perfect:"很好！懂得隨機應變！", partial:"說出了重點！有謝謝老闆很好！", failed:"可以這樣說：「好，那我只要奶茶，謝謝！」" } },
+            // 外部審閱第二輪：改買便宜的也要付款、有找零（共識 7）
+            mkStep({ id:"pay", say:"好的，奶茶 25 元。", task:"把 40 元拿給老闆，說「給你 40 元」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"40 元",
+              options:["給你 40 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "40", "四十"],
+              accepted:["給你 40 元","我給你 40 元","40 元給你","這是 40 元"] }),
+            mkStep({ id:"get_change", say:"收您 40 元，找您 15 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 15 元",
+              options:["15 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["15","十五","對了"],
+              accepted:["15 元，對了，謝謝！","15 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請老闆幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請老闆先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "wrong_order", name: "想換餐點", icon: "🔄",
+          desc: "點完餐才發現來不及等，趁老闆還沒開始做，禮貌地請老闆換成做好的餐點",
+          steps: [
+            // 2026-09-26 使用者定稿（外部審閱第二輪）：原本「突然想改吃漢堡」沒有理由、又是老闆開始做了才換 → 整個情境改寫。
+            mkStep({ id:"greeting", say:"早安！歡迎光臨！", task:"跟老闆打招呼，說「早安」",
+              options:["早安！","謝謝再見","我要結帳","這個多少錢？"], kw:'greet',
+              accepted:["早安！","你好！","您好！","老闆早安！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", failed:"可以這樣說：「早安！」" } }),
+            mkStep({ id:"order", say:"請問要點什麼？", task:"點一份火腿三明治",
+              image:"images/a4/icon-a4-sandwich-shop.png", image_label:"火腿三明治",
+              options:["我要一份火腿三明治","謝謝再見","請問廁所在哪裡？","我要結帳"], kw:["三明治"],
+              accepted:["我要一份火腿三明治","我要火腿三明治","給我一份火腿三明治"] }),
+            mkStep({ id:"change_mind", say:"好！三明治要現做，大概要等 10 分鐘喔。（你看了看手錶，再 5 分鐘就 8 點了，上學要遲到了。櫃台旁邊有已經做好的飯糰。）",
+              task:"先說「不好意思」，說你趕時間，再問老闆可以改成飯糰嗎",
+              image:"images/a4/icon-a4-rice-ball-shop.png", image_label:"做好的飯糰",
+              // 刻意不放「那我不吃了」「我等 10 分鐘」當干擾項：也是合理做法（共識 1）
+              options:["不好意思，我趕時間，可以改成飯糰嗎？","你動作快一點啦！","請問廁所在哪裡？","我要結帳"],
+              kw:["飯糰","改","換"],
+              accepted:["不好意思，我趕時間，可以改成飯糰嗎？","不好意思，可以改成飯糰嗎？","我趕時間，可以換成飯糰嗎？","可以改成飯糰嗎？"],
+              feedback:{ perfect:"說得很有禮貌！趕時間也要說「不好意思」！", partial:"說出了要換的意思！記得說「不好意思」和你趕時間", failed:"可以這樣說：「不好意思，我趕時間，可以改成飯糰嗎？」" } }),
+            mkStep({ id:"pay", say:"可以啊！三明治我還沒開始做。飯糰 35 元。", task:"把 50 元拿給老闆，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","等一下再給","我要三明治"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收您 50 元，找您 15 元。飯糰拿好，上學小心喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝老闆」",
+              image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 15 元",
+              options:["15 元，對了，謝謝老闆！","嗯","（直接走掉）","你找錯了啦"], kw:["15","十五","謝謝"],
+              accepted:["15 元，對了，謝謝老闆！","15 元，謝謝老闆！"] }),
+            mkStep({ id:"think", say:"（想一想）點完餐想換，什麼時候說比較好？", task:"說出要趁老闆還沒開始做的時候就說",
+              options:["趁老闆還沒開始做的時候就說","做好了再說","不用說，拿了就走","等老闆問我再說"], kw:["還沒","開始做"],
+              accepted:["趁老闆還沒開始做的時候就說","老闆還沒開始做的時候","還沒開始做就要說"] })
+          ]
+        },
+        {
+          id: "ask_recommendation", name: "不知道要點什麼", icon: "🤔",
+          simple_steps: ["greet_ask", "recommend", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "不知道要吃什麼，請老闆推薦今日招牌",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"早安！歡迎光臨！", task:"跟老闆打招呼，說「早安」",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["早安！","你好！","您好！","哈囉！","嗨！","hi！"],
+              options:["早安！","謝謝再見","我看一下菜單","我要漢堡"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「早安！」" } },
+            { id:"greet_ask", shopkeeper_prompt:"請問要點什麼？",
+              task:"先說你不知道要吃什麼，再請老闆推薦",
+              keywords:["推薦","好吃","招牌","不知道","建議"], keywords_mode:'any',
+              accepted_phrases:["我不知道要吃什麼，有什麼推薦？","請問有什麼好吃的？","不知道要點什麼，可以推薦嗎？"],
+              options:["我不知道要吃什麼，有什麼推薦？","我要蛋餅","謝謝再見","我看一下菜單"],
+              feedback:{ perfect:"很好！懂得詢問推薦！", partial:"說出了重點！", failed:"可以這樣說：「我不知道要吃什麼，有什麼推薦？」" } },
+            // 外部審閱第二輪（使用者改判）：老闆只推薦一樣，避免「另一樣被當干擾項」
+            { id:"recommend", shopkeeper_prompt:"今天的蘿蔔糕超好吃！（你聽到蘿蔔糕，覺得不錯，想吃看看。）", task:"先說「好」，再說你要蘿蔔糕",
+              keywords:["蘿蔔糕"], keywords_mode:'any',
+              accepted_phrases:["好，我要蘿蔔糕！","那我要蘿蔔糕！","蘿蔔糕！","好的，我要蘿蔔糕！"],
+              image:"images/a4/icon-a4-radish-cake-shop.png", image_label:"蘿蔔糕",
+              options:["好，我要蘿蔔糕！","我要去買鉛筆","謝謝再見","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！接受推薦很棒！", partial:"說出了重點！", failed:"可以這樣說：「好，我要蘿蔔糕！」" } },
+            { id:"drink", shopkeeper_prompt:"好的！要配飲料嗎？（你想喝紅茶。）", task:"說你要一杯紅茶",
+              keywords:["紅茶"], keywords_mode:'any',
+              accepted_phrases:["我要紅茶！","給我紅茶","一杯紅茶","我要一杯紅茶"],
+              image:"images/a4/icon-a4-black-tea-shop.png", image_label:"紅茶",
+              options:["我要紅茶！","我要奶茶","我要豆漿","我要柳橙汁"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要紅茶！」" } },
+            mkStep({ id:"checkout", say:"蘿蔔糕加紅茶，共 60 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 40 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元",
+              options:["40 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["40","四十","對了"],
+              accepted:["40 元，對了，謝謝！","40 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "wait_too_long", name: "等太久了", icon: "⏰",
+          desc: "等餐等了很久，如何禮貌地詢問老闆",
+          steps: [
+            { id:"ask_order", shopkeeper_prompt:"（早上你到早餐店點了餐，已經等了10分鐘，比你晚點餐的客人都拿到了，你的餐點還沒來。你要禮貌地問老闆。）",
+              task:"先說「不好意思」，再用「請問」問老闆你的餐點好了嗎",
+              keywords:["好了","餐點","多久","不好意思"], keywords_mode:'any',
+              accepted_phrases:["不好意思，請問我的餐點好了嗎？","請問蛋餅好了嗎？","不好意思，我等了一段時間了"],
+              options:["不好意思，請問我的餐點好了嗎？","請問廁所在哪裡？","等了很久了！","你快一點啦！"],
+              feedback:{ perfect:"問得很有禮貌！「不好意思」說得很好！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，請問我的餐點好了嗎？」" } },
+            { id:"apology", shopkeeper_prompt:"啊，不好意思！馬上好，再等 2 分鐘！",
+              task:"說「沒關係」，再說你願意等",
+              keywords:["沒關係","好","謝謝","等","行","沒事","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，我等你！","好的，謝謝！","沒事，我再等等！","行，我等你！","OK，我等你！"],
+              options:["沒關係，我等你！","哼，不用你管！","喂，我走了！","你快一點啦！"],
+              feedback:{ perfect:"很好！有耐心等待！", partial:"說出了重點！", failed:"可以這樣說：「沒關係，我等你！」" } },
+            { id:"receive", shopkeeper_prompt:"好了！不好意思讓你久等了！", task:"說「謝謝」，再說「沒關係」",
+              keywords:["謝謝","沒關係","好","沒事","還好","OK","了解"], keywords_mode:'any',
+              accepted_phrases:["謝謝！沒關係！","謝謝你！","沒關係，謝謝！"],
+              options:["謝謝！沒關係！","哼，不用你管！","喂，我走了！","謝謝，好香！"],
+              feedback:{ perfect:"說得很有禮貌！寬容的態度很棒！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！沒關係！」" } }
+          ]
+        },
+        {
+          id: "exchange_change", name: "換零錢", icon: "🪙",
+          desc: "口渴想買飲料，販賣機只收零錢，請早餐店老闆幫忙換 100 元",
+          steps: [
+            mkStep({ id:"greeting",
+              say:"（放學回家的路上，天氣好熱，你好渴。路邊有一台飲料販賣機，可是你口袋裡只有一張 100 元。隔壁的早餐店還沒關門。）",
+              task:"走進早餐店，跟老闆打招呼",
+              options:["老闆你好！","我要一份蛋餅","這個多少錢？","（不說話，直接站著）"],
+              accepted:["老闆你好！","你好！","老闆，你好","老闆哈囉！","老闆嗨！","老闆早安！","老闆hi！","老闆好！"], kw:"greetBoss",
+              feedback:{ perfect:"打招呼很有禮貌！", partial:"有打招呼！可以說：「老闆你好！」", failed:"可以這樣說：「老闆你好！」" } }),
+            mkStep({ id:"ask_exchange", say:"你好！要吃什麼嗎？",
+              task:"先叫「老闆」，說「不好意思」，再請他幫你把 100 元換成零錢",
+              options:["老闆，不好意思，可以幫我換零錢嗎？","老闆，可以借我 10 元嗎？","我要一份蛋餅","請問廁所在哪裡？"],
+              accepted:["老闆，不好意思，可以幫我換零錢嗎？","可以幫我換零錢嗎？","不好意思，我想換零錢","請問可以換零錢嗎？"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              kw:["換零錢","換錢","零錢"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！加上「不好意思」會更有禮貌",
+                failed:"換錢是拿一樣多的錢跟人交換，不是跟人要錢。可以說：「老闆，不好意思，可以幫我換零錢嗎？」" } }),
+            mkStep({ id:"say_combo", say:"可以啊！你要換成什麼？",
+              task:"告訴老闆你要把 100 元換成 10 個 10 元",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["我要把 100 元換成 10 個 10 元","我要把 100 元換成 10 個 1 元","我要把 100 元換成 5 個 10 元","我要買一個 10 元的東西"],
+              // 「我要換 10 個 10 元」這三句 2026-08-05 曾移除（當時困難模式把 100 當必答、省略就判錯），
+              // 2026-09-18 加回：困難模式的金額改看總數，10 個 10 元就是 100 元；老闆問的是「換成什麼」，
+              // 這樣回答就夠清楚（使用者定：算全對）。
+              accepted:["我要把 100 元換成 10 個 10 元","把 100 元換成 10 個 10 元",
+                        "我要換 10 個 10 元","我要換成 10 個 10 元","換成 10 個 10 元"],
+              // 2026-09-18 使用者：「10 個」「10 元」兩個都說到就算對（中間有逗號、夾別的字、順序顛倒都可以）。
+              // 原本是整串「10個10元」，語音辨識寫成「10個，10元。」就比不到。國字「十個十元」由 script.js 的 kwHit 轉數字。
+              kw:["10個","10元"], keywords_mode:'all',
+              frame_ref:"exchange_money",
+              slots:{
+                money:{ answer:"100 元", choices:[
+                  { text:"100 元", emoji:"💵" }, { text:"50 元", emoji:"💴" }, { text:"10 元", emoji:"🪙" } ] },
+                coins:{ answer:"10 個 10 元", choices:[
+                  { text:"10 個 10 元", emoji:"🪙" }, { text:"10 個 1 元", emoji:"🥇" }, { text:"5 個 10 元", emoji:"💰" } ] } },
+              grow_slots:{ use:{ answer:"販賣機", choices:[
+                { text:"販賣機", emoji:"🥤" }, { text:"洗衣機", emoji:"🧺" }, { text:"夾娃娃機", emoji:"🎮" } ] } },
+              feedback:{ perfect:"說得很清楚！10 個 10 元剛好是 100 元！", partial:"說出了重點！要說清楚換成幾個 10 元",
+                failed:"10 個 10 元合起來剛好 100 元。可以說：「我要把 100 元換成 10 個 10 元」" } }),
+            mkStep({ id:"hand_money", say:"好，100 元給我吧。",
+              task:"把 100 元拿給老闆，說「給你 100 元」，再說「麻煩你了」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元，麻煩你了！","你先給我零錢","我等一下再付","這是 50 元"],
+              accepted:["給你 100 元，麻煩你了！","這是 100 元","100 元給你","這是一百元，麻煩你","這是 100 元，麻煩你了！"],
+              kw:[...KW_PRESETS.hand, "100元","一百元","100","一百"],
+              feedback:{ perfect:"把錢交出去說得很清楚！", partial:"說出了重點！可以加上「麻煩你了」更有禮貌",
+                failed:"可以這樣說：「給你 100 元，麻煩你了！」" } }),
+            mkStep({ id:"count_check", say:"來，10 個 10 元，你數數看對不對？",
+              task:"數一數，先說「我數好了」，再告訴老闆總共是多少錢",
+              // 2026-09-18 使用者：畫面要真的出現 10 個 10 元讓學生數（原本只有一個 10 元）
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png",
+                     "images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png",
+                     "images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png",
+                     "images/money/10_yuan_front.png"], image_label:"10 個 10 元 ＝ 100 元",
+              options:["我數好了，剛好 100 元！","不用數了","我不會數","好像少了一個"],
+              accepted:["我數好了，剛好 100 元！","剛好 100 元","對，剛好 100 元","我數過了，是 100 元"],
+              kw:["100","一百","剛好","數好","數過"],
+              feedback:{ perfect:"很棒！當面數清楚是很好的習慣！", partial:"說出了重點！數完可以說「剛好 100 元」",
+                failed:"10 個 10 元合起來是 100 元。可以說：「我數好了，剛好 100 元！」" } }),
+            mkStep({ id:"goodbye", say:"不客氣！去買飲料吧，零錢收好別弄丟了。",
+              task:"先說「謝謝老闆」，再說「再見」",
+              options:["謝謝老闆，再見！","喔","我還要買蛋餅","（默默走掉）"],
+              accepted:["謝謝老闆，再見！","謝謝，再見！","謝謝老闆！"], kw:'bye',
+              feedback:{ perfect:"道謝說得很有禮貌！", partial:"有說謝謝！可以加上「再見」更完整",
+                failed:"可以這樣說：「謝謝老闆，再見！」" } })
+          ]
+        },
+        {
+          id: "no_change", name: "老闆沒零錢", icon: "🙅",
+          desc: "想換零錢，老闆說零錢也不夠，學會接受拒絕並想別的辦法",
+          steps: [
+            mkStep({ id:"greeting",
+              say:"（放學回家的路上，天氣好熱，你好渴。路邊有一台飲料販賣機，可是你口袋裡只有一張 100 元。隔壁的早餐店還沒關門。）",
+              task:"走進早餐店，跟老闆打招呼",
+              options:["老闆你好！","我要一份蛋餅","這個多少錢？","（不說話，直接站著）"],
+              accepted:["老闆你好！","你好！","老闆，你好","老闆哈囉！","老闆嗨！","老闆早安！","老闆hi！","老闆好！"], kw:"greetBoss",
+              feedback:{ perfect:"打招呼很有禮貌！", partial:"有打招呼！可以說：「老闆你好！」", failed:"可以這樣說：「老闆你好！」" } }),
+            mkStep({ id:"ask_exchange", say:"你好！要吃什麼嗎？",
+              task:"先叫「老闆」，說「不好意思」，再請他幫你把 100 元換成零錢",
+              options:["老闆，不好意思，可以幫我換零錢嗎？","老闆，可以借我 10 元嗎？","我要一份蛋餅","請問廁所在哪裡？"],
+              accepted:["老闆，不好意思，可以幫我換零錢嗎？","可以幫我換零錢嗎？","不好意思，我想換零錢","請問可以換零錢嗎？"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              kw:["換零錢","換錢","零錢"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！加上「不好意思」會更有禮貌",
+                failed:"換錢是拿一樣多的錢跟人交換，不是跟人要錢。可以說：「老闆，不好意思，可以幫我換零錢嗎？」" } }),
+            mkStep({ id:"refused", say:"啊，不好意思，我今天零錢也不夠，沒辦法換給你耶。",
+              task:"先說「沒關係」，再說「還是謝謝你」",
+              options:["沒關係，還是謝謝你！","為什麼不行？","可是我很渴耶","一定有，你再找找！"],
+              accepted:["沒關係，還是謝謝你！","沒關係，謝謝！","好的，謝謝你！"],
+              kw:["沒關係","謝謝","沒事"],
+              feedback:{ perfect:"很棒！被拒絕還是有禮貌地道謝！", partial:"說出了重點！可以說「沒關係，還是謝謝你！」",
+                failed:"別人幫不上忙，也要謝謝他。可以說：「沒關係，還是謝謝你！」" } }),
+            mkStep({ id:"suggestion", say:"前面轉角有便利商店，你可以去那裡買瓶水，順便就有零錢了。",
+              task:"先說「好」，再說你要去便利商店，最後說「謝謝老闆」",
+              options:["好，我去便利商店，謝謝老闆！","你一定要幫我換！","那我在這裡等","我還是想跟你換"],
+              accepted:["好，我去便利商店，謝謝老闆！","好，我去便利商店","我去便利商店，謝謝！"],
+              kw:["便利商店"],
+              feedback:{ perfect:"很好！聽懂建議，也謝謝老闆！", partial:"說出了重點！記得謝謝老闆的建議",
+                failed:"可以這樣說：「好，我去便利商店，謝謝老闆！」" } }),
+            mkStep({ id:"think", say:"（想一想）如果換不到零錢，你可以怎麼做？",
+              task:"說出換不到零錢時，可以去便利商店買東西，順便換到零錢",
+              options:["去便利商店買東西，順便換到零錢","跟同學借錢","把 100 元硬塞進販賣機","大聲罵老闆不幫忙"],
+              accepted:["去便利商店買東西，順便換到零錢","去便利商店買東西","去商店買東西換零錢","去便利商店買飲料"],
+              kw:["便利商店","買東西","商店"],
+              feedback:{ perfect:"答對了！自己想辦法最好！", partial:"說出了重點！",
+                failed:"換不到零錢，可以去商店買東西順便換，不要跟別人借錢。" } })
+          ]
+        },
+        {
+          id: "family_takeout", name: "幫家人外帶早餐", icon: "🥡",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "照著清單點多樣餐點、說外帶、拿到後再對一次",
+          steps: [
+            mkStep({ id:"greeting", say:"（媽媽請你幫全家買早餐帶回家，清單上寫：「黑胡椒鐵板麵一份、薯餅兩片、米漿一杯」。媽媽給你 200 元。）早安！歡迎光臨！", task:"跟老闆娘說「早安」",
+              options:["早安！","謝謝再見","你不要吵我","我要結帳"], kw:["早安"] }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-pepper-iron-noodles.png","images/b6/icon-b6-hash-brown.png","images/b6/icon-b6-rice-peanut-milk.png"], image_label:"黑胡椒鐵板麵 ＋ 薯餅兩片 ＋ 米漿", say:"請問要點什麼？", task:"看著清單說：黑胡椒鐵板麵一份、薯餅兩片、米漿一杯",
+              options:["黑胡椒鐵板麵一份、薯餅兩片、米漿一杯","隨便來三樣","我要一個蛋餅","薯餅一片就好"], kw:["黑胡椒鐵板麵一份","薯餅兩片","米漿一杯"] }),
+            mkStep({ id:"s3", say:"好的！內用還是外帶？", task:"說你要外帶",
+              options:["我要外帶","隨便啦","我要把餐盤帶回家","袋子全部給我"], kw:["要外帶"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"鐵板麵 50 元、薯餅兩片 50 元、米漿 20 元，一共 120 元。", task:"把 200 元拿給老闆娘，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","可以算 100 元嗎？","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 80 元", say:"收您 200 元，找您 80 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["80 元，對了，謝謝！","錢我不用數","70 元，對了，謝謝！","（直接走掉）"], kw:["80","對了"], mode:'all' }),
+            mkStep({ id:"s6", image:["images/b6/icon-b6-pepper-iron-noodles.png","images/b6/icon-b6-hash-brown.png","images/b6/icon-b6-hash-brown.png","images/b6/icon-b6-rice-peanut-milk.png"], image_label:"鐵板麵 ＋ 薯餅兩片 ＋ 米漿", say:"東西都裝在袋子裡了，你點一下喔！（你對照清單，確認袋子裡有黑胡椒鐵板麵一份、薯餅兩片、米漿一杯。）", task:"看著清單核對品項和數量，說「黑胡椒鐵板麵一份、薯餅兩片、米漿一杯，都有了」",
+              options:["黑胡椒鐵板麵一份、薯餅兩片、米漿一杯，都有了","不用看了","少一樣沒關係","清單丟掉了"], kw:["黑胡椒鐵板麵一份","薯餅兩片","米漿一杯"] }),
+            mkStep({ id:"s7", say:"（你把早餐帶回家，也把找回的 80 元交還媽媽。）（想一想）幫家人外帶早餐，要怎麼做才不會買錯？", task:"說出方法：帶著清單照著點，拿到以後再對一次",
+              options:["帶著清單照著點，拿到以後再對一次","用猜的","全部點一樣的","拿了就走"], kw:["帶著清單照著點","對一次","以後"] }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 超市
+    // ══════════════════════════════════════════
+    {
+      id: "supermarket", name: "超市", icon: "🛒", available: true,
+      theme: { color: '#7C3AED', bg: '#EDE9FE', accent: '#6D28D9' },
+      situations: [
+        {
+          id: "basic", name: "基本購物", icon: "🛒",
+          simple_steps: ["see_price", "confirm_purchase", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "從詢問位置、看標價算總價到確認錢包夠不夠的完整超市購物流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟服務人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","我要結帳","這個多少錢？"],
+              feedback:{ perfect:"打招呼打得很有禮貌！很棒！", partial:"不錯！可以說得更完整一點", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_location", shopkeeper_prompt:"請問需要幫忙嗎？", task:"用「請問」問服務人員蔬菜水果在哪裡",
+              keywords:["蔬菜","水果"], keywords_mode:'any',
+              accepted_phrases:["請問蔬菜水果在哪裡？","水果區在哪邊？","蔬菜在哪裡？"],
+              options:["請問蔬菜水果在哪裡？","我要結帳","謝謝再見","這個多少錢？"],
+              frame_ref:"ask_location",
+              slots:{ item:{ answer:"蔬菜水果", choices:[
+                { text:"蔬菜水果", emoji:"🥬" }, { text:"飲料", emoji:"🥤" },
+                { text:"餅乾", emoji:"🍪" }, { text:"牛奶", emoji:"🥛" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了部分重點！試著說完整：「請問蔬菜水果在哪裡？」", failed:"可以這樣說：「請問蔬菜水果在哪裡？」" } },
+            mkStep({ id:"no_more", say:"蔬菜水果區在右手邊。請問還需要什麼嗎？", task:"跟服務人員說：「沒有」，再說「謝謝你」",
+              options:["沒有，謝謝你！","我要買蘋果","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買蘋果", emoji:"🍎" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你走到蔬菜水果區，看了一下價格，蘋果一顆 35 元。你想要買 3 顆。）",
+              // 任務寫「三顆」不寫「3 顆」：高級判定會把「任務∩正解」的阿拉伯數字當必答，
+              // 寫成 3 會讓「總共 105 元」這種算對了卻沒提顆數的答法被判失敗（「顆」不在數字單位表，中文數字不會被轉換）
+              task:"算算看：三顆蘋果總共多少錢", image:["images/a4/icon-a4-apple-shop.png::35 元","+","images/a4/icon-a4-apple-shop.png::35 元","+","images/a4/icon-a4-apple-shop.png::35 元","=","105 元"], image_label:"蘋果一顆 35 元，買 3 顆",
+              options:["3 顆蘋果是 105 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["105"],
+              accepted:["3 顆蘋果是 105 元","3 顆是 105 元","總共 105 元","105 元"],
+              frame:{ template:"3 顆蘋果是 {price}", slots:{ price:{ answer:"105 元", choices:[
+                { text:"105 元", emoji:"💰" }, { text:"35 元", emoji:"🪙" },
+                { text:"70 元", emoji:"🪙" }, { text:"150 元", emoji:"💵" } ] } } },
+              feedback:{ perfect:"算得很好！一顆 35 元，3 顆就是 105 元！", partial:"說出了重點！記得說清楚總共多少錢", failed:"35 加 35 加 35 等於 105，可以說：「3 顆蘋果是 105 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 100 元和一個 50 元，錢夠買。）",
+              task:"數數看：你的錢包裡有多少錢",
+              image:["images/money/100_yuan_front.png","+","images/money/50_yuan_front.png","=","150 元"], image_label:"錢包裡的錢",
+              options:["我有 150 元","我沒有錢","我要買蘋果","請問廁所在哪裡？"], kw:["150","一百五"],
+              accepted:["我有 150 元","我有一百五十元","錢包裡有 150 元","100 元加 50 元是 150 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"150 元", choices:[
+                { text:"150 元", emoji:"💰" }, { text:"100 元", emoji:"💵" },
+                { text:"50 元", emoji:"💴" }, { text:"105 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"數得很好！100 元加 50 元就是 150 元！", partial:"說出了重點！記得說清楚一共有多少錢", failed:"100 元加 50 元等於 150 元，可以說：「我有 150 元」" } }),
+            { id:"confirm_purchase", shopkeeper_prompt:"蘋果 1 顆 35 元，你買 3 顆，總共 105 元，你要買嗎？",
+              task:"先說「好」，再告訴店員你要買這 3 顆蘋果",
+              keywords:["買","我要","要買","給","來","拿","這個"], keywords_mode:'any',
+              accepted_phrases:["好，我要買！","我要這 3 顆！","要買！","好的，我要買！"],
+              image:["images/a4/icon-a4-apple-shop.png::35 元","images/a4/icon-a4-apple-shop.png::35 元","images/a4/icon-a4-apple-shop.png::35 元"], image_label:"3 顆蘋果",
+              options:["好，我要買！","請問廁所在哪裡？","蘋果在哪裡？","謝謝再見"],
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說得更完整：「好的，我要買！」", failed:"可以這樣說：「好，我要買！」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！蘋果 105 元。",
+              task:"把 150 元拿給收銀員，說「給你 150 元」",
+              keywords:[...KW_PRESETS.hand, "150", "一百五"], keywords_mode:'any',
+              accepted_phrases:["給你 150 元","我給你 150 元","150 元給你","這是 150 元"],
+              image:["images/money/100_yuan_front.png","images/money/50_yuan_front.png"], image_label:"150 元",
+              options:["給你 150 元","我不想付錢","我不買了","我沒帶錢"],
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 150 元」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的，找您 45 元，請拿好，歡迎再來！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！","謝謝bye！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 45 元",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"],
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"有說了！同時說謝謝和再見更完整喔", failed:"可以這樣說：「謝謝再見！」" } }
+          ]
+        },
+        {
+          id: "cant_find_item", name: "找不到商品", icon: "🔍",
+          desc: "在超市找不到高麗菜，向店員求助並接受建議",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","我要結帳","多少錢？"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            // 步驟 id 沿用 ask_eggs（2026-09-20 商品由有機雞蛋改成高麗菜）：id 是音檔檔名的一部分，
+            // 也被 docs/dialogue_keyword_map.md 點名，改了要連帶動音檔與文件——內容換掉即可，不改 id。
+            { id:"ask_eggs", shopkeeper_prompt:"請問需要幫忙嗎？", task:"用「請問」問店員高麗菜在哪裡",
+              keywords:["高麗菜","高麗"], keywords_mode:'any',
+              accepted_phrases:["請問高麗菜在哪裡？","我在找高麗菜","請問高麗菜放在哪裡？"],
+              image:"images/b6/icon-b6-cabbage.png", image_label:"高麗菜",
+              options:["請問高麗菜在哪裡？","我要結帳","謝謝再見","請問多少錢？"],
+              frame_ref:"ask_location",
+              slots:{ item:{ answer:"高麗菜", choices:[
+                { text:"高麗菜", emoji:"🥬" }, { text:"牛奶", emoji:"🥛" },
+                { text:"雞蛋", emoji:"🥚" }, { text:"飲料", emoji:"🥤" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問高麗菜在哪裡？」", failed:"可以這樣說：「請問高麗菜在哪裡？」" } },
+            { id:"out_of_stock", shopkeeper_prompt:"不好意思，高麗菜賣完了！但我們還有花椰菜，你要嗎？",
+              task:"詢問花椰菜的價格",
+              keywords:["多少","幾元","價格","怎麼賣"], keywords_mode:'any',
+              accepted_phrases:["花椰菜多少錢？","那花椰菜多少錢？","請問多少錢？"],
+              image:"images/b6/icon-b6-broccoli.png", image_label:"花椰菜",
+              options:["花椰菜多少錢？","請問廁所在哪裡？","好，給我花椰菜","謝謝再見"],
+              feedback:{ perfect:"很好！懂得詢問替代方案！", partial:"說出了重點！可以問價格再決定", failed:"可以這樣說：「花椰菜多少錢？」" } },
+            { id:"decide", shopkeeper_prompt:"花椰菜一顆 45 元！（你也喜歡吃花椰菜，覺得 45 元可以接受。）", task:"先說「好」，再告訴店員你要買花椰菜",
+              keywords:["買","我要","要買","給","可以","行","謝謝","換","選"], keywords_mode:'any',
+              accepted_phrases:["好，我要買！","那給我花椰菜！","好，我要這顆！","可以，我要買！","行，我要買！","好的，我要買！"],
+              image:"images/b6/icon-b6-broccoli.png::45 元", image_label:"花椰菜",
+              options:["好，我要買！","我先走了","請問廁所在哪裡？","高麗菜在哪裡？"],
+              feedback:{ perfect:"很好！懂得隨機應變！", partial:"說出了重點！", failed:"可以這樣說：「好，我要買！」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的！請到收銀台結帳，謝謝！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝你！再見！","好的，謝謝！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              options:["謝謝！再見！","好的，我要買！","哼，不用你管！","你好！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！很好！", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          desc: "結帳時發現錢不夠，禮貌說明並放回一樣商品",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟收銀員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","我要結帳"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"not_enough", shopkeeper_prompt:"一盒雞蛋 48 元、牛奶 65 元，總共 113 元。（你打開錢包，發現只有 80 元，不夠 113 元）",
+              task:"先說「不好意思」，再告訴收銀員你的錢不夠",
+              keywords:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我的錢不夠","我只有 80 元，不夠","不好意思，我錢不夠","我的錢差一點","錢差一點","不好意思，還差 33 元","還差 33 元","我的錢不到 113 元","我的錢不夠"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 80 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","先欠著好了","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！讓收銀員知道是正確的！", failed:"可以這樣說：「不好意思，我的錢不夠」" } },
+            { id:"return_item", shopkeeper_prompt:"沒關係！你要放回哪一樣？（明天早餐要煎蛋，牛奶家裡還有。）",
+              task:"說你要放回牛奶",
+              keywords:["牛奶"], keywords_mode:'any',
+              accepted_phrases:["我放回牛奶好了","把牛奶放回去","牛奶退掉"],
+              image:"images/a4/icon-a4-milk-shop.png", image_label:"要放回去的牛奶",
+              options:["我放回牛奶好了","我放回雞蛋","都放回去","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！懂得解決問題！", partial:"說出了重點！", failed:"可以這樣說：「我放回牛奶好了」" } },
+            // 外部審閱第一輪：沒付 80 元就找 32 元 → 拆成報價、付款、找零（共識 3、7）
+            mkStep({ id:"pay", say:"好的！那雞蛋 48 元。", task:"把 80 元拿給收銀員，說「給你 80 元」",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              options:["給你 80 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元","我給你 80 元","80 元給你","這是 80 元"] }),
+            mkStep({ id:"goodbye", say:"收您 80 元，找您 32 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 32 元",
+              options:["32 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["32","三十二","對了"],
+              accepted:["32 元，對了，謝謝！","32 元，謝謝！"],
+              feedback:{ perfect:"很好！找零當面數清楚！下次多帶一點錢喔！" } }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請收銀員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請收銀員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "damaged_product", name: "商品有問題", icon: "🚨",
+          desc: "發現商品有破損，向店員反映並請求更換",
+          steps: [
+            { id:"find_damage", shopkeeper_prompt:"（你在超市買東西，從貨架上拿了一瓶果汁，仔細一看，發現瓶蓋有裂痕。附近剛好有一位店員。）",
+              task:"先說「不好意思」，再告訴附近的店員這瓶果汁好像有問題",
+              keywords:["問題","裂","壞","漏","破","損","裂痕","壞掉","不好"],keywords_mode:'any',
+              accepted_phrases:["不好意思，這瓶果汁好像有問題","這個蓋子裂掉了","這個商品壞了","這瓶果汁好像有問題"],
+              options:["不好意思，這瓶果汁好像有問題","我要買這個","請問多少錢？","謝謝再見"],
+              feedback:{ perfect:"很好！主動反映問題很棒！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，這瓶果汁好像有問題」" } },
+            { id:"staff_check", shopkeeper_prompt:"謝謝你告訴我！我來看看……確實蓋子有裂，我幫你換一瓶！",
+              task:"先說「謝謝」，再說你願意等",
+              keywords:["謝謝","好","可以","等","行","沒問題","麻煩"], keywords_mode:'any',
+              accepted_phrases:["謝謝！我等你！","好的，謝謝！","可以，謝謝！"],
+              options:["謝謝！我等你！","快一點啦！","哼，不用你管！","喂，我走了！"],
+              feedback:{ perfect:"很好！有耐心等待！", partial:"說出了重點！", failed:"可以這樣說：「謝謝！我等你！」" } },
+            { id:"new_item", shopkeeper_prompt:"這是新的！完整沒有問題，請確認一下！",
+              task:"確認沒問題，先說「好」，再說「謝謝」",
+              keywords:["好","謝謝","沒問題","可以","OK","看過了"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","沒問題，謝謝！","謝謝你！","好的，謝謝！"],
+              options:["好，謝謝！","哼，不用你管！","喂，我走了！","我付現金"],
+              feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「好，謝謝！」" } },
+            { id:"checkout", shopkeeper_prompt:"不客氣！請到收銀台結帳，謝謝！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝你！再見！","好的，謝謝！","謝謝！掰！"],
+              options:["謝謝！再見！","你好！","哼，不用你管！","我要退貨"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "wrong_change", name: "找零錯了", icon: "💰",
+          desc: "收銀員找錯零，如何禮貌地指出並核對",
+          steps: [
+            { id:"pay", shopkeeper_prompt:"（你有 100 元，在超市拿了一包 48 元的麵條，要去收銀台結帳。）麵條 48 元，謝謝！", task:"告訴收銀員「給你 100 元」",
+              keywords:["100","一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","這是 100 元","我給你 100 元"],
+              image:["images/b4/icon-b4-noodles.png","images/money/100_yuan_front.png"], image_label:"麵條 48 元 ＋ 你有 100 元",
+              options:["給你 100 元","我不想付錢","給你","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"wrong_change", shopkeeper_prompt:"好的！找您 42 元！（收銀員找回 42 元，但正確應找 52 元）",
+              task:"先說「不好意思」，再告訴收銀員找零好像不對",
+              keywords:["不對","錯","應該","少找","少給","多找","找錯","好像","差一點","還差","差了","再算"], keywords_mode:'any',
+              accepted_phrases:["不好意思，找零好像不對","應該找我 52 元","不好意思，好像少了 10 元","可以再算一次嗎？"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"收銀員找回 42 元",
+              options:["不好意思，找零好像不對","謝謝，沒關係","哼，你是不是故意的！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！勇敢禮貌地說出來！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，找零好像不對」" } },
+            { id:"corrected", shopkeeper_prompt:"不好意思！我再算一次……對，找您 52 元，真的很抱歉！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"補好了，找您 52 元",
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
+              feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
+          ]
+        },
+        {
+          id: "ask_sale", name: "詢問特賣商品", icon: "🏷️",
+          desc: "在超市詢問有沒有特價活動或推薦商品",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟服務人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"ask_sale", shopkeeper_prompt:"請問需要什麼嗎？", task:"用「請問」問服務人員今天有沒有特賣",
+              keywords:["特賣","特價","優惠","促銷","打折"], keywords_mode:'any',
+              accepted_phrases:["請問今天有沒有特賣？","今天有沒有特賣？","請問有沒有特價？"],
+              options:["請問今天有沒有特賣？","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「請問今天有沒有特賣？」" } },
+            { id:"staff_answers", shopkeeper_prompt:"有！今天香蕉和優格都有特價，買二送一喔！（你想買香蕉。）",
+              task:"先說「好」，再說你要去看看香蕉",
+              keywords:["看看","去看","香蕉","謝謝"], keywords_mode:'any',
+              accepted_phrases:["好，我去看看香蕉！","那我去看香蕉！","好，謝謝你！","好的，我去看看香蕉！"],
+              image:"images/b6/icon-b6-banana.png", image_label:"特價的香蕉",
+              options:["好，我去看看香蕉！","我要買玩具！","都買！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！積極去看看！", partial:"說出了重點！", failed:"可以這樣說：「好，我去看看香蕉！」" } },
+            { id:"decide", shopkeeper_prompt:"香蕉特賣區在左手邊！", task:"先說「謝謝」，再說你自己去找",
+              keywords:["自己","謝謝"], keywords_mode:'any',
+              accepted_phrases:["謝謝，我自己去找！","謝謝，我去找！","謝謝，我可以！"],
+              options:["謝謝，我自己去找！","你很囉唆耶！","我要結帳","謝謝！"],
+              feedback:{ perfect:"很好！說得很有禮貌！", partial:"說出了重點！", failed:"可以這樣說：「謝謝，我自己去找！」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！需要幫忙隨時說！",
+              task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝你！","好的，謝謝！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","請問今天有沒有特賣？"],
+              feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "weigh_produce", name: "請店員幫忙秤重", icon: "⚖️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本情境依這家超市的標示，先秤重、貼價錢標籤，再結帳；不是所有超市都採這個流程",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在超市想買番茄。番茄是散裝的，牌子上寫著「請先秤重再貼標籤，然後去結帳」。你把 4 顆番茄裝進塑膠袋，走到秤重台。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-tomato.png", image_label:"散裝的番茄", say:"請問需要幫忙嗎？", task:"用「請問」請店員幫你秤番茄",
+              options:["請問可以幫我秤番茄嗎？","番茄在哪裡？","我要退貨","隨便啦"], kw:["秤番茄"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-tomato-weight-label.png", image_label:"秤重標籤", say:"好的！（店員把番茄放上秤子）500 公克，60 元。標籤貼好了，拿去收銀台結帳就可以喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","標籤我撕掉好了","我再多放兩顆，不用重秤","快一點啦"], kw:["謝謝"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"（你到收銀台結帳，店員掃了番茄上的標籤。）番茄 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","標籤掉了，算便宜一點","請問番茄在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元", say:"收您 100 元，找您 40 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）這家超市的牌子寫「請先秤重再貼標籤」，結帳前要先做什麼？", task:"說出方法：先拿去秤重，貼好價錢標籤",
+              options:["先拿去秤重，貼好價錢標籤","直接放進包包","不用秤，隨便給錢","自己寫價錢"], kw:["貼好價錢標籤","先拿去秤重"], feedback:{ perfect:"答對了！先拿去秤重，貼好價錢標籤。", failed:"記住：先拿去秤重，貼好價錢標籤。" } }),
+          ]
+        },
+        {
+          id: "high_shelf", name: "東西放太高拿不到", icon: "🪜",
+          simple_steps: ["s3","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "拿不到的東西不自己爬，請店員幫忙",
+          steps: [
+            mkStep({ id:"s1", image:"images/b6/icon-b6-oatmeal-box.png", image_label:"燕麥片", say:"（你想買一盒燕麥片，可是它放在貨架最上面，你踮腳也拿不到。旁邊有一位正在補貨的店員。）", task:"先說「不好意思」，再用「請問」請店員幫你拿最上面的燕麥片",
+              options:["不好意思，請問可以幫我拿最上面的燕麥片嗎？","我自己爬上去拿就好","喂！拿那個給我","（踩在貨架上拿）"], kw:["拿最上面","燕麥片"] }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-oatmeal-box.png"], image_label:"燕麥片 89 元", say:"可以喔！（店員拿下的正是你要的那盒燕麥片。）是這盒燕麥片嗎？一盒 89 元。", task:"看一看是不是你要的，說「對，就是這盒，謝謝你」",
+              options:["對，就是這盒，謝謝你","不用看了","你拿錯了啦，笨","隨便一盒都可以"], kw:["這盒","謝謝"] }),
+            mkStep({ id:"s3", say:"不客氣！高的地方不要自己爬，找我們幫忙就好喔！", task:"先說「好」，再說你知道了",
+              options:["好，我知道了","爬一下沒關係啦","下次我踩貨架就好","你好囉嗦"], kw:["知道"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"（你到收銀台結帳。）燕麥片 89 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","燕麥片在哪裡？","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 11 元", say:"收您 100 元，找您 11 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["11 元，對了，謝謝！","錢我不用數","1 元，對了，謝謝！","（直接走掉）"], kw:["11","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）東西放太高拿不到，要怎麼做？", task:"說出方法：不要自己爬，請店員幫忙拿",
+              options:["不要自己爬，請店員幫忙拿","踩在貨架上拿","用力把東西拉下來","丟東西把它打下來"], kw:["請店員幫忙拿","不要自己爬"], feedback:{ perfect:"答對了！不要自己爬，請店員幫忙拿。", failed:"記住：不要自己爬，請店員幫忙拿。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 夜市攤販
+    // ══════════════════════════════════════════
+    {
+      id: "night_market", name: "夜市攤販", icon: "🧋", available: true,
+      theme: { color: '#DC2626', bg: '#FEF2F2', accent: '#B91C1C' },
+      situations: [
+        {
+          id: "basic", name: "基本點飲料", icon: "🧋",
+          simple_steps: ["order", "ask_price", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "在夜市點珍珠奶茶，問價錢、確認價格到付錢的完整流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"（晚上天氣很熱，你想喝一大杯珍珠奶茶。）你好！歡迎光臨！", task:"跟攤販老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","晚安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","廁所在哪裡？"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整一點", failed:"可以這樣說：「你好！」" } },
+            { id:"order", shopkeeper_prompt:"我們有珍珠奶茶、冬瓜茶和檸檬汁，你要哪一種？",
+              task:"點一杯珍珠奶茶",
+              keywords:["珍珠","奶茶"], keywords_mode:'any',
+              accepted_phrases:["我要珍珠奶茶","給我珍珠奶茶","一杯珍珠奶茶"],
+              image:"images/b6/icon-b6-bubble-tea.png", image_label:"珍珠奶茶",
+              options:["我要珍珠奶茶","我要冬瓜茶","我要檸檬汁","謝謝再見"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"珍珠奶茶", choices:[
+                { text:"珍珠奶茶", emoji:"🧋" }, { text:"冬瓜茶", emoji:"🍵" },
+                { text:"檸檬汁", emoji:"🧃" }, { text:"咖啡", emoji:"☕" } ] } },
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了重點！試著說完整：「我要珍珠奶茶」", failed:"可以這樣說：「我要珍珠奶茶」" } },
+            { id:"size", shopkeeper_prompt:"好的！大杯還是小杯？", task:"回答要大杯",
+              keywords:["大杯","大","大的","最大","要大","大號"], keywords_mode:'any',
+              accepted_phrases:["大杯！","我要大杯","大的"],
+              options:["大杯！","小杯好了","中杯","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很清楚！", partial:"有說出重點！可以說：「大杯！」", failed:"可以這樣說：「大杯！」" } },
+            { id:"ask_price", shopkeeper_prompt:"好的！大杯珍珠奶茶，請問還需要什麼嗎？", task:"用「請問」問老闆珍珠奶茶多少錢",
+              keywords:["多少","幾塊","幾元","幾錢","怎麼賣","多少錢","幾塊錢","價格","多少元","賣多少"], keywords_mode:'any',
+              accepted_phrases:["請問多少錢？","這杯多少錢？","多少錢？","這杯多少元？","多少元？"],
+              image:"images/b6/icon-b6-bubble-tea.png", image_label:"珍珠奶茶",
+              options:["請問多少錢？","謝謝再見","我要再一杯","好的"],
+              frame_ref:"ask_price",
+              slots:{ item:{ answer:"珍珠奶茶", choices:[
+                { text:"珍珠奶茶", emoji:"🧋" }, { text:"雞排", emoji:"🍗" },
+                { text:"香腸", emoji:"🌭" }, { text:"飲料", emoji:"🥤" } ] } },
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」會更有禮貌", failed:"可以這樣說：「請問多少錢？」" } },
+            // 外部審閱第二輪（使用者改判）：有清楚標價的攤子不教殺價（共識 9）→ 改成確認價格
+            mkStep({ id:"confirm_price", say:"大杯珍珠奶茶 60 元喔！", task:"先說「好」，再說你要一杯",
+              options:["好，我要一杯。","可以算我便宜一點嗎？","請問廁所在哪裡？","謝謝再見"], kw:["一杯","好","要"],
+              accepted:["好，我要一杯。","好，一杯。","我要一杯","好，給我一杯"] }),
+            mkStep({ id:"checkout", say:"總共 60 元。", task:"把 60 元拿給老闆，說「給你 60 元」",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png"], image_label:"60 元",
+              options:["給你 60 元。","還要再便宜！","我要退貨","謝謝再見"], kw:[...KW_PRESETS.hand, "60", "六十"],
+              accepted:["給你 60 元。","給你 60 元","這是 60 元","60 元給你","謝謝！給你 60 元。"],
+              feedback:{ perfect:"太棒了！付錢說得很清楚！" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["check_money", "vendor_response", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買雞排發現錢不夠，誠實說明並改買便宜的",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟攤販老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","晚安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","廁所在哪裡？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整一點","failed":"可以這樣說：「你好！」"} },
+            // 2026-09-26 定稿（品項不重複）：原本珍珠奶茶大小杯 → 雞排改小份鹹酥雞
+            mkStep({ id:"order_ask", say:"請問要什麼？", task:"先說你要雞排，再用「請問」問老闆多少錢",
+              image:"images/b6/icon-b6-chicken-chop.png", image_label:"雞排",
+              options:["我要雞排，請問多少錢？","謝謝再見","我要珍珠奶茶","請問你們有什麼？"], kw:["雞排"],
+              accepted:["我要雞排，請問多少錢？","雞排多少錢？","我要雞排，多少錢？"],
+              feedback:{ perfect:"說得很完整！一次說清楚要什麼還問了價格！", partial:"說出了重點！試著同時說要什麼和問價格" } }),
+            mkStep({ id:"hear_price", say:"雞排一塊 75 元！", task:"先說「好」，再說你要一塊",
+              image:"images/b6/icon-b6-chicken-chop.png::75 元", image_label:"雞排",
+              options:["好，我要一塊","我要十塊","請問廁所在哪裡？","謝謝再見"], kw:["一塊","好"],
+              accepted:["好，我要一塊","我要一塊","好，一塊"] }),
+            mkStep({ id:"check_money", say:"（你打開錢包，發現只有 50 元，不夠 75 元）",
+              task:"先說「不好意思」，再告訴老闆你的錢不夠",
+              image:["images/money/50_yuan_front.png"], image_label:"錢包裡只有 50 元",
+              // 「可以算我便宜一點嗎？」保留當干擾（共識 9：有標價不教殺價）
+              options:["不好意思，我的錢不夠","可以算我便宜一點嗎？","哼，那我不要了！","請問廁所在哪裡？"],
+              kw:["不夠","只有","不足","不到"],
+              accepted:["不好意思，我的錢不夠","我只有 50 元，不夠","不好意思，我錢不夠，不能買","我的錢不到 75 元","我的錢不夠"],
+              feedback:{ perfect:"說得很有禮貌！誠實很重要！" } }),
+            mkStep({ id:"vendor_response", say:"沒關係！小份鹹酥雞剛好 50 元，要不要改這個？（你也喜歡鹹酥雞，覺得換成小份的可以。）",
+              task:"先說「好」，說你要小份鹹酥雞，最後說「謝謝」",
+              image:"images/b6/icon-b6-popcorn-chicken.png::50 元", image_label:"小份鹹酥雞",
+              options:["好，我要小份鹹酥雞，謝謝！","哼，不用你管！","快點算便宜一點啦！","請問廁所在哪裡？"], kw:["鹹酥雞","好"],
+              accepted:["好，我要小份鹹酥雞，謝謝！","好，我要鹹酥雞，謝謝！","好，謝謝！","好的，我要小份鹹酥雞，謝謝！"],
+              feedback:{ perfect:"很好！懂得接受別人的好意！" } }),
+            mkStep({ id:"pay", say:"好的，50 元。", task:"把 50 元拿給老闆，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"goodbye", say:"拿好喔，小心燙！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","再便宜一點啦！"], kw:'bye',
+              accepted:["謝謝！再見！","謝謝老闆！再見！","謝謝，掰掰！","謝謝！拜拜！"],
+              feedback:{ perfect:"太棒了！有禮貌道別！" } }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請老闆幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請老闆先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "wrong_flavor", name: "點錯口味了", icon: "🔄",
+          simple_steps: ["order", "receive_wrong", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "發現拿到的飲料口味不對，如何禮貌地請老闆更換",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（老闆招呼→學生打招呼）再切入主題，
+            // 否則學生一進來就被要求點餐，少了每次進店都該做的第一件事。
+            { id:"greeting", shopkeeper_prompt:"（今天你想喝一杯冬瓜茶。）你好！歡迎光臨！", task:"跟攤販老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","晚安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整一點", failed:"可以這樣說：「你好！」" } },
+            { id:"order", shopkeeper_prompt:"請問要什麼？", task:"點一杯冬瓜茶",
+              keywords:["冬瓜"], keywords_mode:'any',
+              accepted_phrases:["我要冬瓜茶","給我冬瓜茶","一杯冬瓜茶"],
+              image:"images/b6/icon-b6-winter-melon-tea.png", image_label:"冬瓜茶",
+              options:["我要冬瓜茶","我要珍珠奶茶","我要檸檬汁","謝謝再見"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"冬瓜茶", choices:[
+                { text:"冬瓜茶", emoji:"🍵" }, { text:"珍珠奶茶", emoji:"🧋" },
+                { text:"檸檬汁", emoji:"🧃" }, { text:"咖啡", emoji:"☕" } ] } },
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要冬瓜茶」" } },
+            { id:"receive_wrong", shopkeeper_prompt:"（老闆遞給你一杯檸檬汁）這是你的！",
+              task:"先說「不好意思」，再告訴老闆你點的是冬瓜茶",
+              keywords:["冬瓜"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我點的是冬瓜茶","這個不對，我要冬瓜茶","不好意思，我要的是冬瓜茶","我點的是冬瓜茶"],
+              image:["images/b6/icon-b6-lemon-juice.png::拿到的（檸檬汁）","images/b6/icon-b6-winter-melon-tea.png::你點的（冬瓜茶）"], image_label:"你點的是冬瓜茶，不是檸檬汁",
+              options:["不好意思，我點的是冬瓜茶","謝謝，就這樣吧","這個多少錢？","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！說得很清楚！有「不好意思」更有禮貌！", partial:"說出了重點！記得加上「不好意思」", failed:"可以這樣說：「不好意思，我點的是冬瓜茶」" } },
+            { id:"vendor_fix", shopkeeper_prompt:"啊，不好意思！我拿錯了，馬上給你換！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["沒關係","謝謝","好","沒事","OK","行"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝老闆！","OK，謝謝！","行，謝謝！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我要冬瓜茶"],
+              feedback:{ perfect:"很好！寬容地說「沒關係」很棒！", partial:"說出了重點！", failed:"可以這樣說：「沒關係，謝謝！」" } },
+            mkStep({ id:"checkout", say:"這是冬瓜茶！一杯 45 元。", task:"把 50 元拿給老闆，說「給你 50 元」",
+              image:"images/b6/icon-b6-winter-melon-tea.png::45 元", image_label:"冬瓜茶",
+              options:["給你 50 元","哼，不用你管！","喂，我走了！","我要冬瓜茶"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收你 50 元，找你 5 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找你 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "find_stall", name: "找不到攤位", icon: "🗺️",
+          desc: "在夜市找不到特定攤位，向路人或其他攤販詢問方向",
+          steps: [
+            { id:"ask_direction", shopkeeper_prompt:"（晚上你在夜市裡走來走去，想買胡椒餅，可是繞了好久都找不到那一攤。旁邊有一位沒在忙的攤販老闆。）",
+              task:"先說「不好意思」，再用「請問」問攤販老闆胡椒餅攤在哪裡",
+              keywords:["胡椒餅"], keywords_mode:'any',
+              accepted_phrases:["不好意思，請問胡椒餅攤在哪裡？","請問哪裡有胡椒餅？","不好意思，胡椒餅在哪裡？"],
+              image:"images/b6/icon-b6-pork-pepper-bun.png", image_label:"你要找的：胡椒餅",
+              options:["不好意思，請問胡椒餅攤在哪裡？","我要結帳","謝謝再見","請問廁所在哪裡？"],
+              feedback:{ perfect:"問得很清楚！「不好意思」說得很好！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，請問胡椒餅攤在哪裡？」" } },
+            { id:"directions", shopkeeper_prompt:"胡椒餅攤在前面第三個，排隊的人很多那一攤！",
+              task:"先說「謝謝」，再說「我知道了」",
+              keywords:["謝謝","知道","好","了解","找到了","OK","清楚"], keywords_mode:'any',
+              accepted_phrases:["謝謝！我知道了！","謝謝你！","好的，謝謝！"],
+              options:["謝謝！我知道了！","哼，不用你管！","喂，我走了！","我要一個胡椒餅"],
+              feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！我知道了！」" } },
+            mkStep({ id:"review", say:"（想一想）在夜市找不到攤位，可以怎麼做？", task:"說出方法：找沒在忙的人，先說「不好意思」再問路",
+              options:["找沒在忙的人，先說不好意思再問路","隨便抓一個正在忙的老闆問","大聲喊胡椒餅在哪裡","一直繞到找到為止"], kw:["不好意思","問路","問人","沒在忙"],
+              accepted:["找沒在忙的人，先說不好意思再問路","先說不好意思再問路","找沒在忙的人問路"],
+              feedback:{ perfect:"答對了！找沒在忙的人，先說不好意思再問路。", failed:"記住：找不到攤位，就找沒在忙的人，先說不好意思再問路。" } })
+          ]
+        },
+        {
+          id: "wrong_change", name: "找零錯了", icon: "💰",
+          desc: "夜市老闆找錯零錢，如何禮貌地指出並核對",
+          steps: [
+            { id:"pay", shopkeeper_prompt:"（你有 100 元，在夜市點了一份 55 元的臭豆腐，準備付錢。）臭豆腐 55 元，謝謝！", task:"告訴老闆「給你 100 元」",
+              keywords:["100","一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","這是 100 元","我給你 100 元"],
+              image:["images/b6/icon-b6-stinky-tofu.png","images/money/100_yuan_front.png"], image_label:"臭豆腐 55 元 ＋ 你有 100 元",
+              options:["給你 100 元","我不想付錢","給你","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"wrong_change", shopkeeper_prompt:"找你 35 元！（老闆找回 35 元，但正確應找 45 元）",
+              task:"先說「不好意思」，再告訴老闆好像少找了多少錢",
+              keywords:["不對","錯","應該","少找","少給","多找","找錯","好像","差一點","還差","差了","再算"], keywords_mode:'any',
+              accepted_phrases:["不好意思，好像少找了 10 元","應該找我 45 元","不好意思，找零好像不對","可以再算一次嗎？"],
+              image_label:"應該找 45 元，只找了 35 元",
+              image:["45 元","−","35 元","=","10 元"], options:["不好意思，好像少找了 10 元","謝謝，沒關係","哼，你是不是故意的！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！禮貌指出很重要！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，好像少找了 10 元」" } },
+            { id:"corrected", shopkeeper_prompt:"啊！真的，不好意思！補你 10 元，這是 45 元！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝老闆！","沒事，謝謝！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"補好了，找您 45 元",
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
+              feedback:{ perfect:"說得很有禮貌！大度說「沒關係」很棒！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
+          ]
+        },
+        {
+          id: "luwei_pick", name: "自己夾滷味", icon: "🍢",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本攤採自助夾取：自己夾進籃子、交給老闆、說要不要辣、要不要加蔥和酸菜；各攤的選料",
+          steps: [
+            mkStep({ id:"greeting", image:"images/b6/icon-b6-luwei-price-board.png", image_label:"價目表", say:"（你在夜市夾了米血、豆干和青菜要買滷味。牌子寫：米血 15 元、豆干 10 元、青菜 25 元。你有 100 元。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", say:"（你把籃子交給老闆。）要辣嗎？（你不敢吃辣。）", task:"說你不要辣",
+              options:["我不要辣","你幫我吃","隨便啦","我要雞排"], kw:["不要辣"] }),
+            mkStep({ id:"s3", say:"好！要加蔥和酸菜嗎？（你喜歡蔥，不喜歡酸菜。）", task:"說你要加蔥，不要酸菜",
+              options:["要加蔥，不要酸菜","都不要跟我說話","隨便啦","我要珍珠奶茶"], kw:["不要酸菜","要加蔥"] }),
+            mkStep({ id:"pay", image:["images/b6/icon-b6-pig-blood-cake.png::15 元","images/b6/icon-b6-dried-tofu.png::10 元","images/b6/icon-b6-braised-greens.png::25 元"], image_label:"米血 ＋ 豆干 ＋ 青菜", say:"米血 15 元、豆干 10 元、青菜 25 元，一共 50 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 30 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png"], image_label:"找你 50 元", say:"（老闆把滷味煮好、裝袋，放在櫃台。）收你 100 元，找你 50 元。滷味拿好喔，小心燙！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["50 元，對了，謝謝！","錢我不用數","40 元，對了，謝謝！","（直接走掉）"], kw:["50","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）在這個可以自己夾的滷味攤買東西，要怎麼做？", task:"說出方法：用夾子把想吃的夾進籃子，交給老闆，說要不要辣",
+              options:["用夾子把想吃的夾進籃子，交給老闆，說要不要辣","用手拿","自己拿去煮","不用給老闆看"], kw:["說要不要辣","夾進籃子","交給老闆"], feedback:{ perfect:"答對了！用夾子把想吃的夾進籃子，交給老闆，說要不要辣。", failed:"記住：用夾子把想吃的夾進籃子，交給老闆，說要不要辣。" } }),
+          ]
+        },
+        {
+          id: "ring_toss", name: "套圈圈先問規則", icon: "⭕",
+          simple_steps: ["s3","pay","s5"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "玩夜市遊戲前先問價錢和規則，想好最多花多少，玩完就停",
+          steps: [
+            mkStep({ id:"s1", say:"（你在夜市看到套圈圈的攤子。你今天玩遊戲只打算花 50 元。）來喔！套圈圈喔！", task:"用「請問」問老闆：玩一次多少錢",
+              options:["請問玩一次多少錢？","免費讓我玩啦","我要買雞排","你幫我套"], kw:["多少錢"] }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-ring-toss-bucket.png", image_label:"一桶圈圈 50 元", say:"我們攤子的規則，是 50 元一桶套圈圈，要站在線後，不能踩線，也不能跨過線喔！", task:"先說「好」，再複誦：站在線後，不踩線、不跨線",
+              options:["好，站在線後，不踩線、不跨線","我走近一點丟比較準","規則不用管","我要站進去丟"], kw:["站在線後","不踩線","不跨線"] }),
+            mkStep({ id:"s3", say:"（你還不知道怎樣才算套中。）", task:"用「請問」問老闆怎樣才算套中",
+              options:["請問怎樣才算套中？","碰到就一定要給我","我用手拿獎品就好","規則我自己訂"], kw:["怎樣才算套中"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"圈圈要整個套住獎品才算，套中的獎品就給你。要玩的話，先付 50 元喔！（你聽懂規則，決定玩一次。）", task:"把 50 元拿給老闆，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","套到再給錢","算我 20 元啦"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"s5", say:"收你 50 元，這裡有一桶圈圈。（你站在線後把圈圈一個一個丟完，其中一個完全套住小熊鑰匙圈。老闆把鑰匙圈拿給你。）套中了！要不要再玩一次？再 50 元就好！", task:"說你不玩了，因為你只打算花 50 元，再說「謝謝老闆」",
+              options:["不玩了，我只打算花 50 元，謝謝老闆","好，再來十次！","錢借我再玩一次","把那個最大的送我啦"], kw:["50","只打算花","謝謝老闆"] }),
+            mkStep({ id:"review", say:"（想一想）玩夜市遊戲以前，要先想好什麼？", task:"說出要先想好的：先問價錢和規則，想好最多花多少錢",
+              options:["先問價錢和規則，想好最多花多少錢","玩到贏為止","錢花完再說","不用聽規則"], kw:["好最多花多少錢","問價錢"], feedback:{ perfect:"答對了！先問價錢和規則，想好最多花多少錢。", failed:"記住：先問價錢和規則，想好最多花多少錢。" } }),
+          ]
+        },
+        {
+          id: "queue_up", name: "人很多要排隊", icon: "🌭",
+          simple_steps: ["s3","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "人很多時先問從哪裡排、排在最後面、不插隊",
+          steps: [
+            mkStep({ id:"s1", say:"（你帶著 100 元，想買一份大腸包小腸。攤子前面擠了很多人，你看不出來要從哪裡排隊。你走到不擋住隊伍的攤子旁邊。）來喔！大腸包小腸喔！", task:"先說「不好意思」，再用「請問」問老闆要從哪裡排隊",
+              options:["不好意思，請問要從哪裡排隊？","先做我的啦","（直接擠到最前面）","你們好慢喔"], kw:["從哪裡排隊"] }),
+            mkStep({ id:"s2", say:"隊尾在那位穿藍色衣服的阿姨後面，請從那裡排喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我要插到第一個","我要擠到阿姨前面","你先做我的"], kw:["謝謝"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-sausage-in-rice-sausage.png", image_label:"大腸包小腸", say:"（排了一下，輪到你了。）要幾份？", task:"說你要一份大腸包小腸",
+              options:["我要一份大腸包小腸","隨便啦","我要雞排","我要十份"], kw:["一份大腸包小腸"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"一份 60 元！", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我排很久，算便宜一點","我不想付錢","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找你 40 元", say:"收你 100 元，找你 40 元，小心燙喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買東西的人很多，要怎麼做？", task:"說出方法：先問從哪裡排，排在最後面，不插隊",
+              options:["先問從哪裡排，排在最後面，不插隊","擠到最前面","叫老闆先做我的","把前面的人推開"], kw:["問從哪裡排","排在最後面","不插隊"], feedback:{ perfect:"答對了！先問從哪裡排，排在最後面，不插隊。", failed:"記住：先問從哪裡排，排在最後面，不插隊。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 藥局
+    // ══════════════════════════════════════════
+    {
+      id: "pharmacy", name: "藥局", icon: "💊", available: true,
+      theme: { color: '#0891B2', bg: '#E0F2FE', accent: '#0E7490' },
+      situations: [
+        {
+          id: "basic", name: "基本買藥", icon: "💊",
+          simple_steps: ["describe_symptom", "allergy", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "描述症狀、詢問用法到結帳的完整買藥流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟藥師打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","藥師好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！","藥師好！"],
+              options:["你好！","謝謝再見","我要買東西","多少錢？"],
+              feedback:{ perfect:"打招呼打得很有禮貌！", partial:"不錯！可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"describe_symptom", shopkeeper_prompt:"請問有什麼不舒服嗎？", task:"告訴藥師你頭痛",
+              keywords:["頭痛","頭"], keywords_mode:'any',
+              accepted_phrases:["我頭痛","我頭很痛","頭痛"],
+              options:["我頭痛","我肚子痛","我發燒了","我沒有不舒服"],
+              feedback:{ perfect:"說明症狀說得很清楚！", partial:"說出了症狀！試著說完整：「我頭痛」", failed:"可以這樣說：「我頭痛」" } },
+            { id:"allergy", shopkeeper_prompt:"（你知道自己沒有對任何藥過敏。）好的，請問你有沒有對哪種藥過敏？", task:"告訴藥師你沒有藥物過敏",
+              // 外部審閱第三輪：「不知道」≠「沒有過敏」，用藥安全不可混在一起 → 只收沒有過敏
+              keywords:["沒有","沒","無"], keywords_mode:'any',
+              accepted_phrases:["我沒有過敏","沒有過敏","我沒有藥物過敏"],
+              options:["我沒有過敏","有過敏","我要買糖果","請問廁所在哪裡？"],
+              feedback:{ perfect:"回答得很好！", partial:"說出了重點！可以說完整：「我沒有過敏」", failed:"可以這樣說：「我沒有過敏」" } },
+            { id:"ask_usage", image:"images/b6/icon-b6-painkiller-box.png", image_label:"止痛藥", shopkeeper_prompt:"好的，我幫你拿止痛藥。請問有沒有問題？", task:"用「請問」問藥師這個藥要怎麼吃",
+              keywords:["怎麼","服用","使用","用法","吃幾次","如何"], keywords_mode:'any',
+              accepted_phrases:["請問這個藥怎麼吃？","一天要吃幾次？","怎麼使用？"],
+              options:["請問這個藥怎麼吃？","哼，不用你管！","我要買糖果","請問廁所在哪裡？"],
+              feedback:{ perfect:"問得很好！詢問用法很重要！", partial:"說出了部分！完整說：「請問這個藥怎麼吃？」", failed:"可以這樣說：「請問這個藥怎麼吃？」" } },
+            { id:"checkout", shopkeeper_prompt:"飯後一天吃三次，一次一顆。這盒止痛藥 80 元。",
+              task:"把 100 元拿給藥師，說「給你 100 元」",
+              keywords:[...KW_PRESETS.hand, "100", "一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","我不買了","請問廁所在哪裡？"],
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的，找您 20 元，記得飯後吃喔！請多休息！", task:"跟藥師說「謝謝您」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝您！再見！","謝謝，再見！","謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元",
+              options:["謝謝您！再見！","你好","我要再買一盒","請問還有什麼藥？"],
+              feedback:{ perfect:"道謝道得很有禮貌！保重喔！", partial:"有說謝謝！可以再加上「再見」", failed:"可以這樣說：「謝謝您！再見！」" } }
+          ]
+        },
+        {
+          id: "out_of_stock", name: "藥缺貨了", icon: "📤",
+          simple_steps: ["ask_medicine", "out_of_stock_response", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "想買的那一款藥賣完了，問藥師有沒有其他款可以用",
+          steps: [
+            // 2026-09-26 外部審閱第三輪改寫：原本「感冒藥賣完 → 喉糖、維他命 C 當替代」會教成那些可以取代感冒藥
+            { id:"greeting", shopkeeper_prompt:"（明天要去校外教學，你會暈車，想買暈車藥。）你好！歡迎光臨！", task:"跟藥師打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","藥師好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！","藥師好！"],
+              options:["你好！","謝謝再見","我要買藥","多少錢？"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            mkStep({ id:"ask_medicine", say:"請問需要什麼藥？", task:"用「請問」問藥師有沒有暈車藥",
+              options:["請問有暈車藥嗎？","我要買止痛藥","謝謝再見","我要買糖果"], kw:["暈車"],
+              accepted:["請問有暈車藥嗎？","我要買暈車藥","有沒有暈車藥？"],
+              image:"images/b6/icon-b6-medicine-box.png", image_label:"暈車藥" }),
+            mkStep({ id:"out_of_stock_response", say:"不好意思，你要的這一款暈車藥今天賣完了。",
+              task:"用「請問」問藥師有沒有其他的暈車藥",
+              // 不放「那我去別家買」「那我不要了」：也是合理做法（共識 1）
+              options:["請問有其他的暈車藥嗎？","你們怎麼沒有貨啦！","我要買糖果","請問廁所在哪裡？"], kw:["其他","別的","別款"],
+              accepted:["請問有其他的暈車藥嗎？","有沒有別的暈車藥？","請問有別款嗎？","有其他的嗎？"] }),
+            mkStep({ id:"decide", say:"有，這一款也可以。",
+              task:"先說「好」，再說你要買這一款",
+              image:"images/b6/icon-b6-medicine-box.png", image_label:"另一款暈車藥",
+              options:["好，我要這一款","哼，不用你管！","我要買糖果","謝謝再見"], kw:["這一款","這款","好"],
+              accepted:["好，我要這一款","好，我要這款","好，給我這一款"] }),
+            { id:"checkout", shopkeeper_prompt:"好的！這盒暈車藥 60 元。", task:"把 60 元拿給藥師，說「給你 60 元」，再說「謝謝」",
+              keywords:[...KW_PRESETS.hand, "60", "六十"], keywords_mode:'any',
+              accepted_phrases:["給你 60 元，謝謝！","60 元給你，謝謝！","謝謝！這是 60 元","這是 60 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png"], image_label:"60 元",
+              options:["給你 60 元，謝謝！","哼，不用你管！","謝謝再見","多少錢？"],
+              feedback:{ perfect:"太棒了！把錢給藥師，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 60 元，謝謝！」" } }
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "alternative", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買藥時發現錢不夠，如何向藥師說明",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟藥師打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問","藥師好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！","藥師好！"],
+              options:["你好！","謝謝再見","我要買東西","多少錢？"],
+              feedback:{"perfect":"打招呼打得很有禮貌！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            { id:"describe", shopkeeper_prompt:"請問有什麼不舒服嗎？", task:"告訴藥師你吃太多，胃脹不舒服",
+              keywords:["胃脹","脹","吃太多","吃太飽"], keywords_mode:'any',
+              accepted_phrases:["我吃太多，胃脹不舒服。","我吃太多，胃脹脹的","吃太飽，胃很脹","我胃脹不舒服"],
+              options:["我吃太多，胃脹不舒服。","我頭痛","我發燒","我喉嚨痛"],
+              feedback:{ perfect:"說明症狀說得很清楚！", partial:"說出了症狀！試著說完整：「我吃太多，胃脹不舒服。」", failed:"可以這樣說：「我吃太多，胃脹不舒服。」" } },
+            { id:"recommend", shopkeeper_prompt:"好的！我建議你用這個腸胃藥，一盒 120 元。", task:"先說「好」，再告訴藥師你要買",
+              keywords:["我要","要買","給"], keywords_mode:'any',
+              accepted_phrases:["好，我要！","我要這個！","好，給我！","好的，我要！"],
+              image:"images/b6/icon-b6-medicine-box.png::120 元", image_label:"腸胃藥",
+              options:["好，我要！","請問廁所在哪裡？","現在幾點了？","謝謝再見"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！", failed:"可以這樣說：「好，我要！」" } },
+            { id:"not_enough", shopkeeper_prompt:"好的！120 元。（你打開錢包，發現只有 80 元）",
+              task:"先說「不好意思」，再告訴藥師你的錢不夠",
+              keywords:["不夠","只有","錢不夠","不到","不足","差一點","還差","差了","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我的錢不夠","我只有 80 元，不夠","不好意思，我錢不夠","我的錢差一點","錢差一點","不好意思，還差 40 元","還差 40 元","我的錢不到 120 元","我的錢不夠"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 80 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以少一點嗎？","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，我的錢不夠」" } },
+            { id:"alternative", shopkeeper_prompt:"沒關係！有一款小包裝的，4 顆裝，75 元，你要嗎？（錢只夠買小包裝，你決定先買這個。）",
+              task:"接受藥師的建議：先說「好」，再說「謝謝」",
+              keywords:["好","可以","我要"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","好，我要！謝謝！","可以，謝謝！","好的，謝謝！"],
+              image:"images/b6/icon-b6-medicine-blister.png::75 元", image_label:"小包裝腸胃藥（4 顆裝）",
+              options:["好，謝謝！","哼，不用你管！","快點算便宜一點啦！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！懂得接受幫助！", partial:"說出了重點！", failed:"可以這樣說：「好，謝謝！」" } },
+            mkStep({ id:"pay", say:"好的，小包裝 75 元。", task:"把 80 元拿給藥師，說「給你 80 元」",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              options:["給你 80 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元","我給你 80 元","80 元給你","這是 80 元"] }),
+            mkStep({ id:"get_change", say:"收您 80 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請藥師幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請藥師先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_side_effects", name: "詢問副作用", icon: "⚠️",
+          simple_steps: ["get_medicine", "staff_explains", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "拿到藥後詢問藥師有沒有副作用，了解注意事項",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟藥師打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","我要買糖果","我要買止痛藥"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_medicine", shopkeeper_prompt:"請問需要什麼？", task:"說你要買感冒藥",
+              keywords:["感冒藥","感冒"], keywords_mode:'any',
+              accepted_phrases:["我要買感冒藥","我想買感冒藥","我要拿感冒藥"],
+              image:"images/b6/icon-b6-medicine-box.png", image_label:"感冒藥",
+              options:["我要買感冒藥","我要買糖果","謝謝再見","我要買止痛藥"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要買感冒藥」" } },
+            { id:"get_medicine", shopkeeper_prompt:"好的！這是感冒藥，一盒 80 元。", task:"用「請問」問藥師這個藥有沒有副作用",
+              keywords:["副作用","不舒服","影響","注意","有沒有","效果","會不會"], keywords_mode:'any',
+              accepted_phrases:["請問這個藥有沒有副作用？","吃了會有副作用嗎？","請問有什麼要注意的嗎？"],
+              options:["請問這個藥有沒有副作用？","我要買糖果","廁所在哪裡？","哼，不用你管！"],
+              feedback:{ perfect:"問得很棒！了解副作用很重要！", partial:"說出了重點！詢問注意事項是好習慣", failed:"可以這樣說：「請問這個藥有沒有副作用？」" } },
+            { id:"staff_explains", shopkeeper_prompt:"這個感冒藥吃了可能會想睡覺，吃完不要騎車。要飯後吃喔！",
+              task:"先說「好」，再說「謝謝」，最後說「我知道了」",
+              keywords:["謝謝","知道","好","了解","記住","OK","清楚"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！我知道了！","謝謝你說明！","了解，謝謝！","好的，謝謝！我知道了！"],
+              options:["好，謝謝！我知道了！","哼，不用你管！","喂，我走了！","請問這個藥有沒有副作用？"],
+              feedback:{ perfect:"很好！記住這些注意事項很重要！", partial:"有說謝謝！", failed:"可以這樣說：「好，謝謝！我知道了！」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！一共 80 元。", task:"把 80 元拿給藥師，說「給你 80 元」，再說「謝謝」",
+              keywords:[...KW_PRESETS.hand, "80", "八十"], keywords_mode:'any',
+              accepted_phrases:["給你 80 元，謝謝！","80 元給你，謝謝！","謝謝！這是 80 元","這是 80 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              options:["給你 80 元，謝謝！","哼，不用你管！","謝謝再見","多少錢？"],
+              feedback:{ perfect:"太棒了！把錢給藥師，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 80 元，謝謝！」" } },
+            // 外部審閱第三輪：警語是這一種藥的，回家也要看外盒說明
+            mkStep({ id:"review", say:"（想一想）吃藥以前，要看什麼？", task:"說出要看外盒說明，照藥師說的吃",
+              options:["看外盒說明，照藥師說的吃","想吃幾顆就吃幾顆","跟別人的藥一起吃","不舒服就多吃一點"], kw:["說明","外盒","藥師"],
+              accepted:["看外盒說明，照藥師說的吃","看外盒說明","照藥師說的吃","看藥盒上的說明"],
+              feedback:{ perfect:"答對了！吃藥前看外盒說明，照藥師說的吃。", failed:"記住：吃藥前要看外盒說明，照藥師說的吃。" } })
+          ]
+        },
+        {
+          id: "need_receipt", name: "需要發票", icon: "🧾",
+          desc: "藥師忘了給發票，有禮貌地開口要",
+          steps: [
+            { id:"checkout_done", shopkeeper_prompt:"（你感冒了，在藥局買了一盒口罩，付了 200 元。媽媽交代過要記得拿發票。）好的！口罩 120 元，找您 80 元，謝謝！",
+              task:"用「請問」問藥師可以給你發票嗎",
+              keywords:["發票"], keywords_mode:'any',
+              accepted_phrases:["請問可以給我發票嗎？","不好意思，我需要發票","可以給我一張發票嗎？"],
+              image:["images/b6/icon-b6-face-mask-box.png","images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"口罩 120 元，找您 80 元",
+              options:["請問可以給我發票嗎？","哼，不用你管！","謝謝再見","可以給我袋子嗎？"],
+              feedback:{ perfect:"很好！記得拿發票很重要！", partial:"說出了重點！", failed:"可以這樣說：「請問可以給我發票嗎？」" } },
+            { id:"get_receipt", shopkeeper_prompt:"當然可以！這是你的發票，請收好！",
+              task:"跟藥師說「謝謝」",
+              keywords:["謝謝","好","收到","感謝","OK","拿到"], keywords_mode:'any',
+              accepted_phrases:["謝謝！","謝謝你！","好的，謝謝！","感謝！"],
+              options:["謝謝！","哼，不用你管！","喂，我走了！","請問可以給我發票嗎？"],
+              feedback:{ perfect:"很有禮貌！記得保存發票喔！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！」" } },
+            { id:"goodbye", shopkeeper_prompt:"不客氣！請多休息，早日康復！",
+              task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","謝謝你！再見！","謝謝，再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","請問可以給我發票嗎？"],
+              feedback:{ perfect:"說得很有禮貌！保重喔！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "refill_rx", name: "幫阿公領慢性病的藥", icon: "💊",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "幫家人領處方藥：帶處方箋和病人的健保卡、核對藥袋名字、與家人確認用法",
+          steps: [
+            mkStep({ id:"greeting", say:"（阿公的血壓藥吃完了。媽媽陪你帶著阿公的慢性病處方箋和健保卡來藥局，讓你練習開口。阿公叫王大同。）你好！歡迎光臨！", task:"跟藥師打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetPharm" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-prescription.png","images/b6/icon-b6-nhi-card-grandpa.png"], image_label:"處方箋 ＋ 阿公的健保卡", say:"請問需要什麼？", task:"說你要幫阿公領藥，把處方箋和健保卡拿給藥師，說「這是處方箋和阿公的健保卡」",
+              options:["我要幫阿公領藥，這是處方箋和阿公的健保卡","隨便給我一些藥","我要買止痛藥","健保卡我沒帶"], kw:["幫阿公領藥","處方箋"] }),
+            mkStep({ id:"s3", say:"我先核對一下，請問病人叫什麼名字？", task:"說出阿公的名字：王大同",
+              options:["他叫王大同","我叫{名字}","你看卡片就好","隨便啦"], kw:["他叫王大同"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-medicine-bag-wang.png", image_label:"藥袋", say:"對。（藥師調劑好，請你和媽媽核對藥袋上的病人名字。）依照阿公的處方箋用藥，一天一次，早上吃一顆，用法也寫在藥袋上。", task:"先說「好」，再複誦：一天一次，早上吃一顆",
+              options:["好，一天一次，早上吃一顆","想吃就吃","一次吃三顆比較快好","我不想聽"], kw:["早上吃一顆","一天一次"] }),
+            mkStep({ id:"s5", say:"這次不用付錢。健保卡、處方箋和藥袋都要收好喔！", task:"先說「好」，再說你會收好健保卡、處方箋和藥袋",
+              options:["好，我會收好健保卡、處方箋和藥袋","處方箋丟掉沒關係吧","健保卡給你就好","我要多拿一些藥"], kw:["會收好健保卡","藥袋"] }),
+            mkStep({ id:"s6", say:"（回家後，你和媽媽把藥、藥袋、健保卡及處方箋交還阿公。）（想一想）幫家人領藥，要帶什麼、怎麼確認用法？", task:"說出重點：帶處方箋和病人的健保卡，核對藥袋，跟家人一起確認用法",
+              options:["帶處方箋和病人的健保卡，核對藥袋，跟家人一起確認用法","什麼都不用帶","藥隨便吃","藥袋丟掉就好"], kw:["家人一起確認用法","帶處方箋","核對藥袋"] }),
+          ]
+        },
+        {
+          id: "scrape_care", name: "擦傷買處理傷口的東西", icon: "🩹",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "說清楚傷口的情況，照藥師說的自己處理；紅腫發炎沒有變好要看醫生",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在公園跌倒，膝蓋有一小處擦傷。媽媽已幫你止血，陪你帶著 100 元到附近藥局，請藥師看過後買合適的傷口用品。）你好！歡迎光臨！", task:"跟藥師打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetPharm" }),
+            mkStep({ id:"s2", say:"請問有什麼不舒服嗎？", task:"說你膝蓋擦破皮，要買處理傷口的東西",
+              options:["我膝蓋擦破皮，要買處理傷口的東西","隨便給我一個藥","我要買暈車藥","不用你管"], kw:["膝蓋擦破皮","買處理傷口","東西"] }),
+            mkStep({ id:"s3", say:"（媽媽和藥師一起看了傷口，確認這是一小處表淺擦傷，目前已止血。）現在還有流血嗎？", task:"說這是一小處擦傷，現在沒有流血了",
+              options:["是一小處擦傷，現在沒有流血了","還沒洗就貼起來","流很多血也沒關係","隨便啦"], kw:["一小處擦傷","沒有流血"] }),
+            mkStep({ id:"s4", image:["images/b6/icon-b6-saline.png","images/b6/icon-b6-bandages.png"], image_label:"生理食鹽水 ＋ OK 繃", say:"先把手洗乾淨，用這瓶生理食鹽水沖乾淨，再貼 OK 繃。", task:"先說「好」，再複誦：先洗手，用生理食鹽水沖乾淨，再貼 OK 繃",
+              options:["好，先洗手，用生理食鹽水沖乾淨，再貼 OK 繃","不用洗，直接貼就好","用口水擦一擦就好","我要吃止痛藥"], kw:["先洗手","沖乾淨","再貼"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"生理食鹽水 35 元，OK 繃一盒 60 元，一共 95 元。", task:"把 100 元拿給藥師，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/5_yuan_front.png"], image_label:"找您 5 元", say:"收您 100 元，找您 5 元。如果傷口紅腫發炎，沒有變好就要去看醫生喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["5 元，對了，謝謝！","錢我不用數","10 元，對了，謝謝！","（直接走掉）"], kw:["5","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）擦破皮的時候，要怎麼處理？", task:"說出方法：先洗手，把傷口沖乾淨再貼 OK 繃，紅腫發炎沒有變好要去看醫生",
+              options:["先洗手，把傷口沖乾淨再貼 OK 繃，紅腫發炎沒有變好要去看醫生","不用管它","用手摸一摸就好","隨便貼什麼都可以"], kw:["先洗手","沖乾淨","看醫生"], feedback:{ perfect:"答對了！先洗手，把傷口沖乾淨再貼 OK 繃，紅腫發炎沒有變好要去看醫生。", failed:"記住：先洗手，把傷口沖乾淨再貼 OK 繃，紅腫發炎沒有變好要去看醫生。" } }),
+          ]
+        },
+        {
+          id: "lozenge_check", name: "正在吃藥還想買喉糖", icon: "🍬",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "正在吃藥又想買喉糖：帶著藥袋問藥師，說清楚還有沒有吃別的藥，藥師確認可以才買",
+          steps: [
+            mkStep({ id:"greeting", say:"（你正在吃醫生開的感冒藥，喉嚨還很痛，想買一盒喉糖。媽媽讓你帶著藥袋和 50 元來藥局問。）你好！歡迎光臨！", task:"跟藥師打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetPharm" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-medicine-bag.png"], image_label:"藥袋", say:"請問需要什麼？", task:"先說你正在吃醫生開的藥，把藥袋拿給藥師，說「這是藥袋」，再用「請問」問能不能吃喉糖",
+              options:["我正在吃醫生開的藥，這是藥袋，請問能不能吃喉糖？","給我最強的就好，不用看","藥越多越好","隨便啦"], kw:["能不能吃喉糖","吃醫生開","藥袋"] }),
+            mkStep({ id:"s3", say:"除了這袋藥，你還有吃別的藥嗎？（你只有吃這袋藥。）", task:"說你只有吃這袋藥",
+              options:["我只有吃這袋藥","我亂說一個就好","不用問啦","吃了才知道"], kw:["只有吃這袋藥"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-throat-lozenges.png::40 元", image_label:"喉糖", say:"我看過藥袋了，這款喉糖可以吃。一盒 40 元。", task:"先說「好」，再說你要買一盒",
+              options:["好，我要買一盒","我要買十盒一起吃","藥也多給我一些","算我 20 元啦"], kw:["要買一盒"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"好的，一共 40 元。", task:"把 50 元拿給藥師，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","先欠著","算我 20 元啦"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png"], image_label:"找您 10 元", say:"收您 50 元，找您 10 元。多喝溫開水，早點休息喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["10 元，對了，謝謝！","錢我不用數","20 元，對了，謝謝！","（直接走掉）"], kw:["10","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）正在吃藥，還想買喉糖或別的藥，要怎麼做？", task:"說出方法：帶著藥袋問藥師，藥師說可以才買",
+              options:["帶著藥袋問藥師，藥師說可以才買","想吃就一起吃","不用問藥師","越多越有效"], kw:["帶著藥袋問藥師","藥師說","才買"], feedback:{ perfect:"答對了！帶著藥袋問藥師，藥師說可以才買。", failed:"記住：帶著藥袋問藥師，藥師說可以才買。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 服飾店
+    // ══════════════════════════════════════════
+    {
+      id: "clothing_store", name: "服飾店", icon: "👗", available: true,
+      theme: { color: '#DB2777', bg: '#FCE7F3', accent: '#BE185D' },
+      situations: [
+        {
+          id: "basic", name: "基本試穿", icon: "👗",
+          simple_steps: ["express_fit", "exchange", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問外套、試穿、換尺寸到結帳的完整購衣流程",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好，歡迎！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有褲子？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_item", shopkeeper_prompt:"請問在找什麼呢？", task:"說你想找外套",
+              keywords:["外套"], keywords_mode:'any',
+              accepted_phrases:["我想找外套","我要找外套","我想看外套"],
+              image:"images/a4/icon-a4-jacket-shop.png", image_label:"外套",
+              options:["我想找外套","謝謝再見","多少錢？","有沒有褲子？"],
+              frame_ref:"find_item",
+              slots:{ item:{ answer:"外套", choices:[
+                { text:"外套", emoji:"🧥" }, { text:"褲子", emoji:"👖" },
+                { text:"裙子", emoji:"👗" }, { text:"帽子", emoji:"🧢" } ] } },
+              feedback:{ perfect:"說得很好！既打招呼又說明了需求！", partial:"說出了部分！可以說：「你好！我想找外套」", failed:"可以這樣說：「我想找外套」" } },
+            { id:"ask_size", shopkeeper_prompt:"好的！我們這邊有很多款外套，請問你平常穿什麼尺寸？",
+              task:"告訴店員你穿 M 號",
+              keywords:["M","中號"], keywords_mode:'any',
+              accepted_phrases:["我穿 M 號","M 號","中號"],
+              options:["我穿 M 號","我穿 S 號","我穿 L 號","我要買帽子"],
+              frame_ref:"wear_size",
+              slots:{ size:{ answer:"M", choices:[
+                { text:"M", emoji:"📏" }, { text:"S", emoji:"📏" },
+                { text:"L", emoji:"📏" }, { text:"XL", emoji:"📏" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"有說出尺寸！可以說完整：「我穿 M 號」", failed:"可以這樣說：「我穿 M 號」" } },
+            { id:"ask_tryon", shopkeeper_prompt:"好的，這件外套很多人喜歡，你覺得怎麼樣？", task:"用「請問」問店員可以試穿嗎",
+              keywords:["試穿","穿","試","穿看看","試試","可以試嗎","穿一下"], keywords_mode:'any',
+              accepted_phrases:["請問可以試穿嗎？","我可以試穿嗎？","可以穿看看嗎？"],
+              options:["請問可以試穿嗎？","你好！","請問廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"問得很好！禮貌詢問試穿！", partial:"說出了重點！完整說：「請問可以試穿嗎？」", failed:"可以這樣說：「請問可以試穿嗎？」" } },
+            { id:"express_fit", shopkeeper_prompt:"當然可以！試衣間在那邊。（試穿後）請問這件合不合身？",
+              task:"告訴店員這件衣服太大了",
+              keywords:["大","不太合"], keywords_mode:'any',
+              accepted_phrases:["這件太大了","有點大，不太合","不太合"],
+              options:["這件太大了","很合身，我要買！","顏色不好看","請問廁所在哪裡？"],
+              feedback:{ perfect:"表達得很清楚！", partial:"說出了問題！可以說完整：「這件太大了」", failed:"可以這樣說：「這件太大了」" } },
+            { id:"exchange", shopkeeper_prompt:"那我幫你換小一號，S 號可以嗎？", task:"同意換 S 號",
+              keywords:["好","可以","S"], keywords_mode:'any',
+              accepted_phrases:["好，可以！","S 號好了，謝謝","可以，謝謝","好的，可以！"],
+              options:["好，可以！","不要，再小一號","快一點啦！","請問廁所在哪裡？"],
+              feedback:{ perfect:"回答得很好！", partial:"有回應！可以說完整：「好的，可以！」", failed:"可以這樣說：「好，可以！」" } },
+            mkStep({ id:"see_price", say:"（你看了一下吊牌上的價格，這件外套 850 元。）",
+              task:"說出外套多少錢：850 元",
+              image:"images/a4/icon-a4-jacket-shop.png", image_label:"外套 850 元",
+              options:["外套是 850 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["850"],
+              accepted:["外套是 850 元","這件外套 850 元","850 元","吊牌上是 850 元"],
+              frame:{ template:"外套是 {price}", slots:{ price:{ answer:"850 元", choices:[
+                { text:"850 元", emoji:"💰" }, { text:"580 元", emoji:"💵" },
+                { text:"1000 元", emoji:"💵" }, { text:"150 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買之前先看清楚吊牌上的價格！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「外套是 850 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 1000 元，錢夠買。）",
+              task:"說出你有多少錢",
+              image:"images/money/1000_yuan_front.png", image_label:"1000 元",
+              options:["我有 1000 元","我沒有錢","我要買外套","請問廁所在哪裡？"], kw:["1000","一千"],
+              accepted:["我有 1000 元","我有一千元","我帶了 1000 元","錢包裡有 1000 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"1000 元", choices:[
+                { text:"1000 元", emoji:"💵" }, { text:"850 元", emoji:"💰" },
+                { text:"500 元", emoji:"💴" }, { text:"150 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買東西前先數清楚錢包裡有多少錢！", partial:"說出了重點！記得說清楚有多少錢", failed:"可以這樣說：「我有 1000 元」" } }),
+            { id:"checkout", shopkeeper_prompt:"S 號很合身！這件外套 850 元，請問怎麼付款？",
+              task:"先說「我要買」，再說你付現金，把 1000 元拿給店員，說「給你 1000 元」",
+              keywords:["現金","付現","1000","一千"], keywords_mode:'any',
+              accepted_phrases:["我要買，我付現金，給你 1000 元","我要買，現金，給你 1000 元","我要買，我付現金，這是 1000 元","我要買！付現金，1000 元給你"],
+              image:"images/a4/icon-a4-jacket-shop.png::850 元", image_label:"外套",
+              options:["我要買，我付現金，給你 1000 元","我不想付錢","請問廁所在哪裡？","可以再便宜嗎？"],
+              feedback:{ perfect:"太棒了！說得很清楚！", partial:"說出了部分！要說要買、付現金，再把錢給店員", failed:"可以這樣說：「我要買，我付現金，給你 1000 元」" } },
+            mkStep({ id:"goodbye", say:"好的，找您 150 元，請拿好，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              image:["images/money/100_yuan_front.png","images/money/50_yuan_front.png"], image_label:"找您 150 元",
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
+          ]
+        },
+        {
+          id: "no_right_size", name: "沒有合適尺寸", icon: "📏",
+          simple_steps: ["ask_size", "no_size", "decision"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "想要的 T 恤沒有合適尺寸，如何與店員溝通並作決定",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好，歡迎！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有外套？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_item", shopkeeper_prompt:"請問在找什麼呢？", task:"說你想找 T 恤",
+              keywords:["T恤","t恤","T 恤","t 恤","上衣"], keywords_mode:'any',
+              accepted_phrases:["我想找 T 恤","我要找 T 恤","我想看 T 恤"],
+              image:"images/a4/icon-a4-t-shirt-shop.png", image_label:"T 恤",
+              options:["我想找 T 恤","謝謝再見","多少錢？","有沒有外套？"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了部分！", failed:"可以這樣說：「我想找 T 恤」" } },
+            { id:"ask_size", shopkeeper_prompt:"好的！請問你穿什麼尺寸？", task:"告訴店員你穿 L 號",
+              keywords:["穿L","要L","大號"], keywords_mode:'any',
+              accepted_phrases:["我穿 L 號","穿 L 號","我要 L 號","大號"],
+              options:["我穿 L 號","我穿 M 號","我穿 XL 號","我要買帽子"],
+              frame_ref:"wear_size",
+              slots:{ size:{ answer:"L", choices:[
+                { text:"L", emoji:"📏" }, { text:"M", emoji:"📏" },
+                { text:"XL", emoji:"📏" }, { text:"S", emoji:"📏" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了尺寸！", failed:"可以這樣說：「我穿 L 號」" } },
+            { id:"no_size", shopkeeper_prompt:"不好意思，這款 T 恤的 L 號已經賣完了，只剩 M 號和 XL 號。",
+              task:"問有沒有其他款式的 L 號",
+              keywords:["其他","款","有沒有","別款","其他款","別的","換","不同款"], keywords_mode:'any',
+              accepted_phrases:["有沒有其他款式的 L 號？","有別的款式嗎？","還有其他 L 號的嗎？"],
+              options:["有沒有其他款式的 L 號？","哼，怎麼都沒有！","謝謝再見","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！懂得詢問其他選項！", partial:"說出了重點！", failed:"可以這樣說：「有沒有其他款式的 L 號？」" } },
+            { id:"alternative", shopkeeper_prompt:"有喔！這款也不錯，而且正在特價，你要試穿嗎？（你覺得這個款式也不錯，想試穿看看。）",
+              task:"先說「好」，再說你要試穿看看",
+              keywords:["試穿","穿看看","試試","好謝謝"], keywords_mode:'any',
+              accepted_phrases:["好，我來試穿看看！","可以，我穿看看！","好，謝謝！","好的，我來試穿看看！"],
+              options:["好，我來試穿看看！","哼，不用你管！","請問廁所在哪裡？","快一點啦！"],
+              feedback:{ perfect:"很好！願意嘗試！", partial:"說出了重點！", failed:"可以這樣說：「好，我來試穿看看！」" } },
+            { id:"decision", shopkeeper_prompt:"（試穿後）這款 L 號合不合身？",
+              task:"說很合身，你要買",
+              keywords:["合身","要買","好穿","舒服"], keywords_mode:'any',
+              accepted_phrases:["很合身！我要買！","合身，我要！","我要買這件！"],
+              image:"images/a4/icon-a4-t-shirt-shop.png", image_label:"合身的 T 恤",
+              options:["很合身！我要買！","有點緊，不買了","請問廁所在哪裡？","快一點啦！"],
+              feedback:{ perfect:"太棒了！果斷決定！", partial:"說出了重點！", failed:"可以這樣說：「很合身！我要買！」" } }
+          ]
+        },
+        {
+          id: "return_exchange", name: "想退換貨", icon: "🔄",
+          simple_steps: ["explain", "check_receipt", "choose_solution"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買完衣服回家發現問題，回店裡請求換貨",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"（你昨天買了一條褲子，回家拆開還沒穿，就發現拉鍊壞掉了。今天你帶著褲子和發票回到店裡。）你好，歡迎！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","我要買東西","多少錢？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_help", shopkeeper_prompt:"請問有什麼需要幫忙的嗎？",
+              task:"說你想換貨",
+              keywords:["換"], keywords_mode:'any',
+              accepted_phrases:["我想換貨","我要換貨","我想換一件"],
+              options:["我想換貨","謝謝再見","我要買東西","多少錢？"],
+              feedback:{ perfect:"說得很清楚！直接說明來意很好！", partial:"說出了重點！", failed:"可以這樣說：「我想換貨」" } },
+            { id:"explain", shopkeeper_prompt:"好的，請問是什麼問題呢？", task:"說明褲子的拉鍊壞掉了",
+              keywords:["拉鍊","壞","瑕疵"],keywords_mode:'any',
+              accepted_phrases:["這條褲子的拉鍊壞掉了","拉鍊壞掉了","褲子的拉鍊壞了"],
+              image:"images/a4/icon-a4-jeans-shop.png", image_label:"拉鍊壞掉的褲子",
+              options:["這條褲子的拉鍊壞掉了","我買錯了","我不喜歡這個顏色","我想換大一點的"],
+              feedback:{ perfect:"說明問題說得很清楚！", partial:"說出了重點！告訴店員問題在哪裡！", failed:"可以這樣說：「這條褲子的拉鍊壞掉了」" } },
+            { id:"check_receipt", image:["images/b6/icon-b6-invoice.png"], image_label:"發票", shopkeeper_prompt:"可以讓我看一下發票嗎？", task:"先說「有」，再說「這是發票」",
+              keywords:["有帶","發票","我有"], keywords_mode:'any',
+              accepted_phrases:["有！這是發票","我有帶，在這裡","有，我有發票"],
+              options:["有！這是發票","我把它丟掉了","我忘記帶了","可以查我的電話嗎？"],
+              feedback:{ perfect:"很好！記得帶發票很重要！", partial:"說出了重點！", failed:"可以這樣說：「有！這是發票」" } },
+            { id:"choose_solution", shopkeeper_prompt:"我看過了，這件真的有瑕疵，可以換一件新的或退款，你要哪一個？（你還是喜歡這條褲子，想換一條新的。）",
+              task:"說你要換一件新的",
+              keywords:["換"], keywords_mode:'any',
+              accepted_phrases:["我要換一件新的","換一件新的","換新的"],
+              options:["我要換一件新的","我要退款","你好！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！清楚說明你的選擇！", partial:"說出了重點！", failed:"可以這樣說：「我要換一件新的」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的！這是新的一件，同款同色，請確認看看！",
+              task:"確認沒問題，先說「好」，再說「謝謝」",
+              keywords:["謝謝","再見","掰掰","掰啦","感謝","謝了","多謝","拜拜","bye","謝囉"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","沒問題，謝謝！","很好，謝謝！","感謝！","好的，感謝！","好的，謝謝！"],
+              options:["好，謝謝！","哼，不用你管！","喂，我走了！","有！這是發票"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「好，謝謝！」" } }
+          ]
+        },
+        {
+          id: "ask_discount", name: "詢問折扣", icon: "🏷️",
+          simple_steps: ["greet_ask", "buy", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "在服飾店詢問有沒有打折或優惠活動",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好，歡迎！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"greet_ask", shopkeeper_prompt:"請問在找什麼呢？", task:"用「請問」問店員有沒有打折",
+              keywords:["打折","折扣","特價","優惠"], keywords_mode:'any',
+              accepted_phrases:["請問有沒有打折？","有沒有折扣？","請問有打折嗎？"],
+              options:["請問有沒有打折？","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"問得很好！懂得找優惠！", partial:"說出了重點！", failed:"可以這樣說：「請問有沒有打折？」" } },
+            { id:"answer", shopkeeper_prompt:"有！現在帽子全部九折！",
+              task:"先說「好」，再說你想看看帽子",
+              keywords:["看看","帽子","去看"], keywords_mode:'any',
+              accepted_phrases:["好，我想看帽子！","那我看看帽子！","好，我要看帽子！","好的，我想看帽子！"],
+              image:"images/a4/icon-a4-hat-shop.png", image_label:"帽子",
+              options:["好，我想看帽子！","我想買鞋子","都給我！","謝謝再見"],
+              feedback:{ perfect:"很好！積極去看！", partial:"說出了重點！", failed:"可以這樣說：「好，我想看帽子！」" } },
+            { id:"show", shopkeeper_prompt:"這邊是帽子區，你覺得哪一頂好看？（你最喜歡藍色。）", task:"說你喜歡這頂藍色的",
+              keywords:["藍"], keywords_mode:'any',
+              accepted_phrases:["我喜歡這頂藍色的！","這頂藍色的很好看！","我要這頂藍色的！"],
+              options:["我喜歡這頂藍色的！","這頂黑色的好看！","我要回家了","都不喜歡"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我喜歡這頂藍色的！」" } },
+            { id:"buy", shopkeeper_prompt:"這頂原價 300 元，九折後 270 元！",
+              task:"先說「好」，再告訴店員你要買這頂",
+              keywords:["買","我要","要買","就這"], keywords_mode:'any',
+              accepted_phrases:["好，我要買！","那我買這頂！","我要這頂！","好的，我要買！"],
+              image:"images/a4/icon-a4-hat-shop.png::270 元", image_label:"打折後 270 元",
+              options:["好，我要買！","請問廁所在哪裡？","快一點啦！","謝謝再見"],
+              feedback:{ perfect:"很好！果斷決定！", partial:"說出了重點！", failed:"可以這樣說：「好，我要買！」" } },
+            // 第一輪漏看的補付款（2026-09-26 定稿）
+            mkStep({ id:"pay", say:"好的，一共 270 元。", task:"把 300 元拿給店員，說「給你 300 元」",
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"300 元",
+              options:["給你 300 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "300", "三百"],
+              accepted:["給你 300 元","我給你 300 元","300 元給你","這是 300 元"] }),
+            mkStep({ id:"get_change", say:"收您 300 元，找您 30 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 30 元",
+              options:["30 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["30","三十","對了"],
+              accepted:["30 元，對了，謝謝！","30 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "wrong_change", name: "找零錯了", icon: "💰",
+          desc: "服飾店找錯零錢，如何禮貌地指出並核對",
+          steps: [
+            { id:"pay", shopkeeper_prompt:"（你有 500 元，在服飾店挑了一條 350 元的圍巾，要去櫃臺結帳。）圍巾 350 元，謝謝！", task:"告訴店員「給你 500 元」",
+              keywords:["500","五百"], keywords_mode:'any',
+              accepted_phrases:["給你 500 元","這是 500 元","給你五百元","我給你 500 元"],
+              image:["images/a4/icon-a4-scarf-shop.png","images/money/500_yuan_front.png"], image_label:"圍巾 350 元 ＋ 你有 500 元",
+              options:["給你 500 元","我不想付錢","給你","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「給你 500 元」" } },
+            { id:"wrong_change", shopkeeper_prompt:"好的！找您 100 元！（店員找回 100 元，但正確應找 150 元）",
+              task:"先說「不好意思」，再告訴店員找零好像不對",
+              keywords:["不對","錯","應該","少找","少給","多找","找錯","好像","差一點","還差","差了","再算"], keywords_mode:'any',
+              accepted_phrases:["不好意思，找零好像不對","應該找我 150 元","不好意思，少找了 50 元","可以再算一次嗎？"],
+              image:"images/money/100_yuan_front.png", image_label:"店員找回 100 元",
+              options:["不好意思，找零好像不對","謝謝，沒關係","哼，你是不是故意的！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！禮貌指出很重要！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，找零好像不對」" } },
+            { id:"corrected", shopkeeper_prompt:"啊！對不起！應該找 150 元，這是多的 50 元，非常抱歉！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
+              image:["images/money/100_yuan_front.png","images/money/50_yuan_front.png"], image_label:"補好了，找您 150 元",
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 500 元"],
+              feedback:{ perfect:"說得很有禮貌！大度說「沒關係」很棒！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
+          ]
+        },
+        {
+          id: "try_decline", name: "試穿後不喜歡，禮貌地不買", icon: "🧥",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "試穿了不代表一定要買：說出原因、把衣服還給店員、說謝謝",
+          steps: [
+            mkStep({ id:"greeting", say:"（天氣變冷了，你想買一件毛衣。）你好，歡迎！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問在找什麼呢？", task:"說你想找毛衣",
+              options:["我想找毛衣","我想找外套","你不要吵我","謝謝再見"], kw:["想找毛衣"] }),
+            mkStep({ id:"s3", say:"這件灰色毛衣很多人喜歡，要試穿看看嗎？（你想試穿，看看穿起來舒不舒服。）", task:"先說「好」，再用「請問」問試衣間在哪裡",
+              options:["好，請問試衣間在哪裡？","我在這裡直接換就好","你快點幫我穿啦","我把衣服丟地上就好"], kw:["試衣間","哪裡"] }),
+            mkStep({ id:"s4", say:"試衣間在右邊。（你去試穿，覺得毛衣穿起來會癢。你換回自己的衣服，把毛衣拿給店員。）請問穿起來怎麼樣？", task:"告訴店員：穿起來會癢，你不太喜歡",
+              options:["穿起來會癢，我不太喜歡","這件好醜喔","你們的衣服都很爛","（把毛衣丟在椅子上）"], kw:["穿起來會癢","不太喜歡"] }),
+            mkStep({ id:"s5", say:"沒關係！要不要看看其他的？（你決定今天先不買，也不看其他款式。）", task:"先說「不用了，謝謝」，再把毛衣還給店員，說「毛衣還給你」",
+              options:["不用了，謝謝，毛衣還給你","好吧，那我買這件會癢的","你一直問很煩耶","（不說話直接走掉）"], kw:["毛衣還給","不用","謝謝"] }),
+            mkStep({ id:"s6", say:"好喔，歡迎下次再來！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝，再見！","我要結帳","請問試衣間在哪裡？","你好"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）試穿以後不喜歡，可以怎麼做？", task:"說出方法：有禮貌地說原因，把衣服還給店員，說謝謝，可以不買",
+              options:["有禮貌地說原因，把衣服還給店員，說謝謝，可以不買","試穿了就一定要買","把衣服丟著就走","偷偷走掉"], kw:["有禮貌地","說謝謝","原因"], feedback:{ perfect:"答對了！有禮貌地說原因，把衣服還給店員，說謝謝，可以不買。", failed:"記住：有禮貌地說原因，把衣服還給店員，說謝謝，可以不買。" } }),
+          ]
+        },
+        {
+          id: "hem_pants", name: "請店家改褲長", icon: "✂️",
+          simple_steps: ["s3","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "褲子太長可以請店家修改：問清楚要不要加錢、什麼時候拿，記得帶取件單",
+          steps: [
+            mkStep({ id:"s1", image:"images/a4/icon-a4-jeans-shop.png", image_label:"牛仔褲", say:"（你帶了 1000 元，想買一條牛仔褲。試穿以後，腰剛好，可是褲管太長，拖到地上。）請問穿起來還可以嗎？", task:"告訴店員：腰剛好，可是褲管太長了",
+              options:["腰剛好，可是褲管太長了","很合身，我要買","這條好醜","隨便啦"], kw:["褲管太長","腰剛好"] }),
+            mkStep({ id:"s2", say:"我看看……真的長了一點。", task:"用「請問」問店員，能不能幫你把褲管改短",
+              options:["請問可以幫我把褲管改短嗎？","你拿剪刀剪一剪就好","那我拖在地上穿就好","你們的褲子做錯了"], kw:["把褲管改短"] }),
+            mkStep({ id:"s3", say:"可以喔！依照我們店裡的規定，改褲長要加 100 元，三天後可以來拿。（你覺得費用可以，也能三天後來拿。店員幫你確認要改的長度，做好記號，你再換回自己的褲子。）", task:"先說「好」，再說三天後來拿",
+              options:["好，三天後來拿","你不准收修改費","不用量，隨便剪","隨便啦"], kw:["三天後來拿"] }),
+            mkStep({ id:"pay", image:["images/money/1000_yuan_front.png"], image_label:"1000 元", say:"牛仔褲 690 元，加上改褲長 100 元，一共 790 元，請問怎麼付款？", task:"說你付現金，把 1000 元拿給店員，說「給你 1000 元」",
+              options:["我付現金，給你 1000 元","改褲長的錢我不付","先欠著，拿褲子再給","可以算 600 元嗎？"], kw:[...KW_PRESETS.hand, "1000", "一千"] }),
+            mkStep({ id:"change", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 210 元", say:"收您 1000 元，找您 210 元。這是取件單，三天後帶取件單來拿褲子喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["210 元，對了，謝謝！","錢我不用數","200 元，對了，謝謝！","（直接走掉）"], kw:["210","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）請店家改褲長，要記住哪兩件事？", task:"說出重點：什麼時候來拿，還有要帶取件單",
+              options:["什麼時候來拿，還有要帶取件單","什麼都不用記","取件單丟掉沒關係","想拿再去就好"], kw:["什麼時候來拿","帶取件單"], feedback:{ perfect:"答對了！什麼時候來拿，還有要帶取件單。", failed:"記住：什麼時候來拿，還有要帶取件單。" } }),
+          ]
+        },
+        {
+          id: "gift_wrap", name: "買禮物請店員包裝", icon: "🎁",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "買東西送人：請店員包裝、把價錢標籤拿掉",
+          steps: [
+            mkStep({ id:"greeting", say:"（下星期是阿公的生日，你帶了 300 元，想買一雙保暖的襪子送給阿公。）你好，歡迎！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問在找什麼呢？", task:"說你想買襪子送給阿公",
+              options:["我想買襪子送給阿公","我想找毛衣","隨便啦","謝謝再見"], kw:["買襪子送","阿公"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-wool-socks.png::250 元", image_label:"羊毛襪", say:"這雙羊毛襪很保暖，一雙 250 元。你覺得怎麼樣？（你看過尺寸，覺得適合阿公，決定買這雙。）", task:"先說「好」，再說你要買這雙",
+              options:["好，我要買這雙","我要買外套","你一定要送我","你們的襪子都很爛"], kw:["要買這雙"] }),
+            mkStep({ id:"s4", say:"好的，這雙要送阿公，我幫你準備。", task:"用「請問」問能不能幫忙包裝，再請店員把價錢標籤拿掉",
+              options:["請問可以幫忙包裝嗎？也請把價錢標籤拿掉","你自己看著辦","把襪子丟進袋子就好啦","我要把價錢改成一萬元"], kw:["價錢標籤拿掉","幫忙包裝"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"300 元", say:"可以喔！依照我們店裡的規定，包裝不用錢。一共 250 元，請問怎麼付款？", task:"說你付現金，把 300 元拿給店員，說「給你 300 元」",
+              options:["我付現金，給你 300 元","我不想付錢","可以再便宜嗎？","先欠著"], kw:[...KW_PRESETS.hand, "300", "三百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png"], image_label:"找您 50 元", say:"收您 300 元，找您 50 元。包好了，價錢標籤我也幫你拿掉了喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["50 元，對了，謝謝！","錢我不用數","40 元，對了，謝謝！","（直接走掉）"], kw:["50","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買東西要送人，可以請店員幫什麼忙？", task:"說出方法：請店員幫忙包裝，把價錢標籤拿掉",
+              options:["請店員幫忙包裝，把價錢標籤拿掉","什麼都不能請店員幫","自己把價錢寫大一點","把發票貼在禮物上"], kw:["請店員幫忙包裝","價錢標籤拿掉"], feedback:{ perfect:"答對了！請店員幫忙包裝，把價錢標籤拿掉。", failed:"記住：請店員幫忙包裝，把價錢標籤拿掉。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 速食店
+    // ══════════════════════════════════════════
+    {
+      id: "fast_food", name: "速食店", icon: "🍔", available: true,
+      theme: { color: '#EA580C', bg: '#FFF7ED', accent: '#C2410C' },
+      situations: [
+        {
+          id: "basic", name: "基本點餐", icon: "🍔",
+          desc: "點漢堡套餐到取餐的完整速食點餐流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","請問廁所在哪裡？","多少錢？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"order_meal", shopkeeper_prompt:"請說，你要點什麼？", task:"點一個漢堡套餐",
+              keywords:["漢堡"], keywords_mode:'any',
+              accepted_phrases:["我要一個漢堡套餐","給我一個漢堡套餐","一個漢堡套餐"],
+              image:["images/a4/icon-a4-hamburger-shop.png","images/a4/icon-a4-french-fries-shop.png","images/a3/icon-a3-coke-large.png"], image_label:"漢堡套餐",
+              options:["我要一個漢堡套餐","我要薯條","我要炸雞","我要飲料"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"漢堡套餐", choices:[
+                { text:"漢堡套餐", emoji:"🍔" }, { text:"薯條", emoji:"🍟" },
+                { text:"雞塊", emoji:"🍗" }, { text:"冰淇淋", emoji:"🍦" } ] } },
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了重點！試著說完整：「我要一個漢堡套餐」", failed:"可以這樣說：「我要一個漢堡套餐」" } },
+            { id:"customize_drink", shopkeeper_prompt:"好的！套餐飲料要可樂還是紅茶？冰塊正常還是去冰？（你想喝可樂，今天有點冷，不想喝太冰。）",
+              task:"說要可樂、去冰",
+              keywords:["去冰","不要冰","無冰"], keywords_mode:'any',
+              accepted_phrases:["我要可樂，去冰。","可樂，去冰","可樂不要冰","我要可樂，不要冰"],
+              image:"images/a3/icon-a3-coke-large.png", image_label:"套餐的飲料",
+              options:["我要可樂，去冰。","我要紅茶，正常冰","我要可樂，正常冰","請問廁所在哪裡？"],
+              feedback:{ perfect:"客製化說得很清楚！", partial:"說出了部分！可以同時說飲料和冰塊：「我要可樂，去冰。」", failed:"可以這樣說：「我要可樂，去冰。」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！漢堡套餐一共 120 元。",
+              task:"把 200 元拿給店員，說「給你 200 元」",
+              keywords:[...KW_PRESETS.hand, "200", "兩百"], keywords_mode:'any',
+              accepted_phrases:["給你 200 元","我給你 200 元","200 元給你","這是 200 元"],
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              options:["給你 200 元","我不想付錢","我不買了","我沒帶錢"],
+              feedback:{ perfect:"付錢說得很清楚！", partial:"說出了重點！記得說你給多少錢", failed:"可以這樣說：「給你 200 元」" } },
+            { id:"wait_number", shopkeeper_prompt:"找您 80 元，你的號碼牌是 35 號，叫到號碼再來取餐！",
+              task:"先說「謝謝」，再說「我知道了」",
+              keywords:["謝謝","好","知道","了解","收到","OK","記住"], keywords_mode:'any',
+              accepted_phrases:["謝謝！我知道了","好的，謝謝！","謝謝，35 號","謝謝！我了解了","謝謝！我OK了","謝謝！我收到了"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 80 元",
+              options:["謝謝！我知道了","再見","我要取消","請問幾號？"],
+              feedback:{ perfect:"很好！記得注意叫號喔！", partial:"有回應！可以說：「謝謝！我知道了」", failed:"可以這樣說：「謝謝！我知道了」" } },
+            { id:"pickup", shopkeeper_prompt:"35 號！漢堡套餐好了，請來這邊取餐！", task:"先說你的號碼 35 號，再說「謝謝」",
+              keywords:["35","三十五","謝謝"], keywords_mode:'any',
+              accepted_phrases:["35 號，謝謝！","35 號！謝謝！"],
+              options:["35 號，謝謝！","我還沒叫到號","請問在哪裡取？","謝謝再見"],
+              feedback:{ perfect:"太棒了！取餐時說出號碼，店員就知道是你的！", partial:"有回應！可以說：「35 號，謝謝！」", failed:"可以這樣說：「35 號，謝謝！」" } }
+          ]
+        },
+        {
+          id: "wrong_order", name: "點錯了要改", icon: "🔄",
+          simple_steps: ["change_mind", "confirm2", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點完餐才發現點錯，如何禮貌地請店員更改",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生只回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","這個多少錢？","廁所在哪裡？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"order", shopkeeper_prompt:"請問要點什麼？", task:"點雞塊套餐",
+              keywords:["雞塊"], keywords_mode:'any',
+              accepted_phrases:["我要雞塊套餐","給我雞塊套餐","一個雞塊套餐"],
+              image:["images/a4/icon-a4-chicken-nuggets-shop.png","images/a4/icon-a4-french-fries-shop.png","images/a3/icon-a3-coke-large.png"], image_label:"雞塊套餐",
+              options:["我要雞塊套餐","我要漢堡","我要薯條","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要雞塊套餐」" } },
+            { id:"confirm", shopkeeper_prompt:"好的！雞塊套餐一份，飲料要什麼？", task:"說你要可樂",
+              keywords:["可樂"], keywords_mode:'any',
+              accepted_phrases:["我要可樂","給我可樂","可樂"],
+              image:"images/a3/icon-a3-coke-large.png", image_label:"可樂",
+              options:["我要可樂","我要果汁","不要飲料","我要水"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要可樂」" } },
+            { id:"change_mind", shopkeeper_prompt:"好的！（店員開始輸入餐點時，你突然想改成雞腿堡套餐，想一想應該怎麼說？）",
+              task:"先說「不好意思」，再問店員可以改成雞腿堡套餐嗎",
+              keywords:["換","改","可以換","可以改","想改","雞腿堡","更換"], keywords_mode:'any',
+              accepted_phrases:["不好意思，可以改成雞腿堡套餐嗎？","不好意思，我想換成雞腿堡","可以改成雞腿堡嗎？不好意思"],
+              image:["images/a3/icon-a3-chicken-deluxe.png","images/a4/icon-a4-french-fries-shop.png","images/a3/icon-a3-coke-large.png"], image_label:"雞腿堡套餐",
+              options:["不好意思，可以改成雞腿堡套餐嗎？","沒事，雞塊就好","請問廁所在哪裡？","謝謝"],
+              feedback:{ perfect:"說得很有禮貌！「不好意思」說得很好！", partial:"說出了要換的意思！記得加上「不好意思」會更禮貌", failed:"可以這樣說：「不好意思，可以改成雞腿堡套餐嗎？」" } },
+            { id:"confirm2", shopkeeper_prompt:"可以！雞腿堡套餐 130 元，飲料一樣可樂嗎？", task:"先說「好」，再說「謝謝」",
+              keywords:["對","沒錯","好","可以"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","可以，謝謝！","對，謝謝！","好的，謝謝！"],
+              options:["好，謝謝！","哼，不用你管！","快一點啦！","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！加上謝謝很有禮貌", failed:"可以這樣說：「好，謝謝！」" } },
+            { id:"checkout", shopkeeper_prompt:"好的！雞腿堡套餐 130 元。", task:"把 130 元拿給店員，說「給你 130 元」，再說「謝謝」",
+              keywords:[...KW_PRESETS.hand, "130", "一百三"], keywords_mode:'any',
+              accepted_phrases:["給你 130 元，謝謝！","130 元給你，謝謝！","謝謝！這是 130 元","這是 130 元，謝謝！"],
+              image:["images/money/100_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"130 元",
+              options:["給你 130 元，謝謝！","哼，不用你管！","謝謝再見","多少錢？"],
+              feedback:{ perfect:"太棒了！把錢給店員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 130 元，謝謝！」" } }
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "cheaper_option", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "結帳時發現錢不夠，改點單點的漢堡",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","請問廁所在哪裡？","多少錢？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"order", shopkeeper_prompt:"請問要點什麼？", task:"點雙層牛肉堡套餐",
+              keywords:["雙層","牛肉堡"], keywords_mode:'any',
+              accepted_phrases:["我要雙層牛肉堡套餐","給我雙層牛肉堡套餐","一個雙層牛肉堡套餐"],
+              image:["images/a3/icon-a3-mc-double.png","images/a4/icon-a4-french-fries-shop.png","images/a3/icon-a3-coke-large.png"], image_label:"雙層牛肉堡套餐",
+              options:["我要雙層牛肉堡套餐","我要薯條","謝謝再見","什麼最好吃？"],
+              feedback:{ perfect:"點餐說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要雙層牛肉堡套餐」" } },
+            { id:"not_enough", shopkeeper_prompt:"好的！雙層牛肉堡套餐 150 元。（你打開錢包，發現只有 80 元現金，不夠 150 元）",
+              task:"先說「不好意思」，再告訴店員你的錢不夠",
+              keywords:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我的錢不夠","我只有 80 元，不夠","不好意思，我錢不夠，不能買","我的錢差一點","錢差一點","不好意思，還差 70 元","還差 70 元","我的錢不到 150 元","我的錢不夠"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 80 元",
+              options:["不好意思，我的錢不夠","哼，那我不要了！","可以少一點嗎？","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，我的錢不夠」" } },
+            { id:"cheaper_option", shopkeeper_prompt:"沒關係！雙層牛肉堡單點只要 75 元，你要嗎？",
+              task:"先說「好」，再說你要單點的",
+              keywords:["單點","好"], keywords_mode:'any',
+              accepted_phrases:["好，我要單點的！","好，給我單點的！謝謝！","好，謝謝！","好的，我要單點的！"],
+              image:"images/a3/icon-a3-mc-double.png::75 元", image_label:"單點雙層牛肉堡",
+              options:["好，我要單點的！","哼，不用你管！","快點算便宜一點啦！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！套餐太貴，改單點也可以！", partial:"說出了重點！", failed:"可以這樣說：「好，我要單點的！」" } },
+            mkStep({ id:"pay", say:"好的，雙層牛肉堡單點 75 元。", task:"把 80 元拿給店員，說「給你 80 元」",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              options:["給你 80 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元","我給你 80 元","80 元給你","這是 80 元"] }),
+            mkStep({ id:"get_change", say:"收您 80 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "wait_too_long", name: "等太久了", icon: "⏰",
+          desc: "速食店等餐等了很久，如何禮貌地詢問店員",
+          steps: [
+            { id:"order_done", shopkeeper_prompt:"（你點完餐拿到號碼牌 12 號，等了 15 分鐘還沒叫到）",
+              task:"先說「不好意思」，再用「請問」問店員你的餐點好了嗎",
+              keywords:["好了","餐點","號","等","還沒","好嗎","快好了","多久"], keywords_mode:'any',
+              accepted_phrases:["不好意思，請問 12 號的餐點好了嗎？","不好意思，我等了很久了","請問我的餐點快好了嗎？"],
+              options:["不好意思，請問 12 號的餐點好了嗎？","喂！怎麼那麼慢！","我要結帳","請問廁所在哪裡？"],
+              feedback:{ perfect:"問得很有禮貌！「不好意思」說得很好！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，請問 12 號的餐點好了嗎？」" } },
+            { id:"staff_check", shopkeeper_prompt:"非常抱歉！讓你久等了，我馬上去確認！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","好","可以","等","行","沒問題","麻煩"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","麻煩你了，謝謝！","可以，謝謝！","行，謝謝！","沒問題，謝謝！"],
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","快一點！"],
+              feedback:{ perfect:"說得很有禮貌！耐心等待很棒！", partial:"說出了重點！", failed:"可以這樣說：「沒關係，謝謝！」" } },
+            { id:"receive", shopkeeper_prompt:"12 號！你的薯條和聖代來了，非常抱歉讓你久等！",
+              image:["images/a3/icon-a3-french-fries-medium.png","images/a3/icon-a3-sundae.png"], image_label:"薯條 ＋ 聖代",
+              task:"先說「謝謝」，再說「沒關係」",
+              keywords:["謝謝","沒關係","好","沒事","還好","OK","了解"], keywords_mode:'any',
+              accepted_phrases:["謝謝！沒關係！","謝謝，沒關係！","謝謝，我等到了！","謝謝！沒事！"],
+              options:["謝謝！沒關係！","哼，不用你管！","喂，我走了！","我付現金"],
+              feedback:{ perfect:"說得很有禮貌！寬容的態度很棒！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！沒關係！」" } }
+          ]
+        },
+        {
+          id: "need_napkins", name: "需要餐巾紙", icon: "🧻",
+          desc: "拿到餐點後需要餐巾紙，詢問店員自取區在哪裡",
+          steps: [
+            { id:"pickup", shopkeeper_prompt:"（你在速食店點了炸雞翅，拿著號碼牌等叫號。）28 號！炸雞翅好了，請來取餐！",
+              image:"images/a3/icon-a3-chicken-wings.png", image_label:"炸雞翅",
+              task:"先說「謝謝」，再用「請問」問店員餐巾紙在哪裡",
+              keywords:["餐巾紙","紙巾","衛生紙"], keywords_mode:'any',
+              accepted_phrases:["謝謝！請問餐巾紙在哪裡？","謝謝，餐巾紙在哪？","請問哪裡有餐巾紙？"],
+              options:["謝謝！請問餐巾紙在哪裡？","哼，不用你管！","我要結帳","謝謝再見"],
+              feedback:{ perfect:"問得很好！既道謝又問了需要的東西！", partial:"說出了重點！記得先說謝謝", failed:"可以這樣說：「謝謝！請問餐巾紙在哪裡？」" } },
+            { id:"location", shopkeeper_prompt:"餐巾紙和吸管都在右邊的自取區！",
+              task:"跟店員說「謝謝」",
+              keywords:["謝謝","好","知道","了解","OK","找到了"], keywords_mode:'any',
+              accepted_phrases:["謝謝！","好的，謝謝！","謝謝你！"],
+              options:["謝謝！","哼，不用你管！","喂，我走了！","我付現金"],
+              feedback:{ perfect:"說得很有禮貌！", partial:"有說謝謝！", failed:"可以這樣說：「謝謝！」" } }
+          ]
+        },
+        {
+          id: "kiosk_help", name: "不會用點餐機", icon: "🖥️",
+          simple_steps: ["s3","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不會用機器先請店員教，一步一步照著做",
+          steps: [
+            mkStep({ id:"s1", say:"（你想點一個魚堡，身上有 100 元。櫃台人很多，你想用點餐機，可是看不懂畫面。旁邊有一位店員。）", task:"先說「不好意思」，再用「請問」請店員教你怎麼用點餐機",
+              options:["不好意思，請問可以教我怎麼用點餐機嗎？","這台機器爛死了","（一直亂按）","我要插隊到前面點"], kw:["怎麼用點餐機"] }),
+            mkStep({ id:"s2", image:"images/a3/icon-a3-filet-o-fish.png::60 元", image_label:"魚堡", say:"好啊！我一步一步教你。（店員先指給你看「開始點餐」，你按下後，再照著按「漢堡」和「魚堡」。畫面顯示魚堡一個 60 元。）", task:"先說「好」，再照著做，說「我按到魚堡了」",
+              options:["好，我按到魚堡了","我不想學，你幫我按","我要按雞塊","我閉著眼睛亂按"], kw:["按到魚堡"] }),
+            mkStep({ id:"s3", say:"確認魚堡一個、60 元都正確，再按「結帳」，選「櫃台付現」。（你核對後照著按，機器印出了訂單，你拿好單子。）", task:"先說「好」，再說你拿到單子了",
+              options:["好，我拿到單子了","單子我丟掉了","我拿別人的單子","單子拿了就好，不用付錢"], kw:["拿到單子"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"（你依店員指示排到櫃台，輪到你時，把單子給店員。）魚堡一個 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","先欠著","我要點漢堡套餐"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元", say:"收您 100 元，找您 40 元。你的號碼是 52 號，叫到號碼再來取餐喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）不會用點餐機，要怎麼做？", task:"說出方法：請店員教，一步一步照著做",
+              options:["請店員教，一步一步照著做","一直亂按","叫店員每次都幫我按","插隊去櫃台"], kw:["一步一步照著做","請店員教"], feedback:{ perfect:"答對了！請店員教，一步一步照著做。", failed:"記住：請店員教，一步一步照著做。" } }),
+          ]
+        },
+        {
+          id: "missing_item", name: "餐點少了一樣", icon: "🍗",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "拿到餐先對明細，少了就禮貌地說",
+          steps: [
+            mkStep({ id:"s1", image:["images/b6/icon-b6-fried-chicken-drumstick.png","images/b6/icon-b6-fried-chicken-drumstick.png"], image_label:"托盤上：炸雞兩塊", say:"（你點了炸雞兩塊和一杯玉米濃湯，付好錢，拿到 41 號號碼牌。店員遞來的托盤上只有兩塊炸雞。）41 號！你的餐好了！", task:"先說「謝謝」，再看一看托盤和明細，說托盤上有什麼",
+              options:["謝謝，托盤上有兩塊炸雞","不用看了","（拿了就走）","那我去拿別人的"], kw:["謝謝","托盤上有兩塊炸雞"] }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-order-receipt-41.png", image_label:"點餐明細", say:"（你對了一下明細：炸雞兩塊、玉米濃湯一杯。托盤上沒有玉米濃湯。）", task:"先說「不好意思」，再告訴店員：少了一杯玉米濃湯",
+              options:["不好意思，少了一杯玉米濃湯","你們都亂做","不問就直接拿兩杯","（去別人的托盤拿一杯）"], kw:["一杯玉米濃湯"] }),
+            mkStep({ id:"s3", say:"我看一下明細……真的耶，不好意思！馬上幫你拿！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我要把櫃台掀翻","快一點啦笨","我要搶別人的湯"], kw:["謝謝"] }),
+            mkStep({ id:"s4", image:["images/b6/icon-b6-fried-chicken-drumstick.png","images/b6/icon-b6-fried-chicken-drumstick.png","images/b6/icon-b6-corn-soup.png"], image_label:"托盤：炸雞兩塊 ＋ 玉米濃湯", say:"（店員拿來一杯玉米濃湯。）玉米濃湯來了，很燙喔，小心！", task:"看一看托盤，說「東西都齊了，謝謝」",
+              options:["東西都齊了，謝謝","不用看了","我還要薯條，免費的","你好慢"], kw:["東西都齊","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）拿到餐點的時候，要做什麼？", task:"說出方法：對照明細看一看，少了就跟店員說",
+              options:["對照明細看一看，少了就跟店員說","拿了就走","明細不用看","去拿別人的"], kw:["對照明細看一看","就跟店員說"], feedback:{ perfect:"答對了！對照明細看一看，少了就跟店員說。", failed:"記住：對照明細看一看，少了就跟店員說。" } }),
+          ]
+        },
+        {
+          id: "phone_coupon", name: "用手機優惠券", icon: "🎟️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "用優惠券前先看能買什麼、到什麼時候；點餐時先拿給店員看",
+          steps: [
+            mkStep({ id:"greeting", say:"（你的手機裡有一張優惠券：「蘋果派買一送一，限今天使用」。你想買兩個蘋果派，和弟弟一人一個，身上有 50 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-phone-coupon.png"], image_label:"手機優惠券：蘋果派買一送一", say:"請說，你要點什麼？", task:"說你要用優惠券買蘋果派，自己拿著手機，把優惠券畫面朝向店員，說「這是優惠券」",
+              options:["我要用優惠券買蘋果派，這是優惠券","我要漢堡套餐","優惠券我不給你看","過期的也可以用吧"], kw:["用優惠券買蘋果派"] }),
+            mkStep({ id:"s3", image:["images/a3/icon-a3-apple-pie.png","images/a3/icon-a3-apple-pie.png"], image_label:"蘋果派 ＋ 蘋果派", say:"好的，我掃一下……可以用喔！蘋果派買一送一，兩個 35 元。", task:"用「請問」確認：兩個一共 35 元，對嗎？",
+              options:["請問兩個一共 35 元，對嗎？","我要撕掉你們的菜單","你一定要再送十個","隨便啦"], kw:["35","兩個一共"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"對！一共 35 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","用了優惠券就不用錢吧","先欠著"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 15 元", say:"收您 50 元，找您 15 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["15 元，對了，謝謝！","錢我不用數","5 元，對了，謝謝！","（直接走掉）"], kw:["15","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）用優惠券以前，要先看什麼？", task:"說出要看的：優惠券能買什麼、什麼時候到期",
+              options:["優惠券能買什麼、什麼時候到期","什麼都不用看","過期也能用","到了再說"], kw:["優惠券能買什麼","什麼時候"], feedback:{ perfect:"答對了！優惠券能買什麼、什麼時候到期。", failed:"記住：優惠券能買什麼、什麼時候到期。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 文具店
+    // ══════════════════════════════════════════
+    {
+      id: "stationery_store", name: "文具店", icon: "✏️", available: true,
+      theme: { color: '#4F46E5', bg: '#EEF2FF', accent: '#4338CA' },
+      situations: [
+        {
+          id: "basic", name: "基本購買", icon: "✏️",
+          simple_steps: ["see_price", "check_money", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問位置與規格、看標價算兩樣總價、確認錢包夠不夠的完整文具購買流程",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_location", shopkeeper_prompt:"請問需要幫忙嗎？", task:"用「請問」問店員原子筆在哪裡",
+              keywords:["原子筆"], keywords_mode:'any',
+              accepted_phrases:["請問原子筆在哪裡？","原子筆放在哪裡？","原子筆在哪裡？"],
+              image:"images/a4/icon-a4-ballpoint-pen-shop.png", image_label:"原子筆",
+              options:["請問原子筆在哪裡？","我要結帳","謝謝再見","請問廁所在哪裡？"],
+              frame_ref:"ask_location",
+              slots:{ item:{ answer:"原子筆", choices:[
+                { text:"原子筆", emoji:"🖊️" }, { text:"橡皮擦", emoji:"🧽" },
+                { text:"尺", emoji:"📏" }, { text:"膠水", emoji:"🧴" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問原子筆在哪裡？」", failed:"可以這樣說：「請問原子筆在哪裡？」" } },
+            // 位置說法各店不重複（便利商店用「第二排」，這裡用「左邊的櫃子」）——同一句話套滿全站，
+            // 學生就只是在背句子，不是在聽懂店員實際指的地方。
+            mkStep({ id:"ask_second", say:"原子筆在左邊的櫃子，請問還需要什麼嗎？", task:"用「請問」問店員有沒有修正帶",
+              options:["請問有修正帶嗎？","我要藍色的","給我最便宜的","我要一盒鉛筆"], kw:["修正帶"],
+              accepted:["請問有修正帶嗎？","有修正帶嗎？","我還要一個修正帶","請問修正帶在哪裡？"],
+              frame:{ template:"請問有 {item} 嗎？", slots:{ item:{ answer:"修正帶", choices:[
+                { text:"修正帶", emoji:"🩹" }, { text:"筆記本", emoji:"📓" },
+                { text:"剪刀", emoji:"✂️" }, { text:"膠水", emoji:"🧴" } ] } } },
+              feedback:{ perfect:"很好！第二樣東西也問清楚了！", partial:"說出了重點！試著說完整：「請問有修正帶嗎？」", failed:"可以這樣說：「請問有修正帶嗎？」" } }),
+            mkStep({ id:"no_more", say:"修正帶也在左邊的櫃子，還需要什麼文具嗎？", task:"跟店員說：「沒有」，再說「謝謝你」",
+              options:["沒有，謝謝你！","我要買原子筆","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買原子筆", emoji:"🖊️" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你拿了一支原子筆，一支 20 元；還拿了一個修正帶，一個 45 元。）",
+              task:"算算看：兩樣東西總共多少錢",
+              image:["images/a4/icon-a4-ballpoint-pen-shop.png::20 元","+","images/a4/icon-a4-correction-tape-shop.png::45 元","=","65 元"],
+              image_label:"原子筆 20 元 ＋ 修正帶 45 元",
+              options:["總共 65 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["65"],
+              accepted:["總共 65 元","兩樣是 65 元","20 元加 45 元是 65 元","65 元"],
+              frame:{ template:"總共 {price}", slots:{ price:{ answer:"65 元", choices:[
+                { text:"65 元", emoji:"💰" }, { text:"20 元", emoji:"🪙" },
+                { text:"45 元", emoji:"🪙" }, { text:"100 元", emoji:"💵" } ] } } },
+              feedback:{ perfect:"算得很好！20 元加 45 元就是 65 元！", partial:"說出了重點！記得說清楚總共多少錢", failed:"20 加 45 等於 65，可以說：「總共 65 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一張 100 元，錢夠買。）",
+              task:"說出你有多少錢", image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["我有 100 元","我沒有錢","我要買原子筆","請問廁所在哪裡？"], kw:["100","一百"],
+              accepted:["我有 100 元","我有一百元","我帶了 100 元","錢包裡有 100 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"100 元", choices:[
+                { text:"100 元", emoji:"💵" }, { text:"65 元", emoji:"💰" },
+                { text:"45 元", emoji:"🪙" }, { text:"20 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買東西前先數清楚錢包裡有多少錢！", partial:"說出了重點！記得說清楚有多少錢", failed:"可以這樣說：「我有 100 元」" } }),
+            { id:"checkout", shopkeeper_prompt:"好的！原子筆 20 元、修正帶 45 元，總共 65 元。", task:"把 100 元拿給店員，說「給你 100 元」，再說「謝謝」",
+              keywords:[...KW_PRESETS.hand, "100", "一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元，謝謝！","100 元給你，謝謝！","謝謝！這是 100 元","這是 100 元，謝謝！"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元，謝謝！","哼，不用你管！","喂，我走了！","我沒帶錢"],
+              feedback:{ perfect:"太棒了！把錢給店員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 100 元，謝謝！」" } },
+            mkStep({ id:"goodbye", say:"好的，找您 35 元，請拿好，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 35 元",
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
+          ]
+        },
+        {
+          id: "cant_find_item", name: "找不到商品", icon: "🔍",
+          simple_steps: ["no_big", "decide", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "找不到想買的橡皮擦，向店員求助並接受建議",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_eraser", shopkeeper_prompt:"請問需要幫忙嗎？", task:"用「請問」問店員有沒有大塊的橡皮擦",
+              keywords:["橡皮擦","橡皮","大塊"], keywords_mode:'any',
+              accepted_phrases:["請問有沒有大塊的橡皮擦？","我在找大橡皮擦","有大塊橡皮擦嗎？"],
+              image:"images/a4/icon-a4-eraser-shop.png", image_label:"大塊的橡皮擦",
+              options:["請問有沒有大塊的橡皮擦？","我要鉛筆","謝謝再見","我要尺"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問有沒有大塊的橡皮擦？」", failed:"可以這樣說：「請問有沒有大塊的橡皮擦？」" } },
+            { id:"no_big", shopkeeper_prompt:"不好意思，大塊的橡皮擦賣完了！但我們有普通大小的，一個 15 元。",
+              task:"用「請問」問店員普通大小的好不好用",
+              keywords:["好用","普通"], keywords_mode:'any',
+              accepted_phrases:["請問普通大小的好用嗎？","普通大小的好用嗎？","普通的好用嗎？","普通大小可以嗎？"],
+              options:["請問普通大小的好用嗎？","請問廁所在哪裡？","哼，不用你管！","謝謝再見"],
+              feedback:{ perfect:"很好！懂得確認替代品是否合用！", partial:"說出了重點！", failed:"可以這樣說：「請問普通大小的好用嗎？」" } },
+            { id:"decide", shopkeeper_prompt:"普通的很好用喔！很多同學都在買！（你覺得普通大小也可以，而且今天需要買兩個。）", task:"先說「好」，再說你要買兩個",
+              keywords:["兩個","兩"], keywords_mode:'any',
+              accepted_phrases:["好，我要兩個！","那我買兩個！","我要兩個，謝謝！","好的，我要兩個！"],
+              image:["images/a4/icon-a4-eraser-shop.png","images/a4/icon-a4-eraser-shop.png"], image_label:"2 個橡皮擦",
+              options:["好，我要兩個！","我要買十個！","那我只買一個","謝謝再見"],
+              feedback:{ perfect:"很好！清楚說明要買幾個！", partial:"說出了重點！", failed:"可以這樣說：「好，我要兩個！」" } },
+            mkStep({ id:"checkout", say:"好的！兩個橡皮擦共 30 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收您 50 元，找您 20 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元",
+              options:["20 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["20","二十","對了"],
+              accepted:["20 元，對了，謝謝！","20 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買文具時錢不夠，選擇只買需要的商品",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","午安","晚安","hi","請問"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","午安！","晚安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            { id:"select_items", shopkeeper_prompt:"請問找到你要的東西了嗎？", task:"告訴店員你要買自動鉛筆和尺",
+              keywords:["鉛筆","尺"], keywords_mode:'any',
+              accepted_phrases:["我要買自動鉛筆和尺","給我自動鉛筆和尺","我要這支自動鉛筆和這把尺"],
+              image:["images/a4/icon-a4-pencil-shop.png","images/a4/icon-a4-ruler-shop.png"], image_label:"自動鉛筆 ＋ 尺",
+              options:["我要買自動鉛筆和尺","我要買橡皮擦","謝謝再見","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要買自動鉛筆和尺」" } },
+            { id:"not_enough", shopkeeper_prompt:"好的！自動鉛筆 45 元、尺 35 元，共 80 元。（你打開錢包，發現只有 50 元，不夠 80 元）",
+              task:"先說「不好意思」，再告訴店員你的錢不夠",
+              keywords:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我的錢不夠","我只有 50 元，不夠","不好意思，我錢不夠","我的錢差一點","錢差一點","不好意思，還差 30 元","還差 30 元","我的錢不到 80 元","我的錢不夠"],
+              image:"images/money/50_yuan_front.png", image_label:"錢包裡只有 50 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，我的錢不夠」" } },
+            { id:"choose", shopkeeper_prompt:"沒關係！你要留自動鉛筆還是尺呢？（明天上課要用自動鉛筆，尺家裡有。）", task:"說你只買自動鉛筆",
+              keywords:["鉛筆"], keywords_mode:'any',
+              accepted_phrases:["我只買自動鉛筆好了","只要自動鉛筆","我買自動鉛筆就好","自動鉛筆就好"],
+              image:"images/a4/icon-a4-pencil-shop.png", image_label:"只買自動鉛筆",
+              options:["我只買自動鉛筆好了","我只買尺好了","請問廁所在哪裡？","快點算便宜一點啦！"],
+              feedback:{ perfect:"很好！懂得選自己需要的！", partial:"說出了重點！", failed:"可以這樣說：「我只買自動鉛筆好了」" } },
+            mkStep({ id:"pay", say:"好的，自動鉛筆 45 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收您 50 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_sale", name: "詢問特賣活動", icon: "🏷️",
+          simple_steps: ["greet_ask", "answer", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問文具店有沒有特賣或開學優惠活動",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"greet_ask", shopkeeper_prompt:"請問在找什麼嗎？",
+              task:"用「請問」問店員有沒有開學特賣",
+              keywords:["開學特賣","特賣","特價","優惠","打折"], keywords_mode:'any',
+              accepted_phrases:["請問有沒有開學特賣？","有開學特賣嗎？","請問開學有特價嗎？"],
+              options:["請問有沒有開學特賣？","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"問得很好！懂得找優惠！", partial:"說出了重點！", failed:"可以這樣說：「請問有沒有開學特賣？」" } },
+            { id:"answer", shopkeeper_prompt:"有！本週資料夾原價一個 25 元，買三個打八折！",
+              task:"先說「好」，再說你要買三個資料夾",
+              keywords:["資料夾","三個"], keywords_mode:'any',
+              accepted_phrases:["好，我要三個資料夾！","那我買三個資料夾！","我要三個！","好的，我要三個資料夾！"],
+              image:["images/a4/icon-a4-folder-shop.png","images/a4/icon-a4-folder-shop.png","images/a4/icon-a4-folder-shop.png"], image_label:"3 個資料夾",
+              options:["好，我要三個資料夾！","我要五本畫畫本！","我也要鉛筆！","謝謝再見"],
+              feedback:{ perfect:"很好！懂得利用優惠！", partial:"說出了重點！", failed:"可以這樣說：「好，我要三個資料夾！」" } },
+            { id:"choose", shopkeeper_prompt:"好的！請問要哪種顏色？有紅、藍、黃可以選！（你最喜歡藍色。）", task:"說你要藍色的",
+              keywords:["藍"], keywords_mode:'any',
+              accepted_phrases:["我要藍色的！","給我藍色！","藍色！"],
+              options:["我要藍色的！","我要紅色的！","我要黃色的！","三種各一個！"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要藍色的！」" } },
+            mkStep({ id:"checkout", say:"好的！三個資料夾，打八折共 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 40 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元",
+              options:["40 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["40","四十","對了"],
+              accepted:["40 元，對了，謝謝！","40 元，謝謝！"],
+              feedback:{ perfect:"很棒！有利用到優惠，找零也數清楚了！" } })
+          ]
+        },
+        {
+          id: "choose_by_need", name: "買需要的", icon: "📓",
+          simple_steps: ["ask_diff", "choose_small", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "文具店有特價活動，比較大本和小本筆記本，買自己真正需要的那一本",
+          steps: [
+            mkStep({ id:"enter", say:"（放學回家的路上，你經過文具店，想買一本每天可以放進書包帶去學校的筆記本。你的口袋裡有 100 元。）",
+              task:"走進文具店，跟店員打招呼", kw:'greet',
+              options:["你好！","我要結帳","筆記本多少錢？","可以借廁所嗎？"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","早！"],
+              feedback:{ perfect:"打招呼打得很有禮貌！", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"ask_sale", say:"你好！請問要找什麼呢？",
+              task:"用「請問」問店員筆記本有沒有特價活動", kw:["特價","優惠","活動","打折","折扣"],
+              options:["請問筆記本有特價活動嗎？","我要買最貴的！","請問廁所在哪裡？","謝謝再見"],
+              accepted:["請問筆記本有特價活動嗎？","筆記本有特價嗎？","請問有特價活動嗎？","筆記本有優惠嗎？","請問筆記本有沒有打折？"],
+              image:"images/a4/icon-a4-notebook-shop.png", image_label:"筆記本",
+              feedback:{ perfect:"問得很好！買東西前先問特價！", failed:"可以這樣說：「請問筆記本有特價活動嗎？」" } }),
+            mkStep({ id:"ask_diff", say:"有喔！筆記本正在特價，大本的 65 元，小本的 50 元。",
+              task:"用「請問」問店員大本和小本有什麼不一樣", kw:["不一樣","不同","差別","差在哪"],
+              options:["請問大本和小本有什麼不一樣？","那我買大本的！","請問鉛筆在哪裡？","謝謝再見"],
+              accepted:["請問大本和小本有什麼不一樣？","大本和小本有什麼不同？","它們差在哪裡？","請問有什麼差別？"],
+              image:"images/b6/icon-b6-notebook-size-compare.png::大本 65 元　小本 50 元", image_label:"大本和小本",
+              feedback:{ perfect:"問得很好！先問清楚再決定！", failed:"可以這樣說：「請問大本和小本有什麼不一樣？」" } }),
+            mkStep({ id:"choose_small", say:"大本的頁數多、比較重；小本的比較輕，可以放進書包帶著走。",
+              task:"想想自己的需要，告訴店員你要買小本的筆記本", kw:["小本"],
+              options:["我要買小本的筆記本","我要買大本的筆記本","兩本我都要！","請問廁所在哪裡？"],
+              accepted:["我要買小本的筆記本","我要小本的","我買小本的就好","小本的就可以了"],
+              image:"images/a4/icon-a4-notebook-shop.png", image_label:"小本的筆記本",
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"小本的筆記本", choices:[
+                { text:"小本的筆記本", emoji:"📓" }, { text:"大本的筆記本", emoji:"📔" },
+                { text:"鉛筆", emoji:"✏️" }, { text:"橡皮擦", emoji:"🧽" } ] } },
+              feedback:{ perfect:"很好！懂得挑自己需要的！", failed:"可以這樣說：「我要買小本的筆記本」" } }),
+            mkStep({ id:"explain", say:"好的！請問為什麼選小本的呢？",
+              task:"告訴店員小本的就夠你用了", kw:["夠","適合","方便","需要","用得到","輕"],
+              options:["小本的就夠我用了","大本的比較好看","我不知道耶","我要退貨"],
+              accepted:["小本的就夠我用了","小本的就夠用了","小本的比較適合我","小本的比較方便帶","我需要小本的"],
+              feedback:{ perfect:"說得很好！買東西要看自己需不需要，不是挑貴的！", failed:"可以這樣說：「小本的就夠我用了」" } }),
+            mkStep({ id:"pay", say:"好的！小本的筆記本特價 50 元。",
+              task:"把 100 元拿給店員，說「給你 100 元」", kw:[...KW_PRESETS.hand, "100","一百"],
+              options:["給你 100 元","可以算便宜一點嗎？","我要換成大本的","我沒有帶錢"],
+              accepted:["給你 100 元","這是 100 元","100 元給你","我給你 100 元，謝謝！","我付 100 元"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              feedback:{ perfect:"太棒了！錢付得很清楚！", failed:"可以這樣說：「給你 100 元」" } }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 50 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/50_yuan_front.png", image_label:"找您 50 元",
+              options:["50 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["50","五十","對了"],
+              accepted:["50 元，對了，謝謝！","50 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "wrong_change", name: "找零錯了", icon: "💰",
+          desc: "文具店找錯零錢，如何禮貌地指出並核對",
+          steps: [
+            { id:"pay", shopkeeper_prompt:"（你有 100 元，在文具店拿了一盒 45 元的彩色筆，要去櫃臺結帳。）彩色筆 45 元，謝謝！", task:"告訴店員「給你 100 元」",
+              keywords:["100","一百"], keywords_mode:'any',
+              accepted_phrases:["給你 100 元","這是 100 元","我給你 100 元"],
+              image:["images/b6/icon-b6-color-markers.png","images/money/100_yuan_front.png"], image_label:"彩色筆 45 元 ＋ 你有 100 元",
+              options:["給你 100 元","我不想付錢","給你","謝謝"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「給你 100 元」" } },
+            { id:"wrong_change", shopkeeper_prompt:"找你 45 元！（店員找回 45 元，但正確應找 55 元）",
+              task:"先說「不好意思」，再告訴店員找零好像不對",
+              keywords:["不對","錯","應該","少找","少給","多找","找錯","好像","差一點","還差","差了","再算"], keywords_mode:'any',
+              accepted_phrases:["不好意思，找零好像不對","應該找我 55 元","不好意思，少找了 10 元","可以再算一次嗎？"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"店員找回 45 元",
+              options:["不好意思，找零好像不對","謝謝，沒關係","哼，你是不是故意的！","請問廁所在哪裡？"],
+              feedback:{ perfect:"很好！禮貌指出很重要！", partial:"說出了重點！", failed:"可以這樣說：「不好意思，找零好像不對」" } },
+            { id:"corrected", shopkeeper_prompt:"啊，對不起！是我算錯了，補你 10 元，找您 55 元！",
+              task:"先說「沒關係」，再說「謝謝」",
+              keywords:["謝謝","沒關係","好","沒事","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["沒關係，謝謝！","好的，謝謝！","謝謝，沒事！","了解，謝謝！","我知道了，謝謝！","OK，謝謝！"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"補好了，找您 55 元",
+              options:["沒關係，謝謝！","哼，不用你管！","喂，我走了！","我給你 100 元"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！", failed:"可以這樣說：「沒關係，謝謝！」" } }
+          ]
+        },
+        {
+          id: "photocopy", name: "影印學習單", icon: "🖨️",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "影印服務：說清楚印幾份、黑白還是彩色，拿回來點張數",
+          steps: [
+            mkStep({ id:"greeting", say:"（老師請你把學習單影印 10 份，印黑白的就好。你帶著學習單和 50 元來到文具店。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要幫忙嗎？", task:"說你要影印，這張印 10 份",
+              options:["我要影印，這張印 10 份","我要買筆記本","隨便印一印","我要印 100 份"], kw:["要影印","這張印"] }),
+            mkStep({ id:"s3", say:"好的！黑白的一張 2 元，彩色的一張 10 元，要印哪一種？", task:"說你要印黑白的",
+              options:["我要印黑白的","你幫我決定","我不要付錢的那種","我要買資料夾"], kw:["要印黑白"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-photocopy-worksheets.png", image_label:"影印好的學習單", say:"好的，請稍等……印好了，你點一下張數喔！（原稿另外放，影印好的學習單有兩疊，每疊 5 張。）", task:"數一數影印好的學習單有幾張，說出張數，再說「對了」",
+              options:["有 10 張，對了","不用數啦","少一張沒關係","印錯也不准你重印"], kw:["10"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"10 張，一張 2 元，一共 20 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","印一張不用錢吧","先欠著"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 30 元", say:"收您 50 元，找您 30 元。原稿也還給您噢！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["30 元，對了，謝謝！","錢我不用數","20 元，對了，謝謝！","（直接走掉）"], kw:["30","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）去影印的時候，要說清楚什麼？", task:"說出要說清楚的：要印幾份、黑白還是彩色",
+              options:["要印幾份、黑白還是彩色","什麼都不用說","店員會自己知道","越多越好"], kw:["要印幾份","黑白還","彩色"], feedback:{ perfect:"答對了！要印幾份、黑白還是彩色。", failed:"記住：要印幾份、黑白還是彩色。" } }),
+          ]
+        },
+        {
+          id: "shop_list", name: "照老師的清單買材料", icon: "📝",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看著清單一樣一樣說，買完再對一次",
+          steps: [
+            mkStep({ id:"greeting", say:"（明天美勞課要用材料。老師發的清單上寫：「膠水一瓶、小包色紙一包」。你帶著清單和 100 元來到文具店。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/a4/icon-a4-glue-shop.png","images/b6/icon-b6-origami-paper.png"], image_label:"膠水 ＋ 小包色紙", say:"請問要找什麼呢？", task:"看著清單，說你要買一瓶膠水和一小包色紙",
+              options:["我要買一瓶膠水和一小包色紙","我要買彩色筆","隨便拿一些就好","我要買兩瓶膠水"], kw:["買一瓶膠水","一小包色紙"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"膠水一瓶 25 元，小包色紙一包 30 元，一共 55 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","可以算 50 元嗎？","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 45 元", say:"收您 100 元，找您 45 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["45 元，對了，謝謝！","錢我不用數","35 元，對了，謝謝！","（直接走掉）"], kw:["45","對了"], mode:'all' }),
+            mkStep({ id:"s5", image:"images/b6/icon-b6-teacher-shopping-list.png", image_label:"老師的清單", say:"（離開櫃台前，你拿出清單，核對袋子裡的膠水一瓶、小包色紙一包，品項和數量都相符。）", task:"看著清單，說出買好的東西：膠水一瓶、小包色紙一包，都買齊了",
+              options:["膠水一瓶、小包色紙一包，都買齊了","我忘了買什麼","清單丟掉了","買多少都沒關係"], kw:["小包色紙一包","膠水一瓶","都買齊"] }),
+            mkStep({ id:"review", say:"（想一想）照著清單買東西，要怎麼做才不會買錯？", task:"說出方法：看著清單一樣一樣說，買完再對一次",
+              options:["看著清單一樣一樣說，買完再對一次","清單不用看","用猜的","全部都買大包的"], kw:["看著清單一樣一樣","對一次","買完"], feedback:{ perfect:"答對了！看著清單一樣一樣說，買完再對一次。", failed:"記住：看著清單一樣一樣說，買完再對一次。" } }),
+          ]
+        },
+      ]
+    }
+
+
+    // ══════════════════════════════════════════
+    // 電話預約
+    // ══════════════════════════════════════════
+    ,{
+      id: "phone_reservation", name: "電話預約", icon: "📞", available: true,
+      theme: { color: '#0891B2', bg: '#E0F2FE', accent: '#0E7490' },
+      situations: [
+        {
+          id: "clinic", name: "診所掛號", icon: "🏥", clerkImage: "images/clerk-clinic.png", clerkName: "診所人員",
+          desc: "打電話給診所預約看診時間",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"您好，這裡是仁愛診所！", task:"跟診所人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","嗨！","早安！","你好，請問一下","你好，我想掛號","哈囉！"],
+              options:["你好！","謝謝再見","請問你們在哪裡？","我要掛號"],
+              feedback:{ perfect:"打招呼很有禮貌！", partial:"說出了重點！", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_appt", shopkeeper_prompt:"請問是要掛號嗎？", task:"說你要預約看診",
+              keywords:["預約","掛號","看診","看醫生","約","掛","看"], keywords_mode:'any',
+              accepted_phrases:["我想預約看診","我要掛號","我要預約看醫生","我想掛號","我要約看診","幫我掛號"],
+              options:["我想預約看診","我要訂便當","謝謝再見","我只是詢問"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！試著說完整：「我想預約看診」", failed:"可以這樣說：「我想預約看診」" } },
+            { id:"symptom", shopkeeper_prompt:"好的，請問是哪裡不舒服？", task:"說你頭痛和發燒",
+              keywords:["頭痛","發燒","頭","燒"], keywords_mode:'any',
+              accepted_phrases:["我頭痛和發燒","我發燒了，頭也在痛","我頭痛、好像有點發燒","頭痛跟發燒","我不舒服，頭痛又發燒"],
+              options:["我頭痛和發燒","我只是想定期檢查","我肚子痛","我要訂位"],
+              feedback:{ perfect:"說明症狀說得很清楚！", partial:"說出了症狀！可以說完整：「我頭痛和發燒」", failed:"可以這樣說：「我頭痛和發燒」" } },
+            { id:"time", shopkeeper_prompt:"好的，請問你方便什麼時間過來？", task:"說你明天下午方便",
+              keywords:["明天"], keywords_mode:'any',
+              accepted_phrases:["明天下午可以","明天下午方便","明天午後好","我明天下午都可以","明天下午三點可以嗎"],
+              options:["明天下午可以","今天下午可以嗎？","我這週都可以","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！可以說：「明天下午可以」", failed:"可以這樣說：「明天下午可以」" } },
+            { id:"confirm", shopkeeper_prompt:"好的，明天下午三點，請問貴姓大名？", task:"先說「我叫」，再說你的名字",
+              keywords:["{名字}"], keywords_mode:'any',
+              accepted_phrases:["我叫{名字}","我的名字是{名字}","我是{名字}","{名字}"],
+              options:["我叫{名字}","好的，謝謝","我不方便告訴你","你猜猜看"],
+              feedback:{ perfect:"說得很好！", partial:"說出了重點！", failed:"說出你的名字就可以囉！" } },
+            { id:"goodbye", shopkeeper_prompt:"好的，明天下午三點，請記得帶健保卡！", task:"跟診所人員說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","知道","好","了解","謝了","多謝","收到"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","好的，謝謝！","知道了！謝謝再見！","感謝！再見！","好，謝謝你！","謝謝，掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "haircut", name: "預約剪髮", icon: "✂️", clerkImage: "images/clerk-salon.png", clerkName: "髮廊人員",
+          desc: "打電話給髮廊預約剪髮時間",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"喂，你好，這裡是美美髮廊！", task:"跟髮廊的人打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","我只是問問","你們在哪裡？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"ask_book", shopkeeper_prompt:"請問有什麼需要幫忙的嗎？", task:"說你想預約",
+              keywords:["預約","約","剪髮","訂"], keywords_mode:'any',
+              accepted_phrases:["我想預約","我要預約","我想預約剪髮"],
+              options:["我想預約","謝謝再見","我只是問問","你們在哪裡？"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我想預約」" } },
+            { id:"service", shopkeeper_prompt:"好的，請問要預約什麼服務？", task:"說你要剪髮",
+              keywords:["剪","修"], keywords_mode:'any',
+              accepted_phrases:["我要剪髮","剪頭髮","我想剪一下頭髮","我要修一下","剪短一點","幫我剪髮"],
+              options:["我要剪髮","我要染髮","我要燙髮","謝謝再見"],
+              frame_ref:"want_item",
+              slots:{ item:{ answer:"剪髮", choices:[
+                { text:"剪髮", emoji:"✂️" }, { text:"染髮", emoji:"🎨" },
+                { text:"燙髮", emoji:"💈" }, { text:"洗髮", emoji:"🧴" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我要剪髮」" } },
+            { id:"time", shopkeeper_prompt:"好的，請問您想預約什麼時候？", task:"說你想預約後天上午",
+              keywords:["後天","上午","明天","這週","方便","約"], keywords_mode:'any',
+              accepted_phrases:["後天上午可以嗎？","我想約後天上午","後天早上方便嗎？","後天上午好了","後天上午有空嗎"],
+              options:["後天上午可以嗎？","今天下午可以嗎？","週末可以嗎？","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「後天上午可以嗎？」" } },
+            { id:"confirm", shopkeeper_prompt:"後天上午十點有空，可以嗎？", task:"先說「好」，再說「謝謝」",
+              keywords:["好","謝謝","沒問題","OK"], keywords_mode:'any',
+              accepted_phrases:["好，謝謝！","可以，謝謝！","沒問題，謝謝！","好！謝謝！","OK，謝謝！","行！謝謝！","好的，謝謝！"],
+              options:["好，謝謝！","你們有賣飲料嗎？","哼，不用你管！","我要剪髮"],
+              feedback:{ perfect:"確認時間說得很好！", partial:"有確認！加上謝謝更有禮貌", failed:"可以這樣說：「好，謝謝！」" } },
+            { id:"goodbye", shopkeeper_prompt:"好的，後天上午十點，請準時喔！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","好","知道","收到","了解"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","好的，謝謝！再見！","收到！謝謝！","知道了！謝謝再見！","謝謝，掰掰！","感謝！再見！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "restaurant", name: "餐廳訂位", icon: "🍽️", clerkImage: "images/clerk-restaurant.png", clerkName: "餐廳人員",
+          desc: "打電話給餐廳預約用餐座位",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            { id:"greeting", shopkeeper_prompt:"您好，幸福餐廳！", task:"跟餐廳人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","你們今天有沒有位子？","你們菜單有什麼？"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } },
+            { id:"ask_book", shopkeeper_prompt:"請問需要什麼服務？", task:"說你想訂位",
+              keywords:["訂位","預約","想訂"], keywords_mode:'any',
+              accepted_phrases:["我想訂位","我要訂位","我想訂位子"],
+              options:["我想訂位","謝謝再見","你們今天有沒有位子？","你們菜單有什麼？"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我想訂位」" } },
+            { id:"people", shopkeeper_prompt:"好的，請問幾位？", task:"說要訂 4 個人的位子",
+              keywords:["四","4","四位","四人","四個人","四個"], keywords_mode:'any',
+              accepted_phrases:["四個人","四位","我們有四個人","要四個位子","四人","4個人"],
+              options:["四個人","兩個人","六個人","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「四個人」" } },
+            { id:"time", shopkeeper_prompt:"好的，請問什麼時候？", task:"說你要訂今晚六點",
+              keywords:["今晚","六點"], keywords_mode:'all',
+              accepted_phrases:["今晚六點","今晚六點鐘","我要訂今晚六點","今晚六點可以嗎"],
+              options:["今晚六點","明晚六點","今晚七點","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「今晚六點」" } },
+            { id:"name", shopkeeper_prompt:"好的，請問訂位的名字？", task:"先說「我叫」，再說你的名字",
+              keywords:["{名字}"], keywords_mode:'any',
+              accepted_phrases:["我叫{名字}","我是{名字}","{名字}","訂位的名字是{名字}"],
+              options:["我叫{名字}","好的謝謝","你猜猜看","隨便寫一個就好"],
+              feedback:{ perfect:"說得很好！", partial:"說出了重點！", failed:"說出你的名字就可以囉！" } },
+            { id:"goodbye", shopkeeper_prompt:"好的！今晚六點，四位，我們等您！", task:"跟餐廳人員說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","掰掰","掰啦","好","知道","收到","謝了","多謝"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","好的，謝謝！","收到，謝謝！","謝謝，再見！","好！謝謝！","謝謝，掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "clinic_change", name: "打電話改約時間", icon: "📅", clerkName: "診所人員",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "不能去預約的時間，提早打電話改約",
+          steps: [
+            mkStep({ id:"greeting", say:"（你原本約了明天下午三點看牙醫，可是明天學校要校外教學。你打電話到診所。）您好，這裡是仁愛診所！", task:"先說「你好」，再說你想改預約的時間",
+              options:["你好，我想改預約的時間", "你們一定要等我有空", "我要買一張電影票", "你們幾點開"], kw:["改預約", "改"], accepted:["你好，我想改預約的時間"] }),
+            mkStep({ id:"say_name", say:"好的，請問貴姓大名？原本約什麼時候？", task:"先說「我叫」，再說你的名字，最後說原本約明天下午三點",
+              options:["我叫{名字}，原本約明天下午三點", "原本約今天早上九點", "你自己查", "隨便啦"], kw:["明天下午三點", "三點"], accepted:["我叫{名字}，原本約明天下午三點"], feedback:{ failed:"先說我叫，再說你的名字，最後說原本約的時間。" } }),
+            mkStep({ id:"new_time", say:"查到了！請問想改到什麼時候？", task:"說你想改到後天下午",
+              options:["我想改到後天下午", "什麼時候都可以", "下次再說", "今天晚上"], kw:["後天下午", "後天"], accepted:["我想改到後天下午"] }),
+            mkStep({ id:"confirm", say:"後天下午四點有空，可以嗎？", task:"先說「好」，再複誦：後天下午四點",
+              options:["好，後天下午四點", "好，明天下午三點見", "三點啦", "我要今天半夜"], kw:["四點"], accepted:["好，後天下午四點"] }),
+            mkStep({ id:"goodbye", say:"好的，改好了！後天下午四點，請記得帶健保卡喔！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝，再見！", "健保卡不用帶吧", "（直接掛斷）", "那我明天也會去"], kw:"bye", accepted:["謝謝，再見！"] }),
+            mkStep({ id:"review", say:"（想一想）不能去預約的時間，要怎麼做？", task:"說出做法：提早打電話，說清楚原本的時間，改約新的時間",
+              options:["提早打電話，說清楚原本的時間，改約新的時間", "不去也不用說", "早就知道不能去，也不用通知", "叫別人去"], kw:["提早", "改約"], accepted:["提早打電話，說清楚原本的時間，改約新的時間"], feedback:{ perfect:"答對了！提早打電話，說清楚原本的時間，改約新的時間。", failed:"記住：提早打電話，說清楚原本的時間，改約新的時間。" } }),
+          ]
+        },
+        {
+          id: "haircut_price", name: "預約前先問價錢", icon: "💇", clerkName: "髮廊人員",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "預約前先問價錢，確認在預算內再約",
+          steps: [
+            mkStep({ id:"ask_price", say:"（你想預約剪頭髮，這次的預算是 300 元，先打電話問價錢。）喂，你好，這裡是美美髮廊！", task:"先說「你好」，再用「請問」問剪頭髮多少錢",
+              options:["你好，請問剪頭髮多少錢？", "你們一定要免費幫我剪", "我要訂一個生日蛋糕", "隨便剪就好"], kw:["多少錢"], accepted:["你好，請問剪頭髮多少錢？"] }),
+            mkStep({ id:"choose", say:"單剪 300 元，洗加剪 400 元喔！", task:"確認單剪沒有超過 300 元，再說你要預約單剪",
+              options:["我要預約單剪", "我要洗加剪", "洗加剪少付 100 元就好", "可以算我 200 元嗎"], kw:["單剪"], accepted:["我要預約單剪"] }),
+            mkStep({ id:"time", say:"好的！請問想約什麼時候？", task:"說你想約星期六早上",
+              options:["我想約星期六早上", "隨便", "現在馬上", "我要訂一個生日蛋糕"], kw:["星期六"], accepted:["我想約星期六早上"] }),
+            mkStep({ id:"say_name", say:"星期六早上十點可以喔！請問貴姓？", task:"先說「好」，再說「我叫」和你的名字",
+              options:["好，我叫{名字}", "不告訴你", "你猜", "我不用預約，你們一定要留位子"], kw:["我叫"], accepted:["好，我叫{名字}"], feedback:{ failed:"先說好，再說我叫和你的名字。" } }),
+            mkStep({ id:"goodbye", say:"好的，星期六早上十點，單剪 300 元，等你喔！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝，再見！", "（直接掛斷）", "我到時候不去也不用說", "那我帶 200 元就好"], kw:"bye", accepted:["謝謝，再見！"] }),
+            mkStep({ id:"review", say:"（想一想）預約前為什麼要先問價錢？", task:"說出理由：先知道價錢，才知道錢夠不夠",
+              options:["先知道價錢，才知道錢夠不夠", "問價錢很丟臉", "到了再說", "反正會有人付"], kw:["先知道價錢", "夠不夠"], accepted:["先知道價錢，才知道錢夠不夠"], feedback:{ perfect:"答對了！先知道價錢，才知道錢夠不夠。", failed:"記住：先知道價錢，才知道錢夠不夠。" } }),
+          ]
+        },
+        {
+          id: "cancel_booking", name: "打電話取消訂位", icon: "🙅",
+          clerkName: "幸福餐廳", clerkImage: "images/clerk-restaurant.png",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "訂了位子不能去，要早一點打電話取消",
+          steps: [
+            mkStep({ id:"greeting", say:"（你昨天用你的名字，訂了幸福餐廳今晚六點、四個人的位子。家人決定不去了，你打電話去取消。）您好，幸福餐廳！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務？", task:"說你要取消今天晚上六點、四個人的訂位",
+              options:["我要取消今天晚上六點、四個人的訂位","我要多訂一桌","我不去了，掰","我要訂明天的位子"], kw:["取消今天晚上六點","四個人","訂位"] }),
+            mkStep({ id:"s3", say:"好的，請問訂位的名字？", task:"說出你的名字",
+              options:["我叫{名字}","你自己查","隨便寫一個","我要取消別人的訂位"], accepted:["我是{名字}","我的名字是{名字}"], kw:["{名字}"] }),
+            mkStep({ id:"s4", say:"查到了！今晚六點、四位，幫您取消了。謝謝您提早通知！", task:"先說「謝謝」，再說「不好意思」，最後說「再見」",
+              options:["謝謝，不好意思，再見！","（直接掛斷）","你們餐廳很難吃","那我明天也不去"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）訂了位子不能去，要怎麼做？", task:"說出方法：早一點打電話取消，說清楚訂位的時間和名字",
+              options:["早一點打電話取消，說清楚訂位的時間和名字","不去就好，不用說","等餐廳打來再說","故意說錯訂位時間"], kw:["早一點打電話取消","說清楚訂位","時間和名字"], feedback:{ perfect:"答對了！早一點打電話取消，說清楚訂位的時間和名字。", failed:"記住：早一點打電話取消，說清楚訂位的時間和名字。" } }),
+          ]
+        },
+        {
+          id: "wrong_number", name: "打錯電話了", icon: "☎️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "打錯要道歉，不在陌生電話裡講自己的事，看清楚號碼重打",
+          steps: [
+            mkStep({ id:"s1", say:"（你要打電話到仁愛診所掛號，可是好像按錯了號碼。你先確認接電話的是不是診所，還不說姓名或病情。）喂？哪裡找？", task:"用「請問」問對方：是仁愛診所嗎？",
+              options:["請問是仁愛診所嗎？","我要掛號，我叫{名字}","你是誰啦","（不說話）"], kw:["仁愛診所"], clerkName:"接電話的叔叔", clerkImage:"images/clerk-wrongnumber-uncle.jpg" }),
+            mkStep({ id:"s2", say:"不是喔，這裡是住家，你打錯了。", task:"先說「不好意思」，再說你打錯了",
+              options:["不好意思，我打錯了","你號碼改一下啦","那你幫我掛號","你家住哪裡？"], kw:["打錯"], clerkName:"接電話的叔叔", clerkImage:"images/clerk-wrongnumber-uncle.jpg" }),
+            mkStep({ id:"s3", say:"沒關係啦！", task:"說「謝謝，再見」",
+              options:["謝謝，再見！","我的電話號碼是……","你家電話幾號？","那我再打一次給你"], kw:["謝謝","再見"], clerkName:"接電話的叔叔", clerkImage:"images/clerk-wrongnumber-uncle.jpg" }),
+            mkStep({ id:"greeting", say:"（你掛掉電話，看著診所的名片，一個一個數字慢慢按。）您好，這裡是仁愛診所！", task:"跟診所人員說「你好」",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet", clerkName:"仁愛診所", clerkImage:"images/clerk-clinic.png" }),
+            mkStep({ id:"s5", say:"請問需要什麼服務？", task:"說你要掛號",
+              options:["我要掛號","你幫我猜","我不說，快幫我辦","隨便幫我掛一科"], kw:["要掛號"], clerkName:"仁愛診所", clerkImage:"images/clerk-clinic.png" }),
+            mkStep({ id:"review", say:"（想一想）打錯電話的時候，要怎麼做？", task:"說出方法：說不好意思、我打錯了，看清楚號碼再重打",
+              options:["說不好意思、我打錯了，看清楚號碼再重打","不看號碼繼續重打","一直打去罵對方","告訴對方自己的名字和電話"], kw:["看清楚號碼","打錯"], clerkName:"仁愛診所", clerkImage:"images/clerk-clinic.png", feedback:{ perfect:"答對了！說不好意思、我打錯了，看清楚號碼再重打。", failed:"記住：說不好意思、我打錯了，看清楚號碼再重打。" } }),
+          ]
+        },
+        {
+          id: "clinic_hours", name: "打電話問看診時間", icon: "🕘",
+          clerkName: "仁愛診所", clerkImage: "images/clerk-clinic.png",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "去之前先打電話問有沒有看診、幾點到幾點",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想明天早上去仁愛診所看感冒，可是不知道明天早上有沒有看診。你打電話到診所。）您好，這裡是仁愛診所！", task:"跟櫃台人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問是要掛號嗎？", task:"先說「不是」，再用「請問」問明天早上有沒有看診",
+              options:["不是，請問明天早上有看診嗎？","我要掛號，快點","醫生叫來聽電話","隨便啦"], kw:["明天早上有看診"] }),
+            mkStep({ id:"s3", say:"明天早上有看診，九點到十二點，現場掛號到十一點半。", task:"先說「好」，再複誦看診九點到十二點、掛號到十一點半",
+              options:["好，看診九點到十二點，掛號到十一點半","我想半夜去","下午三點才開診","我不想聽"], kw:["看診九點","十一點半","十二點"] }),
+            mkStep({ id:"s4", say:"要幫你先掛號嗎？（你想先跟媽媽討論，再決定幾點去。）", task:"說「先不用，謝謝」，再說你問好家人再打來",
+              options:["先不用，謝謝，我問好家人再打來","你幫我隨便掛一科","不問家人就替大家掛號","（直接掛斷）"], kw:["問好家人","先不用","謝謝"] }),
+            mkStep({ id:"s5", say:"好的，歡迎再打來！", task:"說「謝謝，再見」",
+              options:["謝謝，再見！","你好","我要掛號","你是誰？"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）去診所以前，可以先打電話問什麼？", task:"說出可以問的：有沒有看診、幾點到幾點",
+              options:["有沒有看診、幾點到幾點","什麼都不用問","到了再說","問醫生幾歲"], kw:["有沒有看診","幾點到幾點"], feedback:{ perfect:"答對了！有沒有看診、幾點到幾點。", failed:"記住：有沒有看診、幾點到幾點。" } }),
+          ]
+        },
+      ]
+    }
+    // ══════════════════════════════════════════
+    // 問路
+    // ══════════════════════════════════════════
+    ,{
+      id: "ask_directions", name: "問路", icon: "🗺️", available: true,
+      theme: { color: '#16A34A', bg: '#DCFCE7', accent: '#15803D' },
+      situations: [
+        {
+          id: "mrt", name: "問捷運站", icon: "🚇", clerkImage: "images/clerk-mrt.png", clerkName: "捷運站務員",
+          desc: "在捷運站詢問站務員怎麼搭到台北車站",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"（你在捷運市政府站，想搭捷運去台北車站，可是不知道要搭哪一條線、往哪個方向。旁邊剛好有一位站務員，你想問問他。）", task:"先說「不好意思」，再說「請問一下」",
+              keywords:["不好意思","打擾","請問","你好","您好","嗨"], keywords_mode:'any',
+              accepted_phrases:["不好意思，請問一下","打擾一下，請問","不好意思，可以問你嗎？","請問一下！","不好意思！","嗨，請問一下"],
+              options:["不好意思，請問一下","謝謝再見","喂！過來一下！","我要買車票"],
+              feedback:{ perfect:"「不好意思」說得很有禮貌！", partial:"說出了重點！加上「不好意思」更禮貌", failed:"可以這樣說：「不好意思，請問一下」" } },
+            // 外部審閱第三輪：人已經在捷運站，要問的是「怎麼搭到台北車站」，不是「捷運站在哪」
+            { id:"ask_location", shopkeeper_prompt:"請問有什麼需要幫忙的嗎？", task:"用「請問」問站務員去台北車站要怎麼搭",
+              keywords:["台北車站","怎麼搭","方向"], keywords_mode:'any',
+              accepted_phrases:["請問去台北車站要怎麼搭？","請問怎麼搭到台北車站？","請問去台北車站要搭哪個方向？","請問捷運台北車站怎麼走？"],
+              options:["請問去台北車站要怎麼搭？","謝謝再見","我迷路了","我要買車票"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問去台北車站要怎麼搭？」", failed:"可以這樣說：「請問去台北車站要怎麼搭？」" } },
+            { id:"listen", shopkeeper_prompt:"月台在左邊，搭藍色的板南線，往頂埔方向，到台北車站下車就到了！", task:"先說「謝謝你」，再說「我知道了」",
+              keywords:["謝謝","知道","了解","好","收到","OK"], keywords_mode:'any',
+              accepted_phrases:["謝謝你！我知道了！","謝謝你！知道了！","謝謝！知道了！","了解，謝謝！","好，謝謝！","知道了，謝謝！","謝謝，我去找找！","謝謝你！"],
+              options:["謝謝你！我知道了！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"謝謝說得很有禮貌！", partial:"有說謝謝！可以再加上「我知道了」", failed:"可以這樣說：「謝謝你！我知道了！」" } },
+            { id:"confirm", shopkeeper_prompt:"記得要搭往頂埔方向的車喔！", task:"先說「知道了」，再說「謝謝」",
+              keywords:["知道","好","謝謝","了解","記住","對","清楚"], keywords_mode:'any',
+              accepted_phrases:["知道了，謝謝！","好，我記住了！謝謝！","了解，謝謝你！","對，謝謝！","清楚了，謝謝！","記住了！謝謝你！"],
+              options:["知道了，謝謝！","哼，不用你管！","喂，我走了！","請問捷運台北車站怎麼走？"],
+              feedback:{ perfect:"說得很有禮貌！再次道謝很棒！", partial:"有說謝謝！", failed:"可以這樣說：「知道了，謝謝！」" } }
+          ]
+        },
+        {
+          id: "bus", name: "問公車站", icon: "🚌", clerkImage: "images/clerk-bus.png", clerkName: "路人",
+          desc: "詢問公車站在哪裡，以及搭哪路公車",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"（你在南港車站附近，想搭公車去台北101，可是不知道公車站在哪裡。旁邊剛好有一位背著背包的路人，你想問問他。）", task:"先說「不好意思」，再說「請問一下」",
+              keywords:["不好意思","請問","打擾","你好","您好"], keywords_mode:'any',
+              accepted_phrases:["不好意思，請問一下","打擾一下","請問！","不好意思，可以問你嗎？","不好意思！請問"],
+              options:["不好意思，請問一下","謝謝再見","喂！公車站在哪！","我要買東西"],
+              feedback:{ perfect:"「不好意思」說得很有禮貌！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，請問一下」" } },
+            { id:"ask_stop", shopkeeper_prompt:"好的，請問需要什麼幫忙？", task:"用「請問」問路人附近有沒有公車站",
+              keywords:["公車","公車站"], keywords_mode:'any',
+              accepted_phrases:["請問附近有公車站嗎？","最近的公車站在哪裡？","公車站怎麼走？","公車站在哪？","請問公車站在哪裡？","附近有公車站嗎？"],
+              options:["請問附近有公車站嗎？","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「請問附近有公車站嗎？」" } },
+            { id:"ask_route", shopkeeper_prompt:"公車站就在那邊！請問你要去哪裡？", task:"先說你要去台北101，再用「請問」問要搭哪路公車",
+              keywords:["101","哪路","搭哪","幾號","幾路","哪班","公車"], keywords_mode:'any',
+              accepted_phrases:["我要去台北101，請問搭哪路公車？","去101搭幾號公車？","請問哪路公車到101？","台北101要搭什麼車？","到101要搭幾路？"],
+              options:["我要去台北101，請問搭哪路公車？","我要結帳","謝謝再見","我要買一杯飲料"],
+              feedback:{ perfect:"問得很好！一次問到地點和路線！", partial:"說出了重點！", failed:"可以這樣說：「我要去台北101，請問搭哪路公車？」" } },
+            { id:"thanks", shopkeeper_prompt:"可以搭 281 路，在捷運台北101世貿站下車！", task:"先說「謝謝你」，再說「再見」",
+              keywords:["謝謝","再見","感謝","掰掰","掰啦","知道","了解","好"], keywords_mode:'any',
+              accepted_phrases:["謝謝你！再見！","感謝！再見！","謝謝，掰掰！","了解！謝謝再見！","知道了！謝謝！","好，謝謝你！再見！"],
+              options:["謝謝你！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整", failed:"可以這樣說：「謝謝你！再見！」" } }
+          ]
+        },
+        {
+          id: "lost", name: "我迷路了", icon: "😰", clerkImage: "images/clerk-lost.png", clerkName: "路人",
+          desc: "在陌生地方迷路，向路人求助找到目的地",
+          steps: [
+            { id:"greeting", shopkeeper_prompt:"（你第一次一個人來到陌生的地方，走著走著就迷路了，不知道該往哪裡走。旁邊有一位路人，你要禮貌地向他求助。）", task:"先說「不好意思」，再告訴路人你迷路了",
+              keywords:["不好意思","請問","迷路","找不到","你好","幫"], keywords_mode:'any',
+              accepted_phrases:["不好意思，我迷路了！","請問一下，我找不到路！","不好意思，可以幫我嗎？我迷路了","打擾一下，我迷路了","不好意思，我找不到路"],
+              options:["不好意思，我迷路了！","謝謝再見","你好","請問一下！"],
+              feedback:{ perfect:"勇敢開口求助很棒！「不好意思」也說得很好！", partial:"說出了重點！加上「不好意思」更有禮貌", failed:"可以這樣說：「不好意思，我迷路了！」" } },
+            { id:"ask_help", shopkeeper_prompt:"沒關係！請問你要去哪裡？", task:"說你要找便利商店",
+              keywords:["全家","便利商店","7-11","超商"], keywords_mode:'any',
+              accepted_phrases:["我在找便利商店","請問便利商店在哪裡？","便利商店在哪裡？","我要找便利商店","請問附近有便利商店嗎？","便利商店怎麼走？"],
+              options:["我在找便利商店","我要結帳","廁所在哪裡？","謝謝再見"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"可以這樣說：「我在找便利商店」" } },
+            { id:"listen", shopkeeper_prompt:"便利商店就在右邊那裡，往右走幾步就看到了！", task:"先說「謝謝你」，再說「我知道了」",
+              keywords:["謝謝","感謝","好","了解","知道","OK"], keywords_mode:'any',
+              accepted_phrases:["謝謝你！我知道了！","感謝你！","謝謝！知道了！","太感謝了！","謝謝你的幫助！","了解！謝謝你！","感謝！","謝謝你！"],
+              options:["謝謝你！我知道了！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"謝謝說得很有誠意！太棒了！", partial:"有說謝謝！可以再加上「我知道了」", failed:"可以這樣說：「謝謝你！我知道了！」" } },
+            { id:"confirm_dir", shopkeeper_prompt:"往右走就對了，加油！", task:"先說「謝謝」，再說「再見」",
+              keywords:["謝謝","再見","好","知道","了解","掰掰","掰啦","感謝"], keywords_mode:'any',
+              accepted_phrases:["謝謝！再見！","好，謝謝你！再見！","了解！謝謝再見！","感謝！再見！","謝謝，掰掰！","謝謝你！掰掰！"],
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","快點啦，很煩耶！"],
+              feedback:{ perfect:"說得很有禮貌！找到目的地加油！", partial:"有說謝謝！再加上「再見」更完整", failed:"可以這樣說：「謝謝！再見！」" } }
+          ]
+        },
+        {
+          id: "toilet", name: "問廁所在哪裡", icon: "🚻", clerkName: "服務台人員",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "用「請問」問廁所在哪裡，聽完複誦方向",
+          steps: [
+            mkStep({ id:"ask", say:"（你在百貨公司逛街，想上廁所，走到服務台。）請問需要什麼服務？", task:"先說「不好意思」，再用「請問」問廁所在哪裡",
+              options:["不好意思，請問廁所在哪裡？", "我要買東西", "廁所啦快點", "我要訂餐廳"], kw:["請問廁所", "廁所在哪"], accepted:["不好意思，請問廁所在哪裡？"] }),
+            mkStep({ id:"repeat", say:"往前直走到底，電梯旁邊就是了！", task:"先說「好」，再複誦：直走到底，電梯旁邊",
+              options:["好，直走到底，電梯旁邊", "左轉對吧", "不用看方向，我亂走就好", "我要搭手扶梯下樓"], kw:["直走到底", "電梯"], accepted:["好，直走到底，電梯旁邊"] }),
+            mkStep({ id:"thanks", say:"對！門口有廁所的標誌。", task:"說「謝謝你」",
+              options:["謝謝你！", "標誌我不看", "快走了", "不用你說"], kw:["謝謝"], accepted:["謝謝你！"] }),
+            mkStep({ id:"review", say:"（想一想）問路時要怎麼做才不會記錯？", task:"說出方法：聽完複誦一次，不懂就再問",
+              options:["聽完複誦一次，不懂就再問", "聽一次就好", "隨便走走看", "沒聽清楚也不用問"], kw:["複誦", "再問"], accepted:["聽完複誦一次，不懂就再問"], feedback:{ perfect:"答對了！聽完複誦一次，不懂就再問。", failed:"記住：聽完複誦一次，不懂就再問。" } }),
+          ]
+        },
+        {
+          id: "say_again", name: "聽不懂請再說一次", icon: "🔁", clerkName: "路人阿姨",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "對方講太快，禮貌請他說慢一點，再複誦確認",
+          steps: [
+            mkStep({ id:"ask_slow", say:"（你要去郵局，問了路邊一位阿姨，她講得很快。）郵局喔，前面紅綠燈右轉，第二個路口左轉，再直走就看到了！", task:"先說「不好意思」，再請她說慢一點",
+              options:["不好意思，可以說慢一點嗎？", "（假裝聽懂走掉）", "你講太快了啦", "我聽不懂算了"], kw:["慢一點", "再說一次"], accepted:["不好意思，可以說慢一點嗎？"] }),
+            mkStep({ id:"repeat1", say:"喔好！前面紅綠燈，右轉。", task:"先說「好」，再複誦：紅綠燈右轉",
+              options:["好，紅綠燈右轉", "左轉對吧", "不用說了，我亂走", "然後呢快點"], kw:["紅綠燈右轉", "右轉"], accepted:["好，紅綠燈右轉"] }),
+            mkStep({ id:"repeat2", say:"然後第二個路口，左轉，直走就看到郵局了。", task:"複誦：第二個路口左轉，直走",
+              options:["第二個路口左轉，直走", "第一個路口左轉", "右轉對吧", "直走就好，不用轉彎"], kw:["第二個路口"], accepted:["第二個路口左轉，直走"] }),
+            mkStep({ id:"thanks", say:"對！就是這樣！", task:"說「謝謝阿姨」",
+              options:["謝謝阿姨！", "你剛剛講太快了啦", "早說嘛", "（直接走掉）"], kw:["謝謝"], accepted:["謝謝阿姨！"] }),
+            mkStep({ id:"review", say:"（想一想）聽不懂別人說的話，要怎麼做？", task:"說出方法：請對方說慢一點或再說一次，再複誦確認",
+              options:["請對方說慢一點或再說一次，再複誦確認", "假裝聽懂", "不好意思問", "隨便猜"], kw:["慢一點", "複誦"], accepted:["請對方說慢一點或再說一次，再複誦確認"], feedback:{ perfect:"答對了！請對方說慢一點或再說一次，再複誦確認。", failed:"記住：請對方說慢一點或再說一次，再複誦確認。" } }),
+          ]
+        },
+        {
+          id: "hospital_way", name: "在醫院找看病的地方", icon: "🏥",
+          clerkName: "醫院志工", clerkImage: "images/clerk-hospital-volunteer.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "在大地方找不到要去的地方，到服務台問，複誦幾樓、怎麼走",
+          steps: [
+            mkStep({ id:"greeting", say:"（你陪奶奶到醫院看眼科，已經掛好號了，可是不知道眼科在哪裡。你走到服務台。）你好！", task:"跟志工打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼幫忙？", task:"用「請問」問志工眼科在哪裡",
+              options:["請問眼科在哪裡？","我要找牙科","你自己猜啦","快帶路，不准問"], kw:["眼科在哪裡"] }),
+            mkStep({ id:"s3", say:"眼科在三樓，搭右邊的電梯上去，出電梯左轉就到了！", task:"複誦：三樓，搭右邊的電梯，出電梯左轉",
+              options:["三樓，搭右邊的電梯，出電梯左轉","一樓，走樓梯下去","三樓，出電梯右轉","隨便啦"], kw:["出電梯左轉","搭右邊"] }),
+            mkStep({ id:"s4", say:"對！到了眼科，請到報到櫃台，依護理師指示辦理報到。", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","我不要給","你好囉嗦","我要看牙科"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）在醫院找不到看病的地方，要怎麼做？", task:"說出方法：到服務台問，記住幾樓和怎麼走",
+              options:["到服務台問，記住幾樓和怎麼走","一間一間開門找","隨便走走看","隨便找一科進去"], kw:["到服務台問","記住幾樓","怎麼走"], feedback:{ perfect:"答對了！到服務台問，記住幾樓和怎麼走。", failed:"記住：到服務台問，記住幾樓和怎麼走。" } }),
+          ]
+        },
+        {
+          id: "give_directions", name: "有人向你問路", icon: "🗺️",
+          clerkName: "問路的阿姨", clerkImage: "images/clerk-stranger-map.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "願意且覺得安全時，可以口頭指路；不跟陌生人走、不上陌生人的車",
+          steps: [
+            mkStep({ id:"s1", say:"（你在公車站，一位阿姨站得不近，向你問路。你知道火車站往前直走、第二個路口右轉，前面有一間便利商店。）不好意思，請問火車站怎麼走？", task:"告訴阿姨：往前直走，第二個路口右轉",
+              options:["往前直走，第二個路口右轉","往後走，第一個路口左轉","直走後第三個路口左轉","你自己查啦"], kw:["第二個路口右轉","往前直走"] }),
+            mkStep({ id:"s2", say:"謝謝你！你可以帶我走過去嗎？我怕找不到。", task:"先說「不好意思」，再說你不能帶她去，前面的便利商店可以問店員",
+              options:["不好意思，我不能帶你去，前面的便利商店可以問店員","好，我跟你走","你開車載我，我帶你去","我的電話給你，晚上再找我"], kw:["便利商店","不能帶","問店員"] }),
+            mkStep({ id:"s3", say:"好，那我去問問看，謝謝你喔！", task:"說「不客氣」",
+              options:["不客氣","你要給我錢","你住哪裡？","我要跟你去"], kw:["不客氣"] }),
+            mkStep({ id:"review", say:"（想一想）陌生人向你問路，要怎麼做？", task:"說出方法：知道就用說的告訴他，不跟他走，不上他的車",
+              options:["知道就用說的告訴他，不跟他走，不上他的車","帶他走過去","坐他的車幫他帶路","把自己的電話給他"], kw:["知道就用說","不跟他走","告訴他"], feedback:{ perfect:"答對了！知道就用說的告訴他，不跟他走，不上他的車。", failed:"記住：知道就用說的告訴他，不跟他走，不上他的車。" } }),
+          ]
+        },
+        {
+          id: "find_atm", name: "找最近的提款機", icon: "🏧",
+          clerkName: "店家老闆", clerkImage: "images/clerk-shop-owner.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "要領錢時問哪裡有提款機",
+          steps: [
+            mkStep({ id:"s1", say:"（你要領錢買東西，想找最近的提款機。路邊有一位正在掃地的店家老闆。）", task:"先說「不好意思」，再用「請問」問附近哪裡有提款機",
+              options:["不好意思，請問附近哪裡有提款機？","喂，錢借我","提款卡密碼幫我記一下","廁所在哪裡？"], kw:["附近哪裡有提款機"] }),
+            mkStep({ id:"s2", say:"前面那間便利商店裡面就有提款機，過了斑馬線就到了！", task:"複誦：前面那間便利商店裡面，過了斑馬線就到",
+              options:["前面那間便利商店裡面，過了斑馬線就到","後面那間銀行","不用過馬路","左邊那間郵局"], kw:["前面那間便利商店裡面","斑馬線就到"] }),
+            mkStep({ id:"s3", say:"對！走行人穿越道，先停下來看行人號誌和左右來車，確認安全再過馬路。", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","我直接衝過去就好","你好囉嗦","你可以幫我領嗎？"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）在外面要領錢，可以去哪裡找提款機？", task:"說出地方：便利商店、銀行或郵局",
+              options:["便利商店、銀行或郵局","路邊隨便問人借","公園","找朋友拿"], kw:["銀行或郵局","便利商店"], feedback:{ perfect:"答對了！便利商店、銀行或郵局。", failed:"記住：便利商店、銀行或郵局。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 麵包店（第一部分・基礎買賣）
+    // ══════════════════════════════════════════
+    {
+      id: "bakery", name: "麵包店", icon: "🍞", available: true,
+      theme: { color: '#A16207', bg: '#FEFCE8', accent: '#854D0E' },
+      situations: [
+        {
+          id: "basic", name: "基本購買", icon: "🍞",
+          simple_steps: ["see_price", "purchase", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問麵包位置、看標價算兩個的總價、確認錢包夠不夠的完整購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有奶油麵包？"], kw:"greetBoss",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"ask_location", say:"請問想找哪一種麵包呢？", task:"用「請問」問老闆菠蘿麵包在哪裡",
+              options:["請問菠蘿麵包在哪裡？","我要結帳","謝謝再見","請問多少錢？"], kw:["菠蘿"],
+              image:"images/a4/icon-a4-bread-shop.png", image_label:"菠蘿麵包",
+              frame_ref:"ask_location", slots:{ item:{ answer:"菠蘿麵包", choices:[
+                { text:"菠蘿麵包", emoji:"🍍" }, { text:"蛋糕", emoji:"🍰" },
+                { text:"三明治", emoji:"🥪" }, { text:"貝果", emoji:"🥯" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問菠蘿麵包在哪裡？」" } }),
+            mkStep({ id:"no_more", say:"菠蘿麵包在你左手邊那一排喔！請問還需要別的嗎？", task:"跟老闆說：「沒有」，再說「謝謝你」",
+              options:["沒有，謝謝你！","我要買蛋糕","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買蛋糕", emoji:"🍰" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你走到左手邊那一排，看了一下標價，菠蘿麵包一個 25 元。你想要買 2 個。）",
+              // 不寫「兩個」：cnNumToArabic 會把「兩個」轉成「2 個」，高級判定就把 2 當必答數字，
+              //「總共 50 元」這種算對卻沒提數量的答法會被判失敗（數量已在旁白交代）
+              task:"算算看：菠蘿麵包總共多少錢",
+              image:["images/a4/icon-a4-bread-shop.png::25 元","+","images/a4/icon-a4-bread-shop.png::25 元","=","50 元"], image_label:"菠蘿麵包一個 25 元，買 2 個",
+              options:["2 個菠蘿麵包是 50 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["50"],
+              accepted:["2 個菠蘿麵包是 50 元","2 個是 50 元","總共 50 元","50 元"],
+              frame:{ template:"2 個菠蘿麵包是 {price}", slots:{ price:{ answer:"50 元", choices:[
+                { text:"50 元", emoji:"💴" }, { text:"25 元", emoji:"🪙" },
+                { text:"70 元", emoji:"💰" }, { text:"20 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"算得很好！一個 25 元，2 個就是 50 元！", partial:"說出了重點！記得說清楚總共多少錢", failed:"25 加 25 等於 50，可以說：「2 個菠蘿麵包是 50 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有一個 50 元和兩個 10 元，錢夠買。）",
+              task:"數數看：你的錢包裡有多少錢",
+              image:["images/money/50_yuan_front.png","+","images/money/10_yuan_front.png","+","images/money/10_yuan_front.png","=","70 元"],
+              image_label:"錢包裡的錢",
+              options:["我有 70 元","我沒有錢","我要買麵包","請問廁所在哪裡？"], kw:["70","七十"],
+              accepted:["我有 70 元","我有七十元","錢包裡有 70 元","50 元加 20 元是 70 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"70 元", choices:[
+                { text:"70 元", emoji:"💰" }, { text:"50 元", emoji:"💴" },
+                { text:"20 元", emoji:"🪙" }, { text:"10 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"數得很好！50 元加兩個 10 元就是 70 元！", partial:"說出了重點！記得說清楚一共有多少錢", failed:"50 元加 10 元加 10 元等於 70 元，可以說：「我有 70 元」" } }),
+            mkStep({ id:"purchase", say:"菠蘿麵包一個 25 元，你買 2 個，總共 50 元，要買嗎？", task:"先說「好」，再告訴老闆你要買這 2 個",
+              options:["好，我要買！","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
+              accepted:["好，我要買！","我要買這 2 個","我要買菠蘿麵包","要買！","好的，我要買！"],
+              image:["images/a4/icon-a4-bread-shop.png::25 元","images/a4/icon-a4-bread-shop.png::25 元"], image_label:"2 個菠蘿麵包",
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"好，我要買！", choices:[
+                { text:"好，我要買！", emoji:"🛒" }, { text:"你好！", emoji:"👋" },
+                { text:"請問廁所在哪裡？", emoji:"🚻" }, { text:"謝謝再見", emoji:"🙏" } ] } } },
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「好的，我要買！」", failed:"可以這樣說：「好，我要買！」" } }),
+            mkStep({ id:"checkout", say:"好的！總共 50 元。", task:"把 50 元拿給老闆，說「給你 50 元」，再說「謝謝」",
+              options:["給你 50 元，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元，謝謝！","50 元給你，謝謝！","謝謝！這是 50 元","這是 50 元，謝謝！"],
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              feedback:{ perfect:"太棒了！把錢給老闆，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 50 元，謝謝！」" } }),
+            mkStep({ id:"goodbye", say:"好的，剛好 50 元，請拿好，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買吐司時發現錢不夠，改買便宜的替代品",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有奶油麵包？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問想要買什麼？", task:"告訴老闆你要買一條吐司",
+              options:["我要買一條吐司","我要買蛋糕","謝謝再見","請問廁所在哪裡？"], kw:["吐司"],
+              image:"images/a4/icon-a4-toast-shop.png", image_label:"一條吐司",
+              frame_ref:"want_item", slots:{ item:{ answer:"吐司", choices:[
+                { text:"吐司", emoji:"🍞" }, { text:"蛋糕", emoji:"🍰" }, { text:"貝果", emoji:"🥯" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！這條吐司 45 元。（你打開錢包，發現只有 30 元，不夠 45 元）", task:"先說「不好意思」，再告訴老闆你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 15 元","還差 15 元","我的錢不到 45 元","我只有 30 元，錢不夠","我的錢不夠"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 30 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換小一點的餐包，一個只要 15 元？（你也喜歡吃餐包，覺得換成餐包可以。）", task:"先說「好」，再說你要改買餐包",
+              options:["好，我要餐包","我還是要吐司","哼，不用你管！","請問廁所在哪裡？"], kw:["餐包","改"],
+              image:"images/b6/icon-b6-dinner-bun.png::15 元", image_label:"小一點的餐包",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"好的，餐包一個 15 元。", task:"把 20 元拿給老闆，說「給你 20 元」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"20 元",
+              options:["給你 20 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "20", "二十"],
+              accepted:["給你 20 元","我給你 20 元","20 元給你","這是 20 元"] }),
+            mkStep({ id:"get_change", say:"收您 20 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請老闆幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請老闆先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "cant_find_item", name: "找不到想要的口味", icon: "🔍",
+          simple_steps: ["ask_redbean", "sold_out", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "紅豆麵包賣完了，接受店員建議改買其他口味",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨麵包店！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"], kw:"greetBoss",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_redbean", say:"請問需要幫忙嗎？", task:"用「請問」問老闆有沒有紅豆麵包",
+              options:["請問有沒有紅豆麵包？","我要吐司","謝謝再見","我要蛋糕"], kw:["紅豆"],
+              image:"images/a4/icon-a4-bread-shop.png", image_label:"紅豆麵包",
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問有沒有紅豆麵包？」" } }),
+            mkStep({ id:"sold_out", say:"不好意思，紅豆麵包剛好賣完了！但我們有奶酥口味的喔。（你也喜歡奶酥口味，想試試看。）", task:"先說「好」，再說你要試試看奶酥麵包",
+              options:["好，我要試試看奶酥的","哼，怎麼都沒有！","請問廁所在哪裡？","謝謝再見"], kw:["奶酥","試試"],
+              image:"images/a4/icon-a4-bread-shop.png", image_label:"奶酥麵包",
+              feedback:{ perfect:"很好！願意嘗試新口味！", partial:"說出了重點！" } }),
+            mkStep({ id:"decide", say:"奶酥麵包很多人喜歡喔！（你想買兩個，明天早餐也有得吃。）", task:"說你要買兩個奶酥麵包",
+              options:["我要買兩個","我只要一個","請問廁所在哪裡？","謝謝再見"], kw:["兩個"],
+              image:["images/a4/icon-a4-bread-shop.png","images/a4/icon-a4-bread-shop.png"], image_label:"2 個奶酥麵包",
+              feedback:{ perfect:"很好！清楚說明數量！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩個奶酥麵包共 50 元。", task:"把 50 元拿給老闆，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"goodbye", say:"收您 50 元，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","這個多少錢？"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "ask_fresh", name: "詢問新不新鮮", icon: "⏰",
+          desc: "詢問麵包是不是剛出爐的，再決定要買什麼",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","營業到幾點？"], kw:"greetBoss",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_fresh", say:"請問需要幫忙嗎？", task:"用「請問」問老闆可頌是不是剛出爐的",
+              options:["請問可頌是剛出爐的嗎？","我要結帳","謝謝再見","有沒有折扣？"], kw:["剛出爐","新鮮","出爐"],
+              accepted:["請問可頌是剛出爐的嗎？","請問麵包是剛出爐的嗎？","請問這是剛出爐的嗎？"],   // 2026-09-26 品項改可頌；原句留著
+              image:"images/b6/icon-b6-croissant.png", image_label:"可頌",
+              feedback:{ perfect:"問得很好！懂得關心新鮮度！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"是的！這批是半小時前剛出爐的，還熱熱的喔！", task:"說你要買兩個可頌",
+              options:["我要買兩個可頌","我要一個就好","請問廁所在哪裡？","謝謝再見"], kw:["可頌","兩個"],
+              image:["images/b6/icon-b6-croissant.png","images/b6/icon-b6-croissant.png"], image_label:"兩個可頌",
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩個可頌共 70 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 30 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 30 元",
+              options:["30 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["30","三十","對了"],
+              accepted:["30 元，對了，謝謝！","30 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "order_cake", name: "預訂生日蛋糕", icon: "🎂",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "說清楚蛋糕和要寫的字，先付訂金，記住取貨時間和剩下的錢",
+          steps: [
+            mkStep({ id:"greeting", say:"（下星期六是媽媽的生日。你看好了一個 6 吋草莓蛋糕，想先訂下來，蛋糕上要寫「媽媽生日快樂」。）你好！歡迎光臨麵包店！", task:"跟老闆打招呼",
+              options:["你好！", "謝謝再見", "蛋糕多少錢？", "我要結帳"], kw:"greetBoss", accepted:["你好！", "您好！", "哈囉！", "嗨！", "老闆好！"] }),
+            mkStep({ id:"order", image:"images/b6/icon-b6-strawberry-cake-6in.png", image_label:"6 吋草莓蛋糕", say:"請問需要什麼呢？", task:"說你想訂一個 6 吋草莓生日蛋糕，下星期六要拿",
+              options:["我想訂一個 6 吋草莓生日蛋糕，下星期六要拿", "我要一個菠蘿麵包", "今天就要拿", "隨便啦"], kw:["生日蛋糕", "草莓"], accepted:["我想訂一個 6 吋草莓生日蛋糕，下星期六要拿"] }),
+            mkStep({ id:"write_text", say:"好的！6 吋草莓蛋糕 450 元。蛋糕上要寫什麼字呢？", task:"用「請」告訴老闆，蛋糕上要寫「媽媽生日快樂」",
+              options:["請寫「媽媽生日快樂」", "寫什麼都可以", "不用寫字，隨便啦", "我要巧克力的"], kw:["生日快樂"], accepted:["請寫「媽媽生日快樂」"], feedback:{ failed:"蛋糕上要寫的字要說清楚，前面加上請。" } }),
+            mkStep({ id:"deposit", say:"好的！預訂要先付訂金 200 元，拿蛋糕的時候再付剩下的錢喔。", task:"把 200 元拿給老闆，說「給你 200 元」",
+              options:["給你 200 元", "我全部都不付", "蛋糕拿到再說", "可以免費嗎？"], kw:[...KW_PRESETS.hand, "200"], accepted:["給你 200 元", "我給你 200 元", "200 元給你", "這是 200 元"], image:["images/money/100_yuan_front.png", "images/money/100_yuan_front.png"], image_label:"200 元" }),
+            mkStep({ id:"confirm_pickup", say:"收您 200 元訂金，這是訂購單。下星期六下午兩點以後來拿，剩下 250 元喔！", task:"先說「好」，再複誦：星期六下午兩點以後拿，還要付 250 元",
+              options:["好，星期六下午兩點以後拿，還要付 250 元", "星期五早上拿，剩下的錢不用付", "訂購單我不要", "我要現在拿走，不付剩下的錢"], kw:["兩點", "250"], accepted:["好，星期六下午兩點以後拿，還要付 250 元"] }),
+            mkStep({ id:"review", say:"（想一想）預訂蛋糕時，要記住哪些事？", task:"說出重點：拿蛋糕的時間，還有剩下要付多少錢",
+              options:["拿蛋糕的時間，還有剩下要付多少錢", "什麼都不用記", "到時候再問就好", "訂購單丟掉沒關係"], kw:["時間", "剩下"], accepted:["拿蛋糕的時間，還有剩下要付多少錢"], feedback:{ perfect:"答對了！拿蛋糕的時間，還有剩下要付多少錢。", failed:"記住：拿蛋糕的時間，還有剩下要付多少錢。" } }),
+          ]
+        },
+        {
+          id: "tongs_tray", name: "自己用夾子和托盤拿麵包", icon: "🥐",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "台灣麵包店的自助夾取流程：托盤、夾子、拿到櫃台結帳",
+          steps: [
+            mkStep({ id:"greeting", say:"（你第一次自己來這家麵包店。麵包都放在架子上，門口放著托盤和夾子。你想買一個肉鬆麵包和一個蔥麵包，身上有 100 元。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", say:"（你站在門口，不知道要怎麼拿麵包。）請問需要幫忙嗎？", task:"用「請問」問老闆，麵包要怎麼拿",
+              options:["請問麵包要怎麼拿？","我用手拿就好","你幫我全部拿過來啦","隨便啦"], kw:["怎麼拿","麵包"] }),
+            mkStep({ id:"s3", say:"先拿一個托盤和一個夾子，用夾子把麵包夾到托盤上，再拿到櫃台結帳喔！", task:"先說「好」，再複誦：用夾子夾到托盤上，再拿到櫃台",
+              options:["好，用夾子夾到托盤上，再拿到櫃台","用手拿比較快","夾子掉到地上也繼續用","我直接拿走就好"], kw:["再拿到櫃台","用夾子夾","托盤上"] }),
+            mkStep({ id:"pay", image:["images/b6/icon-b6-pork-floss-bun.png::35 元","images/b6/icon-b6-scallion-bun.png::30 元"], image_label:"肉鬆麵包 ＋ 蔥麵包", say:"（你夾好一個肉鬆麵包、一個蔥麵包，放在托盤上，拿到櫃台。）肉鬆麵包 35 元、蔥麵包 30 元，一共 65 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","可以算 50 元嗎？","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 35 元", say:"收您 100 元，找您 35 元，謝謝光臨！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["35 元，對了，謝謝！","錢我不用數","25 元，對了，謝謝！","（直接走掉）"], kw:["35","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）在麵包店自己拿麵包，要怎麼做？", task:"說出方法：拿托盤和夾子，用夾子夾，不要用手拿",
+              options:["拿托盤和夾子，用夾子夾，不要用手拿","用手拿就好","摸一摸再決定","直接吃一口試試看"], kw:["不要用手拿","用夾子夾","拿托盤"], feedback:{ perfect:"答對了！拿托盤和夾子，用夾子夾，不要用手拿。", failed:"記住：拿托盤和夾子，用夾子夾，不要用手拿。" } }),
+          ]
+        },
+        {
+          id: "allergy_ask", name: "說出過敏，問清楚材料", icon: "🥜",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "過敏要主動說，確認材料與共用器具是否可能沾到過敏原；不確定就不買、不吃",
+          steps: [
+            mkStep({ id:"greeting", say:"（你對花生和堅果過敏。你想買一個麵包當明天的早餐。家人提醒你：要先問清楚，不確定就不要買、不要吃。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", say:"請問想找哪一種麵包呢？", task:"先說你對花生和堅果過敏，再用「請問」問哪一種麵包沒有加",
+              options:["我對花生和堅果過敏，請問哪一種麵包沒有加？","隨便給我一個，不用看材料","花生挑掉就能吃","過敏不用告訴你"], kw:["哪一種麵包沒有加","堅果過敏","對花生"] }),
+            mkStep({ id:"s3", say:"我看了材料表，原味貝果沒有加花生和堅果。不過，店裡也有做核桃麵包和花生奶酥。", task:"用「請問」問原味貝果會不會沾到花生或堅果",
+              options:["請問原味貝果會不會沾到花生或堅果？","吃一點點核桃麵包沒關係啦","那我要花生奶酥","看不見花生就能吃"], kw:["原味貝果","堅果"] }),
+            mkStep({ id:"s4", say:"製作時有共用器具，我不能確定原味貝果有沒有沾到。", task:"先說「那我先不買了」，再說「謝謝你」",
+              options:["那我先不買了，謝謝你","沾到一點也沒關係","以前吃過沒事，這次一定可以","吃一口試試看"], kw:["先不買","謝謝"] }),
+            mkStep({ id:"s5", say:"好，謝謝你先問清楚。", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝，再見！","你不要囉嗦","我要偷拿一個","我偏要吃花生奶酥"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）對食物過敏，買東西的時候要怎麼做？", task:"說出方法：先說對什麼過敏，問材料和會不會沾到，不確定就不買、不吃",
+              options:["先說對什麼過敏，問材料和會不會沾到，不確定就不買、不吃","看起來沒有就可以吃","吃一點點沒關係","以前吃過就不用問"], kw:["對什麼過敏","問材料","不確定"], feedback:{ perfect:"答對了！先說對什麼過敏，問材料和會不會沾到，不確定就不買、不吃。", failed:"記住：先說對什麼過敏，問材料和會不會沾到，不確定就不買、不吃。" } }),
+          ]
+        },
+        {
+          id: "cake_keep", name: "問蛋糕捲怎麼保存", icon: "🍰",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "買了不是馬上要吃的食物，先問可以放多久、要怎麼放",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想買一條原味鮮奶油蛋糕捲，明天下午帶去外婆家。你身上有 200 元，也帶了裝有冰寶的保冷袋。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-swiss-roll.png", image_label:"蛋糕捲", say:"請問需要幫忙嗎？", task:"說你要買一條蛋糕捲",
+              options:["我要買一條蛋糕捲","我要買菠蘿麵包","隨便啦","你幫我決定"], kw:["買一條蛋糕捲"] }),
+            mkStep({ id:"s3", say:"好的！原味蛋糕捲一條 180 元。", task:"用「請問」問老闆：蛋糕捲可以放到明天下午嗎？要怎麼放？",
+              options:["請問蛋糕捲可以放到明天下午嗎？要怎麼放？","放多久都沒關係吧","可以算 100 元嗎？","我要兩條吐司"], kw:["明天下午","要怎麼放","蛋糕捲"] }),
+            mkStep({ id:"s4", say:"要放冰箱冷藏，明天內吃完。帶出門要用保冷袋喔！", task:"先說「好」，再說回家馬上冷藏，明天內吃完",
+              options:["好，回家馬上冷藏，明天內吃完","放在桌上就好","放一個星期沒關係","我不想聽"], kw:["回家馬上冷藏","明天內吃完"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"好的，一共 180 元。", task:"把 200 元拿給老闆，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","可以算 150 元嗎？","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元", say:"收您 200 元，找您 20 元，謝謝光臨！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["20 元，對了，謝謝！","錢我不用數","10 元，對了，謝謝！","（直接走掉）"], kw:["20","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買了不是今天要吃的食物，要先問什麼？", task:"說出要問的：可以放多久、要怎麼放",
+              options:["可以放多久、要怎麼放","什麼都不用問","放著就好","壞了再丟"], kw:["要怎麼放","放多久"], feedback:{ perfect:"答對了！可以放多久、要怎麼放。", failed:"記住：可以放多久、要怎麼放。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 美妝雜貨店（第一部分・基礎買賣）
+    // ══════════════════════════════════════════
+    {
+      id: "beauty_store", name: "美妝雜貨店", icon: "💄", available: true,
+      theme: { color: '#C026D3', bg: '#FAE8FF', accent: '#A21CAF' },
+      situations: [
+        {
+          id: "basic", name: "基本購買", icon: "🧴",
+          simple_steps: ["see_price", "purchase", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問乳液位置、確認價錢到結帳的完整購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有試用包？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"ask_location", say:"請問想找哪一種商品呢？", task:"用「請問」問店員乳液在哪裡",
+              options:["請問乳液在哪裡？","我要結帳","謝謝再見","請問多少錢？"], kw:["乳液"],
+              image:"images/a4/icon-a4-lotion-shop.png", image_label:"乳液",
+              frame_ref:"ask_location", slots:{ item:{ answer:"乳液", choices:[
+                { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
+                { text:"香皂", emoji:"🧽" }, { text:"洗髮精", emoji:"🧴" } ] } },
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試試說完整：「請問乳液在哪裡？」" } }),
+            mkStep({ id:"no_more", say:"乳液在靠窗的架子上喔，請問還需要什麼嗎？", task:"跟店員說：「沒有」，再說「謝謝你」",
+              options:["沒有，謝謝你！","我要買洗面乳","謝謝再見","請問廁所在哪裡？"], kw:["沒有","不用","不需要"],
+              accepted:["沒有，謝謝你！","不用了，謝謝","沒有了，謝謝","不需要了，謝謝你"],
+              frame:{ template:"{answer}", slots:{ answer:{ answer:"沒有，謝謝你！", choices:[
+                { text:"沒有，謝謝你！", emoji:"🙅" }, { text:"我要買洗面乳", emoji:"🧼" },
+                { text:"謝謝再見", emoji:"🙏" }, { text:"請問廁所在哪裡？", emoji:"🚻" } ] } } },
+              feedback:{ perfect:"回答得很有禮貌！", partial:"說出了重點！加上「謝謝」會更有禮貌", failed:"可以這樣說：「沒有，謝謝你！」" } }),
+            mkStep({ id:"see_price", say:"（你走到靠窗的架子，拿起一罐乳液，看了一下標價，一罐 120 元。）",
+              task:"說出乳液多少錢：120 元",
+              image:"images/a4/icon-a4-lotion-shop.png", image_label:"乳液 120 元",
+              options:["乳液是 120 元","我不知道","請問廁所在哪裡？","謝謝再見"], kw:["120"],
+              accepted:["乳液是 120 元","乳液 120 元","一罐 120 元","120 元"],
+              frame:{ template:"乳液是 {price}", slots:{ price:{ answer:"120 元", choices:[
+                { text:"120 元", emoji:"💰" }, { text:"100 元", emoji:"💵" },
+                { text:"200 元", emoji:"💵" }, { text:"80 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"很好！買之前先看清楚標價！", partial:"說出了重點！記得說清楚多少錢", failed:"可以這樣說：「乳液是 120 元」" } }),
+            mkStep({ id:"check_money", say:"（你打開錢包數一數，裡面有兩張 100 元，錢夠買。）",
+              task:"數數看：你的錢包裡有多少錢",
+              image:["images/money/100_yuan_front.png","+","images/money/100_yuan_front.png","=","200 元"], image_label:"錢包裡的錢",
+              options:["我有 200 元","我沒有錢","我要買乳液","請問廁所在哪裡？"], kw:["200","兩百","二百"],
+              accepted:["我有 200 元","我有兩百元","錢包裡有 200 元","100 元加 100 元是 200 元"],
+              frame:{ template:"我有 {money}", slots:{ money:{ answer:"200 元", choices:[
+                { text:"200 元", emoji:"💰" }, { text:"100 元", emoji:"💵" },
+                { text:"120 元", emoji:"🪙" }, { text:"80 元", emoji:"🪙" } ] } } },
+              feedback:{ perfect:"數得很好！兩張 100 元就是 200 元！", partial:"說出了重點！記得說清楚一共有多少錢", failed:"100 元加 100 元等於 200 元，可以說：「我有 200 元」" } }),
+            mkStep({ id:"purchase", say:"這罐乳液 120 元，請問要買嗎？", task:"告訴店員你要買這罐",
+              options:["我要買這罐","你好！","請問廁所在哪裡？","謝謝再見"], kw:["我要買","要買"],
+              image:"images/a4/icon-a4-lotion-shop.png::120 元", image_label:"乳液",
+              frame_ref:"want_item", slots:{ item:{ answer:"乳液", choices:[
+                { text:"乳液", emoji:"🧴" }, { text:"洗面乳", emoji:"🧼" },
+                { text:"香皂", emoji:"🧽" }, { text:"洗髮精", emoji:"🧴" } ] } },
+              feedback:{ perfect:"很好！購買意願說得很清楚！", partial:"說出了重點！可以說完整：「我要買這罐！」" } }),
+            mkStep({ id:"checkout", say:"好的！一共 120 元。", task:"把 200 元拿給店員，說「給你 200 元」，再說「謝謝」",
+              options:["給你 200 元，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:[...KW_PRESETS.hand, "200", "兩百"],
+              accepted:["給你 200 元，謝謝！","200 元給你，謝謝！","謝謝！這是 200 元","這是 200 元，謝謝！"],
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              feedback:{ perfect:"太棒了！把錢給店員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 200 元，謝謝！」" } }),
+            mkStep({ id:"goodbye", say:"好的，找您 80 元，請拿好，謝謝光臨！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝再見！","你好","我要買東西","請問在哪裡？"], kw:'bye',
+              accepted:["謝謝再見！","謝謝！再見！","謝謝，掰掰！","謝謝拜拜！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 80 元",
+              frame:{ template:"{bye}", slots:{ bye:{ answer:"謝謝再見！", choices:[
+                { text:"謝謝再見！", emoji:"🙏" }, { text:"你好", emoji:"👋" },
+                { text:"我要買東西", emoji:"🛒" }, { text:"請問在哪裡？", emoji:"❓" } ] } } },
+              feedback:{ perfect:"道謝道得很有禮貌！太棒了！", partial:"說了！可以同時說謝謝和再見喔", failed:"可以這樣說：「謝謝再見！」" } })
+          ]
+        },
+        {
+          id: "ask_recommendation", name: "詢問推薦商品", icon: "🧴",
+          desc: "詢問店員推薦的防曬乳，並完成購買",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！歡迎光臨美妝店！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有折扣？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_rec", say:"（你帶了 200 元，想找一罐擦起來不黏的防曬乳。）請問需要幫忙嗎？", task:"用「請問」問店員有沒有推薦的防曬乳",
+              options:["請問有推薦的防曬乳嗎？","我要買洗髮精","謝謝再見","我要買香皂"], kw:["防曬","推薦"],
+              feedback:{ perfect:"問得很好！懂得請人推薦！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", image:"images/b6/icon-b6-sunscreen.png", image_label:"防曬乳", say:"這款防曬乳很多人買，清爽不黏膩喔！", task:"用「請問」問店員這罐防曬乳多少錢",
+              options:["請問這罐防曬乳多少錢？","請問廁所在哪裡？","哼，不用你管！","謝謝再見"], kw:["多少","幾元","價格","怎麼賣"],
+              accepted:["請問這罐防曬乳多少錢？","請問這罐多少錢？","這罐多少錢？","防曬乳多少錢？"],
+              feedback:{ perfect:"很好！買之前先問價格！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！這罐防曬乳 150 元。", task:"你帶的 200 元夠買。先說「好，我要買」，再把 200 元拿給店員，說「給你 200 元」",
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              options:["好，我要買，給你 200 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "200", "兩百"],
+              accepted:["好，我要買，給你 200 元","好，我要買，這是 200 元","我要買這罐，給你 200 元","好，200 元給你"] }),
+            mkStep({ id:"get_change", say:"收您 200 元，找您 50 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/50_yuan_front.png", image_label:"找您 50 元",
+              options:["50 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["50","五十","對了"],
+              accepted:["50 元，對了，謝謝！","50 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "買洗面乳時發現錢不夠，改買便宜的小條洗面乳",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有沒有試用包？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問想要買什麼？", task:"告訴店員你要買洗面乳",
+              options:["我要買洗面乳","我要買乳液","謝謝再見","請問廁所在哪裡？"], kw:["洗面乳"],
+              image:"images/a4/icon-a4-facial-cleanser-shop.png", image_label:"洗面乳",
+              frame_ref:"want_item", slots:{ item:{ answer:"洗面乳", choices:[
+                { text:"洗面乳", emoji:"🧼" }, { text:"乳液", emoji:"🧴" }, { text:"香皂", emoji:"🧽" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！這罐洗面乳 90 元。（你打開錢包，發現只有 50 元，不夠 90 元）", task:"先說「不好意思」，再告訴店員你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 40 元","還差 40 元","我的錢不到 90 元","我只有 50 元，錢不夠","我的錢不夠"],
+              image:"images/money/50_yuan_front.png", image_label:"錢包裡只有 50 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換小條的洗面乳，只要 45 元？", task:"先說「好」，再說你要改買小條的",
+              options:["好，我要小條的","我還是要大罐的","哼，不用你管！","請問廁所在哪裡？"], kw:["小條","改"],
+              accepted:["好，我要小條的","好，我要小條的洗面乳","好，改買小條的"],
+              image:"images/a4/icon-a4-facial-cleanser-shop.png::45 元", image_label:"小條洗面乳",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"好的，小條洗面乳 45 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收您 50 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_sale", name: "詢問特價活動", icon: "🏷️",
+          simple_steps: ["greet_ask", "answer", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問洗髮精買一送一的活動並完成購買",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有沒有試用包？"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問需要幫忙嗎？", task:"用「請問」問店員有沒有特價活動",
+              options:["請問有特價活動嗎？","我要花香的！","我要結帳","謝謝再見"], kw:["特價","折扣","優惠","打折"],
+              accepted:["請問有特價活動嗎？","請問有優惠嗎？","有特價嗎？","請問有打折嗎？"],
+              feedback:{ perfect:"問得很好！懂得找優惠！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"有的！這款洗髮精本週買一送一喔！", task:"先說「好」，再說你要買這款洗髮精",
+              options:["好，我要買這款","請問廁所在哪裡？","哼，不用你管！","謝謝再見"], kw:["我要買","要買","洗髮精"],
+              image:"images/a4/icon-a4-shampoo-shop.png", image_label:"洗髮精",
+              feedback:{ perfect:"很好！懂得利用優惠！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"好的！請問要哪一種香味？有花香、果香跟無香可以選！（你喜歡花香。）", task:"說你要花香的",
+              options:["我要花香的！","我要果香的！","我要無香的！","三種各一瓶！"], kw:["花香"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！買一送一共 199 元。", task:"把 200 元拿給店員，說「給你 200 元」",
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              options:["給你 200 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "200", "兩百"],
+              accepted:["給你 200 元","我給你 200 元","200 元給你","這是 200 元"] }),
+            mkStep({ id:"get_change", say:"收您 200 元，找您 1 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/1_yuan_front.png", image_label:"找您 1 元",
+              options:["1 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["1元","一元","對了"],
+              accepted:["1 元，對了，謝謝！","1 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "use_points", name: "用集點卡折抵", icon: "🎫",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "結帳時出示集點卡，問點數能不能折抵，自己算出折完要付多少",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在美妝店拿了一支護唇膏去結帳。你的集點卡已經集到 10 點。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！", "謝謝再見", "多少錢？", "有沒有試用包？"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"show_card", image:["images/b6/icon-b6-lip-balm.png","images/b6/icon-b6-point-card.png"], image_label:"護唇膏 80 元 ＋ 集滿 10 點的集點卡", say:"這支護唇膏 80 元。請問有會員卡或集點卡嗎？", task:"先說「有，這是我的集點卡」，把卡拿給店員，再用「請問」問點數可以折抵嗎",
+              options:["有，這是我的集點卡，請問點數可以折抵嗎？", "沒有啦", "卡片在家裡啦", "快點結帳"], kw:["集點卡", "折抵"], accepted:["有，這是我的集點卡，請問點數可以折抵嗎？"] }),
+            mkStep({ id:"calc", say:"可以喔！依照我們店裡的規定，10 點可以折 20 元。要用嗎？", task:"先說「要」，再算一算折完要付多少錢，問「對嗎」",
+              options:["要，折完是 60 元，對嗎？", "要，折完是 70 元，對嗎？", "我要折 100 元", "折多少都可以"], kw:["60"], accepted:["要，折完是 60 元，對嗎？"] }),
+            mkStep({ id:"pay", say:"對！折完 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元", "我不想付錢", "先欠著好了", "可以再便宜嗎？"], kw:[...KW_PRESETS.hand, "100"], accepted:["給你 100 元", "我給你 100 元", "100 元給你", "這是 100 元"], image:"images/money/100_yuan_front.png", image_label:"100 元" }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 40 元。點數用掉了，卡片還給你喔！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！", "錢我不用數", "卡片不要了", "（直接走掉）"], kw:["40", "對了"], accepted:["40 元，對了，謝謝！"], image:["images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png"], image_label:"找您 40 元" }),
+            mkStep({ id:"review", say:"（想一想）用點數折抵以前，要先做什麼？", task:"說出方法：先問店員可不可以折、可以折多少",
+              options:["先問店員可不可以折、可以折多少", "自己決定折多少", "點數一定可以用", "不用問直接付錢"], kw:["問店員", "可不可以折"], accepted:["先問店員可不可以折、可以折多少"], feedback:{ perfect:"答對了！先問店員可不可以折、可以折多少。", failed:"記住：先問店員可不可以折、可以折多少。" } }),
+          ]
+        },
+        {
+          id: "try_tester", name: "先問可不可以試用", icon: "🧴",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "想試用先問，只用試用品，新品不能拆",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想買一條護手霜，可是不知道喜不喜歡它的香味。架上有一條寫著「試用品」，旁邊是還沒拆的新品。你身上有 200 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-hand-cream.png", image_label:"護手霜", say:"請問需要幫忙嗎？", task:"用「請問」問店員：護手霜可以試用嗎？",
+              options:["請問護手霜可以試用嗎？","（直接拆開新的來擦）","新的我先打開聞一下","隨便啦"], kw:["護手霜","試用"] }),
+            mkStep({ id:"s3", say:"可以喔！擦這條寫「試用品」的就好，新的不要拆開喔。", task:"先說「好」，再說你會擦試用品，不拆新的",
+              options:["好，我擦試用品，不拆新的","新的比較乾淨，我拆新的","我把試用品全部擠光","我直接把試用品帶走"], kw:["擦試用品","不拆新"] }),
+            mkStep({ id:"s4", say:"（你擠了一點點試用品擦在手上，很喜歡這個香味。）喜歡這個味道嗎？這條 120 元。", task:"先說「喜歡」，再說你要買一條新的",
+              options:["喜歡，我要買一條新的","我要買這條試用品","可以算 50 元嗎？","我要買洗髮精"], kw:["要買一條新","喜歡"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"好的！一共 120 元。", task:"把 200 元拿給店員，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","試用過了可以便宜嗎？","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 80 元", say:"收您 200 元，找您 80 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["80 元，對了，謝謝！","錢我不用數","70 元，對了，謝謝！","（直接走掉）"], kw:["80","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）在店裡想試用東西，要怎麼做？", task:"說出方法：先問店員可不可以試用，只用試用品，新品不能拆",
+              options:["先問店員可不可以試用，只用試用品，新品不能拆","直接拆開新品","試用品帶回家","每一樣都用很多"], kw:["問店員可不","只用試用品","新品不能拆"], feedback:{ perfect:"答對了！先問店員可不可以試用，只用試用品，新品不能拆。", failed:"記住：先問店員可不可以試用，只用試用品，新品不能拆。" } }),
+          ]
+        },
+        {
+          id: "second_discount", name: "第二件六折怎麼算", icon: "🪥",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看到「第二件 X 折」：先問清楚第二件多少錢，再算總價",
+          steps: [
+            mkStep({ id:"greeting", say:"（家裡的牙膏快用完了，媽媽給你 200 元，請你買兩條一樣的牙膏。架上寫著「牙膏一條 60 元，第二件六折」。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/a4/icon-a4-toothpaste-shop.png","images/a4/icon-a4-toothpaste-shop.png"], image_label:"牙膏 ＋ 牙膏", say:"請問需要什麼呢？", task:"說你要買兩條一樣的牙膏",
+              options:["我要買兩條一樣的牙膏","我要買洗髮精","一條就好","隨便拿幾條"], kw:["買兩條一樣","牙膏"] }),
+            mkStep({ id:"s3", say:"好的！牙膏一條 60 元，第二件六折喔。", task:"用「請問」問店員：第二件六折是多少錢？",
+              options:["請問第二件六折是多少錢？","六折就是不用錢吧","我不管，算我 50 元","我把價錢標籤撕掉"], kw:["第二件六折","多少錢"] }),
+            mkStep({ id:"s4", say:"第二條打六折是 36 元喔。", task:"說出第一條 60 元加上第二條 36 元的算式，算出總金額，再問「對嗎」",
+              options:["60 元加 36 元，一共 96 元，對嗎？","一共 120 元，對嗎？","一共 36 元，對嗎？","我不算，隨便給錢就好"], kw:["60","元加","96"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"對！兩條一共 96 元。", task:"把 200 元拿給店員，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","可以算 90 元嗎？","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/100_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 104 元", say:"收您 200 元，找您 104 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["104 元，對了，謝謝！","錢我不用數","94 元，對了，謝謝！","（直接走掉）"], kw:["104","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）看到「第二件六折」，要怎麼做？", task:"說出方法：先問清楚第二件是多少錢，再算一共多少",
+              options:["先問清楚第二件是多少錢，再算一共多少","六折就是便宜六塊","看到打折就買很多","不用算，付錢就好"], kw:["問清楚第二件","算一共多少","多少錢"], feedback:{ perfect:"答對了！先問清楚第二件是多少錢，再算一共多少。", failed:"記住：先問清楚第二件是多少錢，再算一共多少。" } }),
+          ]
+        },
+        {
+          id: "wrong_exchange", name: "買錯了，沒拆封拿回來換", icon: "🔄",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "買錯了想換：帶著沒拆的東西和發票，說清楚要換成什麼",
+          steps: [
+            mkStep({ id:"greeting", say:"（昨天你幫家人買沐浴乳，買成薄荷涼感的，家人要的是無香的。瓶子還沒拆，你帶著沐浴乳和發票回到店裡。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要幫忙嗎？", task:"說你昨天買錯了沐浴乳，想換成無香的",
+              options:["我昨天買錯了沐浴乳，想換成無香的","這個很爛，我要退錢","（把沐浴乳放在櫃台就走）","我要買洗髮精"], kw:["想換成無香","昨天買錯"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-invoice.png"], image_label:"發票", say:"請問有帶發票嗎？沐浴乳有沒有拆開過？", task:"先把發票拿給店員，說「這是發票」，再說還沒拆開過",
+              options:["這是發票，還沒拆開過","發票丟了，你直接換啦","拆開過一點點沒關係吧","你自己看"], kw:["還沒拆開過"] }),
+            mkStep({ id:"s4", image:["images/b6/icon-b6-body-wash-unscented.png"], image_label:"新的沐浴乳", say:"依照我們店裡的規定，七天內、沒拆封就可以換。幫你換成無香的了！（你看到新瓶子上寫著「無香」。）", task:"先看一看是不是無香的，再說「對，是無香的，謝謝你」",
+              options:["對，是無香的，謝謝你","不用看了","我兩瓶都要帶走","你換錯了啦，笨"], kw:["無香","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）買錯東西想換，要怎麼問、帶什麼東西？", task:"說出方法：先問店家的換貨規定，帶沒拆封的商品和發票",
+              options:["先問店家的換貨規定，帶沒拆封的商品和發票","什麼都不用帶","先用用看再換","發票丟掉沒關係"], kw:["商品和發票","先問店家","換貨規定"], feedback:{ perfect:"答對了！先問店家的換貨規定，帶沒拆封的商品和發票。", failed:"記住：先問店家的換貨規定，帶沒拆封的商品和發票。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 手搖飲料店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "drink_shop", name: "手搖飲料店", icon: "🧋", available: true,
+      theme: { color: '#0D9488', bg: '#CCFBF1', accent: '#0F766E' },
+      situations: [
+        {
+          id: "basic", name: "基本點飲料", icon: "🧋",
+          simple_steps: ["order", "ask_sweet", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點飲料並說出甜度、冰塊的完整點餐流程",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天你想喝一杯半糖、少冰的珍珠奶茶。）你好！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"order", say:"請問要點什麼飲料呢？", task:"告訴店員你要一杯珍珠奶茶",
+              options:["我要一杯珍珠奶茶","我要結帳","謝謝再見","有什麼推薦？"], kw:["珍珠奶茶"],
+              image:"images/b6/icon-b6-bubble-tea.png", image_label:"珍珠奶茶",
+              frame_ref:"want_item", slots:{ item:{ answer:"珍珠奶茶", choices:[
+                { text:"珍珠奶茶", emoji:"🧋" }, { text:"綠茶", emoji:"🍵" },
+                { text:"紅茶拿鐵", emoji:"🥤" }, { text:"檸檬水", emoji:"🍋" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要一杯珍珠奶茶」" } }),
+            mkStep({ id:"ask_sweet", say:"好的！請問甜度要幾分呢？", task:"說你要半糖",
+              options:["半糖","全糖","無糖","微糖"], kw:["半糖"],
+              feedback:{ perfect:"說得很清楚！懂得選擇甜度！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_ice", say:"好的，半糖！請問冰塊要正常還是少冰呢？", task:"說你要少冰",
+              options:["少冰","正常冰","去冰","溫的"], kw:["少冰"],
+              feedback:{ perfect:"說得很清楚！懂得選擇冰塊！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！半糖少冰的珍珠奶茶 55 元。", task:"把 55 元拿給店員，說「給你 55 元」，再說「謝謝」",
+              options:["給你 55 元，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:[...KW_PRESETS.hand, "55", "五十五"],
+              accepted:["給你 55 元，謝謝！","55 元給你，謝謝！","謝謝！這是 55 元","這是 55 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/5_yuan_front.png"], image_label:"55 元",
+              feedback:{ perfect:"太棒了！把錢給店員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 55 元，謝謝！」" } })
+          ]
+        },
+        {
+          id: "wrong_order", name: "點錯了要改", icon: "🔄",
+          simple_steps: ["order", "clerk_mistake", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "店員複誦飲料弄錯了，禮貌地更正",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（今天你想喝一杯綠茶。）你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"order", say:"請問要喝什麼呢？", task:"告訴店員你要一杯綠茶",
+              options:["我要一杯綠茶","我要珍珠奶茶","謝謝再見","有什麼推薦？"], kw:["綠茶"],
+              image:"images/b6/icon-b6-green-tea.png", image_label:"綠茶",
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"clerk_mistake", say:"好的，一杯紅茶對嗎？", task:"告訴店員你點的是綠茶不是紅茶",
+              options:["不是喔，我要綠茶","對，紅茶就好","謝謝再見","我要換飲料"], kw:["綠茶","不是"],
+              feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯綠茶。", task:"跟店員說「謝謝你」",
+              options:["謝謝你！","請問廁所在哪裡？","哼，你很粗心耶！","我要一杯綠茶"], kw:["謝謝","沒關係"],
+              accepted:["謝謝你！","沒關係！","沒關係，謝謝！"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！綠茶一杯 40 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] }),
+            mkStep({ id:"get_change", say:"收您 50 元，找您 10 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/10_yuan_front.png", image_label:"找您 10 元",
+              options:["10 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["10","十","對了"],
+              accepted:["10 元，對了，謝謝！","10 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點大杯飲料時發現錢不夠，改點中杯",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要喝什麼呢？", task:"告訴店員你要一杯大杯奶茶",
+              options:["我要一杯大杯奶茶","我要小杯就好","謝謝再見","請問廁所在哪裡？"], kw:["大杯","奶茶"],
+              image:"images/b6/icon-b6-milk-tea.png", image_label:"大杯奶茶",
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！大杯奶茶 50 元。（你打開錢包，發現只有 35 元，不夠 50 元）", task:"先說「不好意思」，再告訴店員你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 15 元","還差 15 元","我的錢不到 50 元","我只有 35 元，錢不夠","我的錢不夠"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"錢包裡只有 35 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要改點中杯，只要 35 元？", task:"先說「好」，再說你要改成中杯",
+              options:["好，我要中杯","我還是要大杯","哼，不用你管！","請問廁所在哪裡？"], kw:["中杯","改"],
+              image:"images/b6/icon-b6-milk-tea-medium.png::35 元", image_label:"中杯奶茶",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"好的，中杯奶茶 35 元。", task:"把 35 元拿給店員，說「給你 35 元」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"35 元",
+              options:["給你 35 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "35", "三十五"],
+              accepted:["給你 35 元","我給你 35 元","35 元給你","這是 35 元"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_size", name: "詢問大小杯價錢", icon: "📏",
+          simple_steps: ["greet_ask", "answer", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問飲料大小杯的價差，再決定要點什麼",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"（今天你很渴，想喝一大杯微糖的紅茶。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問要喝什麼呢？", task:"用「請問」問店員大杯紅茶多少錢",
+              options:["請問大杯紅茶多少錢？","有什麼優惠？","請問有折扣嗎？","謝謝再見"], kw:["大杯","紅茶","多少錢"],
+              accepted:["請問大杯紅茶多少錢？","大杯紅茶多少錢？","請問紅茶大杯多少錢？"],
+              image:"images/b6/icon-b6-iced-black-tea.png", image_label:"大杯紅茶",
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"大杯 50 元，中杯 40 元喔！", task:"說你要一杯大杯的紅茶",
+              options:["我要一杯大杯紅茶","我要中杯就好","請問廁所在哪裡？","謝謝再見"], kw:["大杯","紅茶"],
+              image:"images/b6/icon-b6-iced-black-tea.png::50 元", image_label:"大杯紅茶",
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_sweet", say:"好的！請問甜度要幾分呢？", task:"說你要微糖",
+              options:["微糖","全糖","無糖","半糖"], kw:["微糖"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！大杯微糖紅茶 50 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              options:["給你 50 元","我不想付錢","微糖","掰掰！"], kw:[...KW_PRESETS.hand, "50", "五十"],
+              accepted:["給你 50 元","我給你 50 元","50 元給你","這是 50 元"] })
+          ]
+        },
+        {
+          id: "order_three", name: "幫同學一起訂三杯", icon: "🧋",
+          simple_steps: ["check_total", "get_change", "give_back"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "一杯一杯說清楚品項、甜度、冰塊，最後核對總金額，找的錢交還同學",
+          steps: [
+            mkStep({ id:"greeting", say:"（同學給你 200 元，請你幫他們買三杯飲料，烏龍茶無糖去冰、百香綠茶半糖少冰、冬瓜檸檬正常冰。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！", "謝謝再見", "隨便給我三杯", "我要結帳"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"cup1", say:"請問要點什麼呢？", task:"先說你要點三杯，再說第一杯：烏龍茶，無糖去冰",
+              options:["我要點三杯，第一杯是烏龍茶，無糖去冰", "三杯都一樣就好", "隨便三杯", "我要珍珠奶茶"], kw:["烏龍茶"], accepted:["我要點三杯，第一杯是烏龍茶，無糖去冰"] }),
+            mkStep({ id:"cup2", say:"好的！烏龍茶無糖去冰。第二杯呢？", task:"說第二杯：百香綠茶，半糖少冰",
+              options:["第二杯是百香綠茶，半糖少冰", "跟第一杯一樣", "第二杯是烏龍茶，無糖去冰", "你幫我決定"], kw:["百香綠茶"], accepted:["第二杯是百香綠茶，半糖少冰"] }),
+            mkStep({ id:"cup3", say:"百香綠茶半糖少冰。第三杯呢？", task:"說第三杯：冬瓜檸檬，正常冰",
+              options:["第三杯是冬瓜檸檬，正常冰", "不要了啦", "隨便啦", "我要一杯紅茶"], kw:["冬瓜檸檬"], accepted:["第三杯是冬瓜檸檬，正常冰"] }),
+            mkStep({ id:"check_total", image:["images/b6/icon-b6-oolong-tea.png","images/b6/icon-b6-passion-green-tea.png","images/b6/icon-b6-winter-melon-lemon.png"], image_label:"烏龍茶 ＋ 百香綠茶 ＋ 冬瓜檸檬＝115 元", say:"好的！烏龍茶 30 元、百香綠茶 45 元、冬瓜檸檬 40 元，一共 115 元。", task:"把三杯的價錢加起來，確認店員有沒有算對，說出總金額和「對了」，再說「給你 200 元」",
+              options:["一共 115 元，對了，給你 200 元", "你算錯了吧", "我只付 100 元", "等一下再給"], kw:["115"], accepted:["一共 115 元，對了，給你 200 元"] }),
+            mkStep({ id:"get_change", say:"收您 200 元，找您 85 元。三杯飲料好了請拿好！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["85 元，對了，謝謝！", "錢我不用數", "不用找我錢，我再給你 200 元", "（直接走掉）"], kw:["85", "對了"], accepted:["85 元，對了，謝謝！"], image:["images/money/50_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/5_yuan_front.png"], image_label:"找您 85 元" }),
+            mkStep({ id:"give_back", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找回的 85 元", say:"（你拿著三杯飲料回到教室，同學問：「找的錢呢？」）", task:"說出找了多少錢，再說「拿給你們」，把找回的錢交給同學",
+              options:["找了 85 元，拿給你們", "我先拿去花了", "沒有找錢啦", "下次再給"], kw:["拿給你們", "85"], accepted:["找了 85 元，拿給你們"] }),
+            mkStep({ id:"review", say:"（想一想）幫別人一起點飲料，要怎麼做才不會點錯？", task:"說出方法：先寫下來，一杯一杯說清楚，最後核對金額",
+              options:["先寫下來，一杯一杯說清楚，最後核對金額", "全部點一樣的就好", "用猜的", "錢隨便付"], kw:["寫下來", "一杯一杯", "核對"], accepted:["先寫下來，一杯一杯說清楚，最後核對金額"], feedback:{ perfect:"答對了！先寫下來，一杯一杯說清楚，最後核對金額。", failed:"記住：先寫下來，一杯一杯說清楚，最後核對金額。" } }),
+          ]
+        },
+        {
+          id: "own_cup", name: "自己帶杯子", icon: "♻️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本例設定為連鎖飲料店，自備非一次用飲料杯可省 5 元：點餐時先說、把杯子交給店員",
+          steps: [
+            mkStep({ id:"greeting", image:"images/b6/icon-b6-own-cup-sign.png", image_label:"店裡的告示", say:"（你想喝一杯四季春，微糖去冰。你帶了洗乾淨的環保杯，店裡寫著「自備杯省 5 元」。你有 50 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問要點什麼呢？", task:"說你要一杯四季春，微糖去冰，再說你有自己帶杯子",
+              options:["我要一杯四季春，微糖去冰，我有自己帶杯子","隨便一杯","我要珍珠奶茶","我要十杯"], kw:["有自己帶杯子","一杯四季春","微糖去冰"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-eco-cup-tea.png", image_label:"自己帶的環保杯", say:"好的！自備環保杯，這杯可以省 5 元。請把杯子給我。", task:"把杯子拿給店員，說「杯子給你」",
+              options:["杯子給你","杯子沒洗沒關係吧","我要折 50 元","杯子不能給你"], kw:["杯子給"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"四季春 30 元，自備杯折 5 元，一共 25 元。", task:"把 50 元拿給店員，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","帶杯子就不用錢吧","先欠著"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 25 元", say:"收您 50 元，找您 25 元。飲料好了，請拿好！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["25 元，對了，謝謝！","錢我不用數","15 元，對了，謝謝！","（直接走掉）"], kw:["25","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）在這家店自己帶環保杯買飲料，有什麼好處？", task:"說出好處：少用一個一次用杯，這杯還能省 5 元",
+              options:["少用一個一次用杯，這杯還能省 5 元","沒有好處","可以免費","可以多拿一杯"], kw:["少用一個一次用杯","這杯還能省"], feedback:{ perfect:"答對了！少用一個一次用杯，這杯還能省 5 元。", failed:"記住：少用一個一次用杯，這杯還能省 5 元。" } }),
+          ]
+        },
+        {
+          id: "add_topping", name: "加料要加錢", icon: "🧋",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "加珍珠要另外加錢，總價要算進去",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想喝一杯鐵觀音拿鐵，要加珍珠，半糖、少冰。身上有 100 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-tieguanyin-latte-pearl.png", image_label:"鐵觀音拿鐵加珍珠", say:"請問要點什麼呢？", task:"說你要一杯鐵觀音拿鐵，加珍珠",
+              options:["我要一杯鐵觀音拿鐵，加珍珠","隨便一杯","我要綠茶","你幫我決定"], kw:["一杯鐵觀音拿鐵","加珍珠"] }),
+            mkStep({ id:"s3", say:"好的！這杯加珍珠要多 10 元喔。甜度冰塊呢？（你願意加 10 元，甜度和冰塊照原本想好的。）", task:"先說「好」，再說半糖、少冰",
+              options:["好，半糖少冰","加料不用錢吧","隨便啦","我要加十份珍珠"], kw:["半糖少冰"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"鐵觀音拿鐵 50 元，加珍珠 10 元，一共 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元", say:"收您 100 元，找您 40 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）飲料要加料，要先確認什麼？", task:"說出重點：先問加料要不要加錢，有加錢就算進總價",
+              options:["先問加料要不要加錢，有加錢就算進總價","加料都免費","加越多越好","不用算"], kw:["算進總價","問加料","有加錢"], feedback:{ perfect:"答對了！先問加料要不要加錢，有加錢就算進總價。", failed:"記住：先問加料要不要加錢，有加錢就算進總價。" } }),
+          ]
+        },
+        {
+          id: "no_caffeine", name: "晚上想喝不含茶的", icon: "🥛",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先說自己的需要，請店員推薦",
+          steps: [
+            mkStep({ id:"greeting", say:"（現在是晚上八點，你想喝飲料，可是晚上喝了茶或咖啡會睡不著。你身上有 100 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問要點什麼呢？", task:"先說你晚上喝茶會睡不著，再用「請問」問有沒有不含茶和咖啡的飲料",
+              options:["我晚上喝茶會睡不著，請問有沒有不含茶和咖啡的飲料？","隨便給我一杯","我要最大杯的紅茶","你們的飲料都一樣"], kw:["晚上喝茶會睡不著","有沒有不含茶","咖啡"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-brown-sugar-milk.png", image_label:"黑糖鮮奶", say:"有喔！我們這款黑糖鮮奶只用黑糖和鮮奶，沒有加茶或咖啡。（你喜歡黑糖鮮奶，決定點一杯。）", task:"先說「好」，再說你要一杯黑糖鮮奶",
+              options:["好，我要一杯黑糖鮮奶","我還是要紅茶","你幫我喝","隨便啦"], kw:["一杯黑糖鮮奶"] }),
+            mkStep({ id:"s4", say:"好的！要冰的還是溫的？（天氣有點冷，你想喝溫的。）", task:"說你要溫的",
+              options:["我要溫的","隨便啦","我要加珍珠十份","把飲料倒地上"], kw:["要溫"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"溫的黑糖鮮奶 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元", say:"收您 100 元，找您 40 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）晚上不想喝含茶或咖啡的飲料，點餐時要怎麼做？", task:"說出方法：先說自己的需要，請店員推薦",
+              options:["先說自己的需要，請店員推薦","隨便點就好","喝了再說","不好意思問"], kw:["請店員推薦","先說自己","需要"], feedback:{ perfect:"答對了！先說自己的需要，請店員推薦。", failed:"記住：先說自己的需要，請店員推薦。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 便當店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "lunchbox_shop", name: "便當店", icon: "🍱", available: true,
+      theme: { color: '#9A3412', bg: '#FFEDD5', accent: '#7C2D12' },
+      situations: [
+        {
+          id: "basic", name: "基本點餐", icon: "🍱",
+          desc: "選擇主菜與飯量的完整便當購買流程",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天你不太餓，想少吃一點飯。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","今天有什麼菜？"], kw:"greetBoss",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"choose_meat", say:"請問要吃什麼呢？", task:"告訴老闆你要雞腿便當",
+              options:["我要雞腿便當","我要結帳","謝謝再見","有什麼推薦？"], kw:["雞腿"],
+              image:"images/b6/icon-b6-chicken-leg-bento.png", image_label:"雞腿便當",
+              frame_ref:"want_item", slots:{ item:{ answer:"雞腿便當", choices:[
+                { text:"雞腿便當", emoji:"🍗" }, { text:"排骨便當", emoji:"🥩" },
+                { text:"魚排便當", emoji:"🐟" }, { text:"菜飯便當", emoji:"🥬" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要雞腿便當」" } }),
+            mkStep({ id:"ask_rice", say:"好的！請問飯要正常還是少一點呢？", task:"說你要飯少一點",
+              options:["飯少一點","正常飯量","飯多一點","不要飯"], kw:["少一點","飯少"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！雞腿便當飯少一點，共 80 元。", task:"把 80 元拿給老闆，說「給你 80 元」，再說「謝謝」",
+              options:["給你 80 元，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元，謝謝！","80 元給你，謝謝！","謝謝！這是 80 元","這是 80 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              feedback:{ perfect:"太棒了！把錢給老闆，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 80 元，謝謝！」" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點魚排便當時發現錢不夠，改點便宜的菜飯便當",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟老闆打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi","老闆好"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！","老闆好！"],
+              options:["你好！","謝謝再見","多少錢？","今天有什麼菜？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要吃什麼呢？", task:"告訴老闆你要魚排便當",
+              options:["我要魚排便當","我要菜飯便當","謝謝再見","請問廁所在哪裡？"], kw:["魚排"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！魚排便當 90 元。（你打開錢包，發現只有 60 元，不夠 90 元）", task:"先說「不好意思」，再告訴老闆你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 30 元","還差 30 元","我的錢不到 90 元","我只有 60 元，錢不夠","我的錢不夠"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png"], image_label:"錢包裡只有 60 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換菜飯便當，只要 55 元？（你也喜歡吃菜飯，覺得 55 元可以。）", task:"先說「好」，再說你要改買菜飯便當",
+              options:["好，我要菜飯便當","我還是要魚排便當","哼，不用你管！","請問廁所在哪裡？"], kw:["菜飯","改"],
+              image:"images/b6/icon-b6-veggie-rice-bento.png::55 元", image_label:"菜飯便當",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"好的，菜飯便當 55 元。", task:"把 60 元拿給老闆，說「給你 60 元」",
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png"], image_label:"60 元",
+              options:["給你 60 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "60", "六十"],
+              accepted:["給你 60 元","我給你 60 元","60 元給你","這是 60 元"] }),
+            mkStep({ id:"get_change", say:"收您 60 元，找您 5 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:"images/money/5_yuan_front.png", image_label:"找您 5 元",
+              options:["5 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["5元","五元","對了"],
+              accepted:["5 元，對了，謝謝！","5 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請老闆幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請老闆先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_special", name: "詢問今日特餐", icon: "🌟",
+          simple_steps: ["greet_ask", "answer", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問今天有什麼特餐，再決定要買什麼",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"（中午你到便當店，想吃今日特餐，飯吃正常的量就好。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","今天有什麼？"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問要吃什麼呢？", task:"用「請問」問老闆今天有什麼特餐",
+              options:["請問今天有什麼特餐？","正常飯量","請問廁所在哪裡？","謝謝再見"],
+              kw:["特餐","推薦"],
+              feedback:{ perfect:"問得很好！懂得詢問特餐！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"今天特餐是排骨便當，只要 70 元喔！", task:"先說「好」，再說你要一個特餐",
+              options:["好，我要一個特餐","請問廁所在哪裡？","我要別的","謝謝再見"], kw:["特餐","我要"],
+              image:"images/b6/icon-b6-pork-chop-bento.png::70 元", image_label:"今日特餐：排骨便當",
+              feedback:{ perfect:"很好！懂得利用特餐！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_rice", say:"好的！請問飯要正常還是多一點呢？", task:"說你要正常飯量",
+              options:["正常飯量","飯多一點","飯少一點","不要飯"], kw:["正常"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！特餐一份 70 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 30 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 30 元",
+              options:["30 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["30","三十","對了"],
+              accepted:["30 元，對了，謝謝！","30 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "wait_too_long", name: "等太久了", icon: "⏰",
+          desc: "點完便當後等了很久，禮貌地詢問還要多久",
+          steps: [
+            mkStep({ id:"wait", image:"images/b6/icon-b6-braised-pork-bento.png", image_label:"點的焢肉便當", say:"（中午你到便當店買便當，點好之後坐著等。已經等了好一陣子，比你晚來的人都拿到了，你的便當還沒好。）", task:"用「請問」問老闆還要等多久",
+              options:["請問還要等多久呢？","快一點啦！","喂，你們很慢耶！","你好"],
+              kw:["還要","多久","等"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"不好意思，再兩分鐘就好囉！", task:"先說「好」，再說你願意再等一下",
+              options:["好，我再等一下","哼，不用你管！","你快一點啦！","謝謝再見"], accepted:["好，我再等一下","好的，我再等一下"], kw:["再等","好"],
+              feedback:{ perfect:"很有耐心！", partial:"說出了重點！" } }),
+            mkStep({ id:"receive", say:"久等了！這是你的焢肉便當，80 元。", task:"把 80 元拿給老闆，說「給你 80 元」，再說「謝謝」",
+              options:["給你 80 元，謝謝！","我不想付錢","我沒帶錢","終於好了！"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元，謝謝！","80 元給你，謝謝！","謝謝！這是 80 元","這是 80 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              feedback:{ perfect:"太棒了！把錢給老闆，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 80 元，謝謝！」" } }),
+            mkStep({ id:"thanks", say:"謝謝你的耐心等待！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","我的便當好了沒？"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "tell_dislike", name: "不吃的東西先說", icon: "🙅",
+          simple_steps: ["tell_allergy", "ask_soup", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點便當時主動說不吃和會過敏的東西，不確定就問",
+          steps: [
+            mkStep({ id:"greeting", say:"（中午你到便當店買午餐。你不吃香菜，而且對蝦米過敏。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","多少錢？","今天有什麼菜？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！"] }),
+            mkStep({ id:"order", image:"images/b6/icon-b6-roast-pork-bento.png", image_label:"燒肉便當", say:"請問要吃什麼呢？", task:"告訴老闆你要燒肉便當",
+              options:["我要燒肉便當","我要結帳","謝謝再見","有什麼推薦？"], kw:["燒肉"],
+              accepted:["我要燒肉便當","燒肉便當","我要一個燒肉便當"] }),
+            // 外部審閱第二輪（共識 8）：過敏要主動說，並問清楚哪些菜有——不能教成「把看得到的那道拿掉就安全」
+            mkStep({ id:"tell_allergy", say:"好！今天配菜是炒高麗菜、菜脯蛋、炒絲瓜。", task:"先說「不好意思」，說你對蝦米過敏，再用「請問」問老闆哪些菜有蝦米",
+              options:["不好意思，我對蝦米過敏，請問哪些菜有蝦米？","隨便夾都可以","（不說，回家再挑掉）","我都吃"], kw:["蝦米","過敏"],
+              accepted:["不好意思，我對蝦米過敏，請問哪些菜有蝦米？","我對蝦米過敏，請問哪些菜有蝦米？","我對蝦米過敏","請問哪些菜有蝦米？"] }),
+            mkStep({ id:"ask_soup", say:"炒絲瓜裡面有蝦米，我幫你換成滷豆腐。其他菜都沒有蝦米，附的貢丸湯也沒有喔！", task:"先說「好」，再用「請問」問老闆湯裡有沒有加香菜",
+              options:["好，請問湯裡有加香菜嗎？","我要結帳","隨便啦","我自己看"], kw:["香菜"],
+              accepted:["好，請問湯裡有加香菜嗎？","請問湯裡有加香菜嗎","湯裡有香菜嗎","湯有加香菜嗎"] }),
+            mkStep({ id:"no_coriander", say:"有喔，要幫你不要加嗎？", task:"先說「好」，再說「麻煩不要加香菜，謝謝」",
+              options:["好，麻煩不要加香菜，謝謝","加就加吧","我要多一碗飯","你看著辦"], kw:["不要加香菜","不要香菜","不加香菜"],
+              accepted:["好，麻煩不要加香菜，謝謝","好，請不要加香菜，謝謝","麻煩不要加香菜","不要加香菜"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"好！燒肉便當不加香菜、換滷豆腐，總共 85 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","等一下再給","錢在我媽那裡"], kw:["100元","一百元"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 15 元", say:"收您 100 元，找您 15 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["15 元，對了，謝謝！","嗯","（直接走掉）","錢我拿走了喔"], kw:["15元","十五元"],
+              accepted:["15 元，對了，謝謝！","15 元，謝謝！","謝謝，找零 15 元我收到了","15 元我收到了，謝謝","找零 15 元收到了"] }),
+            mkStep({ id:"review", say:"（想一想）點餐時有不吃或會過敏的東西，要怎麼做？", task:"說出方法：先跟店家說清楚，不確定就問",
+              options:["先跟店家說清楚，不確定就問","吃了再說","自己挑掉就好","不好意思開口"], kw:["說清楚","不確定就問"],
+              accepted:["先跟店家說清楚，不確定就問","先跟店家說清楚","不確定就問"],
+              feedback:{ perfect:"答對了！先跟店家說清楚，不確定就問。", failed:"記住：不吃或會過敏的東西，點餐時先說清楚，不確定就問。" } }),
+          ]
+        },
+        {
+          id: "buffet_pick", name: "自助餐自己夾菜", icon: "🍛",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本店採自助夾菜、由老闆看份量計價：依各道菜的夾取工具取菜，再拿給老闆算錢、說要幾",
+          steps: [
+            mkStep({ id:"greeting", say:"（中午你想在自助餐吃白飯配炒青江菜、番茄炒蛋和糖醋雞丁，身上有 100 元。門口放著餐盒和夾子。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", say:"（你拿了餐盒，不知道怎麼裝。）請問需要幫忙嗎？", task:"用「請問」問老闆：菜要怎麼拿？",
+              options:["請問菜要怎麼拿？","我用手拿就好","我先吃一口再夾","隨便啦"], kw:["菜要怎麼拿"] }),
+            mkStep({ id:"s3", say:"每道菜用旁邊專用的夾子或湯匙裝進餐盒，工具不要混用。裝好拿給我算錢，飯我幫你裝！", task:"先說「好」，再說每道菜用自己的工具，裝好拿給老闆算錢",
+              options:["好，每道菜用自己的工具，裝好拿給老闆算錢","把吃過的菜放回去","我直接拿走就好","我要吃老闆的便當"], kw:["每道菜用自己","老闆算錢","裝好拿"] }),
+            mkStep({ id:"s4", say:"（你夾了炒青江菜、番茄炒蛋和糖醋雞丁，拿到老闆面前。）要幾碗飯？", task:"說你要一碗白飯",
+              options:["我要一碗白飯","隨便啦","我不要付飯的錢","我要雞腿便當"], kw:["要一碗白飯"] }),
+            mkStep({ id:"pay", image:"images/b6/icon-b6-buffet-lunchbox.png::75 元", image_label:"三樣菜加一碗飯", say:"三樣菜加一碗飯，一共 75 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 25 元", say:"收您 100 元，找您 25 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["25 元，對了，謝謝！","錢我不用數","15 元，對了，謝謝！","（直接走掉）"], kw:["25","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）在這家可以自己夾菜的自助餐店買午餐，要怎麼做？", task:"說出方法：自己夾菜，拿給老闆算錢，說要幾碗飯",
+              options:["自己夾菜，拿給老闆算錢，說要幾碗飯","用手拿菜","把吃過的菜放回去","不用給老闆看"], kw:["說要幾碗飯","自己夾菜","老闆算錢"], feedback:{ perfect:"答對了！自己夾菜，拿給老闆算錢，說要幾碗飯。", failed:"記住：自己夾菜，拿給老闆算錢，說要幾碗飯。" } }),
+          ]
+        },
+        {
+          id: "dine_in", name: "在店裡吃，問筷子和湯", icon: "🥢",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "內用時不知道東西在哪裡就問；吃完把餐盒放到指定的地方",
+          steps: [
+            mkStep({ id:"greeting", say:"（中午你想在便當店裡吃一個鯖魚便當，身上有 100 元。店內牌子寫著「內用有免費湯，請自行取用」。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-mackerel-bento.png", image_label:"鯖魚便當", say:"請問要吃什麼呢？", task:"說你要一個鯖魚便當，在這裡吃",
+              options:["我要一個鯖魚便當，在這裡吃","隨便一個","我要雞腿便當","你幫我決定"], kw:["一個鯖魚便當","在這裡吃"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"好的！鯖魚便當 85 元。", task:"把 100 元拿給老闆，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 15 元", say:"收您 100 元，找您 15 元。你先去坐，便當好了拿給你！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["15 元，對了，謝謝！","錢我不用數","5 元，對了，謝謝！","（直接走掉）"], kw:["15","對了"], mode:'all' }),
+            mkStep({ id:"s5", say:"（便當送來了，桌上沒有筷子，也沒有湯。）你的鯖魚便當來了！", task:"先說「謝謝」，再用「請問」問筷子和湯在哪裡",
+              options:["謝謝，請問筷子和湯在哪裡？","你怎麼都沒給我","（走進廚房自己找）","我用手吃就好"], kw:["謝謝","筷子","哪裡"] }),
+            mkStep({ id:"s6", say:"筷子在櫃台旁邊，湯在那一鍋，可以自己舀。湯很燙，拿不穩就叫我幫忙喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我把湯鍋搬走","我不要湯，退錢","我把筷子全部帶走"], kw:["謝謝"] }),
+            mkStep({ id:"s7", say:"（你吃完了，站起來。）", task:"用「請問」問老闆：吃完的餐盒要放哪裡？",
+              options:["請問吃完的餐盒要放哪裡？","餐盒丟地上","把餐盒丟到別人桌上","把剩菜倒進湯鍋"], kw:["放哪裡","吃完"] }),
+            mkStep({ id:"s8", say:"放到門口的餐具回收台，我們會再分類處理。謝謝你喔！", task:"先說「好」，再說「謝謝，再見」",
+              options:["好，謝謝，再見！","你自己收啦","我把餐盒丟到街上","隨便啦"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）內用時不知道筷子和湯在哪裡、吃完餐盒放哪裡，要怎麼做？", task:"說出方法：問店員，吃完把餐盒放到指定的地方",
+              options:["問店員，吃完把餐盒放到指定的地方","自己進廚房找","把餐盒丟地上","把剩菜倒進湯鍋"], kw:["問店員","餐盒放","吃完"], feedback:{ perfect:"答對了！問店員，吃完把餐盒放到指定的地方。", failed:"記住：問店員，吃完把餐盒放到指定的地方。" } }),
+          ]
+        },
+        {
+          id: "phone_order", name: "打電話訂便當再去拿", icon: "📞",
+          simple_steps: ["s6","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先打電話訂：說清楚幾個、什麼便當、幾點拿、名字；到店報名字取餐",
+          steps: [
+            mkStep({ id:"greeting", say:"（現在是上午十一點。爸爸請你依店家公布的電話打到便當店，訂兩個三杯雞便當，中午十二點去拿。電話接通了。）喂，你好！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greetBoss" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-three-cup-chicken-bento.png", image_label:"三杯雞便當", say:"請問要什麼呢？", task:"說你要訂兩個三杯雞便當，十二點去拿",
+              options:["我要訂兩個三杯雞便當，十二點去拿","隨便來幾個","我現在就要","我要一個雞腿便當"], kw:["訂兩個三杯雞便當","十二點去拿"] }),
+            mkStep({ id:"s3", say:"好！兩個三杯雞便當，中午十二點拿。請問取餐名字怎麼稱呼？", task:"說出你的名字",
+              options:["我叫{名字}","你猜","隨便寫一個","我用別人的名字亂訂"], accepted:["我是{名字}","我的名字是{名字}"], kw:["{名字}"] }),
+            mkStep({ id:"s4", say:"好，兩個三杯雞便當，一共 180 元，十二點來拿喔！", task:"先說「好」，再複誦：兩個三杯雞便當，180 元，十二點去拿",
+              options:["好，兩個三杯雞便當，180 元，十二點去拿","我想拿再去","錢到時候再說","（直接掛斷）"], kw:["180","兩個三杯雞便當","十二點去拿"] }),
+            mkStep({ id:"greeting5", say:"（中午十二點，你帶著 200 元來到剛才訂餐的便當店櫃台。）你好！歡迎光臨！", task:"跟老闆打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:["好"] }),
+            mkStep({ id:"s6", say:"請問要點餐，還是有先預訂呢？", task:"說你有打電話訂兩個三杯雞便當，再說出你的名字",
+              options:["我有打電話訂兩個三杯雞便當，我叫{名字}","給我便當就對了","我要拿別人的訂單","不用對名字，全部給我"], accepted:["我有打電話訂兩個三杯雞便當，我是{名字}","我有打電話訂兩個三杯雞便當，我的名字是{名字}"], kw:["有打電話訂兩個三杯雞便當","{名字}"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"有！我核對過名字和訂單了，兩個三杯雞便當在這裡，一共 180 元。", task:"把 200 元拿給老闆，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","先訂的可以便宜吧","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元", say:"收您 200 元，找您 20 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["20 元，對了，謝謝！","錢我不用數","10 元，對了，謝謝！","（直接走掉）"], kw:["20","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）打電話訂便當，要說清楚什麼？", task:"說出要說清楚的：什麼便當、幾個、幾點去拿，還有名字",
+              options:["什麼便當、幾個、幾點去拿，還有名字","什麼都不用說","說名字就好","到了再點"], kw:["什麼便當","幾點去拿","還有名字"], feedback:{ perfect:"答對了！什麼便當、幾個、幾點去拿，還有名字。", failed:"記住：什麼便當、幾個、幾點去拿，還有名字。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 咖啡店（第二部分・點餐客製）
+    // ══════════════════════════════════════════
+    {
+      id: "coffee_shop", name: "咖啡店", icon: "☕", available: true,
+      theme: { color: '#78350F', bg: '#FDF6EC', accent: '#451A03' },
+      situations: [
+        {
+          id: "basic", name: "基本點咖啡", icon: "☕",
+          desc: "點咖啡並說出冰熱的完整點餐流程",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天天氣很熱，你想喝冰的。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"order", say:"請問要點什麼咖啡呢？", task:"告訴店員你要一杯拿鐵",
+              options:["我要一杯拿鐵","我要結帳","謝謝再見","有什麼推薦？"], kw:["拿鐵"],
+              image:"images/b6/icon-b6-latte.png", image_label:"拿鐵",
+              frame_ref:"want_item", slots:{ item:{ answer:"拿鐵", choices:[
+                { text:"拿鐵", emoji:"☕" }, { text:"美式咖啡", emoji:"☕" },
+                { text:"卡布奇諾", emoji:"☕" }, { text:"熱可可", emoji:"🍫" } ] } },
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！試試說完整：「我要一杯拿鐵」" } }),
+            mkStep({ id:"ask_hot_or_iced", say:"好的！請問要熱的還是冰的呢？", task:"說你要冰的",
+              options:["冰的","熱的","溫的","都可以"], kw:["冰的"],
+              feedback:{ perfect:"說得很清楚！懂得選擇冰熱！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！冰拿鐵一杯 65 元。", task:"把 65 元拿給店員，說「給你 65 元」，再說「謝謝」",
+              options:["給你 65 元，謝謝！","我不想付錢","我不買了","我沒帶錢"], kw:[...KW_PRESETS.hand, "65", "六十五"],
+              accepted:["給你 65 元，謝謝！","65 元給你，謝謝！","謝謝！這是 65 元","這是 65 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"65 元",
+              feedback:{ perfect:"太棒了！把錢給店員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 65 元，謝謝！」" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "點卡布奇諾時發現錢不夠，改點便宜的美式咖啡",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要喝什麼呢？", task:"告訴店員你要一杯卡布奇諾",
+              options:["我要一杯卡布奇諾","我要美式咖啡","謝謝再見","請問廁所在哪裡？"], kw:["卡布奇諾"],
+              image:"images/a3/icon-a3-cappuccino.png", image_label:"卡布奇諾",
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！卡布奇諾一杯 70 元。（你打開錢包，發現只有 45 元，不夠 70 元）", task:"先說「不好意思」，再告訴店員你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 25 元","還差 25 元","我的錢不到 70 元","我只有 45 元，錢不夠","我的錢不夠"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"錢包裡只有 45 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要換美式咖啡，只要 45 元？（你也喝美式咖啡，覺得換成美式可以。）", task:"先說「好」，再說你要改點美式咖啡",
+              options:["好，我要美式咖啡","我還是要卡布奇諾","哼，不用你管！","請問廁所在哪裡？"], kw:["美式","改"],
+              image:"images/a4/icon-a4-coffee-shop.png::45 元", image_label:"美式咖啡",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"好的，美式咖啡 45 元。", task:"把 45 元拿給店員，說「給你 45 元」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"45 元",
+              options:["給你 45 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "45", "四十五"],
+              accepted:["給你 45 元","我給你 45 元","45 元給你","這是 45 元"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次買東西以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去付錢就好","看到想要的就先拿","請店員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看商品的價格夠不夠",
+              options:["再看商品多少錢，夠不夠買","不夠的時候再說就好","先拿去付錢再說","請店員先算給我"],
+              accepted:["再看商品多少錢，夠不夠買","再看商品的價格，夠不夠買","看商品多少錢","再看價格夠不夠","再看商品的價錢，夠不夠買","看商品的價錢","看商品幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看商品多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看商品多少錢，夠不夠買」",
+                         failed:"可以這樣說：「再看商品多少錢，夠不夠買」" } })
+          ]
+        },
+        {
+          id: "ask_seat", name: "詢問座位與插座", icon: "🔌",
+          simple_steps: ["greet_ask", "order", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問店裡有沒有空位和插座可以使用",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問要喝什麼呢？", task:"用「請問」問店員有沒有插座的位子",
+              options:["請問有插座的位子嗎？","我要一杯熱可可","請問廁所在哪裡？","謝謝再見"],
+              kw:["插座","位子"],
+              feedback:{ perfect:"問得很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"有的！靠窗那一區都有插座喔！", task:"跟店員說「謝謝你」",
+              options:["謝謝你！","哼，不用你管！","快一點啦！","我要一杯熱可可"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"order", say:"請問要點什麼飲料呢？", task:"說你要一杯熱可可",
+              options:["我要一杯熱可可","我要拿鐵","謝謝再見","請問廁所在哪裡？"], kw:["熱可可","可可"],
+              image:"images/a3/icon-a3-hot-chocolate.png", image_label:"熱可可",
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！熱可可一杯 60 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 40 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元",
+              options:["40 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["40","四十","對了"],
+              accepted:["40 元，對了，謝謝！","40 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "wrong_order", name: "點錯口味了", icon: "🔄",
+          simple_steps: ["order", "clerk_mistake", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "店員複誦口味弄錯了，禮貌地更正",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（今天你想喝一杯焦糖拿鐵。）你好！歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","有優惠嗎？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"order", say:"請問要喝什麼呢？", task:"告訴店員你要一杯焦糖拿鐵",
+              options:["我要一杯焦糖拿鐵","我要美式咖啡","謝謝再見","有什麼推薦？"], kw:["焦糖"],
+              image:"images/b6/icon-b6-caramel-latte.png", image_label:"焦糖拿鐵",
+              feedback:{ perfect:"點得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"clerk_mistake", say:"好的，一杯香草拿鐵對嗎？", task:"告訴店員你點的是焦糖不是香草",
+              options:["不是喔，我要焦糖的","對，香草就好","謝謝再見","我要換飲料"], kw:["焦糖","不是"],
+              feedback:{ perfect:"很好！勇敢地更正了！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"不好意思，我聽錯了！好的，一杯焦糖拿鐵。", task:"跟店員說「謝謝你」",
+              options:["謝謝你！","請問廁所在哪裡？","哼，你很粗心耶！","我要一杯焦糖拿鐵"], kw:["謝謝","沒關係"],
+              accepted:["謝謝你！","沒關係！","沒關係，謝謝！"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！焦糖拿鐵一杯 70 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 30 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 30 元",
+              options:["30 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["30","三十","對了"],
+              accepted:["30 元，對了，謝謝！","30 元，謝謝！"] })
+          ]
+        },
+        {
+          id: "broke_cup", name: "不小心打破杯子", icon: "🥤",
+          simple_steps: ["apologize", "ask_clean", "ask_pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "不小心打破杯子，先道歉、請店員清理、不碰碎片，再問要不要賠",
+          steps: [
+            mkStep({ id:"apologize", say:"（你在咖啡店喝柳橙汁，手一滑，杯子掉到地上破了，果汁也灑了。你沒有受傷，店員走過來。）怎麼了嗎？", task:"先說「不好意思」，再說你把杯子打破了",
+              options:["不好意思，我把杯子打破了", "不是我弄的", "（假裝沒看到）", "杯子太滑了啦"], kw:["打破", "不好意思"], accepted:["不好意思，我把杯子打破了"] }),
+            mkStep({ id:"ask_clean", say:"沒關係！人沒有受傷吧？", task:"先說「沒有」，再用「請問」請店員幫忙清理",
+              options:["沒有，請問可以幫忙清理嗎？", "你們自己擦啦", "碎片我用手撿就好", "再給我一杯"], kw:["清理", "幫忙"], accepted:["沒有，請問可以幫忙清理嗎？"] }),
+            mkStep({ id:"step_aside", say:"我來清就好，地上有碎片，你先站旁邊喔！", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你", "我要踩過去", "碎片我用手撿就好", "（繼續坐著滑手機）"], kw:["謝謝"], accepted:["好，謝謝你"] }),
+            mkStep({ id:"ask_pay", say:"清好了！", task:"用「請問」問店員，打破的杯子要不要賠",
+              options:["請問打破的杯子要賠嗎？", "我不會賠喔", "再給我一杯免費的", "那我走了"], kw:["要賠嗎", "要不要賠"], accepted:["請問打破的杯子要賠嗎？"] }),
+            mkStep({ id:"promise", say:"依照我們店裡的規定，不小心打破不用賠。下次小心就好！", task:"先說「好」，再說「謝謝，我下次會小心」",
+              options:["好，謝謝，我下次會小心", "本來就不用賠吧", "那我再打破一個", "反正不用錢"], kw:["小心"], accepted:["好，謝謝，我下次會小心"] }),
+            mkStep({ id:"review", say:"（想一想）在店裡不小心打破東西，要怎麼做？", task:"說出方法：先道歉，請店員幫忙，不碰碎片，再問要不要賠",
+              options:["先道歉，請店員幫忙，不碰碎片，再問要不要賠", "趕快離開", "假裝沒看到", "自己用衛生紙擦一擦就走"], kw:["道歉", "碎片"], accepted:["先道歉，請店員幫忙，不碰碎片，再問要不要賠"], feedback:{ perfect:"答對了！先道歉，請店員幫忙，不碰碎片，再問要不要賠。", failed:"記住：先道歉，請店員幫忙，不碰碎片，再問要不要賠。" } }),
+          ]
+        },
+        {
+          id: "cake_set", name: "點飲料加蛋糕套餐", icon: "🍰",
+          simple_steps: ["s4","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看到套餐，把分開買的價錢加起來比一比",
+          steps: [
+            mkStep({ id:"greeting", image:"images/b6/icon-b6-cafe-menu-set.png", image_label:"菜單", say:"（你想喝熱伯爵紅茶、吃起司蛋糕。菜單寫：紅茶 60 元、蛋糕 80 元，套餐 120 元。你有 200 元。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-earl-grey-tea.png::60 元","images/a3/icon-a3-cheesecake.png::80 元"], image_label:"伯爵紅茶 ＋ 起司蛋糕", say:"請問要點什麼呢？", task:"說你要熱的伯爵紅茶和起司蛋糕，再用「請問」問可以點套餐嗎",
+              options:["我要熱的伯爵紅茶和起司蛋糕，請問可以點套餐嗎？","隨便一杯","我要冰拿鐵","蛋糕送我好不好"], kw:["伯爵紅茶","起司蛋糕","點套餐"] }),
+            mkStep({ id:"s3", say:"可以喔！套餐 120 元，比分開點便宜。", task:"算一算伯爵紅茶 60 元加起司蛋糕 80 元，說出分開買一共多少錢",
+              options:["分開買一共 140 元","分開買一共 120 元","分開買一共 80 元","我不算，隨便付錢"], kw:["140"] }),
+            mkStep({ id:"s4", say:"對，分開買是 140 元，套餐是 120 元。", task:"用分開買的價錢減掉套餐價，說出套餐便宜多少錢",
+              options:["套餐便宜 20 元","套餐便宜 60 元","套餐貴 20 元","你一定要免費送我"], kw:["便宜","20"], mode:"all" }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"對！一共 120 元。", task:"把 200 元拿給店員，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","再便宜一點啦","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 80 元", say:"收您 200 元，找您 80 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["80 元，對了，謝謝！","錢我不用數","70 元，對了，謝謝！","（直接走掉）"], kw:["80","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）想買的飲料和蛋糕都在套餐裡，要怎麼比價？", task:"說出方法：把分開買的價錢加起來，跟套餐比一比",
+              options:["把分開買的價錢加起來，跟套餐比一比","套餐一定比較便宜","看哪個比較大","不用比"], kw:["價錢加起來","套餐比一比","把分開買"], feedback:{ perfect:"答對了！把分開買的價錢加起來，跟套餐比一比。", failed:"記住：把分開買的價錢加起來，跟套餐比一比。" } }),
+          ]
+        },
+        {
+          id: "study_rules", name: "在店裡寫作業要遵守規定", icon: "📚",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "有些店內用有規定",
+          steps: [
+            mkStep({ id:"greeting", say:"（放學後你想在咖啡店寫作業，喝一杯抹茶拿鐵，你有 100 元。門口寫著「內用每人點一杯，限時 2 小時」。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問內用還是外帶？", task:"說你要內用",
+              options:["我要內用","隨便啦","我要把桌子搬走","椅子全部給我"], kw:["要內用"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-matcha-latte.png", image_label:"抹茶拿鐵", say:"好的！依照我們店裡的規定，內用每人要點一杯飲料，限時兩小時喔。", task:"先說「好」，再說你要一杯抹茶拿鐵",
+              options:["好，我要一杯抹茶拿鐵","我就不點，你能怎樣","我要坐一整天","規定跟我沒關係"], kw:["一杯抹茶拿鐵"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"抹茶拿鐵 75 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算我 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找您 25 元", say:"收您 100 元，找您 25 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["25 元，對了，謝謝！","錢我不用數","15 元，對了，謝謝！","（直接走掉）"], kw:["25","對了"], mode:'all' }),
+            mkStep({ id:"s6", say:"你現在下午四點入座，可以坐到六點喔！", task:"先說「好」，再說六點時間到就離開",
+              options:["好，六點時間到就離開","我想坐多久就坐多久","我把計時器藏起來","隨便啦"], kw:["六點時間","離開"] }),
+            mkStep({ id:"review", say:"（想一想）在咖啡店坐著寫作業，要遵守什麼？", task:"說出要遵守的：照店裡的規定點飲料，時間到就離開",
+              options:["照店裡的規定點飲料，時間到就離開","不用點東西","想坐多久就坐多久","規定不用看"], kw:["規定點飲料","照店裡","時間"], feedback:{ perfect:"答對了！照店裡的規定點飲料，時間到就離開。", failed:"記住：照店裡的規定點飲料，時間到就離開。" } }),
+          ]
+        },
+        {
+          id: "gift_coffee", name: "買咖啡送爸爸", icon: "☕",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "買東西送人：說出對方喜歡什麼，請店員推薦",
+          steps: [
+            mkStep({ id:"greeting", say:"（爸爸喜歡喝咖啡，可是不喜歡酸的。你帶了 300 元，想買一盒掛耳咖啡送給爸爸。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼呢？", task:"說你想買掛耳咖啡送給爸爸，他喜歡不酸的，再用「請問」請店員推薦",
+              options:["我想買掛耳咖啡送給爸爸，他喜歡不酸的，請問可以推薦嗎？","隨便一盒","我要冰拿鐵","最貴的給我"], kw:["買掛耳咖啡送","他喜歡不酸","爸爸"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-drip-coffee-box.png::250 元", image_label:"深焙掛耳咖啡一盒十包", say:"這款深焙掛耳咖啡風味比較不酸，一盒十包 250 元。（你看了盒子上的說明，覺得爸爸會喜歡，決定買這盒。）", task:"先說「好」，再說你要買這一盒",
+              options:["好，我要買這一盒","可以算 100 元嗎？","我要酸的","隨便啦"], kw:["要買這一盒"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"300 元", say:"好的，一共 250 元。", task:"把 300 元拿給店員，說「給你 300 元」",
+              options:["給你 300 元","我不想付錢","送人的可以免費嗎？","先欠著"], kw:[...KW_PRESETS.hand, "300", "三百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png"], image_label:"找您 50 元", say:"收您 300 元，找您 50 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["50 元，對了，謝謝！","錢我不用數","40 元，對了，謝謝！","（直接走掉）"], kw:["50","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買東西送人，可以怎麼請店員推薦？", task:"說出方法：說出對方喜歡什麼，請店員推薦",
+              options:["說出對方喜歡什麼，請店員推薦","挑最貴的就好","隨便買","自己喜歡就好"], kw:["出對方喜歡什麼","請店員推薦"], feedback:{ perfect:"答對了！說出對方喜歡什麼，請店員推薦。", failed:"記住：說出對方喜歡什麼，請店員推薦。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 郵局櫃臺（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "post_office", name: "郵局櫃臺", icon: "📮", available: true,
+      theme: { color: '#1D4ED8', bg: '#DBEAFE', accent: '#1E40AF' },
+      situations: [
+        {
+          id: "basic", name: "寄送包裹", icon: "📦",
+          simple_steps: ["tell_purpose", "ask_price", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "告訴櫃檯人員要寄包裹，確認費用並付款",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在台北，要把 1 公斤的包裹寄給住在台南的奶奶。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","多少錢？","請問怎麼寄信？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"tell_purpose", say:"請問要辦理什麼呢？", task:"告訴櫃檯人員你要寄包裹",
+              options:["我要寄包裹","我要買郵票","謝謝再見","我要領錢"], kw:["寄包裹","包裹"],
+              image:"images/b6/icon-b6-parcel-box.png", image_label:"要寄的包裹",
+              frame_ref:"want_item", slots:{ item:{ answer:"包裹", choices:[
+                { text:"包裹", emoji:"📦" }, { text:"信件", emoji:"✉️" },
+                { text:"郵票", emoji:"📮" }, { text:"明信片", emoji:"📬" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！試著說完整：「我要寄包裹」" } }),
+            mkStep({ id:"weigh", say:"好的，請把包裹放上來給我秤重喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝！","我要領錢","這本書多少錢？","快點啦！"], accepted:["好，謝謝！","好的，謝謝！"], kw:["好"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_price", say:"這個包裹重 1 公斤，請問還需要什麼嗎？", task:"用「請問」問櫃檯人員這樣要多少錢",
+              options:["請問這樣要多少錢？","好的謝謝","我要寄兩個","謝謝再見"], kw:"price",
+              accepted:["請問這樣要多少錢？","這樣多少錢？","多少錢？","請問多少元？","多少元？"],
+              frame_ref:"ask_price", slots:{ item:{ answer:"包裹", choices:[
+                { text:"包裹", emoji:"📦" }, { text:"信件", emoji:"✉️" } ] } },
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！可以加上「請問」更有禮貌" } }),
+            mkStep({ id:"checkout", say:"好的！運費 80 元。", task:"把 80 元拿給櫃檯人員，說「給你 80 元」，再說「謝謝」",
+              options:["給你 80 元，謝謝！","我不想付錢","我要買飲料","我沒帶錢"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元，謝謝！","80 元給你，謝謝！","謝謝！這是 80 元","這是 80 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              feedback:{ perfect:"太棒了！把錢給櫃檯人員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 80 元，謝謝！」" } })
+          ]
+        },
+        {
+          id: "buy_stamp", name: "購買郵票", icon: "✉️",
+          simple_steps: ["greet_ask", "answer", "checkout"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "詢問並購買寄信要用的郵票",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","多少錢？","我要寄包裹"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問需要辦理什麼業務呢？", task:"用「請問」問櫃檯人員郵票怎麼賣",
+              options:["請問郵票怎麼賣？","我要寄包裹","我要買信封","謝謝再見"],
+              kw:["郵票","多少錢"],
+              accepted:["請問郵票怎麼賣？","請問多少錢一張？","請問郵票一張多少錢？"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"國內信郵票一張 8 元喔！請問要幾張呢？", task:"說你要買兩張",
+              options:["我要兩張","我要一張","我要十張","謝謝再見"], kw:["兩張"],
+              image:["images/b6/icon-b6-postage-stamp.png::一張 8 元"], image_label:"兩張郵票",
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"好的，兩張郵票，請問還需要什麼嗎？", task:"先說「不用了」，再說「謝謝」",
+              options:["不用了，謝謝","我還要買包裹箱","再給我一張","謝謝再見"], kw:["不用","謝謝"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！兩張郵票共 16 元。", task:"把 16 元拿給櫃檯人員，說「給你 16 元」，再說「謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png","images/money/1_yuan_front.png"], image_label:"16 元",
+              options:["給你 16 元，謝謝！","我不想付錢","我要兩張","掰掰！"], kw:[...KW_PRESETS.hand, "16", "十六"],
+              accepted:["給你 16 元，謝謝！","16 元給你，謝謝！","這是 16 元，謝謝！","給你 16 元"],
+              feedback:{ perfect:"很棒！付錢說得很清楚！" } })
+          ]
+        },
+        {
+          id: "not_enough_money", name: "錢不夠", icon: "💸",
+          simple_steps: ["not_enough", "choose", "pay"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "寄包裹時發現錢不夠，改用比較便宜的寄送方式",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你在台北，要把 1 公斤的包裹寄到台南，想用快捷寄，比較快送到。）你好！", task:"跟櫃檯人員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","多少錢？","請問怎麼寄信？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"select", say:"請問要辦理什麼呢？", task:"告訴櫃檯人員你要用快捷寄包裹",
+              options:["我要用快捷寄包裹","我要買郵票","謝謝再見","請問廁所在哪裡？"], kw:["快捷"],
+              accepted:["我要用快捷寄包裹","我要寄快捷","包裹要寄快捷","我要用快捷寄"],
+              image:"images/b6/icon-b6-parcel-box.png", image_label:"要寄的包裹",
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"not_enough", say:"好的！用快捷寄要 150 元。（你打開錢包，發現只有 100 元，不夠 150 元）", task:"先說「不好意思」，再告訴櫃檯人員你的錢不夠",
+              accepted:["不好意思，我的錢不夠","我的錢差一點","錢差一點","不好意思，還差 50 元","還差 50 元","我的錢不到 150 元","我只有 100 元，錢不夠","我的錢不夠"],
+              image:"images/money/100_yuan_front.png", image_label:"錢包裡只有 100 元",
+              options:["不好意思，我的錢不夠","哼，算便宜一點啦！","可以先欠著嗎？","請問廁所在哪裡？"],
+              kw:["不夠","只有","沒有","錢不夠","不到","不足","差一點","還差","差了","錢少","少一點","帶錢","帶那麼多","帶夠"],
+              feedback:{ perfect:"說得很誠實！很勇敢！", partial:"說出了重點！" } }),
+            mkStep({ id:"choose", say:"沒關係！要不要改寄一般包裹？80 元。", task:"先說「好」，再說你要寄一般包裹",
+              options:["好，我要寄一般包裹","我還是要快捷","哼，不用你管！","請問廁所在哪裡？"], kw:["一般包裹","改"],
+              accepted:["好，我要寄一般包裹","好，改寄一般包裹","好，一般包裹"],
+              image:"images/b6/icon-b6-parcel-box.png::80 元", image_label:"一般包裹",
+              feedback:{ perfect:"很好！懂得因應調整！", partial:"說出了重點！" } }),
+            mkStep({ id:"pay", say:"（你拿出錢包準備付錢。）", task:"把 100 元拿給櫃檯人員，說「給你 100 元」",
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              options:["給你 100 元","我不想付錢","先欠著好了","請問廁所在哪裡？"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              accepted:["給你 100 元","我給你 100 元","100 元給你","這是 100 元"] }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 20 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元",
+              options:["20 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["20","二十","對了"],
+              accepted:["20 元，對了，謝謝！","20 元，謝謝！"] }),
+            // 事後反思兩步（設計說明見便利商店 not_enough_money）
+            mkStep({ id:"review_wallet", say:"（想一想）下次來郵局以前，要先看什麼？",
+              task:"說出要先看錢包",
+              options:["先看錢包裡有多少錢","直接拿去寄就好","不用看，寄了再說","請櫃檯人員幫我決定"],
+              accepted:["先看錢包裡有多少錢","先看錢包有多少錢","要先看錢包的錢","先數錢包裡的錢","先看皮夾裡有多少錢","先看身上有多少錢","先看口袋裡有沒有錢","先看我有多少錢"],
+              kw:["錢包","皮夾","口袋","我的錢","我有多少","身上","有沒有錢"],
+              feedback:{ perfect:"答對了！買東西以前，先看錢包裡有多少錢。",
+                         partial:"說出了重點！可以說：「先看錢包裡有多少錢」",
+                         failed:"可以這樣說：「先看錢包裡有多少錢」" } }),
+            mkStep({ id:"review_price", say:"（想一想）知道錢包有多少錢了，接下來要看什麼？",
+              task:"說出還要看寄件要多少錢，夠不夠付",
+              options:["再看寄件要多少錢，夠不夠付","不夠的時候再說就好","先拿去櫃檯再說","請櫃檯人員先算給我"],
+              accepted:["再看寄件要多少錢，夠不夠付","再看寄件的價格，夠不夠付","看寄件要多少錢","再看價格夠不夠","再看寄件的價錢，夠不夠付","看寄件的價錢","看寄件幾元"],
+              kw:["多少錢","價格","價錢","幾元","多少元","夠不夠"],
+              feedback:{ perfect:"答對了！先看錢包，再看寄件要多少錢，想想夠不夠。",
+                         partial:"說出了重點！可以說：「再看寄件要多少錢，夠不夠付」",
+                         failed:"可以這樣說：「再看寄件要多少錢，夠不夠付」" } })
+          ]
+        },
+        {
+          id: "ask_time", name: "詢問多久會到", icon: "🕐",
+          desc: "寄包裹前，先詢問寄到台北大約幾天會送達",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"（你在高雄，要把一個包裹寄到台北。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","多少錢？","我要買郵票"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問需要辦理什麼呢？", task:"用「請問」問櫃檯人員，寄包裹到台北多久會到",
+              options:["請問寄包裹到台北，多久會到呢？","我要寄包裹","請問幾天會到？","謝謝再見"],
+              kw:["多久","幾天"],
+              accepted:["請問寄包裹到台北，多久會到呢？","如果寄包裹到台北，多久會到呢？","寄到台北要多久？","包裹寄到台北，幾天會到？","請問寄到台北要幾天？"],
+              feedback:{ perfect:"問得很好！懂得確認時間！", partial:"說出了重點！" } }),
+            mkStep({ id:"answer", say:"一般大約 2 到 3 天會送到喔！（你覺得 2 到 3 天可以，決定寄這個包裹。）", task:"先說「好」，再說你要寄這個包裹",
+              options:["好，那我要寄這個","那我要用比較快的","謝謝再見","我再考慮一下"], accepted:["好，那我要寄這個","好的，那我要寄這個"],
+              image:"images/b6/icon-b6-parcel-box.png", image_label:"要寄的包裹",
+              kw:["好","我要寄"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"weigh", say:"好的，運費是 80 元。", task:"把 80 元拿給櫃檯人員，說「給你 80 元」，再說「謝謝」",
+              options:["給你 80 元，謝謝！","我不想付錢","我要買飲料","我沒帶錢"], kw:[...KW_PRESETS.hand, "80", "八十"],
+              accepted:["給你 80 元，謝謝！","80 元給你，謝謝！","謝謝！這是 80 元","這是 80 元，謝謝！"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"80 元",
+              feedback:{ perfect:"太棒了！把錢給櫃檯人員，也有說謝謝！", partial:"說出了部分！記得說你給多少錢，也要說謝謝", failed:"可以這樣說：「給你 80 元，謝謝！」" } }),
+            mkStep({ id:"thanks", say:"好的，謝謝你的耐心等候！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","我要寄包裹"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "pick_up", name: "領包裹", icon: "📬",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "帶通知單和有照片的證件，到櫃檯領掛號包裹",
+          steps: [
+            mkStep({ id:"greeting", say:"（信箱裡有一張郵局的招領通知單，說有你的掛號包裹。你帶著通知單和有照片的健保卡正本，來到通知單上指定的郵局。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！", "謝謝再見", "多少錢？", "我要寄包裹"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"tell_purpose", image:["images/b6/icon-b6-parcel-notice.png"], image_label:"招領通知單", say:"請問要辦理什麼呢？", task:"說你要領包裹，把通知單拿給櫃檯人員，再說「這是通知單」",
+              options:["我要領包裹，這是通知單", "我要買郵票", "我要寄信", "隨便啦"], kw:["領包裹", "通知單"], accepted:["我要領包裹，這是通知單"] }),
+            mkStep({ id:"show_id", image:["images/b6/icon-b6-nhi-card.png"], image_label:"有照片的健保卡", say:"好的！領掛號要看一下有照片的證件喔。", task:"把健保卡拿給櫃檯人員，說「這是我的健保卡」",
+              options:["這是我的健保卡", "我沒有帶啦", "你直接給我就好", "證件不能給你看"], kw:["健保卡"], accepted:["這是我的健保卡"] }),
+            mkStep({ id:"sign", say:"好，確認是本人。請在這裡簽名。", task:"先說「好」，再說你簽好了",
+              options:["好，我簽好了", "我隨便簽別人的名字", "你幫我簽", "隨便畫一下就好"], kw:["簽好"], accepted:["好，我簽好了"] }),
+            mkStep({ id:"goodbye", say:"這是你的包裹，請收好！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝，再見！", "我也要拿別人的包裹", "（直接拿走）", "好重喔不想拿"], kw:"bye", accepted:["謝謝，再見！"] }),
+            mkStep({ id:"review", say:"（想一想）去郵局領包裹，要帶什麼？", task:"說出要帶的東西：通知單和有照片的證件",
+              options:["通知單和有照片的證件", "什麼都不用帶", "帶錢就好", "只要報名字"], kw:["通知單", "證件"], accepted:["通知單和有照片的證件"], feedback:{ perfect:"答對了！通知單和有照片的證件。", failed:"記住：通知單和有照片的證件。" } }),
+          ]
+        },
+        {
+          id: "deposit", name: "把錢存進郵局帳戶", icon: "🏦",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "郵局也可以存錢：帶存摺和錢、說存多少、看存摺上的金額",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想把 1000 元零用錢存進自己的郵局帳戶。你帶著存摺和錢，抽號碼牌，等叫號後到櫃台。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-passbook.png", image_label:"存摺", say:"請問要辦理什麼呢？", task:"說你要存錢，把存摺拿給櫃檯人員，說「這是我的存摺」",
+              options:["我要存錢，這是我的存摺","我要買郵票","我要領包裹","隨便啦"], kw:["要存錢","存摺"] }),
+            mkStep({ id:"s3", image:["images/money/1000_yuan_front.png"], image_label:"1000 元", say:"好的，要存多少錢呢？", task:"說你要存 1000 元，把錢拿給櫃檯人員，說「這是 1000 元」",
+              options:["我要存 1000 元，這是 1000 元","存多少都可以","我要存 1 萬元","錢先放你這裡"], kw:["1000元"] }),
+            mkStep({ id:"s4", image:["images/b6/icon-b6-passbook-deposit-1000.png"], image_label:"存摺新的一筆", say:"收您 1000 元。（你依櫃檯人員指示核對帳戶、完成所需手續。）辦好了，請核對這次的存款紀錄。（你看到自己的存摺新列印一筆，存入欄寫著 1000 元。）", task:"核對這次的存入金額，說「存進 1000 元，對了」",
+              options:["存進 1000 元，對了","不用看了","存摺送你","存進 1 萬元，對了"], kw:["1000元","對了"], mode:"all" }),
+            mkStep({ id:"s5", say:"存摺還給你，要收好喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","存摺放你這裡","密碼寫在存摺上好了","我不要了"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）存錢以後，要核對什麼、收好什麼？", task:"說出要看的：存摺上存進去的金額對不對，存摺要收好",
+              options:["存摺上存進去的金額對不對，存摺要收好","什麼都不用看","把存摺丟在櫃台就走","把密碼寫在存摺上"], kw:["存摺上存進去","金額對不對","存摺要收好"], feedback:{ perfect:"答對了！存摺上存進去的金額對不對，存摺要收好。", failed:"記住：存摺上存進去的金額對不對，存摺要收好。" } }),
+          ]
+        },
+        {
+          id: "registered_mail", name: "寄重要的信用掛號", icon: "✉️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "重要的信寄掛號，收好掛號執據，可以查寄到了沒",
+          steps: [
+            mkStep({ id:"greeting", say:"（老師請你把比賽報名表寄掛號，寄了才查得到。信封已經封好、寫好地址。你帶著信封和 50 元來到郵局櫃台。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-registered-letter.png", image_label:"掛號信", say:"請問要辦理什麼呢？", task:"說你要寄掛號信，把信封拿給櫃檯人員，說「這是信封」",
+              options:["我要寄掛號信，這是信封","我要買郵票","隨便寄一寄","我要存錢"], kw:["要寄掛號信","信封"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"我秤好了，這封國內普通掛號信不超過 20 公克，郵資一共 28 元。", task:"把 50 元拿給櫃檯人員，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","平信比較便宜，隨便貼一張就好","先欠著"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 22 元", say:"收您 50 元，找您 22 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["22 元，對了，謝謝！","錢我不用數","12 元，對了，謝謝！","（直接走掉）"], kw:["22","對了"], mode:'all' }),
+            mkStep({ id:"s5", say:"這張是掛號的執據，上面有號碼，可以查信寄到了沒有，要收好喔！", task:"先說「好」，再說你會把執據收好",
+              options:["好，我會把執據收好","執據丟掉沒關係吧","執據送你","我不要"], kw:["執據收好"] }),
+            mkStep({ id:"review", say:"（想一想）寄重要的信，要怎麼寄？", task:"說出方法：寄掛號，把執據收好，可以查寄到了沒",
+              options:["寄掛號，把執據收好，可以查寄到了沒","不用付郵資就交寄","不用寫地址","明明要掛號卻寄平信"], kw:["把執據收好","寄掛號","查寄到"], feedback:{ perfect:"答對了！寄掛號，把執據收好，可以查寄到了沒。", failed:"記住：寄掛號，把執據收好，可以查寄到了沒。" } }),
+          ]
+        },
+        {
+          id: "postcard_abroad", name: "寄明信片到國外", icon: "🌏",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "寄到國外先說哪一個國家，問清楚要貼多少郵票",
+          steps: [
+            mkStep({ id:"greeting", say:"（你住在日本的表姊生日快到了。你寫好一張明信片要寄給她，地址也寫好了。你帶著明信片和 50 元來到郵局。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-postcard.png", image_label:"要寄的明信片", say:"請問要辦理什麼呢？", task:"說你要寄明信片到日本，再用「請問」問要貼多少錢的郵票",
+              options:["我要寄明信片到日本，請問要貼多少錢的郵票？","我要寄包裹到台南","隨便寄","我要領包裹"], kw:["要貼多少錢","寄明信片","日本"] }),
+            mkStep({ id:"s3", say:"你這張符合明信片規格。寄日本的普通航空明信片，郵資是 10 元。", task:"先說「好」，再說你要買一張 10 元的郵票",
+              options:["好，我要買一張 10 元的郵票","不用貼郵票吧","我要貼 1 元的就好","隨便啦"], kw:["10","要買一張"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"好的，一張 10 元。", task:"把 50 元拿給櫃檯人員，說「給你 50 元」",
+              options:["給你 50 元","我不想付錢","先欠著","國外的不用錢吧"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 40 元", say:"收您 50 元，找您 40 元。郵票貼在明信片右上角，再交給我就可以了！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"s6", say:"（你把郵票貼在右上角，把明信片交給櫃檯人員。）好，幫你寄出去囉！", task:"說「謝謝，再見」",
+              options:["謝謝，再見！","你好","我要買郵票","多少錢？"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）寄信到國外，要先說清楚什麼？", task:"說出方法：說要寄到哪一個國家，問清楚要貼多少郵票",
+              options:["說要寄到哪一個國家，問清楚要貼多少郵票","隨便貼一張郵票","不用寫國家","地址不寫完整也沒關係"], kw:["哪一個國家","貼多少郵票","問清楚"], feedback:{ perfect:"答對了！說要寄到哪一個國家，問清楚要貼多少郵票。", failed:"記住：說要寄到哪一個國家，問清楚要貼多少郵票。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 圖書館（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "library", name: "圖書館", icon: "📚", available: true,
+      theme: { color: '#155E75', bg: '#ECFEFF', accent: '#164E63' },
+      situations: [
+        {
+          id: "basic", name: "基本借書", icon: "📖",
+          desc: "出示借書證、借閱一本書的完整流程",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","這本書多少錢？","廁所在哪裡？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"打招呼打得很好！", partial:"不錯！可以說得更完整" } }),
+            mkStep({ id:"tell_purpose", say:"請問需要幫忙嗎？", task:"說你要借這本書",
+              options:["我要借這本書","我要買這本書","謝謝再見","請問幾點關門？"], kw:["我要借","要借"],
+              image:"images/b6/icon-b6-library-book.png", image_label:"要借的書",
+              frame_ref:"want_item", slots:{ item:{ answer:"故事書", choices:[
+                { text:"故事書", emoji:"📖" }, { text:"漫畫", emoji:"📕" },
+                { text:"雜誌", emoji:"📰" }, { text:"繪本", emoji:"🖼️" } ] } },
+              feedback:{ perfect:"很好！借閱意願說得很清楚！", partial:"說出了重點！可以說完整：「我要借這本書」" } }),
+            mkStep({ id:"show_card", image:["images/b6/icon-b6-library-card.png"], image_label:"借書證", say:"好的，請給我看你的借書證。", task:"把借書證拿給館員，說「這是我的借書證」",
+              options:["這是我的借書證","我沒有借書證","我要辦一張","謝謝再見"], kw:["借書證","這是"],
+              feedback:{ perfect:"很好！配合度很高！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的！借閱期限是兩週，兩週後要記得還書喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝！","這是我的借書證","你好！","我要借這本書"], kw:"bye",
+              accepted:["好，謝謝！","感謝！","好的，感謝！","謝囉！","好的，謝囉！","好的，謝謝！"],
+              feedback:{ perfect:"說得很有禮貌！記得準時還書喔！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "cant_find_book", name: "找不到書", icon: "🔍",
+          desc: "找不到想借的書，向館員求助並問路線",
+          steps: [
+            mkStep({ id:"greeting", say:"你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","這本書多少錢？","可以借幾本？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！", partial:"可以說得更完整" } }),
+            mkStep({ id:"ask_book", say:"請問需要幫忙嗎？", task:"用「請問」問館員有沒有這本書",
+              options:["請問有這本書嗎？","我要辦借書證","謝謝再見","我要還書"], kw:["這本書","有沒有"],
+              feedback:{ perfect:"問得很清楚！", partial:"說出了重點！試著說完整：「請問有這本書嗎？」" } }),
+            mkStep({ id:"locate", say:"有的！在二樓的兒童讀物區喔！", task:"先說「謝謝」，再用「請問」問館員怎麼走",
+              options:["謝謝！請問怎麼走？","我要辦借書證","這本書多少錢？","不用你管"], kw:["怎麼走","哪裡"],
+              feedback:{ perfect:"很好！懂得進一步詢問！", partial:"說出了重點！" } }),
+            mkStep({ id:"thanks", say:"沿著樓梯上去，右手邊就是了。", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","書在哪裡？"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "overdue_book", name: "還書逾期", icon: "⏰",
+          desc: "還書時發現逾期，禮貌道歉並確認罰款",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟館員打招呼",
+              keywords:["你好","您好","哈囉","嗨","早","早安","hi"], keywords_mode:'any',
+              accepted_phrases:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              options:["你好！","謝謝再見","這本書多少錢？","廁所在哪裡？"],
+              feedback:{"perfect":"打招呼打得很好！","partial":"不錯！可以說得更完整","failed":"可以這樣說：「你好！」"} },
+            mkStep({ id:"return", say:"請問要還書嗎？", task:"說你要還這本書",
+              options:["我要還這本書","我要借書","謝謝再見","我要辦借書證"], kw:["還書","我要還"],
+              image:"images/b6/icon-b6-library-book.png", image_label:"要還的書",
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"overdue_notice", say:"（系統顯示這本書已經逾期 3 天）", task:"先說「對不起」，再告訴館員你忘記了",
+              options:["對不起，我忘記了","這不關我的事","那我不還了","謝謝再見"],
+              kw:["對不起","抱歉","不好意思"],
+              feedback:{ perfect:"很好！懂得為疏失道歉！", partial:"說出了重點！" } }),
+            // 外部審閱第三輪：機構規定要說「依照我們圖書館的規定」（共識 5；北市圖實際預設是停借）；說了金額就要付（共識 3）
+            mkStep({ id:"ask_fee", say:"沒關係，依照我們圖書館的規定，逾期一天 2 元，3 天是 6 元喔。", task:"先說「好」，再把 6 元拿給館員，說「給你 6 元」",
+              options:["好，給你 6 元","太貴了，我不付","下次再付","謝謝再見"], accepted:["好，給你 6 元","給你 6 元","好，這是 6 元","好，我付 6 元","好的，我付 6 元"], kw:[...KW_PRESETS.hand, "6元","六元","付"],
+              image:["images/money/5_yuan_front.png","images/money/1_yuan_front.png"], image_label:"逾期費 6 元",
+              feedback:{ perfect:"很好！懂得為自己的疏忽負責！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，謝謝你！", task:"跟館員說「謝謝你」",
+              options:["謝謝你！","我不想付","不客氣","我要還這本書"], kw:"bye",
+              accepted:["謝謝你！","感謝你！","感謝！"],
+              feedback:{ perfect:"很棒！有禮貌地完成了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "apply_card", name: "辦借書證", icon: "🪪",
+          desc: "第一次到圖書館，辦理借書證",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","這本書多少錢？","廁所在哪裡？"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"greet_ask", say:"請問需要辦理什麼呢？", task:"說你要辦借書證",
+              options:["我要辦借書證","我要借書","請問要收費嗎？","謝謝再見"],
+              kw:["借書證","辦"],
+              feedback:{ perfect:"問得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_info", say:"好的！請問你是學生嗎？", task:"說你是學生",
+              options:["我是學生","我是居民","都不是","謝謝再見"], kw:["學生"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"confirm", say:"好的，請幫我填一下這張表格。", task:"先說「好」，再說「謝謝」",
+              // 外部審閱第三輪：「我不會填／可以幫我嗎」是正確的求助與自我倡議，不可判錯
+              options:["好，謝謝！","我不要填","這本書多少錢？","我是學生"],
+              accepted:["好，謝謝！","好的，謝謝！","好，謝謝！如果我不會填，可以請你幫我嗎？","我不會填，可以幫我嗎？","可以幫我填嗎？"], kw:["好","謝謝","幫我"],
+              feedback:{ perfect:"很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"辦好了！這是你的借書證，歡迎常來！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","哼，不用你管！","喂，我走了！","我要辦借書證"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！再加上「再見」更完整" } })
+          ]
+        },
+        {
+          id: "reserve_book", name: "預約熱門書", icon: "📚",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "想借的書被借走了，請館員幫忙預約，在取書期限前來拿",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想借《神奇樹屋》的第一集，可是架上找不到。你帶著自己的借書證，走到服務台。）你好！", task:"跟館員打招呼",
+              options:["你好！", "謝謝再見", "我要還書", "書在哪裡啦"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"ask_book", say:"請問需要幫忙嗎？", task:"用「請問」問館員《神奇樹屋》第一集還在館裡嗎",
+              options:["請問《神奇樹屋》第一集還在館裡嗎？", "我要辦借書證", "我要還書", "給我別本"], kw:["神奇樹屋", "還在"], accepted:["請問《神奇樹屋》第一集還在館裡嗎？"] }),
+            mkStep({ id:"ask_reserve", say:"我查一下……這本被借走了，預定下星期還，不過還是要等還回來才知道喔。", task:"用「請問」問館員可以幫我預約嗎",
+              options:["請問可以幫我預約嗎？", "那你去叫他還", "隨便給我一本", "我要辦借書證"], kw:["預約"], accepted:["請問可以幫我預約嗎？"] }),
+            mkStep({ id:"show_card", image:["images/b6/icon-b6-library-card.png"], image_label:"借書證", say:"可以！請給我你的借書證。", task:"把借書證拿給館員，說「這是我的借書證」",
+              options:["這是我的借書證", "不用借書證，你直接幫我預約", "用別人的可以嗎", "證件不能給你"], kw:["這是我的借書證"], accepted:["這是我的借書證"] }),
+            mkStep({ id:"confirm", say:"預約好了！書到了會傳簡訊通知你，請在簡訊寫的取書期限前來拿喔！", task:"先說「好」，再說會在簡訊寫的期限前來拿",
+              options:["好，我會在簡訊寫的期限前來拿", "我什麼時候來都可以吧", "簡訊我不看", "書不用還吧"], kw:["期限"], accepted:["好，我會在簡訊寫的期限前來拿"] }),
+            mkStep({ id:"review", say:"（想一想）想借的書被借走了，可以怎麼做？", task:"說出方法：請館員幫忙預約，收到通知再來拿",
+              options:["請館員幫忙預約，收到通知再來拿", "去把別人借的書搶過來", "不用辦借書手續，找到就拿走", "去罵借走的人"], kw:["預約", "通知"], accepted:["請館員幫忙預約，收到通知再來拿"], feedback:{ perfect:"答對了！請館員幫忙預約，收到通知再來拿。", failed:"記住：請館員幫忙預約，收到通知再來拿。" } }),
+          ]
+        },
+        {
+          id: "renew_book", name: "書還沒看完要續借", icon: "🔁",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "快到期還沒看完，到期前請館員續借，記住新的到期日",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天是十月一日，你借的《恐龍大百科》明天到期，還沒看完，想再借久一點。你帶著書和借書證來到服務台。）你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-dino-book.png","images/b6/icon-b6-library-card.png"], image_label:"《恐龍大百科》＋ 借書證", say:"請問需要幫忙嗎？", task:"說你想續借這本書，把書和借書證拿給館員，說「這是書和借書證」",
+              options:["我想續借這本書，這是書和借書證","這本書不用還了吧","這本書送我好不好","我要偷偷帶走別本書"], kw:["續借這本書","書和借書證"] }),
+            mkStep({ id:"s3", say:"可以續借喔！新的到期日是十月十五日。", task:"先說「好」，再說最晚十月十五日要還",
+              options:["好，最晚十月十五日要還","我想什麼時候還就什麼時候還","書不用還吧","隨便啦"], kw:["最晚十月十五日"] }),
+            mkStep({ id:"s4", say:"書和借書證還給你，看得開心喔！", task:"說「謝謝，再見」",
+              options:["謝謝，再見！","你好","我要借書","書在哪裡？"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）借的書快到期還沒看完，可以怎麼做？", task:"說出方法：到期前請館員續借，記住新的到期日",
+              options:["到期前請館員續借，記住新的到期日","不還就好","過期再說","把書藏起來"], kw:["期前請館員續借","記住新","到期日"], feedback:{ perfect:"答對了！到期前請館員續借，記住新的到期日。", failed:"記住：到期前請館員續借，記住新的到期日。" } }),
+          ]
+        },
+        {
+          id: "wet_book", name: "借的書被水弄濕了", icon: "💧",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "借來的東西弄壞了：誠實說、問清楚怎麼賠、回家跟家人說",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天是十月一日，你借的《海洋動物圖鑑》被打翻的水弄濕，好幾頁皺了。你沒有自行烘烤或修補，帶著書和借書證來到服務台。）你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-library-book.png", image_label:"借的書", say:"請問需要幫忙嗎？", task:"先說「不好意思」，再說你借的書被水弄濕了",
+              options:["不好意思，我借的書被水弄濕了","（把書放在還書箱就走）","這本書本來就壞了","不是我弄的"], kw:["書被水弄濕"] }),
+            mkStep({ id:"s3", say:"這本要賠償。可以買一本一樣的新書，或照定價賠錢。", task:"先說「好」，再用「請問」問這本書的定價是多少",
+              options:["好，請問這本書的定價是多少？","我不要賠","你們自己修","那我不還了"], kw:["這本書","定價","多少"] }),
+            mkStep({ id:"s4", say:"這本書定價 250 元，你可以先和家人討論要用哪種方式處理，今天先不收款。", task:"說你會回家跟家人說，再來處理",
+              options:["我會回家跟家人說，再來處理","算了，我不賠","你算便宜一點","書丟掉就好"], kw:["再來處理","會回家","家人"] }),
+            mkStep({ id:"s5", say:"這張單子寫著書名和定價，請帶回去給家人看，十月八日前告訴我們。", task:"先說「好」，再說會拿給家人看，十月八日前聯絡館員",
+              options:["好，我拿給家人看，十月八日前聯絡館員","單子我不要","不用說，我把書丟掉","隨便啦"], kw:["十月八日前聯絡館員","拿給家人看"] }),
+            mkStep({ id:"review", say:"（想一想）借來的東西弄壞了，要怎麼做？", task:"說出方法：誠實告訴對方，問清楚怎麼賠，回家跟家人說",
+              options:["誠實告訴對方，問清楚怎麼賠，回家跟家人說","偷偷還回去","說不是我弄的","丟掉當作沒借"], kw:["誠實告訴對方","問清楚怎麼賠","回家"], feedback:{ perfect:"答對了！誠實告訴對方，問清楚怎麼賠，回家跟家人說。", failed:"記住：誠實告訴對方，問清楚怎麼賠，回家跟家人說。" } }),
+          ]
+        },
+        {
+          id: "use_computer", name: "用圖書館的電腦", icon: "💻",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "使用公用設備：先登記、照時間用、用完要登出",
+          steps: [
+            mkStep({ id:"greeting", say:"（你要查報告的資料，想用圖書館的電腦。你帶著借書證來到服務台。）你好！", task:"跟館員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要幫忙嗎？", task:"用「請問」問館員，可以用電腦查資料嗎",
+              options:["請問可以用電腦查資料嗎？","我要玩電腦遊戲一整天","我要辦借書證","電腦借我帶回家"], kw:["用電腦查資料"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-library-card.png"], image_label:"借書證", say:"依本館規定，要用借書證登記，一次一小時。請出示你的借書證。", task:"把借書證拿給館員，說「這是我的借書證」",
+              options:["這是我的借書證","不登記，直接搶一台","我偷用別人的證件","我要霸占一整天"], kw:["借書證"] }),
+            mkStep({ id:"s4", say:"登記好了！你用 5 號電腦，三點到四點。用完要登出喔！", task:"先說「好」，再複誦：5 號電腦，三點到四點，用完要登出",
+              options:["好，5 號電腦，三點到四點，用完要登出","我用到關門","登出很麻煩，不用吧","我要用 1 號"], kw:["三點到四點","用完要登出","號電腦"] }),
+            mkStep({ id:"review", say:"（想一想）用圖書館的電腦，要注意什麼？", task:"說出重點：先登記，時間到就讓給別人，用完要登出",
+              options:["先登記，時間到就讓給別人，用完要登出","想用多久就用多久","不用登記","用完直接走"], kw:["用完要登出","先登記","時間"], feedback:{ perfect:"答對了！先登記，時間到就讓給別人，用完要登出。", failed:"記住：先登記，時間到就讓給別人，用完要登出。" } }),
+          ]
+        },
+      ]
+    },
+
+    // ══════════════════════════════════════════
+    // 警察局（第三部分・生活應對）
+    // ══════════════════════════════════════════
+    {
+      id: "police_station", name: "警察局", icon: "🚓", available: true,
+      theme: { color: '#1E3A8A', bg: '#EFF6FF', accent: '#1D4ED8' },
+      situations: [
+        {
+          id: "lost_item", name: "遺失物品", icon: "🎒",
+          desc: "東西不見了，向警員報案並說明遺失地點",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！", task:"跟警員打招呼",
+              options:["你好！","謝謝再見","請問廁所在哪裡？","我要買東西"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"report", say:"請問需要什麼協助？", task:"說你想報案",
+              options:["我想報案","請問廁所在哪裡？","謝謝再見","我要買東西"], kw:["報案"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"describe", say:"好的，請問你遺失了什麼呢？", task:"說你的背包不見了",
+              options:["我的背包不見了","我要買背包","謝謝再見","我要問路"], kw:["背包","不見了","遺失"],
+              frame_ref:"want_item", slots:{ item:{ answer:"背包", choices:[
+                { text:"背包", emoji:"🎒" }, { text:"錢包", emoji:"👛" },
+                { text:"手機", emoji:"📱" }, { text:"雨傘", emoji:"☂️" } ] } },
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"details", say:"好的，請問是在哪裡弄丟的呢？（你記得是在公園弄丟的。）", task:"說在公園弄丟的",
+              options:["在公園弄丟的","在學校弄丟的","我要買一個新的","謝謝再見"], kw:["公園"],
+              feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，我幫你登記，如果找到會通知你！", task:"跟警員說「謝謝你」",
+              options:["謝謝你！","快點找啦！","你好！我想報案","在公園弄丟的"], kw:"bye",
+              accepted:["謝謝你！","感謝你！","感謝！","謝囉！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "separated_from_family", name: "跟家人走散了", icon: "😰",
+          desc: "在公共場所家人走散了，向警察求助",
+          steps: [
+            // 外部審閱第三輪：招呼那一步對方只打招呼、不問問題 → 拆兩步（兩句與同一位警員既有台詞同字）
+            mkStep({ id:"greeting", say:"你好！", task:"跟警員打招呼",
+              options:["你好！","謝謝再見","我要買東西","請問廁所在哪裡？"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！","嗨！"] }),
+            mkStep({ id:"report", say:"請問有什麼事嗎？", task:"說你弟弟不見了",
+              options:["我弟弟不見了","我要買東西","謝謝再見","請問廁所在哪裡？"], kw:["走散","不見了","弟弟"],
+              feedback:{ perfect:"很勇敢，說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"ask_details", say:"別擔心，我們會幫你！請問你還記得你弟弟穿什麼顏色的衣服嗎？（你記得弟弟今天穿紅色的衣服。）",
+              task:"告訴警員弟弟穿紅色的衣服",
+              options:["弟弟穿紅色的衣服","弟弟穿藍色的衣服","我要買東西","謝謝再見"], kw:["紅色"],
+              feedback:{ perfect:"很好！記得清楚細節很重要！", partial:"說出了重點！" } }),
+            mkStep({ id:"broadcast", say:"好的，我馬上請附近的警員一起幫忙找！", task:"跟警員說「謝謝你」",
+              options:["謝謝你！","快一點啦！","你們動作好慢！","不客氣"], kw:["謝謝"],
+              feedback:{ perfect:"很有禮貌！", partial:"說出了重點！" } }),
+            mkStep({ id:"reunite", say:"太好了，找到你弟弟了！", task:"先說「謝謝你」，再說「再見」",
+              options:["謝謝你！再見！","我弟弟不見了","弟弟！","弟弟穿紅色的衣服"], kw:"bye",
+              accepted:["謝謝你！再見！","謝謝你！掰！","謝謝你！拜拜！","謝謝你！bye！","謝謝你！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "found_item", name: "撿到東西", icon: "💰",
+          desc: "撿到別人遺失的錢包，誠實送交警察局招領",
+          steps: [
+            // 2026-09-05：招呼獨立成第一步（對方招呼→學生回招呼），第二步才進主題
+            mkStep({ id:"greeting", say:"你好！", task:"跟警員打招呼",
+              options:["你好！","謝謝再見","請問廁所在哪裡？","我要買東西"], kw:["你好","您好","哈囉","嗨","早","早安","hi"],
+              accepted:["你好！","您好！","哈囉！","嗨！","早安！","hi！"],
+              feedback:{ perfect:"很好！打招呼打得很有禮貌！", partial:"不錯！可以說得更完整一點喔", failed:"可以這樣說：「你好！」" } }),
+            mkStep({ id:"report_found", say:"請問有什麼事嗎？", task:"說你撿到東西",
+              options:["我撿到東西","我要買東西","謝謝再見","請問廁所在哪裡？"], kw:["撿到"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"hand_in", image:["images/b6/icon-b6-wallet.png"], image_label:"錢包", say:"好的，請問你撿到什麼呢？", task:"說你撿到一個錢包",
+              options:["我撿到一個錢包","我撿到一支手機","我撿到一把傘","謝謝再見"], kw:["錢包","撿到"],
+              feedback:{ perfect:"很好！說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"where_found", say:"謝謝你這麼誠實！請問在哪裡撿到的？（你是在公車站撿到的。）", task:"說在公車站撿到的",
+              options:["在公車站撿到的","在公園撿到的","我要把錢包帶回家","謝謝再見"], kw:["公車站"],
+              feedback:{ perfect:"很好！懂得說明地點！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，謝謝你的幫忙，你真是個好學生！", task:"先說「謝謝」，再說「再見」",
+              options:["謝謝！再見！","我撿到一個錢包","我要把錢包帶走","在公車站撿到的"], kw:"bye",
+              accepted:["謝謝！再見！","謝謝！掰！","謝謝！拜拜！","謝謝！bye！","謝謝！掰掰！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "stranger_danger", name: "有人跟著我", icon: "🆘",
+          desc: "覺得被陌生人跟蹤，跑進警察局尋求協助",
+          steps: [
+            mkStep({ id:"approach", say:"（你放學走路回家，發現有一個陌生人一直跟在你後面，你走快他也走快。你覺得很不安，趕快跑進旁邊的警察局。）", task:"跟警察說「請幫幫我」",
+              options:["請幫幫我！","你好！","我要問路","謝謝再見"], kw:["幫我","幫助","救命"],
+              feedback:{ perfect:"很勇敢，做得很好！", partial:"說出了重點！" } }),
+            mkStep({ id:"explain", say:"別緊張，你現在很安全！請問發生什麼事了？", task:"告訴警察有人一直跟著你",
+              options:["有人一直跟著我","我迷路了","我肚子餓","謝謝再見"], kw:["跟蹤","跟著我"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！" } }),
+            mkStep({ id:"reassure", say:"你做得很好，來這裡找我們是對的！請問可以打電話給你的家人嗎？",
+              task:"先說「可以」，再請警察幫你聯絡家人",
+              // 外部審閱第三輪：爸爸、媽媽都是可信任的家人；「我不知道電話」是誠實回答，遇險時說不出電話一樣要被幫忙 → 都不當錯
+              options:["可以，請幫我聯絡家人","不用了，我自己走回家","我肚子餓","謝謝再見"], kw:["聯絡","家人","打給","媽媽","爸爸"],
+              accepted:["可以，請幫我聯絡家人","可以，打給我媽媽","可以，打給我爸爸","可以，幫我打給家人"],
+              feedback:{ perfect:"很好！懂得配合警察！", partial:"說出了重點！" } }),
+            mkStep({ id:"checkout", say:"好的，我們馬上聯絡你的家人，你先坐著休息。", task:"跟警察說「謝謝你」",
+              options:["謝謝你！","我自己回家","有人一直跟著我","請幫幫我！"], kw:"bye",
+              accepted:["謝謝你！","感謝你！","感謝！","謝囉！"],
+              feedback:{ perfect:"說得很有禮貌！太棒了！", partial:"有說謝謝！" } })
+          ]
+        },
+        {
+          id: "scam_report", name: "錢被騙了去報案", icon: "🚨",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "被騙了錢，說清楚時間和金額、帶著證據報案，拿報案證明",
+          steps: [
+            mkStep({ id:"greeting", say:"（昨天你在網路上跟陌生人買耳機，匯了 1500 元，對方就不見了。你帶著聊天紀錄和匯款單，跟媽媽來報案。）你好！", task:"跟警員打招呼",
+              options:["你好！", "謝謝再見", "我要買東西", "快點抓人"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"report", say:"請問需要什麼協助？", task:"說你在網路上買東西被騙了，想要報案",
+              options:["我在網路上買東西被騙了，想要報案", "我想要借錢", "算了不報了", "你們幫我把錢拿回來啦"], kw:["被騙", "報案"], accepted:["我在網路上買東西被騙了，想要報案"] }),
+            mkStep({ id:"details", say:"好，別緊張。什麼時候、被騙了多少錢？", task:"說清楚：昨天，匯了 1500 元",
+              options:["昨天，我匯了 1500 元", "我要買一張電影票", "我要寄包裹", "你自己查"], kw:["1500", "昨天"], accepted:["昨天，我匯了 1500 元"] }),
+            mkStep({ id:"evidence", say:"你有留下跟對方的聊天紀錄和匯款單嗎？", task:"先說「有」，再說聊天紀錄在手機裡，匯款單也帶來了",
+              options:["有，聊天紀錄在手機裡，匯款單也帶來了", "我全部刪掉了", "不用看啦", "那是我的隱私"], kw:["聊天紀錄", "匯款單"], accepted:["有，聊天紀錄在手機裡，匯款單也帶來了"] }),
+            mkStep({ id:"thanks", say:"很好，這些都是證據。我幫你做筆錄，做完會給你報案證明。", task:"先說「好」，再說「謝謝警察先生」",
+              options:["好，謝謝警察先生", "要多久啦", "我不想等", "那我自己去找他算帳"], kw:["謝謝"], accepted:["好，謝謝警察先生"] }),
+            mkStep({ id:"review", say:"（想一想）發現自己被騙了錢，要怎麼做？", task:"說出方法：告訴家人，保留證據，去報案或打 165",
+              options:["告訴家人，保留證據，去報案或打 165", "自己再去找對方要", "刪掉紀錄當沒發生", "不好意思說"], kw:["保留證據", "報案", "165"], accepted:["告訴家人，保留證據，去報案或打 165"], feedback:{ perfect:"答對了！告訴家人，保留證據，去報案或打 165。", failed:"記住：告訴家人，保留證據，去報案或打 165。" } }),
+          ]
+        },
+        {
+          id: "call_110", name: "機車倒在路中間，打 110", icon: "🚨",
+          clerkName: "110 勤務中心", clerkImage: "images/clerk-police.png",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看到車禍、沒有人受傷，但機車擋在路上：站在安全的地方打 110，說清楚發生什麼事",
+          steps: [
+            mkStep({ id:"s1", say:"（你看到兩台機車擦撞，兩位騎士都站起來了，說沒有受傷，可是一台機車倒在路中間。你站在人行道上打 110。）110 你好，請問發生什麼事？", task:"說這裡有車禍，機車倒在路中間，沒有人受傷",
+              options:["這裡有車禍，機車倒在路中間，沒有人受傷","你猜","沒事，我只是試打","先幫我算修車費"], kw:["這裡有車禍","沒有人受傷","機車倒"] }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-street-sign-zhongshan-minsheng.png", image_label:"路牌", say:"請問地點在哪裡？（路牌寫著：中山路和民生路口。）", task:"說出地點：中山路和民生路口",
+              options:["中山路和民生路口","在我旁邊，你自己找","在某條馬路上","地點我隨便說"], kw:["民生路口","中山路"] }),
+            mkStep({ id:"s3", say:"好，我們馬上派警察過去。你現在安全嗎？", task:"先說「安全」，再說你站在人行道上",
+              options:["安全，我站在人行道上","我跑到馬路中間看","我去把機車扶起來","我站在機車後面擋車"], kw:["人行道上","安全"] }),
+            mkStep({ id:"s4", say:"很好，在人行道上等警察就好，不要走到馬路上。", task:"先說「好」，再複誦：在人行道上等，不走到馬路上",
+              options:["好，我在人行道上等，不走到馬路上","我現在跑去拍照","我先回家了","你們好慢"], kw:["人行道上等","馬路上","不走"] }),
+            mkStep({ id:"review", say:"（想一想）看到車禍要打電話，打 110 還是 119？", task:"說出方法：沒人受傷打 110，有人受傷打 119，都要先站在安全的地方",
+              options:["沒人受傷打 110，有人受傷打 119，都要先站在安全的地方","都不用打","打給朋友就好","跑到馬路上看清楚再說"], kw:["110","119","沒人受傷打"], feedback:{ perfect:"答對了！沒人受傷打 110，有人受傷打 119，都要先站在安全的地方。", failed:"記住：沒人受傷打 110，有人受傷打 119，都要先站在安全的地方。" } }),
+          ]
+        },
+        {
+          id: "bike_stolen", name: "腳踏車被偷了", icon: "🚲",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "東西被偷：告訴家人、去報案、說清楚東西的樣子、地點和時間",
+          steps: [
+            mkStep({ id:"greeting", say:"（你把腳踏車鎖在圖書館門口。出來的時候，腳踏車不見了！你和爸爸一起來到警察局。）你好！", task:"跟警員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼協助？", task:"說腳踏車不見了、懷疑被偷，想報案",
+              options:["我的腳踏車不見了，懷疑被偷，想要報案","你們賠我一台","隨便抓一個人就好","我要拿別人的腳踏車"], kw:["腳踏車不見","懷疑被偷","想要報案"] }),
+            mkStep({ id:"s3", say:"好，別緊張。你的腳踏車長什麼樣子？（你的腳踏車是藍色的，前面有一個菜籃。）", task:"說出特徵：藍色的，前面有一個菜籃",
+              options:["藍色的，前面有一個菜籃","紅色的，沒有菜籃","我隨便說一台","你自己去找"], kw:["前面有一個菜籃","藍色"] }),
+            mkStep({ id:"s4", say:"什麼時候、在哪裡不見的？（你下午兩點停在圖書館門口，四點出來就不見了。）", task:"說清楚：下午兩點停在圖書館門口，四點發現不見了",
+              options:["下午兩點停在圖書館門口，四點發現不見了","我亂說一個時間","昨天早上在郵局","你自己猜"], kw:["四點發現不見","下午兩點停","圖書館門口"] }),
+            mkStep({ id:"s5", say:"我幫你們做報案紀錄，這張證明單要收好。有消息會通知你們。", task:"先說「好」，再說「謝謝警察先生」",
+              options:["好，謝謝警察先生","那我去偷別人的","你們一定要找到","我自己去抓小偷"], kw:["謝謝警察"] }),
+            mkStep({ id:"review", say:"（想一想）東西被偷了，要怎麼做？", task:"說出方法：告訴家人，去報案，說清楚東西的樣子、地點和時間",
+              options:["告訴家人，去報案，說清楚東西的樣子、地點和時間","自己去抓小偷","去拿別人的","不說當作沒發生"], kw:["說清楚東西","地點和時間","告訴家人"], feedback:{ perfect:"答對了！告訴家人，去報案，說清楚東西的樣子、地點和時間。", failed:"記住：告訴家人，去報案，說清楚東西的樣子、地點和時間。" } }),
+          ]
+        },
+        {
+          id: "lost_child", name: "幫走失的小朋友找警察", icon: "🧒",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先保護自己，請警方到孩子所在的安全位置處理，不自行帶孩子回家、不把孩子交給未經警",
+          steps: [
+            mkStep({ id:"greeting", say:"（你和媽媽在公園看到一個小男生在哭，說找不到媽媽。媽媽打了 110，你們在原地等。警員阿凱到了。）你好！", task:"跟警員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請說一下剛才看到的情況。", task:"說小朋友找不到媽媽，你在溜滑梯旁看見他哭",
+              options:["這個小朋友找不到媽媽，我在溜滑梯旁看見他哭","我要帶他回我家","我把他交給路人了","你不用問，直接帶走"], kw:["溜滑梯旁看見他哭","媽媽","這個小朋友找不"] }),
+            mkStep({ id:"s3", say:"謝謝你們通知警方。你們一直在這裡等嗎？", task:"說一直在這裡等，沒有帶他走遠",
+              options:["我們一直在這裡等，沒有帶他走遠","我帶他繞了整個公園","我叫他自己找媽媽","我把他的照片貼上網"], kw:["沒有帶他走遠","這裡等","一直"] }),
+            mkStep({ id:"s4", say:"接下來由我們照顧孩子、確認家人身分。你和媽媽可以離開了。", task:"先說「好」，再說「謝謝警察先生」",
+              options:["好，謝謝警察先生","我要帶他走","誰說是媽媽就交給誰","先付錢我才幫忙"], kw:["謝謝警察"] }),
+            mkStep({ id:"review", say:"（想一想）看到不認識的小朋友走失，要怎麼做？", task:"說出方法：先保護自己，請警察來幫忙，不自己帶他離開",
+              options:["先保護自己，請警察來幫忙，不自己帶他離開","帶他回自己家","把他交給任何路人","把他的照片和名字貼上網"], kw:["不自己帶他離開","請警察來幫忙","先保護自己"], feedback:{ perfect:"答對了！先保護自己，請警察來幫忙，不自己帶他離開。", failed:"記住：先保護自己，請警察來幫忙，不自己帶他離開。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "anti_scam", name: "接到詐騙電話", icon: "📱", available: true,
+      theme: { color: '#DC2626', bg: '#FEE2E2', accent: '#B91C1C' },
+      situations: [
+        {
+          id: "scam_prize", name: "中獎詐騙電話", icon: "🎁", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          simple_steps: ["refuse_fee", "hang_up", "tell_family"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "接到說你中獎、要你先付錢的電話",
+          steps: [
+            mkStep({ id:"ask_who", say:"（電話響了，是陌生號碼）喂，恭喜你！你中了十萬元大獎！", task:"先問對方是誰",
+              options:["你是誰？","太好了，我要領獎！","我的名字是…","好啊，錢給我"],
+              accepted:["你是誰？","請問你是誰","你哪位","請問哪位"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            mkStep({ id:"refuse_fee", say:"我是抽獎中心的！只要先付三千元手續費，馬上把獎金匯給你！", task:"拒絕付手續費，說「我不要付錢」",
+              options:["我不要付錢","好，我付手續費","要去哪裡付？","那我匯給你"],
+              accepted:["我不要付錢","我不付","不給你錢","我不會付"], kw:["不要","不付","不給","不會付"],
+              feedback:{ failed:"要領獎卻先要你付錢，是詐騙。可以說：「我不要付錢」" } }),
+            mkStep({ id:"refuse_info", say:"別擔心，只要告訴我你的姓名和銀行帳號就好！", task:"拒絕給個人資料",
+              options:["我不會給你資料","我的名字是…","帳號可以說給你","好，我告訴你"],
+              accepted:["我不會給你資料","不能給你","我不告訴你","我不會說"], kw:["不會給","不能給","不告訴","不會說"],
+              feedback:{ failed:"帳號和姓名不能給陌生人。可以說：「我不會給你資料」" } }),
+            mkStep({ id:"hang_up", say:"機會難得，現在不辦就沒有了喔！", task:"說這是詐騙、要掛電話",
+              options:["這是詐騙，我要掛電話了","再等我想一下","那我考慮看看","好啦不要生氣"],
+              accepted:["這是詐騙，我要掛電話了","你是詐騙","我要掛了","我要掛電話"], kw:["詐騙","掛"],
+              feedback:{ failed:"直接掛掉最安全。可以說：「這是詐騙，我要掛電話了」" } }),
+            mkStep({ id:"tell_family", say:"（你掛掉了電話）接下來要做什麼？", task:"說要告訴家人或打 165",
+              options:["我要告訴家人","再打回去問清楚","刪掉就好不用管","自己處理就好"],
+              accepted:["我要告訴家人","告訴老師","跟大人說","我要打165","打165"], kw:["告訴","老師","家人","165","大人"],
+              feedback:{ failed:"要告訴大人。可以說：「我要告訴家人」，或打反詐騙專線 165。" } }),
+            mkStep({ id:"review", say:"（想一想）怎麼知道那是詐騙電話？", task:"說出判斷的理由：說中獎還要先付錢的，就是詐騙",
+              options:["說中獎還要先付錢的，就是詐騙","中獎就是好運","對方很客氣應該是真的","有獎金就先領"],
+              accepted:["說中獎還要先付錢的，就是詐騙","中獎還要先付錢就是詐騙","中獎要先付錢就是詐騙","先要錢的就是詐騙"], kw:["先付錢","先要錢","就是詐騙"],
+              feedback:{ perfect:"答對了！真的中獎不用先付錢。", failed:"記住：說你中獎、還要你先付錢的，就是詐騙。" } }),
+          ]
+        },
+        {
+          id: "fake_service", name: "假客服電話", icon: "🎧", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          simple_steps: ["refuse_atm", "hang_up", "call_165"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "接到假客服說重複扣款、要你去 ATM 操作",
+          steps: [
+            mkStep({ id:"ask_who", say:"（電話響了）你好，這裡是網購客服，你的訂單重複扣款了！", task:"先問對方是誰",
+              options:["你是誰？","真的嗎？怎麼辦","那要退我錢","訂單編號多少"],
+              accepted:["你是誰？","請問你是誰","你哪位","請問哪位"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            mkStep({ id:"refuse_atm", say:"你現在去 ATM 按幾個鍵，就能解除扣款！", task:"說 ATM 不能解除扣款",
+              options:["ATM 不能解除扣款","好，我去 ATM","ATM 在哪裡？","要按哪些鍵？"],
+              accepted:["ATM 不能解除扣款","ATM不能解除","我不會去ATM","那不是真的"], kw:["不能","不會去","不是真的"],
+              feedback:{ failed:"ATM 只能領錢存錢，不能解除扣款。可以說：「ATM 不能解除扣款」" } }),
+            mkStep({ id:"hang_up", say:"再不去錢就被扣走了，快點！", task:"說這是詐騙、要掛電話",
+              options:["這是詐騙，我要掛電話了","好啦我馬上去","先別扣我錢","我很緊張怎麼辦"],
+              accepted:["這是詐騙，我要掛電話了","你是詐騙","我要掛了","我要掛電話"], kw:["詐騙","掛"],
+              feedback:{ failed:"叫你緊張、快去 ATM 就是詐騙。可以說：「這是詐騙，我要掛電話了」" } }),
+            mkStep({ id:"call_165", say:"（你掛掉了電話）要怎麼確認是不是詐騙？", task:"說要打 165 查證",
+              options:["我要打 165 查證","再等他打來","上網查 ATM","算了不管了"],
+              accepted:["我要打 165 查證","打165","我要打165問","打165查證"], kw:["165","查證"],
+              feedback:{ failed:"有疑問就打反詐騙專線。可以說：「我要打 165 查證」" } }),
+            mkStep({ id:"tell_family", say:"（想一想）還要做什麼？", task:"說要告訴家人",
+              options:["我要告訴家人","自己知道就好","跟同學說就好","刪掉電話記錄"],
+              accepted:["我要告訴家人","告訴老師","跟大人說","告訴大人"], kw:["告訴","老師","家人","大人"],
+              feedback:{ failed:"要告訴大人。可以說：「我要告訴家人」" } }),
+            mkStep({ id:"review", say:"（想一想）這種電話怎麼分辨？", task:"說出判斷的理由：叫你去 ATM 操作的就是詐騙",
+              options:["叫你去 ATM 操作的就是詐騙","客服電話都要聽","扣款就要馬上處理","按鍵解除很正常"],
+              accepted:["叫你去 ATM 操作的就是詐騙","去ATM操作是詐騙","ATM不能解除扣款"], kw:["ATM","詐騙"],
+              feedback:{ perfect:"答對了！叫你去 ATM 操作就是詐騙。", failed:"記住：真客服不會叫你去 ATM，叫你去 ATM 操作的就是詐騙。" } }),
+          ]
+        },
+        {
+          id: "lend_card", name: "借提款卡的電話", icon: "💳", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          simple_steps: ["refuse_card", "refuse_pin", "tell_teacher"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "有人打電話裝熟、要借你的提款卡（本系列最重要）",
+          steps: [
+            mkStep({ id:"ask_who", say:"（電話響了）欸，我是你朋友的朋友啦！", task:"先問對方是誰",
+              options:["你是誰？","喔好啊什麼事","朋友的朋友喔","哇好久不見"],
+              accepted:["你是誰？","請問你是誰","你哪位","請問哪位"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            mkStep({ id:"refuse_card", say:"你的提款卡借我用一下，一天給你五百元！", task:"拒絕借提款卡",
+              options:["提款卡不能借人","一天五百喔好啊","要用多久？","借你沒關係"],
+              accepted:["提款卡不能借人","我不借你卡","提款卡不能借","不能借給你"], kw:["不能借","不借"],
+              feedback:{ failed:"提款卡絕對不能借人。可以說：「提款卡不能借人」" } }),
+            mkStep({ id:"refuse_lure", say:"兩天就還你，穩賺的啦！", task:"再次拒絕，跟對方說：「說不借就是不借」",
+              options:["說不借就是不借","那好吧兩天喔","真的穩賺嗎？","那你先給錢"],
+              accepted:["說不借就是不借","不借就是不借","我不會借","還是不借"], kw:["不借","不會借"],
+              feedback:{ failed:"說幾次都不借。可以說：「說不借就是不借」" } }),
+            mkStep({ id:"refuse_pin", say:"那你把提款卡密碼告訴我也行！", task:"拒絕給密碼",
+              options:["密碼不能告訴別人","密碼是…","我想想看","那你要保密喔"],
+              accepted:["密碼不能告訴別人","密碼不能說","我不會告訴你密碼","密碼不能給"], kw:["不能告訴","不能說","不會告訴","不能給"],
+              feedback:{ failed:"密碼不能告訴任何人。可以說：「密碼不能告訴別人」" } }),
+            mkStep({ id:"tell_teacher", say:"（你掛掉了電話）接下來要做什麼？", task:"說要告訴老師或家人",
+              options:["我要告訴老師","下次再說","封鎖就好","自己記住就好"],
+              accepted:["我要告訴老師","告訴家人","跟大人說","我要打165"], kw:["告訴","老師","家人","大人","165"],
+              feedback:{ failed:"要告訴大人。可以說：「我要告訴老師」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼不能借提款卡？", task:"說出理由：提款卡借給陌生人換錢，會被拿去詐騙，自己也會犯法",
+              options:["提款卡借給陌生人換錢，會被拿去詐騙，自己也會犯法","朋友借用沒關係","反正有錢拿","借一下應該還好"],
+              accepted:["提款卡借給陌生人換錢，會被拿去詐騙，自己也會犯法","會被拿去詐騙，自己也會犯法","借出帳戶會變成詐騙幫兇","提款卡不能借人","提款卡借給別人，會被拿去詐騙，自己也會犯法"], kw:["犯法","詐騙","不能借"],
+              feedback:{ perfect:"答對了！提款卡借給陌生人換錢，會被拿去詐騙，而且自己也違法。", failed:"記住：提款卡借給陌生人換錢，會被拿去詐騙，自己也會犯法。" } }),
+          ]
+        },
+        {
+          id: "buy_points", name: "要你買點數的電話", icon: "🎮", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          simple_steps: ["refuse_points", "hang_up", "ask_family"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "網友打電話要你幫買遊戲點數、唸卡號",
+          steps: [
+            mkStep({ id:"ask_who", say:"（電話響了）嗨，我是網路上認識你的朋友！", task:"先問對方是誰",
+              options:["你是誰？","嗨你好啊","網路朋友喔","有什麼事嗎"],
+              accepted:["你是誰？","請問你是誰","你哪位","請問哪位"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            mkStep({ id:"refuse_points", say:"幫我買遊戲點數，把卡號唸給我，我馬上還你錢！", task:"拒絕買點數",
+              options:["我不會買點數給你","好啊卡號是…","要買多少？","先還我錢再說"],
+              accepted:["我不會買點數給你","我不買點數","不會幫你買","我不要買"], kw:["不會買","不買","不要買","不會幫"],
+              feedback:{ failed:"幫陌生人買點數、唸卡號就是被騙。可以說：「我不會買點數給你」" } }),
+            mkStep({ id:"hang_up", say:"拜託啦很急！你不幫我就是不夠朋友！", task:"說這是詐騙、要掛電話",
+              options:["這是詐騙，我要掛電話了","好啦別生氣","那我考慮","那買一點點"],
+              accepted:["這是詐騙，我要掛電話了","你是詐騙","我要掛了","我要掛電話"], kw:["詐騙","掛"],
+              feedback:{ failed:"用感情逼你買點數就是詐騙。可以說：「這是詐騙，我要掛電話了」" } }),
+            mkStep({ id:"ask_family", say:"（你掛掉了電話）接下來要做什麼？", task:"說要先問家人",
+              options:["我要先問家人","再想想看","自己決定就好","刪掉就好"],
+              accepted:["我要先問家人","先問家人","告訴家人","跟大人說"], kw:["問家人","家人","大人","告訴"],
+              feedback:{ failed:"不確定就先問大人。可以說：「我要先問家人」" } }),
+            mkStep({ id:"review", say:"（想一想）這種要求怎麼分辨？", task:"說出判斷的理由：網友或陌生人要我買點數、給卡號，就是詐騙",
+              options:["網友或陌生人要我買點數、給卡號，就是詐騙","網友都可以幫忙","買點數還錢很正常","朋友要幫忙"],
+              accepted:["網友或陌生人要我買點數、給卡號，就是詐騙","網友要點數卡號就是詐騙","陌生人要點數卡號是詐騙","電話裡要點數卡號的就是詐騙"], kw:["卡號","詐騙"],
+              feedback:{ perfect:"答對了！網友或陌生人要你買點數、給卡號，就是詐騙。", failed:"記住：網友或陌生人要你買點數、給卡號，就是詐騙。" } }),
+          ]
+        },
+        {
+          id: "fake_family", name: "假冒家人出事要匯款", icon: "🚑", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "說家人出事要匯錢：先掛斷、不匯錢，用原本的號碼找家人確認",
+          steps: [
+            mkStep({ id:"ask_who", say:"（你一個人在家，電話響了。）喂！你爸爸出車禍了，現在在醫院，要馬上付 5 萬元手術費！", task:"用「請問」問對方是誰",
+              options:["請問你是誰？", "好，我馬上匯", "不用確認，我先付錢", "錢要匯到哪"], kw:["你是誰"], accepted:["請問你是誰？"] }),
+            mkStep({ id:"check_dad", say:"我是醫院的人啦！快點去 ATM 匯錢，不然來不及了！", task:"說你要先打電話給爸爸本人",
+              options:["我要先打電話給爸爸本人", "好我去 ATM", "我家裡有現金", "帳號給我"], kw:["爸爸本人", "打電話給爸爸"], accepted:["我要先打電話給爸爸本人"] }),
+            mkStep({ id:"hang_up", say:"他現在不能接電話啦！你快點！", task:"說你要掛電話了，然後掛斷",
+              options:["我要掛電話了", "好啦我匯", "再等一下", "你再說一次帳號"], kw:["掛電話"], accepted:["我要掛電話了"] }),
+            mkStep({ id:"call_dad", say:"（你掛斷來電，用原本存好的電話號碼打給爸爸，問他是不是出了車禍。）喂？我在公司上班啊，沒有出車禍喔！", task:"先說「好」，再說還好沒有匯錢",
+              options:["好，還好我沒有匯錢", "我還是匯一點好了", "我已經匯錢了", "那我再打回去給那個人"], kw:["沒有匯錢"], accepted:["好，還好我沒有匯錢"], clerkName:"爸爸", clerkImage:"images/clerk-family-call.jpg" }),
+            mkStep({ id:"review", say:"（想一想）有人打電話說家人出事要匯錢，要怎麼做？", task:"說出做法：先掛斷、不匯錢，用原本的號碼找家人確認，找不到就請其他家人或 165 幫忙",
+              options:["先掛斷、不匯錢，用原本的號碼找家人確認，找不到就請其他家人或 165 幫忙", "先匯錢再說", "相信對方", "自己去醫院找"], kw:["掛斷", "確認"], accepted:["先掛斷、不匯錢，用原本的號碼找家人確認，找不到就請其他家人或 165 幫忙"], feedback:{ perfect:"答對了！先掛斷、不匯錢，用原本的號碼找家人確認，找不到就請其他家人或 165 幫忙。", failed:"記住：先掛斷、不匯錢，用原本的號碼找家人確認，找不到就請其他家人或 165 幫忙。" } }),
+          ]
+        },
+        {
+          id: "guess_who", name: "「猜猜我是誰」換新號碼", icon: "❓",
+          clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不猜身分、不亂存新號碼，用原本的號碼打給本人確認",
+          steps: [
+            mkStep({ id:"s1", say:"（角色扮演：你接到不認識的號碼來電。家人原本就存有表哥的電話，可以協助查證。）喂～猜猜我是誰？", task:"不要猜，說「請問你是誰？」",
+              options:["請問你是誰？","你是舅舅嗎？","你是表哥對不對？","我叫{名字}，你呢？"], kw:["你是誰"] }),
+            mkStep({ id:"s2", say:"我是你表哥啦！我換新號碼了，你幫我把這個號碼存起來喔！", task:"說你要先問家人，這是不是表哥的號碼",
+              options:["我要先問家人，這是不是表哥的號碼","好，我馬上存起來","表哥你好，我家地址是……","那你要不要來我家？"], kw:["要先問家人","號碼"] }),
+            mkStep({ id:"s3", say:"欸，我現在很急，需要用錢，你先匯 5000 元給我，明天就還你！", task:"說你不會匯錢，要先問家人",
+              options:["我不會匯錢，要先問家人","好，我去 ATM 匯","我只有 1000 元，先給你","我去拿爸爸的提款卡"], kw:["要先問家人","不會匯錢"] }),
+            mkStep({ id:"s4", say:"（你掛掉了電話。）接下來要做什麼？", task:"說出要做的：告訴家人，用原本存好的電話打給表哥確認",
+              options:["告訴家人，用原本存好的電話打給表哥確認","回撥剛剛的號碼問他","不用跟家人說","先把錢匯過去再說"], kw:["用原本存好","告訴家人","表哥確認"] }),
+            mkStep({ id:"review", say:"（想一想）有人打來說「猜猜我是誰」「我換新號碼了」，要怎麼做？", task:"說出方法：不要猜，不亂存新號碼，掛斷後用原本的號碼找本人確認",
+              options:["不要猜，不亂存新號碼，掛斷後用原本的號碼找本人確認","猜對了就可以相信","直接存新號碼","他說是親戚就相信"], kw:["號碼找本人確認","不亂存新號碼","掛斷後用原本"], feedback:{ perfect:"答對了！不要猜，不亂存新號碼，掛斷後用原本的號碼找本人確認。", failed:"記住：不要猜，不亂存新號碼，掛斷後用原本的號碼找本人確認。" } }),
+          ]
+        },
+        {
+          id: "fake_police", name: "假警察說你的帳戶有問題", icon: "👮",
+          clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "檢警不會透過電話要求領錢、匯款到「監管帳戶」或交錢讓人代管",
+          steps: [
+            mkStep({ id:"s1", say:"（角色扮演：有人打電話自稱警察。）這裡是警察局，你的銀行帳戶被壞人拿去用了，你要配合調查！", task:"說你不提供資料，要掛電話了",
+              options:["我不提供資料，我要掛電話了","好，我配合，要做什麼？","我好害怕，我都聽你的","我的帳號是……"], kw:["不提供資料","要掛電話"] }),
+            mkStep({ id:"s2", say:"（另一種施壓話術；練習拒絕即可，不必真的繼續通話。）不能掛！掛了你就會被抓！快把錢領出來，交給我們保管！", task:"說你不會領錢給對方，要掛電話了",
+              options:["我不會領錢給你，我要掛電話了","好，我馬上去領","我把存摺拿給你","你們要來我家拿嗎？"], kw:["不會領錢給","要掛電話"] }),
+            mkStep({ id:"s3", say:"（你掛掉了電話。）接下來要做什麼？", task:"說出要做的：告訴家人，請家人陪你打 165 查證",
+              options:["告訴家人，請家人陪我打 165 查證","回撥剛剛的號碼道歉","照對方指示去 ATM 匯錢","照對方要求不告訴家人"], kw:["165","請家人陪","查證"] }),
+            mkStep({ id:"review", say:"（想一想）電話說自己是警察，要你領錢或匯錢，要怎麼做？", task:"說出方法：不領錢給對方，掛電話，找家人一起打 165 查證",
+              options:["不領錢給對方，掛電話，找家人一起打 165 查證","警察的話一定要聽","先把錢領出來再說","不要告訴任何人"], kw:["165","找家人一起打","不領錢"], feedback:{ perfect:"答對了！不領錢給對方，掛電話，找家人一起打 165 查證。", failed:"記住：不領錢給對方，掛電話，找家人一起打 165 查證。" } }),
+          ]
+        },
+        {
+          id: "fake_school", name: "假學校要你匯錢", icon: "🏫",
+          clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "收費方式依學校通知，紙本或電子通知也需確認來源；掛斷後用平常聯絡導師的方式查證，",
+          steps: [
+            mkStep({ id:"s1", say:"（角色扮演：放學後接到陌生來電。）我是你們學校的主任。畢業旅行的錢要補繳 2000 元，今天要匯到這個帳戶喔！", task:"說你要先問導師",
+              options:["我要先問導師","好，我馬上去匯","帳戶給我，我不查就匯","我先匯一半，另一半明天給"], kw:["要先問導師"] }),
+            mkStep({ id:"s2", say:"不用問啦，老師也知道，你直接去 ATM 匯就好！", task:"說你現在不匯錢，要先問老師和家人",
+              options:["我現在不匯錢，要先問老師和家人","好吧，那我去匯","我叫爸爸匯給你","你是主任，我相信你"], kw:["現在不匯錢","問老師","家人"] }),
+            mkStep({ id:"s3", say:"（你掛掉了電話，家人有平常聯絡導師的方式。）接下來要做什麼？", task:"說要告訴家人，用平常聯絡導師的方式確認",
+              options:["告訴家人，用平常聯絡導師的方式確認","先匯錢比較安全","打給同學借錢匯款","不用告訴任何人"], kw:["用平常聯絡導師","告訴家人","方式確認"] }),
+            mkStep({ id:"review", say:"（想一想）有人打電話說學校要你繳錢，要怎麼做？", task:"說出方法：用原本的聯絡方式問導師，跟家人確認後再處理",
+              options:["用原本的聯絡方式問導師，跟家人確認後再處理","對方說是主任就相信","不查證，今天就去匯","自己偷偷處理"], kw:["聯絡方式問導師","家人確認後","用原本"], feedback:{ perfect:"答對了！用原本的聯絡方式問導師，跟家人確認後再處理。", failed:"記住：用原本的聯絡方式問導師，跟家人確認後再處理。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "classmate_borrow", name: "同學借錢", icon: "🤝", available: true,
+      theme: { color: '#0891B2', bg: '#E0F2FE', accent: '#0E7490' },
+      situations: [
+        {
+          id: "lend", name: "同學跟你借錢", icon: "💰", clerkName: "小傑",
+          simple_steps: ["ask_purpose", "no_lend", "suggest_help"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "同學開口跟你借錢，練習怎麼好好拒絕",
+          steps: [
+            mkStep({ id:"ask_purpose", say:"（下課的時候，同學小傑跑來找你。）欸，借我一百元買飲料啦！", task:"先問他要用來做什麼",
+              options:["你要用來做什麼？","好啊借你一百","現在幾點了？","為什麼找我"],
+              accepted:["你要用來做什麼？","你要做什麼","借錢做什麼","要買什麼"], kw:["做什麼","買什麼"],
+              feedback:{ failed:"先問用途比較好。可以說：「你要用來做什麼？」" } }),
+            mkStep({ id:"no_lend", say:"我想買飲料跟餅乾。", task:"先說「對不起」，再說你不能借他錢",
+              options:["對不起，我不能借你錢","好，一百給你","那我借你二十","你要多少都可以"],
+              accepted:["對不起，我不能借你錢","我不能借你錢","對不起我不能借","我不可以借你錢"], kw:["不能借","不可以借"],
+              feedback:{ failed:"同學之間不要有金錢往來比較好。可以說：「對不起，我不能借你錢」" } }),
+            mkStep({ id:"give_reason", say:"為什麼不借啦？", task:"說出不能借的理由：老師說同學之間不可以借錢",
+              options:["老師說同學之間不可以借錢","因為我很小氣","我不想理你","你自己想辦法"],
+              accepted:["老師說同學之間不可以借錢","同學之間不可以借錢","老師說不可以借錢","我們不可以借錢"], kw:["不可以借","老師說"],
+              feedback:{ failed:"說清楚理由他比較能接受。可以說：「老師說同學之間不可以借錢」" } }),
+            mkStep({ id:"suggest_help", say:"那我怎麼辦啦…", task:"建議他去跟老師說",
+              options:["你可以去跟老師說","你去借別人啊","我也不知道","你自己看著辦"],
+              accepted:["你可以去跟老師說","去跟老師說","可以找老師幫忙","你去問老師"], kw:["老師"],
+              feedback:{ failed:"給他一個好方向。可以說：「你可以去跟老師說」" } }),
+            mkStep({ id:"hold_firm", say:"借一點點也不行喔？", task:"堅定拒絕，先說「真的不行」，再說你不能借他錢",
+              options:["真的不行，我不能借你錢","好啦借你一點點","那借你十元","不然你別生氣"],
+              accepted:["真的不行，我不能借你錢","真的不行","真的不能借","我還是不能借"], kw:["不行","不能借"],
+              feedback:{ failed:"說過不借就不要動搖。可以說：「真的不行，我不能借你錢」" } }),
+            mkStep({ id:"review", say:"（想一想）同學跟你借錢要記得哪三件事？", task:"說出三件事：不借錢、說清楚、找老師",
+              options:["不借錢、說清楚、找老師","有錢就借","看心情借","借了再說"],
+              accepted:["不借錢、說清楚、找老師","不借錢說清楚找老師","不借錢要說清楚要找老師"], kw:["不借錢","說清楚","找老師"],
+              feedback:{ perfect:"答對了！不借錢、說清楚、找老師。", failed:"記住三件事：不借錢、說清楚、找老師。" } }),
+          ]
+        },
+        {
+          id: "ask_back", name: "開口要回來", icon: "🗣️", clerkName: "小傑",
+          simple_steps: ["remind", "ask_return", "seek_help"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "借出去的錢對方沒還，練習怎麼開口要回（最難）",
+          steps: [
+            mkStep({ id:"remind", say:"（上星期你借給小傑二十元，他說星期五會還。那時你還不知道同學間不要借錢。今天是星期五，小傑好像忘了。）", task:"提醒他上星期借你的錢，問他「記得嗎」",
+              options:["上星期借你的二十元，記得嗎？","算了不敢說","當作沒這回事","再等他久一點"],
+              accepted:["上星期借你的二十元，記得嗎？","你還記得借二十元嗎","上次借你的錢記得嗎","記得跟我借二十元嗎"], kw:["借","二十","記得"],
+              feedback:{ failed:"先提醒他。可以說：「上星期借你的二十元，記得嗎？」" } }),
+            mkStep({ id:"ask_return", say:"喔對，我忘了！", task:"開口問他「可以還我了嗎」",
+              options:["可以還我了嗎？","沒關係不用還","那算了","下次再說"],
+              accepted:["可以還我了嗎？","可以還我嗎","請還我錢","可以還錢了嗎"], kw:["還我","還錢"],
+              feedback:{ failed:"要開口要回來。可以說：「可以還我了嗎？」" } }),
+            mkStep({ id:"reschedule", say:"啊我今天沒帶錢…", task:"重新約明天還",
+              options:["那你明天還我好嗎？","那就不用還了","你都沒帶喔算了","真的很煩耶"],
+              accepted:["那你明天還我好嗎？","明天還我好嗎","那明天還我","可以明天還嗎"], kw:["明天","還我"],
+              feedback:{ failed:"再約一個新日子。可以說：「那你明天還我好嗎？」" } }),
+            mkStep({ id:"seek_help", say:"明天再說啦…（他一直拖）", task:"提議一起去跟老師說",
+              options:["我們去跟老師說","那我不管了","一直被拖延","那就算了吧"],
+              accepted:["我們去跟老師說","去跟老師說","我們找老師","跟老師講"], kw:["老師","找老師"],
+              feedback:{ failed:"一直拖就找老師幫忙。可以說：「我們去跟老師說」" } }),
+            mkStep({ id:"review", say:"（想一想）要回自己借出去的錢，對不對？", task:"說出你的想法：要回自己的錢不是壞事",
+              options:["要回自己的錢不是壞事","要錢很不好意思","算了當作送他","朋友不能要錢"],
+              accepted:["要回自己的錢不是壞事","要回自己的錢是對的","要自己的錢沒有錯"], kw:["自己的錢","不是壞事","沒有錯","對的"],
+              feedback:{ perfect:"答對了！要回自己的錢一點也沒錯。", failed:"記住：要回自己借出去的錢，不是壞事。" } }),
+          ]
+        },
+        {
+          id: "refuse", name: "拒絕借錢", icon: "🚫", clerkName: "小傑",
+          desc: "不想借、也借不起時，練習好好拒絕",
+          steps: [
+            mkStep({ id:"refuse", say:"（小傑這星期第三次來借）欸，再借我五十元啦！", task:"拒絕，說沒有多的錢",
+              options:["我沒有多的錢","好啦再借你","那你要還喔","五十有點多"],
+              accepted:["我沒有多的錢","我沒有錢可以借","我沒有多餘的錢","我自己也不夠"], kw:["沒有","不夠"],
+              feedback:{ failed:"可以誠實拒絕。可以說：「我沒有多的錢」" } }),
+            mkStep({ id:"hold_firm", say:"你不借我就不是朋友了！", task:"堅定拒絕，說「我真的不能借你」",
+              options:["我真的不能借你","好啦別生氣","那借一點點","不然你別不高興"],
+              accepted:["我真的不能借你","真的不能借","我不能借你","還是不能借"], kw:["不能借","不借"],
+              feedback:{ failed:"用這句話威脅你就更不該借。可以說：「我真的不能借你」" } }),
+            mkStep({ id:"alternative", say:"那我怎麼辦啦…", task:"給他替代辦法，說「你可以去問老師」",
+              options:["你可以去問老師","不然去借別人","那我還是借你吧","你自己想辦法"],
+              accepted:["你可以去問老師","去問老師","可以找老師幫忙","去跟老師說"], kw:["老師"],
+              feedback:{ failed:"給他一個好方向。可以說：「你可以去問老師」" } }),
+            mkStep({ id:"review", say:"（想一想）拒絕借錢，還能當好朋友嗎？", task:"說出你的想法：拒絕借錢也可以是好朋友",
+              options:["拒絕借錢也可以是好朋友","不借就是壞朋友","借了才是好朋友","不借會沒朋友"],
+              accepted:["拒絕借錢也可以是好朋友","拒絕借錢也是好朋友","不借也可以是朋友"], kw:["拒絕借錢","也可以"],
+              feedback:{ perfect:"答對了！拒絕借錢也可以是好朋友。", failed:"記住：拒絕借錢，也可以是好朋友。" } }),
+          ]
+        },
+        {
+          id: "treat", name: "同學要你請客", icon: "🥤",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "婉拒請客並說出自己的理由，還是好朋友",
+          steps: [
+            mkStep({ id:"refuse", say:"（你的零用錢已經計畫好要存起來，今天不打算請客。下課時，同學小傑來找你。）欸，今天你請我喝飲料好不好？", task:"先說「不好意思」，再說你不能請客",
+              options:["不好意思，我不能請客", "好啊我請你", "我借你錢", "你自己想辦法啦"], kw:["不能請客"], accepted:["不好意思，我不能請客"] }),
+            mkStep({ id:"reason", say:"為什麼？一杯而已啊！", task:"說理由：我的零用錢有計畫，要存起來",
+              options:["我的零用錢有計畫，要存起來", "因為你很煩", "我才不要", "我的錢都給你"], kw:["計畫", "存起來"], accepted:["我的零用錢有計畫，要存起來"] }),
+            mkStep({ id:"go_together", say:"好吧…那我們一起去福利社就好？", task:"先說「好」，再說你陪他去",
+              options:["好，我陪你去", "那你付錢", "我全部買給你", "我偷拿家裡的錢請你"], kw:["陪你去"], accepted:["好，我陪你去"] }),
+            mkStep({ id:"review", say:"（想一想）同學要你請客，可以怎麼說？", task:"說出做法：婉拒，說出自己的理由",
+              options:["婉拒，說出自己的理由", "每次都請", "不理他", "偷拿家裡的錢請他"], kw:["婉拒", "理由"], accepted:["婉拒，說出自己的理由"], feedback:{ perfect:"答對了！婉拒，說出自己的理由。", failed:"記住：婉拒，說出自己的理由。" } }),
+          ]
+        },
+        {
+          id: "keep_money", name: "同學要你幫他保管錢", icon: "👛",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "不替同學保管錢，請他交給老師或家人",
+          steps: [
+            mkStep({ id:"refuse", say:"（放學前，同學小傑拿著五百元來找你。）欸，這五百元先放你那邊，明天再還我好不好？", task:"先說「不好意思」，再說你不能幫他保管錢",
+              options:["不好意思，我不能幫你保管錢", "好啊放我這", "我幫你花掉", "你借我一半"], kw:["不能幫你保管"], accepted:["不好意思，我不能幫你保管錢"] }),
+            mkStep({ id:"reason", say:"為什麼？我怕放書包會弄丟啊！", task:"說你也怕把他的錢弄丟",
+              options:["我也怕把你的錢弄丟", "因為我會拿去用", "不關我的事", "你很煩"], kw:["弄丟"], accepted:["我也怕把你的錢弄丟"] }),
+            mkStep({ id:"suggest", say:"那我該怎麼辦？", task:"給他辦法：交給老師或家人保管",
+              options:["你可以交給老師或家人保管", "丟在教室就好", "給我保管啦", "隨便你"], kw:["老師", "家人"], accepted:["你可以交給老師或家人保管"] }),
+            mkStep({ id:"review", say:"（想一想）同學要你幫他保管錢，要怎麼做？", task:"說出做法：婉拒，請他交給老師或家人",
+              options:["婉拒，請他交給老師或家人", "收下來先用", "幫他藏在學校", "幫他花掉"], kw:["婉拒", "老師", "家人"], accepted:["婉拒，請他交給老師或家人"], feedback:{ perfect:"答對了！婉拒，請他交給老師或家人。", failed:"記住：婉拒，請他交給老師或家人。" } }),
+          ]
+        },
+        {
+          id: "group_gift", name: "跟同學一起出錢買禮物", icon: "🎁",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "自願合資是各出各的份，不借貸、不墊款、不強迫參加",
+          steps: [
+            mkStep({ id:"s1", image:["images/a4/icon-a4-greeting-card-shop.png","images/a4/icon-a4-chocolate-shop.png"], image_label:"卡片 ＋ 巧克力", say:"（下星期是另一位同學的生日。老師確認可以自願合買禮物，你也想參加，但要先問家人。小傑來找你。）我們三個人一起買卡片和巧克力送他好不好？一共 150 元！", task:"用「請問」問小傑：一個人要出多少錢？",
+              options:["請問一個人要出多少錢？","你全部出啦","錢借我，我幫你出","不用算，隨便收"], kw:["出多少錢","一個人"] }),
+            mkStep({ id:"s2", say:"150 元三個人分，你算算看一個人多少？", task:"把 150 元平均分給三個人，算出一個人要出多少錢",
+              options:["一個人 50 元","一個人 150 元","一個人 30 元","一個人 100 元"], kw:["一個人50"] }),
+            mkStep({ id:"s3", say:"對！那你明天帶 50 元給我喔！", task:"說你要先問家人，同意後再帶 50 元來",
+              options:["我要先問家人，同意後再帶 50 元來","你先幫我出，我以後再還你","我偷拿家裡的錢給你","我全部出 150 元"], kw:["要先問家人","同意後再帶","元來"] }),
+            mkStep({ id:"s4", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"（隔天，三位出資者都取得家人同意。你仍願意參加，帶了自己的 50 元到學校。）你帶了嗎？", task:"把 50 元拿給小傑，說「這是我的 50 元」",
+              options:["這是我的 50 元","這是我的 20 元","我給 50 元，你幫我記成 100 元","這是我的 150 元"], kw:["我的50"] }),
+            mkStep({ id:"s5", say:"好，我記下來了！買完會給大家看發票，剩下的錢會退給大家。", task:"先說「好」，再說買好以後要一起看發票，算清楚花了多少",
+              options:["好，買好以後一起看發票，算清楚花了多少","不用核對，隨便記","剩錢不用記，偷偷留著","你亂花也沒關係"], kw:["算清楚花","多少","買好以後一起看發票"] }),
+            mkStep({ id:"review", say:"（想一想）跟同學一起出錢買東西，要怎麼做？", task:"說出方法：自願參加，先問家人，各出自己的份，買好看發票，算清楚花了多少",
+              options:["自願參加，先問家人，各出自己的份，買好看發票，算清楚花了多少","誰有錢誰出","先借同學的錢","不用問家人"], kw:["買好看發票","自願參加","先問家人"], feedback:{ perfect:"答對了！自願參加，先問家人，各出自己的份，買好看發票，算清楚花了多少。", failed:"記住：自願參加，先問家人，各出自己的份，買好看發票，算清楚花了多少。" } }),
+          ]
+        },
+        {
+          id: "classmate_sell", name: "同學要賣東西給你", icon: "🃏",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "同學要賣東西：不急著買，先問家人，想想自己需不需要",
+          steps: [
+            mkStep({ id:"s1", say:"（下課時，小傑拿著一張遊戲卡來找你。）欸，這張卡超稀有，賣你 500 元，要不要？", task:"說你要先問家人，現在不買",
+              options:["我要先問家人，現在不買","好，我不問家人就買","你先借我，我再付錢","我偷偷拿家裡的錢跟你買"], kw:["要先問家人","現在不買"] }),
+            mkStep({ id:"s2", say:"別人都搶著要耶！今天不買就沒有了！", task:"說你不急，買東西以前要跟家人討論",
+              options:["我不急，買東西以前要跟家人討論","好啦好啦，我買","那我去跟別人借錢買","你賣便宜一點我就買"], kw:["買東西以前","家人討論","不急"] }),
+            mkStep({ id:"s3", say:"（你準備回教室。）好吧，那算了。", task:"先說「好」，再說你先回教室了",
+              options:["好，我先回教室了","你很小氣耶","我沒查清楚就去說你是騙子","那你卡片一定要送我"], kw:["先回教室"] }),
+            mkStep({ id:"review", say:"（想一想）同學要賣東西給你，要怎麼做？", task:"說出方法：不急著買，先問家人，想想自己需不需要",
+              options:["不急著買，先問家人，想想自己需不需要","別人要就趕快買","先借錢買下來","他說稀有就是真的"], kw:["自己需不需","不急著買","先問家人"], feedback:{ perfect:"答對了！不急著買，先問家人，想想自己需不需要。", failed:"記住：不急著買，先問家人，想想自己需不需要。" } }),
+          ]
+        },
+        {
+          id: "peer_pressure", name: "大家都買了，你也要買嗎", icon: "✏️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "同學的壓力：想想自己需不需要，錢照計畫用",
+          steps: [
+            mkStep({ id:"s1", say:"（你的鉛筆盒還很好用，你已決定把零用錢存起來買需要的東西，不買新的。班上很多人買了 350 元的明星鉛筆盒，小傑問你。）你怎麼還沒買？大家都有耶！", task:"說你的鉛筆盒還可以用，不需要買",
+              options:["我的鉛筆盒還可以用，不需要買","不管原本的計畫，我明天就買","你借我錢買","我偷偷拿家裡的錢買"], kw:["鉛筆盒還","不需要買"] }),
+            mkStep({ id:"s2", say:"可是沒有的人很遜耶！", task:"說你的零用錢有計畫，要存起來買需要的東西",
+              options:["我的零用錢有計畫，要存起來買需要的東西","那我偷偷買，不要跟我媽說","你才遜","好啦我買兩個"], kw:["零用錢有計畫","存起來買需","東西"] }),
+            mkStep({ id:"s3", say:"（你準備回教室。）喔……好吧，你說得也有道理。", task:"先說「好」，再說你先回教室了",
+              options:["好，我先回教室了","你鉛筆盒一定要給我","我偏要拿你的來用","誰不買我就笑誰"], kw:["先回教室"] }),
+            mkStep({ id:"review", say:"（想一想）大家都買了，你一定也要買嗎？", task:"說出方法：不一定，先想自己需不需要，錢要照計畫用",
+              options:["不一定，先想自己需不需要，錢要照計畫用","大家有我也要有","借錢也要買","偷偷買就好"], kw:["自己需不需","照計畫用","不一定"], feedback:{ perfect:"答對了！不一定，先想自己需不需要，錢要照計畫用。", failed:"記住：不一定，先想自己需不需要，錢要照計畫用。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "online_scam", name: "網路詐騙", icon: "💻", available: true,
+      theme: { color: '#EA580C', bg: '#FFEDD5', accent: '#C2410C' },
+      situations: [
+        {
+          id: "fake_sale", name: "假網拍先匯款", icon: "🛒", clerkName: "陌生賣家", clerkImage: "images/clerk-unknown-message.jpg",
+          simple_steps: ["ask_who", "refuse_prepay", "walk_away"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "網路賣家超便宜、要你離開平台私下匯款",
+          steps: [
+            mkStep({ id:"ask_who", say:"（有人私訊你）哈囉！這支手機全新只要兩千，超便宜！", task:"先問對方是誰",
+              options:["你是誰？","好便宜我要買","怎麼匯款給你","兩千好划算"],
+              accepted:["你是誰？","請問你是誰","你哪位","這是誰"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            // 外部審閱第五輪：正常網購本來就先付款；危險的是陌生賣家叫你離開平台私下匯款。單獨跟陌生網友面交也不安全，不教
+            mkStep({ id:"refuse_prepay", say:"你先匯款到這個帳戶，我馬上寄給你！", task:"拒絕私下匯款",
+              options:["我不要私下匯款給你","好，我馬上匯","帳號給我","先匯一半好嗎"],
+              accepted:["我不要私下匯款給你","我不要私下匯款","我不會私下匯款","我不要先匯款"], kw:["私下","不要先匯","不先匯","不匯"],
+              feedback:{ failed:"不要私下匯款給陌生人。可以說：「我不要私下匯款給你」" } }),
+            mkStep({ id:"ask_meet", say:"現在不買就被別人搶走了喔！", task:"說你要在購物平台上買",
+              options:["我要在購物平台上買","那我趕快匯","好啦先匯款","再便宜一點"],
+              accepted:["我要在購物平台上買","我要用平台付款","在平台上買比較有保障","我要在平台上買"], kw:["平台"],
+              feedback:{ failed:"在有保障的購物平台上付款比較安全。可以說：「我要在購物平台上買」" } }),
+            mkStep({ id:"walk_away", say:"平台要扣手續費啦，私下匯款比較快！", task:"先說「太便宜怪怪的」，再說「我不買」",
+              options:["太便宜怪怪的，我不買","那好吧我匯","那算了先匯","好啊，帳號給我"],
+              accepted:["太便宜怪怪的，我不買","太便宜有問題我不買","怪怪的我不買","我不買了"], kw:["不買","怪怪"],
+              feedback:{ failed:"不肯在平台交易、又急著要你匯款，很可疑。可以說：「太便宜怪怪的，我不買」" } }),
+            mkStep({ id:"review", say:"（想一想）網路買東西要小心什麼？", task:"說出判斷的理由：叫我離開平台、私下匯款的，就要小心",
+              options:["叫我離開平台、私下匯款的，就要小心","便宜就先買","匯款最快","賣家說的都對"],
+              accepted:["叫我離開平台、私下匯款的，就要小心","叫我私下匯款的要小心","私下匯款要小心","叫你先匯款的要小心"], kw:["私下","離開平台","要小心"],
+              feedback:{ perfect:"答對了！叫你離開平台、私下匯款的，要特別小心。", failed:"記住：叫你離開平台、私下匯款的，要特別小心。" } }),
+          ]
+        },
+        {
+          id: "fake_link", name: "中獎簡訊點連結", icon: "📩", clerkName: "陌生訊息", clerkImage: "images/clerk-prize-sms.jpg",
+          simple_steps: ["read", "no_click", "ask_family"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "手機收到中獎簡訊、要你點連結",
+          steps: [
+            mkStep({ id:"read", image:"images/b6/icon-b6-scam-sms-1.png", image_label:"手機簡訊", say:"（你的手機收到一封中獎簡訊，上面寫著：恭喜你中獎了，點這個連結就能領獎品！）", task:"判斷這是不是真的，說「這可能是詐騙」",
+              options:["這可能是詐騙","太好了我點","中什麼獎？","趕快點連結"],
+              accepted:["這可能是詐騙","可能是詐騙","這是詐騙","應該是詐騙"], kw:["詐騙"],
+              feedback:{ failed:"沒參加抽獎卻中獎，很可疑。可以說：「這可能是詐騙」" } }),
+            mkStep({ id:"no_click", image:"images/b6/icon-b6-scam-sms-2.png", image_label:"手機簡訊", say:"（簡訊又傳來催促：快點這個連結，不然獎品就沒了！）", task:"拒絕點連結",
+              options:["我不會點這個連結","好我點看看","連結在哪","點了會怎樣"],
+              accepted:["我不會點這個連結","我不點連結","不會點連結","我不點"], kw:["不會點","不點"],
+              feedback:{ failed:"陌生連結不要點。可以說：「我不會點這個連結」" } }),
+            mkStep({ id:"no_info", say:"（想一想）如果有不明的連結要你輸入帳號密碼，該怎麼做？", task:"拒絕輸入帳號密碼",
+              options:["我不輸入帳號密碼","輸入就輸入","密碼要打哪","帳號給它"],
+              accepted:["我不輸入帳號密碼","不輸入密碼","我不會輸入","帳號密碼不能給"], kw:["不輸入","不會輸入","不能給"],
+              feedback:{ failed:"帳號密碼絕對不能輸入給陌生網站。可以說：「我不輸入帳號密碼」" } }),
+            mkStep({ id:"ask_family", say:"（想一想）收到這種簡訊該怎麼辦？", task:"說要問家人",
+              options:["我要問家人","點連結看看","回覆這封簡訊","輸入資料領獎"],
+              accepted:["我要問家人","問家人","告訴家人","跟大人說"], kw:["問家人","家人","大人","告訴"],
+              feedback:{ failed:"不確定就問大人。可以說：「我要問家人」" } }),
+            mkStep({ id:"review", say:"（想一想）收到這種中獎簡訊要怎麼做？", task:"說出做法：陌生的中獎簡訊叫我點連結，我不點，先問家人",
+              options:["陌生的中獎簡訊叫我點連結，我不點，先問家人","中獎都是真的","有連結就點","領獎要輸密碼"],
+              accepted:["陌生的中獎簡訊叫我點連結，我不點，先問家人","我不點，先問家人","不點連結，先問家人"], kw:["不點","問家人"],
+              feedback:{ perfect:"答對了！陌生的中獎簡訊叫你點連結，不要點，先問家人。", failed:"記住：陌生的中獎簡訊叫你點連結，不要點，先問家人。" } }),
+          ]
+        },
+        {
+          id: "hacked_friend", name: "朋友帳號被盜來借錢", icon: "👤", clerkName: "朋友阿豪", clerkImage: "images/clerk-msg-hacked.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "朋友傳訊息要你匯錢：不匯錢，請家人幫忙用原本的電話問本人",
+          steps: [
+            mkStep({ id:"call_first", say:"（你的手機跳出好朋友阿豪的訊息。）欸，我手機快沒電了，急用，先幫我匯 2000 元，明天還你！", task:"說你要先打電話問他本人",
+              options:["我先打電話問你本人", "好，我馬上匯", "帳號給我", "要匯多少都可以"], kw:["打電話", "本人"], accepted:["我先打電話問你本人"] }),
+            mkStep({ id:"refuse", say:"不要打啦！我在忙，快點匯就好！", task:"說你不會匯錢，要請家人幫忙確認",
+              options:["我不會匯錢，我要請家人幫忙確認", "好啦我匯", "那我匯一半", "不用確認，我相信你"], kw:["不會匯錢"], accepted:["我不會匯錢，我要請家人幫忙確認"] }),
+            mkStep({ id:"confirm", say:"（家人陪你用原本存好的手機號碼打給阿豪，你告訴他，剛剛收到向你借 2000 元的訊息。）喂？我沒有傳訊息給你啊！我的帳號被盜了！", task:"先說「好」，再說你不會匯錢",
+              options:["好，我不會匯錢", "那我還是匯一點", "不關我的事", "我再傳訊息問那個帳號"], kw:["不會匯錢"], accepted:["好，我不會匯錢"], clerkName:"阿豪本人", clerkImage:"images/clerk-family-call.jpg" }),
+            mkStep({ id:"review", say:"（想一想）朋友傳訊息要你匯錢，要怎麼做？", task:"說出做法：不匯錢，請家人幫忙，用原本的電話號碼問本人",
+              options:["不匯錢，請家人幫忙，用原本的電話號碼問本人", "朋友要就匯", "傳訊息問就好", "先匯再說"], kw:["不匯錢", "原本的電話"], accepted:["不匯錢，請家人幫忙，用原本的電話號碼問本人"], feedback:{ perfect:"答對了！不匯錢，請家人幫忙，用原本的電話號碼問本人。", failed:"記住：不匯錢，請家人幫忙，用原本的電話號碼問本人。" } }),
+          ]
+        },
+        {
+          id: "fake_cod", name: "假的貨到付款包裹", icon: "📦", clerkName: "送貨員", clerkImage: "images/clerk-stranger-door.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "沒訂的貨到付款包裹：先問家人，沒買或還沒確認就先不收、不付錢",
+          steps: [
+            mkStep({ id:"ask_sender", say:"（你一個人在家，門鈴響了。你沒有開門，隔著門和送貨員說話。）你好，有你們家的包裹，貨到付款 890 元！", task:"用「請問」問寄件人是誰、買了什麼",
+              options:["請問是誰寄的，買了什麼？", "好，我去拿錢", "我先付再說", "直接開門拿"], kw:["誰寄的", "買了什麼"], accepted:["請問是誰寄的，買了什麼？"] }),
+            mkStep({ id:"refuse", say:"上面沒寫耶，就是網購的啦，付錢就可以拿了！（你沒有開門，先打電話問家人，確認大家都沒有訂這個包裹，再回覆送貨員。）", task:"說你們沒有訂這個包裹，你不收",
+              options:["我們沒有訂這個包裹，我不收", "好啦我付", "我付一半", "放門口我等一下付"], kw:["不收", "沒有訂"], accepted:["我們沒有訂這個包裹，我不收"] }),
+            mkStep({ id:"thanks", say:"好吧，那我退回去。", task:"說「好，謝謝」",
+              options:["好，謝謝！", "我還是付 890 元收下", "可以送我嗎", "我開門看看"], kw:["謝謝"], accepted:["好，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）收到沒買過的貨到付款包裹，要怎麼做？", task:"說出做法：先問家人，沒買或還沒確認，就先不收、不付錢",
+              options:["先問家人，沒買或還沒確認，就先不收、不付錢", "先付錢再說", "打開看看再決定", "便宜就收"], kw:["問家人", "不收"], accepted:["先問家人，沒買或還沒確認，就先不收、不付錢"], feedback:{ perfect:"答對了！先問家人，沒買或還沒確認，就先不收、不付錢。", failed:"記住：先問家人，沒買或還沒確認，就先不收、不付錢。" } }),
+          ]
+        },
+        {
+          id: "invest_group", name: "穩賺的投資群組", icon: "📈", clerkName: "陌生網友", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "說穩賺不賠的投資群組：不相信、不匯錢，退出並告訴家人",
+          steps: [
+            mkStep({ id:"refuse", say:"（你被拉進一個陌生的聊天群組。）大家好！跟著老師投資，穩賺不賠，一個月賺兩倍！", task:"說你不參加，要退出群組",
+              options:["我不參加，我要退出群組", "真的嗎？我要參加", "怎麼匯錢", "我先投一點"], kw:["不參加", "退出"], accepted:["我不參加，我要退出群組"] }),
+            mkStep({ id:"not_invest", say:"先投 1000 元試試看就好，很多人都賺了！", task:"說穩賺不賠一定是騙人的，你不投",
+              options:["穩賺不賠一定是騙人的，我不投", "那我先投 500", "我去跟家裡拿錢", "有獲利截圖我就匯錢"], kw:["騙人", "不投"], accepted:["穩賺不賠一定是騙人的，我不投"] }),
+            mkStep({ id:"leave", say:"不投就沒機會了喔！", task:"說你要退出群組，告訴家人",
+              options:["我要退出群組，告訴家人", "好啦我投", "先留著看看", "拉同學一起"], kw:["退出群組", "告訴家人"], accepted:["我要退出群組，告訴家人"] }),
+            mkStep({ id:"review", say:"（想一想）你退出了群組，也告訴了家人。網路上說「穩賺不賠」的投資，要怎麼做？", task:"說出做法：不相信，不匯錢，告訴家人",
+              options:["不相信，不匯錢，告訴家人", "先投一點試試", "拉朋友一起", "自己偷偷投"], kw:["不相信", "不匯錢"], accepted:["不相信，不匯錢，告訴家人"], feedback:{ perfect:"答對了！不相信，不匯錢，告訴家人。", failed:"記住：不相信，不匯錢，告訴家人。" } }),
+          ]
+        },
+        {
+          id: "game_item", name: "說要送遊戲寶物", icon: "🎮",
+          clerkName: "陌生訊息", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不把登入密碼或驗證碼傳給自稱管理員的人",
+          steps: [
+            mkStep({ id:"s1", say:"（你在玩線上遊戲，一個陌生玩家傳訊息給你。）我是遊戲管理員！你中獎了，送你稀有寶物！給我你的帳號和密碼，我幫你放進去！", task:"說你不會給帳號和密碼",
+              options:["我不會給你帳號和密碼","太好了！帳號密碼都給你","密碼給你，快一點喔","我把登入驗證碼也傳給你"], kw:["帳號和密碼","不會給"] }),
+            mkStep({ id:"s2", say:"不給的話寶物就送別人喔！管理員不會騙你啦！", task:"說真正的管理員不會跟人要密碼",
+              options:["真正的管理員不會跟人要密碼","好啦，給你密碼","你頭像有官方標誌，我就給你密碼","我把爸爸的密碼給你"], kw:["管理員不會","真正"] }),
+            mkStep({ id:"s3", say:"（你停止回覆，也沒有點連結。）接下來要做什麼？", task:"說要請家人幫忙保留訊息，再用遊戲內建功能檢舉和封鎖",
+              options:["請家人幫忙保留訊息，再用遊戲內建功能檢舉和封鎖","繼續回覆，求他送寶物","不用說，反正沒給","傳密碼給另一個自稱管理員的人"], kw:["請家人幫忙保留訊息","用遊戲內建功能檢舉","封鎖"] }),
+            mkStep({ id:"review", say:"（想一想）有人說要送寶物，跟你要帳號密碼，要怎麼做？", task:"說出方法：不給密碼，封鎖他，告訴家人",
+              options:["不給密碼，封鎖他，告訴家人","寶物很稀有就給","只給一下下就好","朋友說可以就把密碼給他"], kw:["不給密碼","告訴家人","封鎖他"], feedback:{ perfect:"答對了！不給密碼，封鎖他，告訴家人。", failed:"記住：不給密碼，封鎖他，告訴家人。" } }),
+          ]
+        },
+        {
+          id: "like_task", name: "在家按讚就能賺錢", icon: "👍",
+          clerkName: "陌生訊息", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "「任務賺錢」詐騙常用小額獎勵吸引加入，再要求儲值才能做任務或提領；不因截圖或有人",
+          steps: [
+            mkStep({ id:"s1", say:"（陌生帳號私訊邀你做網路任務，你還沒有加入群組。）在家幫影片按讚，一個讚賺 10 元！加入我們的群組就能開始！", task:"說你還沒確認這份工作，先不加入",
+              options:["我還沒確認這份工作，先不加入","太棒了，我要加入","我把帳戶給你，錢匯給我","我找同學一起來"], kw:["沒確認這份工作","先不加入"] }),
+            mkStep({ id:"s2", say:"真的啦！做完第一關，先儲值 1000 元，就能領更多喔！", task:"說要先儲值才能領錢的工作，你不做",
+              options:["要先儲值才能領錢的工作，我不做","好，我去儲值","我只儲值 500 元","我跟家人拿錢儲值"], kw:["儲值才能領錢","工作","不做"] }),
+            mkStep({ id:"s3", say:"（你沒有加入群組，也沒有儲值，現在停止回覆這個陌生帳號。）接下來要做什麼？", task:"說要告訴家人，請家人幫忙保留訊息、檢舉和封鎖",
+              options:["告訴家人，請家人幫忙保留訊息、檢舉和封鎖","現在加入群組試試","先儲值一次再說","叫同學去儲值"], kw:["請家人幫忙保留訊息","檢舉和封鎖","告訴家人"] }),
+            mkStep({ id:"review", say:"（想一想）有人說做網路任務，要先儲值才能領錢，要怎麼做？", task:"說出方法：先不相信，不儲值，找家人一起查證",
+              options:["先不相信，不儲值，找家人一起查證","先試試看","賺到錢再說","只付一點點錢沒關係"], kw:["找家人一起查證","先不相信","不儲值"], feedback:{ perfect:"答對了！先不相信，不儲值，找家人一起查證。", failed:"記住：先不相信，不儲值，找家人一起查證。" } }),
+          ]
+        },
+        {
+          id: "cheap_points", name: "半價的遊戲點數", icon: "💳",
+          clerkName: "陌生訊息", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先和家人確認需求、預算，再從已確認的遊戲官方購買頁面或官方授權通路買",
+          steps: [
+            mkStep({ id:"s1", say:"（你想買遊戲點數。一個陌生帳號傳訊息給你。）遊戲點數半價！1000 點只要 500 元，先匯款就給你！", task:"說你不私下匯款，只從確認過的官方或授權通路買",
+              options:["我不私下匯款，只從確認過的官方或授權通路買","好便宜！帳戶給我","我先匯 500 元","我買 2000 點"], kw:["不私下匯款","只從確認過","授權通路買"] }),
+            mkStep({ id:"s2", say:"官方很貴耶！我這裡便宜一半，很多人都買過了！", task:"說你無法確認對方身分，不會私下匯款",
+              options:["我無法確認你的身分，不會私下匯款","那我先買一點試試看","你給我看別人的評價我就買","好啦我買"], kw:["不會私下匯款","無法確認","身分"] }),
+            mkStep({ id:"s3", say:"（另一種話術。）不匯款也可以，你把手上點數卡的序號和密碼傳給我，我幫你加倍！", task:"說你不會把點數序號和密碼傳給對方",
+              options:["我不會把點數序號和密碼傳給你","好，我拍整張卡給你","我先給你一張試試","只傳序號和密碼，不拍卡就安全"], kw:["點數序號","密碼傳","不會"] }),
+            mkStep({ id:"s4", say:"（你封鎖了對方。）接下來要做什麼？", task:"說出要做的：告訴家人，買點數前先問家人",
+              options:["告訴家人，買點數前先問家人","找另一個陌生人私下匯款","先匯錢再說","不用告訴家人"], kw:["買點數前","問家人"] }),
+            mkStep({ id:"review", say:"（想一想）想買遊戲點數，要怎麼做？", task:"說出方法：先問家人，從確認過的官方或授權通路買，不傳點數序號和密碼給陌生人",
+              options:["先問家人，從確認過的官方或授權通路買，不傳點數序號和密碼給陌生人","找最便宜的就好","先匯款給陌生人","跟陌生人私下買"], kw:["不傳點數序號","授權通路買","先問家人"], feedback:{ perfect:"答對了！先問家人，從確認過的官方或授權通路買，不傳點數序號和密碼給陌生人。", failed:"記住：先問家人，從確認過的官方或授權通路買，不傳點數序號和密碼給陌生人。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "self_protect", name: "保護自己的錢", icon: "🛡️", available: true,
+      theme: { color: '#0D9488', bg: '#CCFBF1', accent: '#0F766E' },
+      situations: [
+        {
+          id: "extortion", name: "被勒索要錢", icon: "🚫", clerkName: "安全小老師",
+          desc: "有人威脅你、逼你給錢時怎麼辦（最重要）",
+          steps: [
+            // 外部審閱第五輪（必改）：原本要學生當面對威脅者說「我不會給你錢」，可能讓衝突升高。
+            // 人身受威脅時先保住安全、離開、找大人；就算被逼著給了錢也不是你的錯，一樣要告訴大人。
+            mkStep({ id:"get_away", say:"（安安老師要跟你練習：遇到有人凶你、逼你給錢時要怎麼辦。）假裝有人凶你說：「不給錢就打你！」你覺得很害怕，要怎麼做？", task:"說你要趕快離開，去找老師幫忙",
+              options:["我要趕快離開，去找老師幫忙","我跟你拚了！","好，我明天再多帶一點錢","我不敢跟別人說"],
+              accepted:["我要趕快離開，去找老師幫忙","趕快離開，去找老師","我要去找老師幫忙","趕快走，找大人幫忙"], kw:["離開","找老師","找大人","幫忙"],
+              feedback:{ failed:"先保護自己的安全，離開那裡、找大人。可以說：「我要趕快離開，去找老師幫忙」" } }),
+            mkStep({ id:"seek_help", say:"如果他之後又來找你要錢，你要怎麼做？", task:"說要告訴老師和家人",
+              options:["我要告訴老師和家人","那我給他","自己想辦法","我不敢說"],
+              accepted:["我要告訴老師和家人","告訴老師和家人","我要告訴老師","告訴家人"], kw:["告訴","老師","家人"],
+              feedback:{ failed:"一定要說出來、找大人幫忙。可以說：「我要告訴老師和家人」" } }),
+            mkStep({ id:"principle", say:"被威脅要錢，最重要的是什麼？", task:"說出最重要的一件事：一定要告訴大人",
+              options:["一定要告訴大人","自己解決就好","忍一忍就好","給錢了事"],
+              accepted:["一定要告訴大人","要告訴大人","一定要說出來"], kw:["告訴大人","說出來"],
+              feedback:{ perfect:"答對了！就算被逼著給了錢，也不是你的錯，一樣要告訴大人。", failed:"最重要的是告訴大人，不要自己扛。可以說：「一定要告訴大人」" } }),
+            mkStep({ id:"review", say:"（想一想）被威脅要錢，為什麼要告訴大人？", task:"說出理由：大人可以幫我處理、保護我",
+              options:["大人可以幫我處理、保護我","忍就沒事了","給錢最快","不關別人的事"],
+              accepted:["大人可以幫我處理、保護我","大人可以保護我","大人可以幫我處理"], kw:["保護","幫我"],
+              feedback:{ perfect:"答對了！大人可以幫你處理、保護你。", failed:"記住：被威脅要錢不能自己扛，大人可以幫你處理、保護你。" } }),
+          ]
+        },
+        {
+          id: "keep_safe", name: "保管好自己的錢", icon: "🔒", clerkName: "安全小老師",
+          desc: "平常怎麼收好錢、保密密碼、撿到錢怎麼辦",
+          steps: [
+            mkStep({ id:"hide_money", say:"（安安老師要跟你練習怎麼保管好自己的錢。）出門帶很多錢，被別人看到了，怎麼辦？", task:"說錢要收好、不露白",
+              options:["錢要收好不露白","拿出來炫耀","借給別人看","放桌上就好"],
+              accepted:["錢要收好不露白","錢要收好","把錢收好","不要露白"], kw:["收好","露白"],
+              feedback:{ failed:"錢不要露出來給人看。可以說：「錢要收好不露白」" } }),
+            mkStep({ id:"pin_secret", say:"有人要看你的提款卡密碼，你會說？", task:"拒絕給密碼",
+              options:["密碼不能給別人看","好啊我給你看","密碼是…","給你看一下"],
+              accepted:["密碼不能給別人看","密碼不能給","密碼不能說","密碼要保密"], kw:["不能給","不能說","保密"],
+              feedback:{ failed:"密碼不能給任何人看。可以說：「密碼不能給別人看」" } }),
+            mkStep({ id:"found_money", say:"你在地上撿到別人的錢，怎麼辦？", task:"說要交給老師、警察或那裡的工作人員",
+              options:["交給老師、警察或那裡的工作人員","自己收起來","拿去買東西","分給同學"],
+              accepted:["交給老師、警察或那裡的工作人員","交給老師","交給警察","交給工作人員","拿給老師"], kw:["交給","老師","警察","工作人員","失主"],
+              feedback:{ failed:"撿到的錢不是自己的，要交出去。可以說：「交給老師、警察或那裡的工作人員」" } }),
+            mkStep({ id:"review", say:"（想一想）保護自己的錢有哪些方法？", task:"說出方法：收好、密碼保密、撿到交出去",
+              options:["收好、密碼保密、撿到交出去","有錢就炫耀","密碼給朋友","撿到自己留"],
+              accepted:["收好、密碼保密、撿到交出去","錢收好密碼保密撿到交出去","要收好要保密要交出去"], kw:["收好","保密"],
+              feedback:{ perfect:"答對了！收好、密碼保密、撿到交出去。", failed:"記住：錢要收好、密碼要保密、撿到別人的要交出去。" } }),
+          ]
+        },
+        {
+          id: "atm_safe", name: "提款時有人靠太近", icon: "🏧",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "在 ATM 有人靠太近：遮住密碼，先取消、拿回卡片再離開，找人幫忙",
+          steps: [
+            mkStep({ id:"cover", say:"（安安老師要跟你練習在 ATM 領錢的安全。）假裝你在 ATM 領錢，後面有人站得很近，一直看你按鍵，你要怎麼做？", task:"說出做法：用手遮住，先不要按密碼",
+              options:["用手遮住，先不要按密碼", "按快一點就好", "把密碼唸出來", "請他幫我按"], kw:["遮住"], accepted:["用手遮住，先不要按密碼"] }),
+            mkStep({ id:"cancel", say:"如果那個人還是不走開呢？", task:"說出做法：先按取消，拿回卡片，再離開",
+              options:["先按取消，拿回卡片，再離開", "繼續領錢", "跟他吵架", "把錢給他看"], kw:["取消", "拿回卡片"], accepted:["先按取消，拿回卡片，再離開"] }),
+            mkStep({ id:"find_help", say:"離開以後可以找誰幫忙？", task:"說出可以找的人：銀行的人、便利商店店員或警察",
+              options:["銀行的人、便利商店店員或警察", "找旁邊不認識的人", "誰都不用找", "回去請剛剛偷看的人幫我按密碼"], kw:["銀行", "店員", "警察"], accepted:["銀行的人、便利商店店員或警察"] }),
+            mkStep({ id:"review", say:"（想一想）在 ATM 領錢，要注意什麼？", task:"說出重點：遮住密碼，有人靠太近就先取消、拿回卡片，再離開",
+              options:["遮住密碼，有人靠太近就先取消、拿回卡片，再離開", "領越多越好", "密碼可以給人看", "領完錢在門口數"], kw:["遮住", "取消"], accepted:["遮住密碼，有人靠太近就先取消、拿回卡片，再離開"], feedback:{ perfect:"答對了！遮住密碼，有人靠太近就先取消、拿回卡片，再離開。", failed:"記住：遮住密碼，有人靠太近就先取消、拿回卡片，再離開。" } }),
+          ]
+        },
+        {
+          id: "pushy_sale", name: "被強迫推銷", icon: "🛍️",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "有人一直要你買：堅定說不用了謝謝，不留資料，直接離開",
+          steps: [
+            mkStep({ id:"say_no", say:"（安安老師扮演一位很熱情的推銷員。）同學，這個按摩器今天特價 990 元，買一個嘛！", task:"堅定地說「不用了，謝謝」",
+              options:["不用了，謝謝", "好啦好啦我買", "你說多少就多少", "（一直站著聽）"], kw:["不用了"], accepted:["不用了，謝謝"] }),
+            mkStep({ id:"no_phone", say:"只剩最後一個了喔！你先留電話，我幫你保留！", task:"說你不留電話，再說「不用了，謝謝」",
+              options:["我不留電話，不用了，謝謝", "好，我電話是…", "我回家拿錢給你", "那你幫我保留"], kw:["不留電話"], accepted:["我不留電話，不用了，謝謝"] }),
+            mkStep({ id:"leave", say:"你不買會後悔喔！再考慮一下嘛！", task:"說你要走了，然後離開",
+              options:["我要走了", "那我買一個好了", "我借錢來買", "好吧給你電話"], kw:["我要走了"], accepted:["我要走了"] }),
+            mkStep({ id:"review", say:"（想一想）有人一直要你買東西，要怎麼做？", task:"說出方法：說「不用了，謝謝」，不留資料，直接離開",
+              options:["說不用了謝謝，不留資料，直接離開", "不好意思拒絕就買", "先留電話再說", "跟他吵架"], kw:["不留資料", "離開"], accepted:["說不用了謝謝，不留資料，直接離開"], feedback:{ perfect:"答對了！說不用了謝謝，不留資料，直接離開。", failed:"記住：說不用了謝謝，不留資料，直接離開。" } }),
+          ]
+        },
+        {
+          id: "bumped", name: "被撞一下之後", icon: "👝",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "人多的地方被撞到先檢查錢包；包包拉好背在前面",
+          steps: [
+            mkStep({ id:"check", say:"（安安老師要跟你練習在人多的地方保護錢包。）假裝你在夜市，有人撞了你一下就走了，你第一件事要做什麼？", task:"說出做法：馬上摸摸看錢包還在不在",
+              options:["馬上檢查錢包還在不在", "追上去罵他", "沒關係繼續逛", "大聲唱歌"], kw:["檢查", "錢包"], accepted:["馬上檢查錢包還在不在"] }),
+            mkStep({ id:"where", say:"錢包還在。在人多的地方，錢包放哪裡比較安全？", task:"說出做法：放進包包內層，拉好拉鍊，把包包背在身體前面",
+              options:["放進包包內層，拉好拉鍊，包包背在前面", "放在後面褲子口袋", "拿在手上甩", "交給不認識的人"], kw:["內層", "拉鍊", "前面"], accepted:["放進包包內層，拉好拉鍊，包包背在前面"] }),
+            mkStep({ id:"if_lost", say:"如果錢包真的不見了呢？", task:"說出做法：告訴家人，去找警察",
+              options:["告訴家人，去找警察", "自己一個人到處找", "算了不說", "隨便懷疑旁邊的人"], kw:["告訴家人", "警察"], accepted:["告訴家人，去找警察"] }),
+            mkStep({ id:"review", say:"（想一想）在人多的地方，怎麼保護錢包？", task:"說出方法：包包拉好、背在前面，被撞到先確認錢包還在不在",
+              options:["包包拉好、背在前面，被撞到先確認錢包還在不在", "錢包放後面比較方便", "不用管", "錢全部拿在手上"], kw:["背在前面", "確認"], accepted:["包包拉好、背在前面，被撞到先確認錢包還在不在"], feedback:{ perfect:"答對了！包包拉好、背在前面，被撞到先確認錢包還在不在。", failed:"記住：包包拉好、背在前面，被撞到先確認錢包還在不在。" } }),
+          ]
+        },
+        {
+          id: "carry_package", name: "陌生人要你幫忙帶東西", icon: "📦",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "陌生人給錢要你帶東西：不答應，往有店員的商店或派出所求助，告訴家人或老師",
+          steps: [
+            mkStep({ id:"s1", say:"（安安老師要跟你練習：陌生人要你幫忙時怎麼辦。）假裝有陌生人說：「幫我把這袋拿給前面那個人，給你 200 元！」你要怎麼說？", task:"說「不用了，我不幫陌生人帶東西」",
+              options:["不用了，我不幫陌生人帶東西","好啊，200 元很好賺","只要袋子外面乾淨，我就幫你帶","給我 500 元我就幫"], kw:["不幫陌生人帶東西","不用"] }),
+            mkStep({ id:"s2", say:"如果他說「很簡單啦，走幾步就好」呢？", task:"說你不要，再說會去商店找店員幫忙",
+              options:["我不要，我去商店找店員幫忙","好吧，走幾步沒關係","那你先付錢","我找同學幫你帶"], kw:["去商店找店員幫忙","不要"] }),
+            mkStep({ id:"s3", say:"離開以後，要告訴誰？", task:"說出要告訴的人：家人或老師",
+              options:["告訴家人或老師","不用告訴任何人","告訴那個陌生人","等他再來找我"], kw:["老師","告訴家人"] }),
+            mkStep({ id:"review", say:"（想一想）陌生人給錢要你幫忙帶東西，為什麼不能答應？", task:"說出原因：不知道裡面是什麼，也不清楚用途，可能有危險",
+              options:["不知道裡面是什麼，也不清楚用途，可能有危險","有付錢就一定安全","看起來乾淨就安全","走得近就不會有事"], kw:["不知道裡面","不清楚用途","可能有危險"], feedback:{ perfect:"答對了！不知道裡面是什麼，也不清楚用途，可能有危險。", failed:"記住：不知道裡面是什麼，也不清楚用途，可能有危險。" } }),
+          ]
+        },
+        {
+          id: "gamble_refuse", name: "有人找你賭錢", icon: "🎲",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不玩賭錢的遊戲，改玩不用錢的，看到有人賭錢告訴老師",
+          steps: [
+            mkStep({ id:"s1", say:"（安安老師要跟你練習：有人找你玩賭錢的遊戲。）假裝有同學說：「我們來猜拳，輸的人給 20 元！」你要怎麼說？", task:"說「我不玩賭錢的遊戲」",
+              options:["我不玩賭錢的遊戲","好啊，我一定贏","賭 100 元比較刺激","我先跟別人借錢來賭"], kw:["不玩賭錢","遊戲"] }),
+            mkStep({ id:"s2", say:"如果他說「不玩就是膽小鬼」呢？", task:"說你不賭錢，一起玩不用錢的遊戲",
+              options:["我不賭錢，我們玩不用錢的遊戲","好啦，玩一次就好","你才是膽小鬼，來賭","我們賭大一點"], kw:["玩不用錢","不賭錢","遊戲"] }),
+            mkStep({ id:"s3", say:"如果你看到同學一直在賭錢，要告訴誰？", task:"說出要告訴的人：老師",
+              options:["告訴老師","不用管","加入他們","幫他們把風"], kw:["告訴老師"] }),
+            mkStep({ id:"review", say:"（想一想）為什麼不能玩賭錢的遊戲？", task:"說出原因：可能輸掉錢，也可能因為輸贏吵架",
+              options:["可能輸掉錢，也可能因為輸贏吵架","因為會贏太多","只要不被發現就可以","小賭沒關係"], kw:["可能因為輸贏吵架","可能輸掉錢"], feedback:{ perfect:"答對了！可能輸掉錢，也可能因為輸贏吵架。", failed:"記住：可能輸掉錢，也可能因為輸贏吵架。" } }),
+          ]
+        },
+        {
+          id: "keep_wallet", name: "結帳時錢包不交給別人", icon: "👛",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "付錢不把整個錢包交給店員；可請店員重說金額，算不清楚就請陪同的可信任家人協助核對",
+          steps: [
+            mkStep({ id:"s1", say:"（安安老師扮演店員。你練習跟家人一起購物時，怎麼保管錢包。）假裝店員說：「錢包給我，我幫你拿錢！」你要怎麼做？", task:"說「不用，我自己拿」",
+              options:["不用，我自己拿","好，錢包給你","錢包裡的錢你全部拿去","你拿著我的錢包去後面慢慢挑"], kw:["自己拿","不用"] }),
+            mkStep({ id:"s2", say:"如果你沒聽清楚金額，也不知道該拿哪些錢，可以怎麼求助？", task:"用「請」請店員再說一次金額，再說要請家人幫忙確認",
+              options:["請再說一次金額，我請家人幫忙確認","那錢包給你好了","我全部都給你","隨便拿都可以"], kw:["請家人幫忙確認","一次金額"] }),
+            mkStep({ id:"s3", say:"付完錢，錢包要怎麼辦？", task:"說出方法：馬上收好，放回包包",
+              options:["馬上收好，放回包包","放在櫃台上就離開","打開放在地上","交給店員保管"], kw:["馬上收好","放回包包"] }),
+            mkStep({ id:"review", say:"（想一想）付錢的時候，怎麼保護自己的錢包？", task:"說出方法：錢包不交給店員，需要時請家人協助，付完馬上收好",
+              options:["錢包不交給店員，需要時請家人協助，付完馬上收好","把整個錢包交給店員保管","錢包打開給大家看","付完放在櫃台就走"], kw:["時請家人協助","付完馬上收好","錢包不交"], feedback:{ perfect:"答對了！錢包不交給店員，需要時請家人協助，付完馬上收好。", failed:"記住：錢包不交給店員，需要時請家人協助，付完馬上收好。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "job_scam", name: "打工陷阱", icon: "💼", available: true,
+      theme: { color: '#D97706', bg: '#FEF3C7', accent: '#B45309' },
+      situations: [
+        {
+          id: "pay_deposit", name: "要先繳保證金", icon: "💰", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          simple_steps: ["refuse_deposit", "say_reason", "leave_ask"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "應徵打工，老闆說要先繳保證金才能上班",
+          steps: [
+            mkStep({ id:"ask_detail", say:"（你去應徵打工）你好啊！我們這裡時薪很高，馬上可以上班！", task:"用「請問」問工作內容是什麼",
+              options:["請問工作內容是什麼？","太好了馬上上班","時薪多少？先說","好，我要做"],
+              accepted:["請問工作內容是什麼？","工作內容是什麼","請問要做什麼","要做什麼工作"], kw:["內容","做什麼"],
+              feedback:{ failed:"先問清楚要做什麼。可以說：「請問工作內容是什麼？」" } }),
+            mkStep({ id:"refuse_deposit", say:"都很簡單啦！不過要先繳三千元保證金，才能開始上班喔！", task:"拒繳保證金，說「我不會繳保證金」",
+              options:["我不會繳保證金","好，我繳三千","可以分期繳嗎？","繳了馬上上班嗎"],
+              accepted:["我不會繳保證金","不繳保證金","我不會先繳錢","我不繳錢","我不會繳"], kw:["不繳","不會繳","不會先繳"],
+              feedback:{ failed:"老闆不可以跟你收保證金。可以說：「我不會繳保證金」" } }),
+            // 就業服務法第 5 條第 2 項第 3 款：雇主不得收取求職人或員工保證金（外部審閱第五輪：規則限定在「保證金」）
+            mkStep({ id:"say_reason", say:"這是規定啦！每個人都要繳，做滿一個月就退你！", task:"說出理由：老闆不可以跟我收保證金",
+              options:["老闆不可以跟我收保證金","規定就沒辦法了","做滿一個月喔，好","那可以先繳一半嗎"],
+              accepted:["老闆不可以跟我收保證金","老闆不能收保證金","不可以收保證金"], kw:["保證金","不可以","不能收"],
+              feedback:{ failed:"記住這句：「老闆不可以跟我收保證金」" } }),
+            mkStep({ id:"leave_ask", say:"你不繳就不能上班，機會給別人囉！", task:"說要回家問家人再決定",
+              options:["我要回家問家人再決定","好啦好啦我繳","不要給別人，等我","那我借錢來繳"],
+              accepted:["我要回家問家人再決定","回家問家人","我要先問家人","先問過家人"], kw:["問家人","問大人","問過家人"],
+              feedback:{ failed:"先離開，回家問大人。可以說：「我要回家問家人再決定」" } }),
+            mkStep({ id:"review", say:"（想一想）應徵工作遇到要繳保證金，怎麼辦？", task:"說出做法：應徵工作要先繳保證金，就要拒絕",
+              options:["應徵工作要先繳保證金，就要拒絕","繳保證金很正常","時薪高就趕快做","老闆人好就可以"],
+              accepted:["應徵工作要先繳保證金，就要拒絕","要繳保證金就拒絕","保證金不能繳"], kw:["拒絕","不能繳"],
+              feedback:{ perfect:"答對了！應徵工作要你先繳保證金，就要拒絕。", failed:"記住：應徵工作要你先繳保證金，就要拒絕。" } }),
+          ]
+        },
+        {
+          id: "keep_id", name: "要押證件", icon: "🪪", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          simple_steps: ["refuse_id", "why_danger", "tell_family"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "老闆說要把身分證押在店裡才能打工",
+          steps: [
+            mkStep({ id:"refuse_id", say:"（你去應徵一份打工，老闆說可以錄取你。）來上班可以，先把你的身分證押在我這裡！", task:"拒絕押證件",
+              options:["證件不能押給別人","好，證件給你","只押健保卡可以嗎","押幾天就好？"],
+              accepted:["證件不能押給別人","我不會押證件","證件不能給你","身分證不能給別人"], kw:["不能押","不會押","不能給"],
+              feedback:{ failed:"證件不能押給任何人。可以說：「證件不能押給別人」" } }),
+            mkStep({ id:"refuse_copy", say:"那影印一份留著總可以吧？快點啦！", task:"說要先問家人",
+              options:["我要先問家人","影印應該沒關係","好啊你去印","印完要還我喔"],
+              accepted:["我要先問家人","先問家人","我要問過大人","問過家人再說"], kw:["問家人","問大人","問過家人","問過大人"],
+              feedback:{ failed:"證件影本也可能被拿去亂用。可以說：「我要先問家人」" } }),
+            mkStep({ id:"why_danger", say:"（想一想）證件被別人拿走會怎麼樣？", task:"說出危險：證件被拿走，有被冒用的危險",
+              options:["證件被拿走，有被冒用的危險","沒什麼關係","放老闆那比較安全","可以換高時薪"],
+              accepted:["證件被拿走，有被冒用的危險","有被冒用的危險","可能被拿去辦門號","被拿去亂用"], kw:["辦門號","冒用","亂用"],
+              feedback:{ failed:"證件被拿走，有被冒用的危險，像是被拿去辦門號。記住：證件不離身。" } }),
+            mkStep({ id:"tell_family", say:"（想一想）如果已經把證件給出去了，要怎麼辦？", task:"說要馬上告訴家人",
+              options:["馬上告訴家人想辦法拿回來","等老闆自己還","下次再去拿","不敢說，算了"],
+              accepted:["馬上告訴家人想辦法拿回來","馬上告訴家人","趕快告訴大人","告訴家人拿回來"], kw:["告訴家人","告訴大人"],
+              feedback:{ failed:"越早說越好處理。可以說：「馬上告訴家人想辦法拿回來」" } }),
+            // 外部審閱第五輪：押正本違法（就服法第 5 條），但正式受僱時提供影本可能是合法需要 → 影本教「先問家人」
+            mkStep({ id:"review", say:"（想一想）打工時證件怎麼保護？", task:"說出方法：證件正本不押給別人，影本要先問家人",
+              options:["證件正本不押給別人，影本要先問家人","老闆要就給","押證件換工作值得","影本可以隨便給"],
+              accepted:["證件正本不押給別人，影本要先問家人","正本不押，影本先問家人","證件不押不借","證件不押不借，只給看不給拿"], kw:["不押","正本","問家人"],
+              feedback:{ perfect:"答對了！證件正本不押給別人，影本要先問家人。", failed:"記住：證件正本不押給別人，影本要先問家人。" } }),
+          ]
+        },
+        {
+          id: "too_good", name: "輕鬆高薪的工作", icon: "🤑", clerkName: "陌生網友", clerkImage: "images/clerk-unknown-message.jpg",
+          simple_steps: ["refuse_account", "say_illegal", "block_tell"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "網路上看到「日領三千、超輕鬆」的打工訊息",
+          steps: [
+            mkStep({ id:"ask_what", say:"（網路訊息）同學看過來！日領三千、工作超輕鬆，要做嗎？", task:"用「請問」問要做什麼工作",
+              options:["請問要做什麼工作？","要！馬上做","日領三千真好","在哪裡上班？"],
+              accepted:["請問要做什麼工作？","要做什麼工作","工作內容是什麼"], kw:["做什麼","內容"],
+              feedback:{ failed:"先問清楚。可以說：「請問要做什麼工作？」" } }),
+            mkStep({ id:"refuse_account", say:"超簡單！只要提供你的銀行帳戶收錢，再領出來交給我們就好！", task:"拒絕提供帳戶",
+              options:["帳戶不能給別人用","好簡單，我要做","要收多少錢？","領出來交給誰？"],
+              accepted:["帳戶不能給別人用","我不會給帳戶","帳戶不能借人","不給帳戶"], kw:["帳戶不能","不給帳戶","不會給"],
+              feedback:{ failed:"帳戶借人收錢＝當詐騙車手。可以說：「帳戶不能給別人用」" } }),
+            mkStep({ id:"say_illegal", say:"這不違法啦，大家都在做，錢很好賺！", task:"說這是違法的車手工作",
+              options:["這是車手，是違法的","大家都做那就好","賺一次就好","錢好賺就做吧"],
+              accepted:["這是車手，是違法的","這是違法的","這是車手","幫領錢是違法的"], kw:["車手","違法"],
+              feedback:{ failed:"幫詐團收錢領錢＝車手，會被警察抓。可以說：「這是車手，是違法的」" } }),
+            mkStep({ id:"block_tell", say:"考慮一下嘛，缺錢的時候很好用喔！", task:"說要封鎖並告訴大人",
+              options:["我要封鎖你並告訴大人","先留著以後說","缺錢再來找你","先把帳戶給他看看"],
+              accepted:["我要封鎖你並告訴大人","封鎖並告訴大人","封鎖你告訴家人","我要告訴大人"], kw:["封鎖","告訴"],
+              feedback:{ failed:"封鎖＋告訴大人。可以說：「我要封鎖你並告訴大人」" } }),
+            mkStep({ id:"review", say:"（想一想）什麼樣的打工一定不能做？", task:"說出判斷的理由：要我用自己的帳戶收錢、領錢的打工，一定不能做",
+              options:["要我用自己的帳戶收錢、領錢的打工，一定不能做","運氣好遇到好工作","先做做看再說","日領現金比較好"],
+              accepted:["要我用自己的帳戶收錢、領錢的打工，一定不能做","用帳戶收錢、領錢的打工不能做","幫人收錢領錢的工作不能做"], kw:["帳戶","收錢","領錢"],
+              feedback:{ perfect:"答對了！要你用自己的帳戶收錢、領錢，就是車手，一定不能做。", failed:"記住：要你用自己的帳戶收錢、領錢的打工，一定不能做。" } }),
+          ]
+        },
+        {
+          id: "bank_account", name: "要你交出存摺或辦帳戶", icon: "🏦", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "老闆要你的存摺、提款卡或辦帳戶給他用：拒絕、不做了、告訴家人",
+          steps: [
+            mkStep({ id:"refuse", say:"（你去一家店應徵打工，老闆說明工作後——）上班前把你的存摺和提款卡交給我，我幫你管薪水！", task:"說你不會把存摺和提款卡交給別人",
+              options:["我不會把存摺和提款卡交給別人", "好啊給你", "我去辦一張新的給你", "密碼也要嗎"], kw:["不會把存摺", "交給別人"], accepted:["我不會把存摺和提款卡交給別人"] }),
+            mkStep({ id:"refuse_new", say:"不然你去辦一個新帳戶，辦好拿給我就好！", task:"說帳戶不能交給別人用，你不會辦帳戶給他用",
+              options:["帳戶不能交給別人用，我不會辦給你用", "好，我明天去辦", "辦一個應該沒關係", "你陪我去辦"], kw:["不能交給別人用", "不會辦給你用"], accepted:["帳戶不能交給別人用，我不會辦給你用"] }),
+            mkStep({ id:"quit", say:"不給就不能上班喔！", task:"說那你不做了，要回家告訴家人",
+              options:["那我不做了，我要回家告訴家人", "好啦都給你", "為了上班，提款卡和密碼都給你", "新帳戶辦好就交給你用"], kw:["不做了", "告訴家人"], accepted:["那我不做了，我要回家告訴家人"] }),
+            mkStep({ id:"review", say:"（想一想）老闆要你交出存摺、提款卡，或辦帳戶給他使用，要怎麼做？", task:"說出做法：拒絕，不做了，告訴家人",
+              options:["拒絕，不做了，告訴家人", "給他就好", "辦新的給他沒關係", "自己決定就好"], kw:["拒絕", "告訴家人"], accepted:["拒絕，不做了，告訴家人"], feedback:{ perfect:"答對了！拒絕，不做了，告訴家人。", failed:"記住：拒絕，不做了，告訴家人。" } }),
+          ]
+        },
+        {
+          id: "weird_interview", name: "面試地點很奇怪", icon: "🚗", clerkName: "可疑老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "不讓你確認公司地點、要你上車面試：不上車、不赴約，告訴家人",
+          steps: [
+            mkStep({ id:"ask_office", say:"（你在網路上應徵打工，對方打電話來。）你好！面試約今天晚上九點，在公園旁邊，我開車去接你！", task:"用「請問」問公司在哪裡，可以去公司面試嗎",
+              options:["請問公司在哪裡？可以去公司面試嗎？", "好，我上車", "幾點都可以", "我把提款卡帶去給你"], kw:["公司在哪裡", "公司面試"], accepted:["請問公司在哪裡？可以去公司面試嗎？"] }),
+            mkStep({ id:"refuse_car", say:"我們沒有辦公室啦，在車上談就好！", task:"說你不在車上面試，你要先問家人",
+              options:["我不在車上面試，我要先問家人", "好吧我去", "那我自己去公園等", "不用查公司，我直接上車"], kw:["不在車上"], accepted:["我不在車上面試，我要先問家人"] }),
+            mkStep({ id:"decline", say:"別那麼麻煩，不來就算了喔！", task:"說那你不去了",
+              options:["那我不去了", "好啦我去", "我偷偷去", "我帶同學一起去"], kw:["不去了"], accepted:["那我不去了"] }),
+            mkStep({ id:"review", say:"（想一想）對方不讓你確認公司地點，還叫你上他的車面試，要怎麼做？", task:"說出做法：不上車、不赴約，告訴家人",
+              options:["不上車、不赴約，告訴家人", "自己偷偷去", "帶朋友去就好", "先去看看"], kw:["不上車", "告訴家人"], accepted:["不上車、不赴約，告訴家人"], feedback:{ perfect:"答對了！不上車、不赴約，告訴家人。", failed:"記住：不上車、不赴約，告訴家人。" } }),
+          ]
+        },
+        {
+          id: "buy_first", name: "要先買產品才能工作", icon: "🧴",
+          clerkName: "老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "應徵時以錄取為條件，強迫先買產品或付訓練費，是求職警訊；不急著付款，離開後找家人",
+          steps: [
+            mkStep({ id:"s1", say:"（職業準備角色扮演：你去應徵打工。）我們是賣保養品的，很好賺！不過要先買 5000 元的產品，才能開始賣喔！", task:"說你不會為了應徵先買產品",
+              options:["我不會為了應徵先買產品","好，我買","我先買 1000 元的就好","我跟同學借錢買"], kw:["不會為","買產品","應徵"] }),
+            mkStep({ id:"s2", say:"賣出去就賺回來了啊！大家都是這樣開始的！", task:"說你要先回家跟家人討論",
+              options:["我要先回家跟家人討論","好吧，大家都這樣我也這樣","我刷家人的卡","我明天帶錢來"], kw:["家人討論","回家"] }),
+            mkStep({ id:"s3", say:"現在不買，名額就沒了喔！", task:"說「那我不要了，謝謝」，然後離開",
+              options:["那我不要了，謝謝","好好好，我現在買","那我簽本票給你","我先刷卡買再說"], kw:["不要","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）應徵時被要求先買產品或付課程費，才能錄取，要怎麼做？", task:"說出方法：先不付錢，離開後找家人或老師查證",
+              options:["先不付錢，離開後找家人或老師查證","買了就能賺回來","先買少一點","借錢也要買"], kw:["離開後找家人","先不付錢","老師查證"], feedback:{ perfect:"答對了！先不付錢，離開後找家人或老師查證。", failed:"記住：先不付錢，離開後找家人或老師查證。" } }),
+          ]
+        },
+        {
+          id: "sign_contract", name: "要你馬上簽看不懂的合約", icon: "📄",
+          clerkName: "老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看懂且確認願意接受才簽；看不懂可索取副本，找家人、老師或專業人員協助",
+          steps: [
+            mkStep({ id:"s1", say:"（你去應徵打工，老闆拿出一張寫得密密麻麻的紙。）這是工作合約，在這裡簽名就可以上班了！", task:"說你現在不簽，想拿一份合約副本回家請家人幫忙看",
+              options:["我現在不簽，我想拿一份合約副本回家請家人幫忙看","好，我簽","我看不懂，但是你人很好，我簽","你幫我簽就好"], kw:["拿一份合約副本回家請家人幫忙看","現在不簽"] }),
+            mkStep({ id:"s2", say:"不用看啦，大家都直接簽！", task:"說看不懂的東西你不簽",
+              options:["看不懂的東西我不簽","大家都簽，那我也簽","我簽假名就好","我先簽，有問題再說"], kw:["看不懂","東西","不簽"] }),
+            mkStep({ id:"s3", say:"不能帶回去！現在不簽就不用來了！", task:"說「那我不簽，謝謝」，然後離開",
+              options:["那我不簽，謝謝","好啦，我簽","我先簽空白的，內容你再填","我把身分證押給你"], kw:["不簽","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）有人要你簽名，要怎麼做？", task:"說出方法：看不懂先不簽，找家人或老師幫忙，確認願意接受再簽",
+              options:["看不懂先不簽，找家人或老師幫忙，確認願意接受再簽","大家都簽就簽","先簽再說","看不懂也沒關係"], kw:["確認願意接受","老師幫忙","找家人"], feedback:{ perfect:"答對了！看不懂先不簽，找家人或老師幫忙，確認願意接受再簽。", failed:"記住：看不懂先不簽，找家人或老師幫忙，確認願意接受再簽。" } }),
+          ]
+        },
+        {
+          id: "unpaid_trial", name: "試做幾天沒有薪水", icon: "⏳",
+          clerkName: "老闆", clerkImage: "images/clerk-suspicious-boss.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本例是受僱後按排班顧店、補貨的實際工作，不是面試中的短暫技能展示",
+          steps: [
+            mkStep({ id:"s1", say:"（職業準備角色扮演：你應徵店員，老闆說錄取了，要你按他的排班顧店、補貨。）先試做三天，試做的時候沒有薪水喔！", task:"說你不接受沒有薪水的試做",
+              options:["我不接受沒有薪水的試做","好，免費做沒關係","那我先免費做一天","只要叫試做，就不用付薪水"], kw:["不接受沒有薪水"] }),
+            mkStep({ id:"s2", say:"大家都這樣啦，不要計較！", task:"說你要先問家人和老師",
+              options:["我要先問家人和老師","好吧，我不計較","那我做一個星期好了","你說了算"], kw:["問家人","老師"] }),
+            mkStep({ id:"s3", say:"不做就算了，很多人搶著要！", task:"說「那我不做了，謝謝」，然後離開",
+              options:["那我不做了，謝謝","好啦好啦，我免費做","我答應不領薪水，請讓我做","你口頭答應以後補錢，我就免費做"], kw:["不做","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）老闆說試做不給錢，要怎麼做？", task:"說出方法：實際工作要有薪水，不接受無薪試做，找家人或老師協助",
+              options:["實際工作要有薪水，不接受無薪試做，找家人或老師協助","新人本來就不用給錢","做久了就一定會給","不好意思問就答應免費做"], kw:["不接受無薪試做","實際工作","老師協助"], feedback:{ perfect:"答對了！實際工作要有薪水，不接受無薪試做，找家人或老師協助。", failed:"記住：實際工作要有薪水，不接受無薪試做，找家人或老師協助。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "privacy_protect", name: "保護個人資料", icon: "🔐", available: true,
+      theme: { color: '#4F46E5', bg: '#E0E7FF', accent: '#3730A3' },
+      situations: [
+        {
+          id: "otp_code", name: "要驗證碼的電話", icon: "📲", clerkName: "陌生來電", clerkImage: "images/clerk-unknown-caller.jpg",
+          simple_steps: ["refuse_code", "hang_up", "tell_family"],   // 簡易版練這 3 步（docs/簡易版重點三步_建議清單.md）
+          desc: "有人打來說要你唸手機收到的驗證碼",
+          steps: [
+            mkStep({ id:"ask_who", say:"（電話響了）你好！我是電信客服，系統出錯，需要你的協助！", task:"先問對方是誰",
+              options:["你是誰？","好，要怎麼幫忙","系統出錯喔","我的手機沒壞"],
+              accepted:["你是誰？","請問你是誰","你哪位","請問哪位"], kw:["誰","哪位"],
+              feedback:{ failed:"先問清楚：「你是誰？」" } }),
+            mkStep({ id:"refuse_code", say:"等一下你手機會收到六位數字的簡訊，唸給我聽就好！", task:"拒絕唸驗證碼",
+              options:["驗證碼不能給別人","好，我唸給你","收到了，數字是…","等一下喔我看看"],
+              accepted:["驗證碼不能給別人","驗證碼不能說","我不會唸給你","不能告訴你"], kw:["驗證碼不能","不會唸","不能告訴"],
+              feedback:{ failed:"驗證碼＝錢包鑰匙。可以說：「驗證碼不能給別人」" } }),
+            mkStep({ id:"hang_up", say:"不給的話你的手機門號會被停用喔，快點！", task:"說這是詐騙、要掛電話",
+              options:["這是詐騙，我要掛電話了","不要停我門號","好啦我唸","要停多久？"],
+              accepted:["這是詐騙，我要掛電話了","你是詐騙","我要掛了","我要掛電話"], kw:["詐騙","掛"],
+              feedback:{ failed:"催你快一點的就是詐騙。可以說：「這是詐騙，我要掛電話了」" } }),
+            mkStep({ id:"tell_family", say:"（你掛掉了電話）接下來要做什麼？", task:"說要告訴家人",
+              options:["我要告訴家人","不用說沒關係","把簡訊刪掉就好","打回去罵他"],
+              accepted:["我要告訴家人","告訴老師","跟大人說","告訴大人"], kw:["告訴","家人","老師","大人"],
+              feedback:{ failed:"要告訴大人。可以說：「我要告訴家人」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼驗證碼不能唸給別人？", task:"說出理由：別人拿到驗證碼，可能登入我的帳號，或把錢轉走",
+              options:["別人拿到驗證碼，可能登入我的帳號，或把錢轉走","唸一次沒關係","客服要就要給","數字而已不重要"],
+              accepted:["別人拿到驗證碼，可能登入我的帳號，或把錢轉走","可能登入我的帳號，或把錢轉走"], kw:["登入","轉走","帳號"],
+              feedback:{ perfect:"答對了！別人拿到驗證碼，可能登入你的帳號或把錢轉走。", failed:"記住：驗證碼很重要，別人拿到可能登入你的帳號或把錢轉走。" } }),
+          ]
+        },
+        {
+          id: "street_survey", name: "填問卷送禮物", icon: "📋", clerkName: "問卷人員", clerkImage: "images/clerk-survey-stranger.jpg",
+          desc: "路上有人請你填問卷送小禮物，要寫電話和身分證字號",
+          steps: [
+            mkStep({ id:"ask_purpose", say:"同學你好～填個問卷就送可愛小禮物喔！", task:"用「請問」問這是做什麼用的",
+              options:["請問這是做什麼用的？","好啊禮物給我","要填多久？","禮物是什麼？"],
+              accepted:["請問這是做什麼用的？","這是做什麼的","做什麼用途","問卷做什麼用"], kw:["做什麼","用途"],
+              feedback:{ failed:"先問用途。可以說：「請問這是做什麼用的？」" } }),
+            mkStep({ id:"refuse_fill", say:"就是市場調查啦！這裡填名字、電話，還有身分證字號～", task:"拒絕給個資，說「身分證字號、電話我不能隨便給」",
+              options:["身分證字號、電話我不能隨便給","好，我填","好，我全部都填","電話是零九…"],
+              accepted:["身分證字號、電話我不能隨便給","身分證字號和電話不能隨便給","身分證字號我不能隨便給","我不能填個資","我不填資料","個人資料我不能填"], kw:["不能填","不填","個資不能","不能隨便給","不隨便給"],
+              feedback:{ failed:"電話、身分證字號是重要個資。可以說：「身分證字號、電話我不能隨便給」" } }),
+            mkStep({ id:"refuse_gift", say:"不填就沒有禮物囉，很可愛耶！", task:"先說「沒關係」，再說你不用禮物",
+              options:["沒關係，我不用禮物","那好吧我填","禮物先給我再填","填假的可以嗎"],
+              accepted:["沒關係，我不用禮物","我不用禮物","不用了謝謝","我不需要禮物"], kw:["不用禮物","不需要","不用了"],
+              feedback:{ failed:"小禮物換個資不值得。可以說：「沒關係，我不用禮物」" } }),
+            mkStep({ id:"review", say:"（想一想）個資給出去會怎麼樣？", task:"說出危險：個資隨便給陌生人，有被詐騙、被冒用的危險",
+              options:["個資隨便給陌生人，有被詐騙、被冒用的危險","沒什麼影響","換到禮物就好","大家都在填"],
+              accepted:["個資隨便給陌生人，有被詐騙、被冒用的危險","有被詐騙的危險","有被冒用的危險","被拿去亂用"], kw:["詐騙","冒用","亂用"],
+              feedback:{ perfect:"答對了！個資隨便給陌生人，有被詐騙、被冒用的危險。", failed:"記住：個資給出去，可能被詐騙、被冒用。" } }),
+          ]
+        },
+        {
+          id: "share_password", name: "朋友要借帳號密碼", icon: "🎮", clerkName: "同學", clerkImage: "images/clerk-classmate-girl.jpg",
+          desc: "同學想跟你借遊戲帳號和密碼",
+          steps: [
+            mkStep({ id:"refuse_pw", say:"（放學後，同學看到你在玩手機遊戲，湊過來找你。）欸～你的遊戲帳號借我玩，密碼跟我說一下！", task:"拒絕給密碼",
+              options:["密碼不能告訴別人","好啊密碼是…","你保證不亂用喔","只借你一天喔"],
+              accepted:["密碼不能告訴別人","密碼不能給","我不會給密碼","密碼不能說"], kw:["密碼不能","不會給"],
+              feedback:{ failed:"好朋友也不能給密碼。可以說：「密碼不能告訴別人」" } }),
+            mkStep({ id:"offer_alt", say:"小氣耶！我們不是好朋友嗎？", task:"友善拒絕，說「我們可以一起玩，但密碼不能給」",
+              options:["我們可以一起玩，但密碼不能給","好啦別生氣，給你","那我改密碼再借你","那你不要改我的密碼就好"],
+              accepted:["我們可以一起玩，但密碼不能給","可以一起玩但密碼不能給","一起玩但不給密碼"], kw:["一起玩","不能給"],
+              feedback:{ failed:"拒絕也可以友善。可以說：「我們可以一起玩，但密碼不能給」" } }),
+            mkStep({ id:"why_risk", say:"（想一想）帳號密碼借朋友會有什麼問題？", task:"說出風險：帳號可能被亂用還要不回來",
+              options:["帳號可能被亂用還要不回來","朋友借一下沒關係","再申請新的就好","沒差反正免費"],
+              accepted:["帳號可能被亂用還要不回來","會被亂用","帳號會被拿走","可能被盜用"], kw:["亂用","拿走","盜用"],
+              feedback:{ failed:"帳號被亂用、要不回來都很麻煩。記住：密碼要自己保管。" } }),
+            // 外部審閱第五輪：密碼原則上本人保管，不教「家人都可以知道」；需要協助時找家長一起處理由老師補充
+            mkStep({ id:"review", say:"（想一想）密碼可以隨便告訴別人嗎？", task:"說出做法：密碼要自己保管，不能隨便告訴別人",
+              options:["密碼要自己保管，不能隨便告訴別人","好朋友可以","老師同學都可以","寫在課本上就好"],
+              accepted:["密碼要自己保管，不能隨便告訴別人","密碼要自己保管","不能隨便告訴別人","只有自己和家人知道"], kw:["自己保管","不能","保管","自己"],
+              feedback:{ perfect:"答對了！密碼要自己保管，不能隨便告訴別人。", failed:"記住：密碼要自己保管，不能隨便告訴別人。" } }),
+          ]
+        },
+        {
+          id: "online_address", name: "網路上有人問住址和學校", icon: "🎮", clerkName: "陌生玩家", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "網路上不認識的人問住址、學校：不回答、封鎖、告訴大人",
+          steps: [
+            mkStep({ id:"refuse", say:"（你在玩線上遊戲，一個陌生玩家傳訊息給你。）你好厲害喔！你讀哪一間學校？住哪裡？", task:"說這些資料你不能說",
+              options:["這些資料我不能說", "我讀○○國小", "我家在…", "你先說你的"], kw:["不能說"], accepted:["這些資料我不能說"] }),
+            mkStep({ id:"block", say:"我們是朋友啊！我寄禮物給你，給我地址就好！", task:"說你不給地址，要封鎖他",
+              options:["我不給地址，我要封鎖你", "好，地址是…", "寄到學校好了", "有禮物我就給你地址"], kw:["封鎖", "不給地址"], accepted:["我不給地址，我要封鎖你"] }),
+            mkStep({ id:"tell", say:"（你已經封鎖對方。接下來，你要把這件事告訴誰？）", task:"說出要告訴的人：家人或老師",
+              options:["我要告訴家人或老師", "不用說", "自己處理就好", "換個帳號再找他"], kw:["家人", "老師"], accepted:["我要告訴家人或老師"] }),
+            mkStep({ id:"review", say:"（想一想）網路上不認識的人問你住哪裡、讀哪間學校，要怎麼做？", task:"說出做法：不回答，封鎖，告訴大人",
+              options:["不回答，封鎖，告訴大人", "回答一點點沒關係", "他送禮物就給", "自己見面看看"], kw:["不回答", "封鎖"], accepted:["不回答，封鎖，告訴大人"], feedback:{ perfect:"答對了！不回答，封鎖，告訴大人。", failed:"記住：不回答，封鎖，告訴大人。" } }),
+          ]
+        },
+        {
+          id: "borrow_phone", name: "陌生人借手機打電話", icon: "📱", clerkName: "陌生叔叔", clerkImage: "images/clerk-stranger-phone.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "陌生人借手機：婉拒，請他找店員或警察幫忙",
+          steps: [
+            mkStep({ id:"refuse", say:"（你在公車站等車，一個不認識的叔叔走過來。）同學，手機借我打一通電話好不好？我的沒電了！", task:"先說「不好意思」，再說手機不能借你",
+              options:["不好意思，手機不能借你", "好啊拿去", "我幫你解鎖", "你打多久都可以"], kw:["不能借"], accepted:["不好意思，手機不能借你"] }),
+            mkStep({ id:"suggest", say:"拜託啦，很急！一下下就好！", task:"給他辦法：你可以請便利商店店員或警察幫忙",
+              options:["你可以請便利商店店員或警察幫忙", "好啦借你", "你自己想辦法啦", "你跟我回家用我家電話"], kw:["店員", "警察"], accepted:["你可以請便利商店店員或警察幫忙"] }),
+            mkStep({ id:"review", say:"（想一想）叔叔走了。陌生人要借你的手機，要怎麼做？", task:"說出做法：婉拒，請他找店員或警察幫忙",
+              options:["婉拒，請他找店員或警察幫忙", "借他一下沒關係", "解鎖給他用", "跟他走去找人"], kw:["婉拒", "店員", "警察"], accepted:["婉拒，請他找店員或警察幫忙"], feedback:{ perfect:"答對了！婉拒，請他找店員或警察幫忙。", failed:"記住：婉拒，請他找店員或警察幫忙。" } }),
+          ]
+        },
+        {
+          id: "id_photo", name: "要你拍證件傳給他", icon: "🪪",
+          clerkName: "陌生訊息", clerkImage: "images/clerk-unknown-message.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "身分和用途未確認的陌生活動索取證件照片：不拍、不傳，告訴家人",
+          steps: [
+            mkStep({ id:"s1", say:"（你在網路上報名「免費領零食」，還沒確認主辦單位身分。陌生帳號傳來訊息。）領獎前要拍你的學生證和健保卡正反面，傳給我們喔！", task:"說你不會傳證件的照片",
+              options:["我不會傳證件的照片","好，我馬上拍","只傳正面給陌生人就一定安全","我傳媽媽的身分證"], kw:["不會傳證件","照片"] }),
+            mkStep({ id:"s2", say:"不傳就不能領喔！只是確認身分而已！", task:"說「那我不領了」，再說你會告訴家人",
+              options:["那我不領了，我會告訴家人","好啦，我傳","我傳一半遮起來的","我找同學的證件給你"], kw:["會告訴家人","不領"] }),
+            mkStep({ id:"review", say:"（想一想）還沒確認身分的陌生帳號，為了送禮要你傳證件照片，怎麼辦？", task:"說出方法：不拍、不傳，告訴家人",
+              options:["不拍、不傳，告訴家人","只傳一張沒關係","有禮物就傳","遮一點點就好"], kw:["告訴家人","不拍","不傳"], feedback:{ perfect:"答對了！不拍、不傳，告訴家人。", failed:"記住：不拍、不傳，告訴家人。" } }),
+          ]
+        },
+        {
+          id: "photo_check", name: "PO 照片前先檢查", icon: "📷",
+          clerkName: "朋友小琪", clerkImage: "images/clerk-classmate-girl.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "公開照片可能透露自己就讀的學校、住處、電話與位置；先不發，請家人一起檢查照片、定",
+          steps: [
+            mkStep({ id:"s1", say:"（你拍了穿學校制服、站在家門口的照片，想公開到網路上，尚未發出。朋友小琪看到了。）欸，這張照片看得到你的學校名字，還有家裡的門牌耶！", task:"說你先不發，會請家人一起檢查",
+              options:["我先不發，請家人一起檢查","沒關係，大家看到也好","我再多拍一張地址的","反正沒有人會看"], kw:["請家人一起檢查","先不發"] }),
+            mkStep({ id:"s2", say:"還要檢查照片有沒有標記位置，還有誰看得到。你會怎麼做？", task:"說你會和家人檢查定位標記和分享對象",
+              options:["我會和家人檢查定位標記和分享對象","有標記家裡位置也照發","讓所有陌生人看就好","學校名字遮住就一定安全"], kw:["家人檢查定位標記","分享對象"] }),
+            mkStep({ id:"review", say:"（想一想）在網路上 PO 照片以前，要先看什麼？", task:"說要檢查自己的學校、住址、電話、定位標記和分享對象",
+              options:["自己的學校、住址、電話、定位標記和分享對象","照片好不好看就好","不用看，直接 PO","看有幾個人按讚"], kw:["定位標記","分享對象","自己"], feedback:{ perfect:"答對了！自己的學校、住址、電話、定位標記和分享對象。", failed:"記住：自己的學校、住址、電話、定位標記和分享對象。" } }),
+          ]
+        },
+        {
+          id: "phone_lock", name: "手機要設密碼", icon: "🔒",
+          clerkName: "同學小琪", clerkImage: "images/clerk-classmate-girl.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "手機裡的照片和訊息也是個資：設定螢幕鎖、不隨手放著，未經同意不能看別人的手機",
+          steps: [
+            mkStep({ id:"s1", say:"（你把手機放在桌上去上廁所，回來看到同學小琪拿著手機在滑。你沒有同意她看，也不想讓她繼續看。）你的手機沒有密碼耶，我看了一下你的照片！", task:"說「請你把手機還給我」",
+              options:["請你把手機還給我","沒關係，你繼續看","我的密碼告訴你","（搶過來罵她）"], kw:["把手機還給"] }),
+            mkStep({ id:"s2", say:"好啦，還你，看一下而已嘛！", task:"說未經同意，不能看別人的手機",
+              options:["沒有經過同意，不能看別人的手機","那我也偷偷看你的手機","以後你都可以不用問就拿去看","只要沒密碼就能隨便看"], kw:["不能看別人","沒有經過同意"] }),
+            mkStep({ id:"s3", say:"（小琪已歸還手機。你想請家人幫忙設定螢幕鎖。）接下來要做什麼？", task:"說要請家人幫忙設定螢幕鎖，手機不用時就鎖上",
+              options:["請家人幫忙設定螢幕鎖，手機不用時就鎖上","用 1234 最方便","把密碼貼在手機背面","只關螢幕就一定有密碼保護"], kw:["請家人幫忙設定螢幕鎖","手機不用時","鎖上"] }),
+            mkStep({ id:"review", say:"（想一想）要怎麼保護手機裡的資料？", task:"說出方法：手機設密碼，不隨手放著，密碼不告訴別人",
+              options:["手機設密碼，不隨手放著，密碼不告訴別人","密碼告訴好朋友","放在桌上沒關係","不用設密碼"], kw:["密碼不告訴別人","手機設密碼","不隨手放著"], feedback:{ perfect:"答對了！手機設密碼，不隨手放著，密碼不告訴別人。", failed:"記住：手機設密碼，不隨手放著，密碼不告訴別人。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "take_bus", name: "搭公車", icon: "🚌", available: true,
+      theme: { color: '#059669', bg: '#D1FAE5', accent: '#047857' },
+      situations: [
+        {
+          id: "bus_basic", name: "基本搭車", icon: "🚌", clerkName: "公車司機",
+          desc: "上車確認路線、刷卡付車資、請司機提醒下車",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你在台北，要搭公車去火車站，身上帶著一般的悠遊卡。公車來了，車門打開。）你好！", task:"跟公車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_route", say:"要上車嗎？", task:"用「請問」問司機有沒有到火車站",
+              options:["請問有到火車站嗎？","司機好帥","我要坐車","多少錢啊"],
+              accepted:["請問有到火車站嗎？","有到火車站嗎","請問這班有到火車站嗎"], kw:["有到","火車站"],
+              feedback:{ failed:"先確認路線再上車。可以說：「請問有到火車站嗎？」" } }),
+            mkStep({ id:"pay_fare", say:"有喔！上車請刷卡或投現15元！", task:"先說「好」，再說你要刷卡",
+              options:["好，我刷卡","太貴了不搭了","先讓我坐下再說","你先開車"],
+              accepted:["好，我刷卡","我要刷卡","我刷卡"], kw:["刷卡"],
+              feedback:{ failed:"上車要付車資。可以說：「好，我刷卡」" } }),
+            mkStep({ id:"ask_remind", say:"嗶！（刷卡成功）找位子坐好喔！", task:"用「請問」問司機，到火車站可以提醒你嗎",
+              options:["請問到火車站可以提醒我嗎？","不用管我，快開車！","你記得叫我喔","我站這裡就好"],
+              accepted:["請問到火車站可以提醒我嗎？","到站可以提醒我嗎","可以提醒我下車嗎"], kw:["提醒"],
+              feedback:{ failed:"怕坐過站可以先請司機幫忙。可以說：「請問到火車站可以提醒我嗎？」" } }),
+            mkStep({ id:"thank_driver", say:"沒問題，到站我叫你！", task:"說「謝謝司機」",
+              options:["謝謝司機！","應該的吧","嗯","快開車吧"],
+              accepted:["謝謝司機！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"別人幫忙要道謝。可以說：「謝謝司機！」" } }),
+            // 雙北公車 2019-07-01 起上下車都要刷卡
+            mkStep({ id:"review", say:"（想一想）上公車的順序是什麼？", task:"說出順序：先確認路線，上下車都要刷卡，需要幫忙先說",
+              options:["先確認路線，上下車都要刷卡，需要幫忙先說","上車再說有沒有到","先搶位子坐","下車的時候再付錢也可以"],
+              accepted:["先確認路線，上下車都要刷卡，需要幫忙先說","先確認路線，上車刷卡，需要幫忙先說","先確認路線再刷卡","確認路線、刷卡、請司機提醒"], kw:["確認路線","刷卡"],
+              feedback:{ perfect:"答對了！先確認路線、上下車都要刷卡、需要幫忙先說。", failed:"記住：先確認路線，上下車都要刷卡，需要幫忙先跟司機說。" } }),
+          ]
+        },
+        {
+          id: "bus_no_change", name: "零錢不夠", icon: "💸", clerkName: "公車司機",
+          desc: "投現才發現零錢不夠時，誠實跟司機說",
+          steps: [
+            mkStep({ id:"tell_driver", say:"（你在台北搭公車，上車後一摸口袋，發現身上的零錢不夠。）上車請投現15元喔！", task:"先說「不好意思」，再誠實說你的零錢不夠",
+              options:["不好意思，我的零錢不夠","假裝投了就好","那我用跑的","（默默站著不說話）"],
+              accepted:["不好意思，我的零錢不夠","我零錢不夠","零錢不夠"], kw:["零錢不夠","不夠"],
+              feedback:{ failed:"錢不夠要誠實說。可以說：「不好意思，我的零錢不夠」" } }),
+            mkStep({ id:"ask_card", say:"喔喔，那你有悠遊卡嗎？", task:"先說「有」，再用「請問」問可不可以刷卡",
+              options:["有，請問可以刷卡嗎？","沒有不行嗎","你借我錢","你先幫我付啦"],
+              accepted:["有，請問可以刷卡嗎？","可以刷卡嗎","我刷卡可以嗎"], kw:["刷卡"],
+              feedback:{ failed:"可以改用刷卡。可以說：「有，請問可以刷卡嗎？」" } }),
+            mkStep({ id:"thank_ok", say:"可以啊，刷卡就好！", task:"說「謝謝司機」",
+              options:["謝謝司機！","好險","嚇死我了","早說嘛"],
+              accepted:["謝謝司機！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝司機！」" } }),
+            mkStep({ id:"review", say:"（想一想）搭車前要準備什麼？", task:"說出準備：先準備好零錢或票卡",
+              options:["先準備好零錢或票卡","上車再想辦法","跟別人借就好","用走的就不用帶"],
+              accepted:["先準備好零錢或票卡","準備好零錢或悠遊卡","先準備零錢"], kw:["準備","零錢"],
+              feedback:{ perfect:"答對了！出門前先準備好零錢或票卡。", failed:"記住：搭車前先準備好零錢或票卡。" } }),
+          ]
+        },
+        {
+          id: "bus_miss_stop", name: "坐過站了", icon: "😳", clerkName: "公車司機",
+          desc: "發現坐過站，不慌張向司機求助",
+          steps: [
+            mkStep({ id:"tell_miss", say:"（你搭公車要去圖書館，一直看著窗外。糟糕，剛剛那個站牌好像就是你要下車的站，公車已經開過了！你要跟司機說。）", task:"先說「司機不好意思」，再說你坐過站了",
+              options:["司機不好意思，我坐過站了","（不敢說，繼續搭）","怎麼辦怎麼辦","都是公車開太快"],
+              accepted:["司機不好意思，我坐過站了","我坐過站了","坐過站了怎麼辦"], kw:["坐過站"],
+              feedback:{ failed:"坐過站不用怕，先說出來。可以說：「司機不好意思，我坐過站了」" } }),
+            mkStep({ id:"ask_back", say:"沒關係！下一站下車就可以了。", task:"用「請問」問司機下車後怎麼走回去",
+              options:["請問下車後怎麼走回去？","那我跳下去","算了我搭到終點","不管了啦"],
+              accepted:["請問下車後怎麼走回去？","怎麼走回去","下車後怎麼回去"], kw:["怎麼走","怎麼回去"],
+              feedback:{ failed:"問清楚回程。可以說：「請問下車後怎麼走回去？」" } }),
+            // 外部審閱第四輪（必改）：回程站牌不一定在正對面，也不能教成直接穿越馬路
+            mkStep({ id:"confirm_back", say:"下車後找回程方向的站牌，搭回去坐兩站就到了！過馬路要走斑馬線喔！", task:"先說「好」，再複誦：找回程的站牌，坐兩站",
+              options:["好，找回程的站牌，坐兩站","喔","隨便啦","太複雜了"],
+              accepted:["好，找回程的站牌，坐兩站","找回程的站牌，坐兩站","找回程站牌坐兩站"], kw:["回程","站牌","兩站"],
+              feedback:{ failed:"聽完覆述一次不會忘。可以說：「好，找回程的站牌，坐兩站」" } }),
+            mkStep({ id:"thank_bye", say:"聰明！下一站到囉！", task:"先說「謝謝司機」，再說「再見」",
+              options:["謝謝司機，再見！","終於","下次不搭了","嗯嗯"],
+              accepted:["謝謝司機，再見！","謝謝司機","謝謝再見"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝司機，再見！」" } }),
+            mkStep({ id:"review", say:"（想一想）坐過站怎麼辦？", task:"說出方法：不慌張，馬上告訴司機",
+              options:["不慌張，馬上告訴司機","坐回總站再說","偷偷下車","怪司機沒提醒"],
+              accepted:["不慌張，馬上告訴司機","不慌張告訴司機","馬上告訴司機"], kw:["告訴司機"],
+              feedback:{ perfect:"答對了！不慌張，馬上告訴司機。", failed:"記住：坐過站不慌張，馬上告訴司機想辦法。" } }),
+          ]
+        },
+        {
+          id: "bus_low_balance", name: "卡片餘額不足", icon: "💳", clerkName: "公車司機",
+          desc: "刷卡發現餘額不足，冷靜跟司機說、改用現金",
+          steps: [
+            mkStep({ id:"low_balance", image:"images/b6/icon-b6-bus-reader-low-balance.png", image_label:"刷卡機螢幕", say:"（你在台北搭公車，上車刷悠遊卡，機器連響好幾聲，螢幕寫著餘額不足。）同學，你的卡餘額不足喔！", task:"先說「不好意思」，再問可不可以投現金",
+              options:["不好意思，那我可以投現金嗎？","那我不付了","我再多刷幾次","（直接走到後面坐下）"],
+              accepted:["不好意思，那我可以投現金嗎？","可以投現金嗎","我投現金可以嗎"], kw:["現金","投現"],
+              feedback:{ failed:"餘額不足可以改付現金。可以說：「不好意思，那我可以投現金嗎？」" } }),
+            mkStep({ id:"pay_cash", say:"可以啊，投現15元就好！", task:"先說「好」，再說你投 15 元",
+              options:["好，我投15元","好貴喔不想付","下次再給","先讓我坐下再說"],
+              accepted:["好，我投15元","投15元","我投15元"], kw:["15"],
+              image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"投現 15 元",
+              feedback:{ failed:"投剛好的錢。可以說：「好，我投15元」" } }),
+            mkStep({ id:"thank_topup", say:"好了，找位子坐好！", task:"先說「謝謝司機」，再說下車你就去加值",
+              options:["謝謝司機，下車我就去加值","應該的吧","嗯","快開車吧"],
+              accepted:["謝謝司機，下車我就去加值","謝謝，我下車就去加值","下車去加值"], kw:["加值"],
+              feedback:{ failed:"道謝，也記得去加值。可以說：「謝謝司機，下車我就去加值」" } }),
+            mkStep({ id:"review", say:"（想一想）刷卡時餘額不足，要怎麼辦？", task:"說出方法：冷靜跟司機說，改用現金，之後記得加值",
+              options:["冷靜跟司機說，改用現金，之後記得加值","假裝有刷到","跟司機吵架","下車用走的"],
+              accepted:["冷靜跟司機說，改用現金，之後記得加值","改用現金，之後加值","用現金付，再去加值"], kw:["現金"],
+              feedback:{ perfect:"答對了！冷靜說明、改付現金，下車記得加值。", failed:"記住：冷靜跟司機說，改用現金，之後記得加值。" } }),
+          ]
+        },
+        {
+          id: "bus_press_bell", name: "要下車先按鈴", icon: "🔔", clerkName: "公車司機",
+          desc: "快到站先按鈴、告訴司機，車停好再下車",
+          steps: [
+            mkStep({ id:"press_bell", say:"（你搭公車去圖書館，快到了。）下一站圖書館，要下車請按鈴喔！", task:"先說「好」，再說你按鈴了，最後說「我下一站下車」",
+              options:["好，我按鈴了，我下一站下車","（不說話）","到了再說","我要坐到終點"], kw:["下一站","按鈴"],
+              accepted:["好，我按鈴了，我下一站下車","我按鈴了，我下一站下車","我下一站下車"] }),
+            mkStep({ id:"wait_stop", say:"好，車停好再起來，先坐著喔！", task:"先說「好」，再說「謝謝司機」",
+              options:["好，謝謝司機","我先站到門口","車還沒停我先下","嗯"], kw:["謝謝"],
+              accepted:["好，謝謝司機","謝謝司機","好，謝謝"] }),
+            mkStep({ id:"get_off", say:"（公車停好，車門打開）圖書館到囉！", task:"先說「謝謝司機」，再說「再見」",
+              options:["謝謝司機，再見","（直接跳下車）","喔","到了喔"], kw:["謝謝","再見"],
+              accepted:["謝謝司機，再見","謝謝司機","再見，謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）搭公車要下車時，要怎麼做？", task:"說出順序：快到站先按鈴，車停好再下車",
+              options:["快到站先按鈴，車停好再下車","到站再跑到門口","車還在開就起來","直接叫司機停車"], kw:["按鈴","停好"],
+              accepted:["快到站先按鈴，車停好再下車","先按鈴","車停好再下車"],
+              feedback:{ perfect:"答對了！快到站先按鈴，車停好再下車。", failed:"記住：快到站先按鈴，車停好再下車。" } }),
+          ]
+        },
+        {
+          id: "ask_direction", name: "上車前問方向", icon: "🧭",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "上車前問清楚方向，發現搭反邊時，先確認正確站牌",
+          steps: [
+            mkStep({ id:"greeting", say:"（你要去動物園，不確定方向。公車在站牌停好，車門打開，你站在安全的地方問。）你好！", task:"跟司機打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"需要幫忙嗎？", task:"用「請問」問這班車有沒有到動物園",
+              options:["請問這班車有到動物園嗎？","你一定要載我去","不問方向，先上車再說","我不說去哪裡，你自己猜"], kw:["這班車有","動物園"] }),
+            mkStep({ id:"s3", say:"這個方向沒有到，要搭對面站牌的車。", task:"先說「好」，再複誦要到對面站牌搭車",
+              options:["好，要到對面站牌搭車","同一邊站牌繼續等","我搭你這班就好","你把路線改一下"], kw:["對面站牌搭車"] }),
+            mkStep({ id:"s4", say:"請從前面的行人穿越道過去。", task:"先說「好」，再說會走行人穿越道，最後說「謝謝司機」",
+              options:["好，我走行人穿越道，謝謝司機","我直接穿過車陣","我追到下一站","我從公車前面衝過去"], kw:["走行人穿越道","謝謝司機"] }),
+            mkStep({ id:"review", say:"（想一想）不確定公車方向時，要怎麼做？", task:"說先問清楚方向，再到正確站牌搭車",
+              options:["先問清楚方向，再到正確站牌搭車","看車號一樣就上","跟著別人上就對了","先搭到終點再說"], kw:["正確站牌搭車","問清楚方向"], feedback:{ perfect:"答對了！先問清楚方向，再到正確站牌搭車。", failed:"記住：先問清楚方向，再到正確站牌搭車。" } }),
+          ]
+        },
+        {
+          id: "wave_bus", name: "要記得招手", icon: "🙋",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "在站牌看到要搭的車，要招手讓司機知道",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在站牌安全處等 307 路，看到要搭的車便舉手。車停好、車門打開，你準備上車。）你好！", task:"跟司機打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"（你刷卡上車。）看到要搭的車，站在安全處招手，讓司機知道。", task:"先說「好」，再說下次會記得招手",
+              options:["好，下次我會記得招手","司機要自己看啦","站在站牌就好了吧","是你沒看到我"], kw:["會記得招手","下次"] }),
+            mkStep({ id:"s3", say:"（前面有空位，你想坐下。）請坐好。", task:"先說「好」，再說「謝謝司機」",
+              options:["好，謝謝司機","我要擋住車門","我不扶也站得穩","我要在車上跑"], kw:["謝謝司機"] }),
+            mkStep({ id:"review", say:"（想一想）在站牌等公車，看到要搭的車來了，要怎麼做？", task:"說出方法：站在安全處舉手招手，讓司機知道你要上車",
+              options:["站在安全處舉手招手，讓司機知道我要上車","站著不動就好","追著公車跑","跑到馬路上攔車"], kw:["安全處舉手招手","讓司機知道","要上車"], feedback:{ perfect:"答對了！站在安全處舉手招手，讓司機知道我要上車。", failed:"記住：站在安全處舉手招手，讓司機知道我要上車。" } }),
+          ]
+        },
+        {
+          id: "tap_off", name: "下車也要刷卡", icon: "💳",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "在台北搭市區公車，用同一張悠遊卡完成上、下車刷卡",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在台北搭市區公車，準備用悠遊卡。公車停好，車門打開。）你好！", task:"跟司機打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請上車刷卡，下車也要刷同一張卡。", task:"先說「好」，再說上下車都刷同一張卡",
+              options:["好，上下車都刷同一張卡","只刷上車就好","只刷下車就好","上車和下車用不同卡"], kw:["刷同一張卡","上下車"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-transit-card.png"], image_label:"悠遊卡", say:"（你上車刷卡成功。到站前按了鈴，車停好再走到車門。）下車請刷卡。", task:"刷同一張悠遊卡，確認成功後說「刷好了，謝謝司機」",
+              options:["刷好了，謝謝司機","上車刷過，不用再刷","換另一張卡刷","沒刷卡就下車"], kw:["謝謝司機","刷好"] }),
+            mkStep({ id:"review", say:"（想一想）在台北用悠遊卡搭市區公車，要怎麼刷？", task:"說上下車都刷同一張卡，確認刷卡成功",
+              options:["上下車都刷同一張卡，確認刷卡成功","只看上車或下車收費燈","兩次用不同卡","聽到任何聲音就算成功"], kw:["確認刷卡成功","刷同一張卡","上下車"], feedback:{ perfect:"答對了！上下車都刷同一張卡，確認刷卡成功。", failed:"記住：上下車都刷同一張卡，確認刷卡成功。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "mrt_station", name: "捷運站", icon: "🚇", available: true,
+      theme: { color: '#0284C7', bg: '#E0F2FE', accent: '#075985' },
+      situations: [
+        {
+          id: "mrt_buy_help", name: "不會買票", icon: "🎫", clerkName: "捷運站務員",
+          desc: "售票機不會操作，開口請站務員教",
+          steps: [
+            mkStep({ id:"ask_help", say:"（你第一次自己來到板橋捷運站，要搭到台北車站。售票機上有好多按鈕和站名，你看不懂怎麼買票。旁邊剛好有一位站務員。）", task:"先說「不好意思」，再說你不會買票，問站務員「可以教我嗎」",
+              options:["不好意思，我不會買票，可以教我嗎？","機器壞了啦","我就亂按看看","（站著一直看）"],
+              accepted:["不好意思，我不會買票，可以教我嗎？","我不會買票","可以教我買票嗎"], kw:["不會買票","教我"],
+              feedback:{ failed:"不會就開口問。可以說：「不好意思，我不會買票，可以教我嗎？」" } }),
+            mkStep({ id:"say_dest", say:"好啊！你要到哪一站？", task:"告訴站務員你要到台北車站",
+              options:["我要到台北車站","很遠的地方","你猜猜看","不知道耶"],
+              accepted:["我要到台北車站","到台北車站","我要去台北車站"], kw:["台北車站"],
+              feedback:{ failed:"說清楚目的地。可以說：「我要到台北車站」" } }),
+            mkStep({ id:"pay_coin", say:"到台北車站是25元，按這裡再投錢就可以了！", task:"先說「好」，再說你投 25 元",
+              options:["好，我投25元","太貴了吧","可以賒帳嗎","你幫我出錢"],
+              accepted:["好，我投25元","我投25元","投25元"], kw:["25"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"投 25 元",
+              feedback:{ failed:"照金額投錢。可以說：「好，我投25元」" } }),
+            mkStep({ id:"thank_staff", say:"票出來囉，拿好！", task:"說「謝謝站務員」",
+              options:["謝謝站務員！","喔耶","走了","嗯"],
+              accepted:["謝謝站務員！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝站務員！」" } }),
+            mkStep({ id:"review", say:"（想一想）不會操作機器時怎麼辦？", task:"說出方法：請站務員教我",
+              options:["請站務員教我","亂按看看","放棄回家","偷看別人怎麼用"],
+              accepted:["請站務員教我","找站務員幫忙","請人教我"], kw:["站務員","教我"],
+              feedback:{ perfect:"答對了！不會操作就請站務員教。", failed:"記住：不會操作機器，就開口請站務員教你。" } }),
+          ]
+        },
+        {
+          id: "mrt_card_fail", name: "卡片刷不過", icon: "💳", clerkName: "捷運站務員",
+          desc: "閘門刷不過，找站務員發現餘額不足要加值",
+          steps: [
+            mkStep({ id:"tell_fail", say:"（閘門）嗶嗶！（亮紅燈，門沒開）", task:"先叫「站務員」，再說你的卡片刷不過去",
+              options:["站務員，我的卡片刷不過去","用力再刷十次","從旁邊鑽過去","踢閘門一下"],
+              accepted:["站務員，我的卡片刷不過去","卡片刷不過","我的卡刷不過去"], kw:["刷不過"],
+              feedback:{ failed:"刷不過就找站務員。可以說：「站務員，我的卡片刷不過去」" } }),
+            mkStep({ id:"do_topup", say:"我看看…你的卡片餘額不足喔，要加值！", task:"先說「好」，再說你要加值 100 元，把錢拿給站務員，說「給你 100 元」",
+              options:["好，我要加值 100 元，給你 100 元","卡片是壞掉了吧","先讓我過去啦","你幫我出錢啦"],
+              accepted:["好，我要加值 100 元，給你 100 元","我要加值 100 元，給你 100 元","好，我要加值一百元","我要加值 100 元"], kw:["加值"],
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              feedback:{ failed:"餘額不足要加值。可以說：「好，我要加值 100 元，給你 100 元」" } }),
+            mkStep({ id:"check_balance", say:"好的，收你一百元，加值完成！", task:"先說「謝謝」，再用「請問」問現在餘額多少",
+              options:["謝謝，請問現在餘額多少？","趕快讓我過","一百元好貴","就這樣？"],
+              accepted:["謝謝，請問現在餘額多少？","現在餘額多少","餘額多少錢"], kw:["餘額"],
+              feedback:{ failed:"加值後確認餘額。可以說：「謝謝，請問現在餘額多少？」" } }),
+            mkStep({ id:"review", say:"（想一想）卡片刷不過的原因可能是什麼？", task:"說出原因：可能餘額不足，要加值",
+              options:["可能餘額不足，要加值","閘門討厭我","卡片生氣了","運氣不好而已"],
+              accepted:["可能餘額不足，要加值","餘額不足要加值","餘額不夠了"], kw:["餘額不足","餘額不夠"],
+              feedback:{ perfect:"答對了！刷不過常常是餘額不足，加值就好。", failed:"記住：刷不過先想到餘額不足，找站務員加值。" } }),
+          ]
+        },
+        {
+          id: "mrt_wrong_dir", name: "搭錯方向", icon: "🔄", clerkName: "捷運站務員",
+          desc: "發現搭反方向，下車找站務員問怎麼辦",
+          steps: [
+            mkStep({ id:"tell_wrong", say:"（你搭上捷運，過了幾站發現站名越來越不對，原來是搭反方向了！你在下一站下車，趕快去找站務員。）", task:"先說「不好意思」，再說你搭錯方向了",
+              options:["不好意思，我搭錯方向了","這捷運亂開","我要客訴","沒差繼續坐"],
+              accepted:["不好意思，我搭錯方向了","我搭錯方向","搭錯方向了怎麼辦"], kw:["搭錯方向"],
+              feedback:{ failed:"搭錯就下車求助。可以說：「不好意思，我搭錯方向了」" } }),
+            // 外部審閱第四輪：上下行月台不一定在正對面
+            mkStep({ id:"confirm_fix", say:"別擔心！不用出站，照指標走到反方向的月台，搭回去就可以了！", task:"先說「好」，再複誦：到反方向的月台搭回去",
+              options:["好，到反方向的月台搭回去","那我就一直坐下去","我要在這裡出去逛街","太麻煩了吧"],
+              accepted:["好，到反方向的月台搭回去","到反方向的月台搭回去","反方向月台搭回去"], kw:["反方向"],
+              feedback:{ failed:"覆述一次確認聽懂。可以說：「好，到反方向的月台搭回去」" } }),
+            mkStep({ id:"thank_fix", say:"對！慢慢來，不急！", task:"說「謝謝站務員」",
+              options:["謝謝站務員！","好險喔","嚇死","先走了"],
+              accepted:["謝謝站務員！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝站務員！」" } }),
+            mkStep({ id:"review", say:"（想一想）發現搭錯車怎麼辦？", task:"說出方法：下一站下車，找站務員問",
+              options:["下一站下車，找站務員問","坐到底再說","跳過去對面","假裝沒發現"],
+              accepted:["下一站下車，找站務員問","下車找站務員","下一站下車問站務員"], kw:["下車","站務員"],
+              feedback:{ perfect:"答對了！下一站下車，找站務員問清楚。", failed:"記住：搭錯車就在下一站下車，找站務員幫忙。" } }),
+          ]
+        },
+        {
+          id: "mrt_exit", name: "要走幾號出口", icon: "🚪",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "用「請問」問站務員要走幾號出口，複誦出口號碼，跟著指標走",
+          steps: [
+            mkStep({ id:"ask_exit", say:"（你搭捷運到西門站，要去西門町，可是出口好多，不知道要走哪一個。旁邊剛好有站務員。）請問需要幫忙嗎？", task:"用「請問」問站務員，去西門町要走幾號出口",
+              options:["請問去西門町要走幾號出口？", "我迷路了啦", "哪個出口都可以吧", "我要買票"], kw:["幾號出口"], accepted:["請問去西門町要走幾號出口？"] }),
+            mkStep({ id:"repeat", say:"去西門町可以走 6 號出口，跟著 6 號出口的指標走就到了！", task:"先說「好」，再複誦：走 6 號出口，跟著指標走",
+              options:["好，走 6 號出口，跟著指標走", "1 號出口對吧", "隨便出去就好", "不用看指標，我用猜的"], kw:["6 號", "6號", "六號"], accepted:["好，走 6 號出口，跟著指標走"] }),
+            mkStep({ id:"thanks", say:"對！出口上面都有號碼，跟著指標走就好！", task:"先說「謝謝你」，再說「再見」",
+              options:["謝謝你，再見！", "不用找出口，我直接翻過欄杆", "我要從軌道走過去", "不用你說"], kw:["謝謝"], accepted:["謝謝你，再見！"] }),
+            mkStep({ id:"review", say:"（想一想）不知道要走哪個出口，要怎麼做？", task:"說出方法：問站務員，看出口的號碼和指標",
+              options:["問站務員，看出口的號碼和指標", "隨便找一個出口", "一直在站裡繞", "問路邊的陌生人跟他走"], kw:["問站務員", "指標"], accepted:["問站務員，看出口的號碼和指標"], feedback:{ perfect:"答對了！問站務員，看出口的號碼和指標。", failed:"記住：問站務員，看出口的號碼和指標。" } }),
+          ]
+        },
+        {
+          id: "mrt_transfer", name: "第一次要轉乘", icon: "🔀",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "問在哪一站換車、換哪一條線、往哪個方向",
+          steps: [
+            mkStep({ id:"ask_transfer", say:"（你在板橋站，要去淡水找阿姨，第一次一個人搭，不知道要不要換車。）請問需要幫忙嗎？", task:"先說「不好意思」，再用「請問」問去淡水要在哪一站換車",
+              options:["不好意思，請問去淡水要在哪一站換車？", "淡水在哪裡啦", "我不用換車吧", "我要回家"], kw:["哪一站換車", "哪一站"], accepted:["不好意思，請問去淡水要在哪一站換車？"] }),
+            mkStep({ id:"repeat", say:"（站務員指著路線圖，先告訴你在板橋搭往南港展覽館方向的車。）先搭藍色的板南線到台北車站，再換紅色的淡水信義線，往淡水方向。", task:"先說「好」，再複誦：台北車站換紅線，搭車頭寫「淡水」的車",
+              options:["好，台北車站換紅線，搭往淡水的車", "換綠色的線", "不用看方向，隨便上車", "不換也可以吧"], kw:["台北車站", "紅線"], accepted:["好，台北車站換紅線，搭往淡水的車"] }),
+            mkStep({ id:"thanks", say:"對！換車不用出站，跟著紅色的指標走就好。", task:"先說「謝謝你」",
+              options:["謝謝你！", "我隨便上一班車就好", "很麻煩耶", "我要出站再進來"], kw:["謝謝"], accepted:["謝謝你！"] }),
+            mkStep({ id:"review", say:"（想一想）第一次轉乘，要記住什麼？", task:"說出重點：在哪一站換、換哪一條線、往哪個方向",
+              options:["在哪一站換、換哪一條線、往哪個方向", "隨便上一班車", "不用換車", "一直坐到終點"], kw:["哪一站", "哪一條線", "方向"], accepted:["在哪一站換、換哪一條線、往哪個方向"], feedback:{ perfect:"答對了！在哪一站換、換哪一條線、往哪個方向。", failed:"記住：在哪一站換、換哪一條線、往哪個方向。" } }),
+          ]
+        },
+        {
+          id: "dropped_track", name: "東西掉到軌道上", icon: "⚠️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "東西掉到軌道上絕對不能自己下去撿，馬上告訴站務員",
+          steps: [
+            mkStep({ id:"s1", say:"（你在捷運月台，悠遊卡掉進軌道區。你留在安全線內側，附近有站務員。）", task:"先說「不好意思」，再告訴站務員：你的悠遊卡掉到軌道上了",
+              options:["不好意思，我的悠遊卡掉到軌道上了","自己跳下去撿","自己伸手進軌道區","拿雨傘伸進去勾"], kw:["悠遊卡掉","軌道上"] }),
+            mkStep({ id:"s2", say:"不要自己撿。我會通報，請在安全的地方等。", task:"先說「好」，再說你會在安全的地方等",
+              options:["好，我在安全的地方等","我很快，跳下去一下就好","你們好慢","那我用雨傘勾勾看"], kw:["在安全","地方等"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-transit-card-bear.png"], image_label:"卡套上有小熊貼紙的悠遊卡", say:"（工作人員撿回卡片，你認出卡套上的小熊貼紙。）這張是你的嗎？", task:"看一看，說「對，是我的，謝謝你」",
+              options:["對，是我的，謝謝你","不用看，拿了就走","不是我的也拿走","我要拿別張卡"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）東西掉到軌道上，要怎麼做？", task:"說不要自己撿，站在安全的地方，告訴站務員",
+              options:["不要自己撿，站在安全的地方，告訴站務員","趕快跳下去撿","等車走了再下去","自己用東西勾上來"], kw:["不要自己撿","告訴站務員","站在安全"], feedback:{ perfect:"答對了！不要自己撿，站在安全的地方，告訴站務員。", failed:"記住：不要自己撿，站在安全的地方，告訴站務員。" } }),
+          ]
+        },
+        {
+          id: "find_elevator", name: "腳受傷找電梯", icon: "🛗",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不方便走樓梯就找電梯，找不到就問站務員",
+          steps: [
+            mkStep({ id:"s1", say:"（你的腳扭傷了，拄著拐杖，走樓梯很不方便。你在捷運站裡找不到電梯。）請問需要幫忙嗎？", task:"說你的腳受傷了，再用「請問」問電梯在哪裡",
+              options:["我的腳受傷了，請問電梯在哪裡？","你一定要背我","我用跳的下樓梯","我要硬擠上電扶梯"], kw:["電梯在哪裡","腳受傷"] }),
+            mkStep({ id:"s2", say:"電梯在右邊，請跟著「電梯」指標走。", task:"複誦右邊，跟著電梯指標走",
+              options:["右邊，跟著電梯指標走","左邊，搭電扶梯","往樓梯方向走","不用看指標"], kw:["著電梯指標走","右邊"] }),
+            mkStep({ id:"s3", say:"對！慢慢走，不要急喔！", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","我要用跑的","我要把拐杖丟掉","我跳下樓梯比較快"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）不方便走樓梯的時候，要怎麼做？", task:"說出方法：找電梯，找不到就問站務員",
+              options:["找電梯，找不到就問站務員","用跳的走樓梯","硬擠電扶梯","不看路一直往前衝"], kw:["問站務員","找電梯","找不"], feedback:{ perfect:"答對了！找電梯，找不到就問站務員。", failed:"記住：找電梯，找不到就問站務員。" } }),
+          ]
+        },
+        {
+          id: "no_food_zone", name: "進入禁止飲食區要收好飲料", icon: "🚫",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本例限定台北捷運，在閘門前辨認禁止飲食線",
+          steps: [
+            mkStep({ id:"s1", say:"（你在台北捷運閘門前喝奶茶，正要跨過地面的禁止飲食線。）進入禁止飲食區前，請先收好飲料。", task:"先說「不好意思」，再說你馬上收起來",
+              options:["不好意思，我馬上收起來","小口喝沒關係","到車廂再收","偷偷喝就好"], kw:["馬上收起來"] }),
+            mkStep({ id:"s2", say:"（你把飲料收好。）離開禁止飲食區後再喝。", task:"先說「好」，再說「謝謝提醒」",
+              options:["好，謝謝提醒","我躲起來喝","刷卡後就可以喝","只要不是熱飲就能喝"], kw:["謝謝提醒"] }),
+            mkStep({ id:"review", say:"（想一想）進入捷運禁止飲食區，要怎麼做？", task:"說收好食物和飲料，在禁止飲食區內不吃不喝",
+              options:["收好食物和飲料，在禁止飲食區內不吃不喝","只有月台黃線外不能喝","沒有站務員就能吃","只有車廂裡不能吃"], kw:["禁止飲食區內不吃不喝","收好食物","飲料"], feedback:{ perfect:"答對了！收好食物和飲料，在禁止飲食區內不吃不喝。", failed:"記住：收好食物和飲料，在禁止飲食區內不吃不喝。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "train_ticket", name: "火車站售票口", icon: "🚆", available: true,
+      theme: { color: '#B45309', bg: '#FEF3C7', accent: '#92400E' },
+      situations: [
+        {
+          id: "train_buy", name: "買車票", icon: "🎫", clerkName: "售票員",
+          desc: "到售票口買票：說目的地、選車種、付錢、問月台",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_dest", say:"（你在彰化火車站，要搭火車去台中。）請問要到哪裡？", task:"告訴售票員你要一張到台中的票",
+              options:["我要一張到台中的票","坐火車","便宜的那種","你推薦哪裡"],
+              accepted:["我要一張到台中的票","一張到台中","到台中一張"], kw:["台中"],
+              feedback:{ failed:"說清楚目的地和張數。可以說：「我要一張到台中的票」" } }),
+            mkStep({ id:"choose_train", say:"好的！區間車39元，自強號60元，要哪一種？（你不趕時間，想搭比較便宜的區間車。）", task:"說你要區間車",
+              image:"images/b6/icon-b6-train-ticket-compare.png::區間車 39 元　自強號 60 元", image_label:"區間車和自強號",
+              options:["我要區間車","我要自強號","最快又最便宜的","不知道差在哪"],
+              accepted:["我要區間車","區間車一張","我要區間車，39元的"], kw:["區間車"],
+              feedback:{ failed:"選一種車。可以說：「我要區間車」" } }),
+            mkStep({ id:"pay_train", say:"區間車一張39元！", task:"先說「好」，再把 50 元拿給售票員，說「給你 50 元」",
+              options:["好，給你50元","太貴了算了","可以算便宜點嗎","先欠著下次給"],
+              accepted:["好，給你50元","這是50元","給你50元","好，這是50元"], kw:[...KW_PRESETS.hand, "50"],
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              feedback:{ failed:"付錢。可以說：「好，給你50元」" } }),
+            mkStep({ id:"ask_platform", say:"找你11元，這是你的票！", task:"收好找零，先說「謝謝」，再用「請問」問在第幾月台搭車",
+              options:["謝謝，請問在第幾月台搭車？","走了走了","我要買便當","請問廁所在哪裡？"],
+              accepted:["謝謝，請問在第幾月台搭車？","第幾月台","在哪個月台"], kw:["月台"],
+              image:["images/money/10_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 11 元",
+              feedback:{ failed:"拿了票確認月台。可以說：「謝謝，請問在第幾月台搭車？」" } }),
+            mkStep({ id:"review", say:"（想一想）買火車票要說清楚什麼？", task:"說出重點：說清楚目的地、車種和張數",
+              options:["說清楚目的地、車種和張數","只要給錢就好","越快越好","讓售票員決定"],
+              accepted:["說清楚目的地、車種和張數","目的地車種張數","說清楚目的地和車種"], kw:["目的地","車種"],
+              feedback:{ perfect:"答對了！說清楚目的地、車種、張數。", failed:"記住：買票要說清楚目的地、車種和張數。" } }),
+          ]
+        },
+        {
+          id: "train_change", name: "趕不上車", icon: "⏰", clerkName: "售票員",
+          desc: "火車開走了，到售票口問能不能改班次",
+          steps: [
+            mkStep({ id:"ask_change", say:"（你買了自強號的票要去找奶奶，可是出門晚了，跑到月台時火車剛好開走了。你拿著車票回到售票口問問看。）", task:"先說「不好意思」，再說你趕不上車了，問「可以改下一班嗎」",
+              options:["不好意思，我趕不上車了，可以改下一班嗎？","火車怎麼不等我","把錢退我","我要投訴"],
+              accepted:["不好意思，我趕不上車了，可以改下一班嗎？","可以改下一班嗎","趕不上車可以改票嗎"], kw:["改下一班","改票"],
+              feedback:{ failed:"趕不上可以問改班。可以說：「不好意思，我趕不上車了，可以改下一班嗎？」" } }),
+            mkStep({ id:"confirm_time", say:"可以喔！下一班40分鐘後，幫你改好了，不用加錢！", task:"先說「謝謝」，再問下一班是 40 分鐘後對嗎",
+              options:["謝謝！下一班是40分鐘後對嗎？","火車怎麼不等我啦！","請問廁所在哪裡？","早知道用跑的"],
+              accepted:["謝謝！下一班是40分鐘後對嗎？","40分鐘後對嗎","下一班40分鐘後"], kw:["40分"],
+              feedback:{ failed:"確認新班次時間。可以說：「謝謝！下一班是40分鐘後對嗎？」" } }),
+            mkStep({ id:"ask_wait", say:"對！可以在候車室坐著等喔。", task:"先說「好」，再用「請問」問候車室在哪裡",
+              options:["好，請問候車室在哪裡？","你幫我買飲料","40分鐘要幹嘛","嗚嗚嗚"],
+              accepted:["好，請問候車室在哪裡？","候車室在哪","哪裡有候車室"], kw:["候車室"],
+              feedback:{ failed:"可以說：「好，請問候車室在哪裡？」" } }),
+            mkStep({ id:"review", say:"（想一想）趕不上車怎麼辦？", task:"說出方法：到售票口問能不能改班次",
+              options:["到售票口問能不能改班次","票丟掉重買一張","硬闖月台等下班車","回家不去了"],
+              accepted:["到售票口問能不能改班次","問售票口改班次","找售票口改票"], kw:["售票口","改"],
+              feedback:{ perfect:"答對了！趕不上就到售票口問改班次。", failed:"記住：趕不上車先到售票口，問能不能改下一班。" } }),
+          ]
+        },
+        {
+          id: "train_lost", name: "車票不見了", icon: "😱", clerkName: "售票員",
+          desc: "車票不見了，向站務人員說明求助",
+          steps: [
+            mkStep({ id:"tell_lost", say:"（你已經買好火車票，準備進站時一摸口袋，車票不見了！你趕快去找站務人員幫忙。）", task:"先說「不好意思」，再說你的車票不見了",
+              options:["不好意思，我的車票不見了","有人偷我的票","沒票也讓我上車啦","（一直翻口袋不說話）"],
+              accepted:["不好意思，我的車票不見了","我的車票不見了","車票不見了怎麼辦"], kw:["票不見"],
+              feedback:{ failed:"票不見了先說出來。可以說：「不好意思，我的車票不見了」" } }),
+            mkStep({ id:"give_info", say:"別緊張！你買的是哪一班、到哪裡的票？", task:"告訴站務人員你買的是十點的區間車，到台中",
+              options:["十點的區間車，到台中","就是火車啊","忘記了","你們自己查"],
+              accepted:["十點的區間車，到台中","十點到台中","十點的車到台中"], kw:["十點","台中"],
+              feedback:{ failed:"說出班次和目的地。可以說：「十點的區間車，到台中」" } }),
+            mkStep({ id:"promise_keep", say:"查到了，十點的區間車到台中。車票不見了，要重新買一張喔！", task:"先說「好」，再說你重新買一張，最後說「謝謝」",
+              options:["好，我重新買一張，謝謝！","都是口袋的錯","沒票也讓我上車啦","嗯"],
+              accepted:["好，我重新買一張，謝謝！","好，我再買一張，謝謝！","我重新買一張"], kw:["重新買","再買"],
+              feedback:{ failed:"車票不見了要重新買。可以說：「好，我重新買一張，謝謝！」" } }),
+            mkStep({ id:"review", say:"（想一想）車票要怎麼保管？", task:"說出方法：收在固定的地方，像錢包裡",
+              options:["收在固定的地方，像錢包裡","隨手放口袋","拿在手上甩","請別人幫我拿"],
+              accepted:["收在固定的地方，像錢包裡","收在固定地方","放錢包收好"], kw:["固定","錢包"],
+              feedback:{ perfect:"答對了！票收在固定的地方，像錢包裡。", failed:"記住：票和錢一樣，收在固定的地方。" } }),
+          ]
+        },
+        {
+          id: "train_round", name: "問下一班並買來回票", icon: "🔁",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "問下一班幾點，買來回票，自己算出總價",
+          steps: [
+            mkStep({ id:"greeting", say:"（今天你要從彰化去台中找奶奶，晚上再回來，想買來回的區間車票。）你好！", task:"跟售票員打招呼",
+              options:["你好！", "謝謝再見", "多少錢？", "快點給我票"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"ask_next", say:"請問要到哪裡？", task:"先說到台中，再用「請問」問下一班區間車幾點",
+              options:["到台中，請問下一班區間車幾點？", "隨便一班就好", "我要去高雄", "車子在哪裡"], kw:["下一班", "幾點"], accepted:["到台中，請問下一班區間車幾點？"] }),
+            mkStep({ id:"round_trip", say:"下一班 10 點 20 分。要買單程還是來回？", task:"說你要買來回，今天晚上回來",
+              options:["我要買來回，今天晚上回來", "單程就好了吧", "我不回來了", "隨便"], kw:["來回"], accepted:["我要買來回，今天晚上回來"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"好的！區間車單程 39 元，去程和回程各一張。", task:"算出來回兩張票的總價並說出來，再把 100 元拿給售票員，說「給你 100 元」",
+              options:["來回是 78 元，給你 100 元", "來回是 39 元，給你 100 元", "我先不付", "你算就好"], kw:["78"], accepted:["來回是 78 元，給你 100 元"] }),
+            mkStep({ id:"get_change", say:"對！收您 100 元，找您 22 元，這是去程和回程兩張票。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["22 元，對了，謝謝！", "錢我不用數", "兩張票我丟一張", "（直接走掉）"], kw:["22", "對了"], accepted:["22 元，對了，謝謝！"], image:["images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/1_yuan_front.png", "images/money/1_yuan_front.png"], image_label:"找您 22 元" }),
+            mkStep({ id:"review", say:"（想一想）買來回票要注意什麼？", task:"說出重點：問清楚時間，去程和回程的票都要收好",
+              options:["問清楚時間，去程和回程的票都要收好", "只收去程的票", "時間到了再問", "票給別人拿"], kw:["問清楚時間", "回程的票"], accepted:["問清楚時間，去程和回程的票都要收好"], feedback:{ perfect:"答對了！問清楚時間，去程和回程的票都要收好。", failed:"記住：問清楚時間，去程和回程的票都要收好。" } }),
+          ]
+        },
+        {
+          id: "train_senior", name: "買敬老優待票", icon: "👴",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "幫阿公買敬老票，出示阿公的身分證；自己買全票",
+          steps: [
+            mkStep({ id:"greeting", say:"（你陪 70 歲的阿公，從彰化搭自強號去台中，阿公請你幫忙買票，把他的身分證交給你。）你好！", task:"跟售票員打招呼",
+              options:["你好！", "謝謝再見", "快一點", "我要退票"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"say_tickets", say:"請問要到哪裡？", task:"說到台中，自強號，一張全票、一張敬老票",
+              options:["到台中，自強號，一張全票、一張敬老票", "兩張敬老票", "隨便啦", "我要區間車"], kw:["一張全票", "一張敬老票"], accepted:["到台中，自強號，一張全票、一張敬老票"] }),
+            mkStep({ id:"show_id", image:["images/b6/icon-b6-id-card-sample.png"], image_label:"阿公的身分證", say:"敬老票要看一下長輩的身分證喔。", task:"把阿公的身分證拿給售票員，說「這是阿公的身分證」",
+              options:["這是阿公的身分證", "阿公在那邊你自己看", "我沒帶", "用我的學生證可以嗎"], kw:["身分證"], accepted:["這是阿公的身分證"] }),
+            mkStep({ id:"pay", say:"好，沒問題！全票 60 元、敬老票 30 元，一共 90 元。", task:"把 100 元拿給售票員，說「給你 100 元」",
+              options:["給你 100 元", "我只付 60 元", "阿公會付啦", "可以更便宜嗎"], kw:[...KW_PRESETS.hand, "100"], accepted:["給你 100 元", "我給你 100 元", "100 元給你", "這是 100 元"], image:"images/money/100_yuan_front.png", image_label:"100 元" }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 10 元。身分證和兩張票請收好！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」，把身分證還給阿公",
+              options:["10 元，對了，謝謝！", "身分證我收起來", "錢我不用數", "（直接走掉）"], kw:["10", "對了"], accepted:["10 元，對了，謝謝！"], image:"images/money/10_yuan_front.png", image_label:"找您 10 元" }),
+            mkStep({ id:"review", say:"（想一想）幫長輩買敬老票，要帶什麼？", task:"說出要帶的東西：長輩的身分證",
+              options:["長輩的身分證", "什麼都不用帶", "自己的學生證", "說他很老就好"], kw:["身分證"], accepted:["長輩的身分證"], feedback:{ perfect:"答對了！長輩的身分證。", failed:"記住：長輩的身分證。" } }),
+          ]
+        },
+        {
+          id: "seat_taken", name: "自己的位子有人坐", icon: "💺",
+          clerkName: "坐錯位子的乘客", clerkImage: "images/clerk-ridemanner-helper.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "有禮貌地說明、給對方看車票；還是不行就找列車長",
+          steps: [
+            mkStep({ id:"s1", image:["images/b6/icon-b6-train-ticket.png"], image_label:"自強號車票：5 車 12 號", say:"（你核對了自強號車票的日期、車次和「5 車 12 號」，發現位子上有人。）嗯？", task:"先說「不好意思」，再說這是你的位子，把車票給他看，說「這是我的車票」",
+              options:["不好意思，這是我的位子，這是我的車票","起來！這是我的","（一直站在旁邊瞪他）","那我坐別人的位子好了"], kw:["車票"] }),
+            mkStep({ id:"s2", say:"喔！真的耶，我坐錯了，不好意思！", task:"說「沒關係，謝謝」",
+              options:["沒關係，謝謝","你眼睛有問題喔","快一點啦","你要賠我"], kw:["沒關係","謝謝"] }),
+            mkStep({ id:"s3", say:"（如果對方不願核對，也不讓開，可以找誰？）", task:"說你會找列車長幫忙",
+              options:["我會找列車長幫忙","我要推他起來","我要拿走他的行李","我要大聲罵到他讓開"], kw:["會找列車長幫忙"] }),
+            mkStep({ id:"review", say:"（想一想）自己的位子有人坐，要怎麼做？", task:"說出方法：有禮貌地說，給他看車票，還是不行就找列車長",
+              options:["有禮貌地說，給他看車票，還是不行就找列車長","不核對就叫人起來","把對方的行李丟開","坐到別人的對號位子"], kw:["有禮貌地說","給他看車票","找列車長"], feedback:{ perfect:"答對了！有禮貌地說，給他看車票，還是不行就找列車長。", failed:"記住：有禮貌地說，給他看車票，還是不行就找列車長。" } }),
+          ]
+        },
+        {
+          id: "which_platform", name: "問第幾月台", icon: "🚉",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "不知道去哪個月台就問站務人員，也可以看電子看板",
+          steps: [
+            mkStep({ id:"greeting", say:"（你買好往台中的區間車票，查到想搭的車是 10 點 15 分開，來問月台。）你好！", task:"跟售票員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務？", task:"用「請問」問 10 點 15 分往台中的車在第幾月台",
+              options:["請問 10 點 15 分往台中的車，在第幾月台？","不用查，隨便指一個","第三月台對吧，我直接去","我不說去哪裡，你猜"], kw:["10","15","在第幾月台"] }),
+            mkStep({ id:"s3", say:"我查過了，這班在第二月台，請走地下道。", task:"複誦：第二月台，走地下道",
+              options:["第二月台，走地下道","第一月台，走地下道","第二月台，直接走鐵軌","第三月台，不看指標"], kw:["第二月台","地下道"], mode:"all" }),
+            mkStep({ id:"s4", say:"上車前再看電子看板，核對車次和方向。", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","不用核對啦","你好囉嗦","車來就上，不管去哪裡"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）不知道要去第幾月台，可以怎麼做？", task:"說出方法：問站務人員，或看電子看板",
+              options:["問站務人員，或看電子看板","隨便找一個月台","走鐵軌過去看","跟著別人走"], kw:["問站務人員","看電子看板"], feedback:{ perfect:"答對了！問站務人員，或看電子看板。", failed:"記住：問站務人員，或看電子看板。" } }),
+          ]
+        },
+        {
+          id: "refund_ticket", name: "不能去了要退票", icon: "💸",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本例是明日已劃座的自強號現金紙票，未使用、未變更，今天辦退票並計算退款",
+          steps: [
+            mkStep({ id:"greeting", say:"（你用現金買了明天的自強號對號座位票，票面 60 元。現在確定不能去，帶未使用的紙票來退。）你好！", task:"跟售票員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-train-ticket.png"], image_label:"自強號車票", say:"請問需要什麼服務？", task:"說你明天不能去了，要退這張票，把車票拿給售票員，說「這是車票」",
+              options:["我明天不能去了，要退這張票，這是車票","不交車票就要退錢","隨便退別人的票","票留給我，錢也全部退"], kw:["明天不能去","要退這張票"] }),
+            mkStep({ id:"s3", say:"這張明天的對號票可以退，本次手續費 20 元。", task:"算一算，說出可以拿回多少錢，再問「對嗎」",
+              options:["可以拿回 40 元，對嗎？","可以拿回 60 元，對嗎？","可以拿回 20 元，對嗎？","手續費不要扣啦"], kw:["40"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"拿回 40 元", say:"對！這是 40 元，你點一下。", task:"數一數拿回的錢，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！","錢我不用數","30 元，對了，謝謝！","（直接走掉）"], kw:["40","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買了車票不能去，要怎麼做？", task:"說這張對號票要在開車前辦退票，先確認手續費",
+              options:["這張對號票要在開車前辦退票，先確認手續費","丟掉就好","不用看退票期限","不交票也要退錢"], kw:["開車前辦退票","這張對號票","確認手續費"], feedback:{ perfect:"答對了！這張對號票要在開車前辦退票，先確認手續費。", failed:"記住：這張對號票要在開車前辦退票，先確認手續費。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "taxi", name: "搭計程車", icon: "🚕", available: true,
+      theme: { color: '#CA8A04', bg: '#FEF9C3', accent: '#A16207' },
+      situations: [
+        {
+          id: "taxi_basic", name: "基本搭車", icon: "🚕", clerkName: "計程車司機",
+          desc: "說清楚目的地，下車付錢、確認找零",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟計程車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_dest", say:"請問要到哪裡？", task:"跟司機說「請到中山醫院」，再說「謝謝」",
+              options:["請到中山醫院，謝謝","隨便開","前面那邊","跟著前面的車"],
+              accepted:["請到中山醫院，謝謝","到中山醫院","我要到中山醫院"], kw:["中山醫院"],
+              feedback:{ failed:"說清楚目的地。可以說：「請到中山醫院，謝謝」" } }),
+            mkStep({ id:"ask_fare", say:"（15分鐘後）中山醫院到囉！", task:"用「請問」問司機多少錢",
+              options:["請問多少錢？","開門讓我下去","到了喔","再見"],
+              accepted:["請問多少錢？","多少錢","車資多少"], kw:["多少錢","車資"],
+              feedback:{ failed:"下車前先問車資。可以說：「請問多少錢？」" } }),
+            mkStep({ id:"pay_taxi", say:"一共180元！", task:"先說「好」，再把 200 元拿給司機，說「給你 200 元」",
+              options:["好，給你200元","好貴喔不想付","下次再給","我先下車喔"],
+              accepted:["好，給你200元","這是200元","給你200元","好，這是200元"], kw:[...KW_PRESETS.hand, "200"],
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              feedback:{ failed:"照表付錢。可以說：「好，給你200元」" } }),
+            mkStep({ id:"check_change", say:"收200，找你20元，慢走！", task:"先說「謝謝」，再說找零你收到了",
+              options:["謝謝，找零20元我收到了","錢我拿走了喔","嗯","（直接下車關門）"],
+              // 同 pick_drink：裸的「20」會被上一步 pay_taxi 的「這是200元」包含（200 ⊃ 20）。
+              accepted:["謝謝，找零20元我收到了","找零收到了","20元收到了"], kw:["找零","20元"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元",
+              feedback:{ failed:"找零當面確認。可以說：「謝謝，找零20元我收到了」" } }),
+            mkStep({ id:"review", say:"（想一想）搭計程車要注意什麼？", task:"說出重點：說清楚目的地，下車付錢確認找零",
+              options:["說清楚目的地，下車付錢確認找零","上車睡覺就好","給錢不用數","越快越好"],
+              accepted:["說清楚目的地，下車付錢確認找零","說清楚目的地並確認找零","講目的地、付錢、對找零"], kw:["目的地","找零"],
+              feedback:{ perfect:"答對了！說清楚目的地，付錢後確認找零。", failed:"記住：上車說清楚目的地，下車付錢、當面確認找零。" } }),
+          ]
+        },
+        {
+          id: "taxi_ask_price", name: "先問車資", icon: "💰", clerkName: "計程車司機",
+          desc: "上車前先問大概多少錢，確認預算夠不夠",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你要去火車站，身上有 200 元。）你好！", task:"跟計程車司機打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_price", say:"要搭車嗎？", task:"用「請問」問司機到火車站大概多少錢",
+              options:["請問到火車站大概多少錢？","算便宜一點啦","你們會亂喊價嗎","上車再說"],
+              accepted:["請問到火車站大概多少錢？","到火車站多少錢","大概多少錢"], kw:["多少錢"],
+              feedback:{ failed:"上車前先問價錢。可以說：「請問到火車站大概多少錢？」" } }),
+            mkStep({ id:"decide_ride", say:"大概150元左右喔！", task:"先說「好」，再說你要搭車",
+              options:["好，那我要搭車","你開快一點就好","150？算120啦","讓我想三天"],
+              accepted:["好，那我要搭車","我要搭車","那就搭吧"], kw:["我要搭","那就搭"],
+              feedback:{ failed:"價錢可以接受就上車。可以說：「好，那我要搭車」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼上車前先問價錢？", task:"說出理由：先問價錢，確認預算夠不夠",
+              options:["先問價錢，確認預算夠不夠","司機喜歡被問","上車才刺激","問了比較快到"],
+              accepted:["先問價錢，確認預算夠不夠","先問價錢","確認預算夠不夠"], kw:["先問","預算"],
+              feedback:{ perfect:"答對了！先問價錢，確認預算夠不夠。", failed:"記住：上車前先問價錢，確認自己帶的錢夠。" } }),
+          ]
+        },
+        {
+          id: "taxi_sick", name: "暈車請開慢", icon: "🤢", clerkName: "計程車司機",
+          desc: "身體不舒服時，開口說出需求",
+          steps: [
+            mkStep({ id:"say_sick", say:"（你坐計程車要回家。司機開得有點快，車子一直轉彎，你開始覺得頭暈、不舒服。你要跟司機說出你的需要。）", task:"先叫「司機先生」，再說你會暈車，問「可以開慢一點嗎」",
+              options:["司機先生，我會暈車，可以開慢一點嗎？","（忍耐不說話）","快一點快一點！","你會不會開車啊"],
+              accepted:["司機先生，我會暈車，可以開慢一點嗎？","可以開慢一點嗎","請開慢一點"], kw:["開慢"],
+              feedback:{ failed:"不舒服要說出來。可以說：「司機先生，我會暈車，可以開慢一點嗎？」" } }),
+            mkStep({ id:"thank_kind", say:"沒問題！幫你開個窗戶透氣好嗎？", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","不用管我","隨便","窗戶髒髒的"],
+              accepted:["好，謝謝你","謝謝","好的謝謝"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「好，謝謝你」" } }),
+            mkStep({ id:"review", say:"（想一想）身體不舒服的時候怎麼辦？", task:"說出方法：開口說出需求，請對方幫忙",
+              options:["開口說出需求，請對方幫忙","忍耐到最後","生氣怪別人","下車用走的"],
+              accepted:["開口說出需求，請對方幫忙","開口說出需求","說出來請人幫忙"], kw:["說出","開口"],
+              feedback:{ perfect:"答對了！不舒服要開口說，別人才能幫你。", failed:"記住：身體不舒服，開口說出需求。" } }),
+          ]
+        },
+        {
+          id: "taxi_forgot", name: "東西忘在車上", icon: "☂️", clerkName: "計程車司機",
+          desc: "下車發現東西忘了，馬上回頭說清楚；下車前回頭看座位",
+          steps: [
+            mkStep({ id:"tell_forgot", say:"（你搭計程車到醫院，下車後發現雨傘忘在後座。還好計程車還停在醫院門口，你走回去找司機。）怎麼啦？", task:"先說「司機先生不好意思」，再說你的雨傘忘在後座了",
+              options:["司機先生不好意思，我的雨傘忘在後座了","你一定要賠我一把新的！","你怎麼沒提醒我","（直接開門拿）"], kw:["雨傘"],
+              accepted:["司機先生不好意思，我的雨傘忘在後座了","我的雨傘忘在後座了","不好意思，我的雨傘忘在車上了"] }),
+            mkStep({ id:"confirm", say:"喔！我看看…是這把藍色的嗎？", task:"先說「對」，再說「謝謝你」",
+              options:["對，謝謝你","是吧應該","隨便啦","你留著用"], kw:["謝謝"],
+              accepted:["對，謝謝你","對，謝謝","是的，謝謝你"] }),
+            mkStep({ id:"promise", say:"不客氣！下車前記得回頭看一下座位喔！", task:"先說「好」，再說你下次會先檢查",
+              options:["好，我下次會先檢查","不用啦","喔","再說吧"], kw:["檢查","先看"],
+              accepted:["好，我下次會先檢查","我下次會先檢查","下次會先看座位"] }),
+            mkStep({ id:"review", say:"（想一想）下車前要做什麼，才不會忘東西？", task:"說出方法：下車前回頭看一下座位",
+              options:["下車前回頭看一下座位","快點下車就好","東西丟了再買","讓司機幫我記"], kw:["座位","回頭"],
+              accepted:["下車前回頭看一下座位","回頭看座位","下車前看一下座位"],
+              feedback:{ perfect:"答對了！下車前回頭看一下座位。", failed:"記住：下車前回頭看一下座位，東西才不會忘。" } }),
+          ]
+        },
+        {
+          id: "taxi_safe_stop", name: "請司機停在安全的地方", icon: "🚦", clerkName: "計程車司機",
+          desc: "說清楚要停在哪裡，下車先看後面再開門",
+          steps: [
+            mkStep({ id:"where_stop", say:"（你搭計程車回家，快到了，前面是一個大路口。）快到囉！要停在哪裡？", task:"告訴司機：過了路口，停在便利商店前面就好",
+              options:["過了路口，停在便利商店前面就好","隨便停","停在路口中間","這裡直接停"], kw:["便利商店"],
+              accepted:["過了路口，停在便利商店前面就好","停在便利商店前面","過了路口停便利商店前面"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"好，停這裡喔！總共 120 元。", task:"把 200 元拿給司機，說「給你 200 元」",
+              options:["給你 200 元","好貴喔不想付","下次再給","我先下車喔"], kw:["200元","兩百元"],
+              accepted:["給你 200 元","我給你 200 元","200 元給你","這是 200 元"] }),
+            mkStep({ id:"look_back", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找你 80 元", say:"收 200，找你 80 元。下車小心後面的機車喔！", task:"先說「謝謝」，再說你會先看後面再開門",
+              options:["謝謝，我會先看後面再開門","直接開門就好","機車會自己閃","（用力推開門）"], kw:["看後面"],
+              accepted:["謝謝，我會先看後面再開門","我會先看後面再開門","先看後面再開門"] }),
+            mkStep({ id:"review", say:"（想一想）搭計程車下車要注意什麼？", task:"說出重點：停在安全的地方，看後面再開門",
+              options:["停在安全的地方，看後面再開門","越快下車越好","停哪裡都可以","不用看就開門"], kw:["安全","看後面"],
+              accepted:["停在安全的地方，看後面再開門","停在安全的地方","看後面再開門"],
+              feedback:{ perfect:"答對了！停在安全的地方，看後面再開門。", failed:"記住：請司機停在安全的地方，下車前先看後面再開門。" } }),
+          ]
+        },
+        {
+          id: "hail_taxi", name: "在路邊叫計程車", icon: "🚕",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "站在人行道上招手，從人行道那一邊上車，上車繫好安全帶",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在台北的人行道上招手叫空計程車。車停好後，你看一下後方來車，從靠人行道那邊上車。）你好！", task:"跟司機打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-address-card.png"], image_label:"仁愛牙科的地址卡", say:"（你帶著仁愛牙科的地址卡，寫著中正路的完整門牌。）請問要到哪裡？", task:"說要到中正路上的仁愛牙科，再說「這是地址」並出示地址卡",
+              options:["我要到中正路上的仁愛牙科，這是地址","隨便開","你猜","我要去很遠的地方"], kw:["中正路上","仁愛牙科","地址"] }),
+            mkStep({ id:"s3", say:"（你把安全帶繫好。）出發前要繫好安全帶。", task:"先說「好」，再說你繫好了",
+              options:["好，我繫好了","後座不用繫吧","很快就到了不用繫","我要站著"], kw:["繫好"] }),
+            mkStep({ id:"review", say:"（想一想）在路邊叫計程車，要注意什麼？", task:"說出方法：站在人行道上招手，從人行道那一邊上車，繫好安全帶",
+              options:["站在人行道上招手，從人行道那一邊上車，繫好安全帶","跑到馬路中間攔車","從馬路那一邊上車","後座不用繫安全帶"], kw:["從人行道那一邊上車","人行道上招手","繫好安全帶"], feedback:{ perfect:"答對了！站在人行道上招手，從人行道那一邊上車，繫好安全帶。", failed:"記住：站在人行道上招手，從人行道那一邊上車，繫好安全帶。" } }),
+          ]
+        },
+        {
+          id: "night_meter", name: "晚上搭車看跳表", icon: "🌙",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本例為台北一般跳表計程車，非春節期間、無其他附加費用；車資 185 元已含夜間加",
+          steps: [
+            mkStep({ id:"s1", say:"（你晚上十一點半和媽媽在台北搭一般跳表計程車，準備 200 元付車資。車停好了。）到囉！", task:"先說「謝謝」，再說「我看一下跳表」並查看金額",
+              options:["謝謝，我看一下跳表","不用看，隨便收","我不付錢","跳表不用管，我自己定價"], kw:["看一下跳表","謝謝"] }),
+            mkStep({ id:"s2", image:["images/b6/icon-b6-taxi-meter-185.png"], image_label:"跳表", say:"（跳表顯示 185 元。）夜間加成已計入跳表，不再另外收。", task:"看跳表，說出顯示的金額",
+              options:["跳表上是 185 元","跳表上是 158 元","隨便啦","100 元就好"], kw:["185"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"對！一共 185 元。", task:"把 200 元拿給司機，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","算 150 元啦","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找你 15 元", say:"收 200，找你 15 元，慢走！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["15 元，對了，謝謝！","錢我不用數","5 元，對了，謝謝！","（直接走掉）"], kw:["15","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）搭計程車要付多少錢，要看哪裡？", task:"說出要看的：看跳表上的金額",
+              options:["看跳表上的金額","司機說多少就多少","自己決定","看心情"], kw:["看跳表上","金額"], feedback:{ perfect:"答對了！看跳表上的金額。", failed:"記住：看跳表上的金額。" } }),
+          ]
+        },
+        {
+          id: "big_luggage", name: "帶大行李箱", icon: "🧳",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "帶大行李：上車前請司機開後車廂，下車記得把行李拿走",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在台北帶大行李箱要去台北車站，準備了 200 元。計程車停好了，你站在路邊安全的地方。）你好！", task:"跟司機打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問要到哪裡？", task:"說要到台北車站，再用「請問」請司機開後車廂放行李箱",
+              options:["我要到台北車站，請問可以開後車廂放行李箱嗎？","行李擋住車門也沒關係","車還沒停就塞行李","隨便開"], kw:["開後車廂放行李箱","台北車站"] }),
+            mkStep({ id:"s3", say:"可以！本次開行李廂不另收費，我幫你放。", task:"說「謝謝你」",
+              options:["謝謝你","你動作好慢","我把行李丟進去","行李擋住車牌也沒關係"], kw:["謝謝"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"（你確認行李放好，上車繫好安全帶。到了以後，車停好。）台北車站到了，一共 150 元。", task:"把 200 元拿給司機，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","算 100 元啦","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png"], image_label:"找你 50 元", say:"收 200，找你 50 元。我幫你把行李拿下來！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["50 元，對了，謝謝！","錢我不用數","40 元，對了，謝謝！","（直接走掉）"], kw:["50","對了"], mode:'all' }),
+            mkStep({ id:"s6", say:"（你從安全側下車，站在人行道。司機把行李拿給你。）請確認行李。", task:"確認是自己的行李並拿好，再說「謝謝你，行李拿到了」",
+              options:["謝謝你，行李拿到了","不用看，隨便拿","我把行李留在馬路中間","拿別人的比較新"], kw:["行李拿到","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）帶大行李搭計程車，要怎麼做？", task:"說出方法：上車前請司機開後車廂，下車記得把行李拿走",
+              options:["上車前請司機開後車廂，下車記得把行李拿走","不問就把行李塞進車內","下車不用拿行李","行李擋住車門也沒關係"], kw:["上車前請司機開後車廂","下車記得","行李拿走"], feedback:{ perfect:"答對了！上車前請司機開後車廂，下車記得把行李拿走。", failed:"記住：上車前請司機開後車廂，下車記得把行李拿走。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "easycard_service", name: "悠遊卡服務台", icon: "💳", available: true,
+      theme: { color: '#7C3AED', bg: '#EDE9FE', accent: '#5B21B6' },
+      situations: [
+        {
+          id: "card_topup", name: "加值悠遊卡", icon: "💰", clerkName: "服務台人員",
+          desc: "到服務台加值，完成後確認餘額",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_add", image:"images/b6/icon-b6-transit-card.png", image_label:"悠遊卡", say:"請問需要什麼服務呢？", task:"說你要加值悠遊卡",
+              options:["我要加值悠遊卡","卡片給你","我要買新卡","幫我弄一下"],
+              accepted:["我要加值悠遊卡","我要加值","幫我加值","你好，我要加值悠遊卡"], kw:["加值"],
+              feedback:{ failed:"說清楚需求。可以說：「我要加值悠遊卡」" } }),
+            mkStep({ id:"say_amount", say:"好的！要加值多少呢？", task:"說你要加值 100 元，再把錢拿給服務台人員，說「給你 100 元」",
+              options:["我要加值 100 元，給你 100 元","越多越好","你幫我決定","先加十元試試"],
+              accepted:["我要加值 100 元，給你 100 元","加值 100 元，給你 100 元","我要加值 100 元","加值一百元，這是錢"], kw:[...KW_PRESETS.hand, "100", "一百"],
+              image:"images/money/100_yuan_front.png", image_label:"加值的 100 元",
+              feedback:{ failed:"說清楚金額。可以說：「我要加值 100 元，給你 100 元」" } }),
+            mkStep({ id:"confirm_balance", say:"好囉，加值完成！現在餘額235元。", task:"先說「好」，再複誦餘額 235 元，最後說「謝謝」",
+              options:["好，餘額235元，謝謝！","隨便啦","有加就好","你不要騙我喔"],
+              accepted:["好，餘額235元，謝謝！","餘額235元","235元謝謝","好的，餘額235元，謝謝！"], kw:["235"],
+              feedback:{ failed:"複誦餘額確認。可以說：「好，餘額235元，謝謝！」" } }),
+            mkStep({ id:"review", say:"（想一想）加值完要確認什麼？", task:"說出重點：確認餘額對不對",
+              options:["確認餘額對不對","卡片有沒有變重","顏色有沒有變","不用確認直接走"],
+              accepted:["確認餘額對不對","確認餘額","看餘額對不對"], kw:["餘額"],
+              feedback:{ perfect:"答對了！加值完確認餘額對不對。", failed:"記住：加值完要確認餘額，跟收據或口頭說的一樣。" } }),
+          ]
+        },
+        {
+          id: "card_lost", name: "卡片掉了要掛失", icon: "😢", clerkName: "服務台人員",
+          desc: "記名悠遊卡不見了，請服務台教你怎麼掛失",
+          steps: [
+            // 2026-09-26 使用者定稿（外部審閱第四輪）：記名卡掛失走官網、APP 或客服電話，捷運櫃台不能當場辦；
+            // 掛失後退還剩餘金額、新卡另購。學校發的學生證要向學校辦，所以限定「一般記名悠遊卡」。
+            mkStep({ id:"report_lost", say:"（你準備搭捷運時，發現口袋裡的悠遊卡不見了！這是你自己買的一般悠遊卡，已經記名，裡面還有錢。你走到悠遊卡服務台問問看。）", task:"告訴服務台人員你的記名悠遊卡不見了，想要掛失",
+              options:["我的記名悠遊卡不見了，想要掛失","賠我一張新卡","掉了就掉了吧","請問廁所在哪裡？"],
+              accepted:["我的記名悠遊卡不見了，想要掛失","我的悠遊卡不見了，想要掛失","悠遊卡不見了要掛失","我要掛失"], kw:["掛失","不見"],
+              feedback:{ failed:"掉卡要趕快掛失。可以說：「我的記名悠遊卡不見了，想要掛失」" } }),
+            mkStep({ id:"how_to", say:"記名卡可以掛失！要用手機上悠遊卡官網，或是打客服電話辦。我教你用手機辦，好嗎？", task:"先說「好」，再說「謝謝」",
+              // 刻意不放「你幫我辦就好」當干擾項：請人幫忙是合理的求助
+              options:["好，謝謝！","不用了，掉了就算了","我要加值","請問廁所在哪裡？"],
+              accepted:["好，謝謝！","好，謝謝你！","好，麻煩你教我，謝謝！"], kw:["好","謝謝"],
+              feedback:{ failed:"可以說：「好，謝謝！」" } }),
+            mkStep({ id:"thank_saved", say:"掛失好了！卡片裡剩下的錢，之後會退給你。要再用悠遊卡的話，要另外買一張新卡喔。", task:"先說「好」，再說還好卡片有記名",
+              options:["好，還好卡片有記名！","運氣好而已","卡片再見","嗯嗯好"],
+              accepted:["好，還好卡片有記名！","還好卡片有記名","謝謝！還好卡片有記名","還好有記名"], kw:["記名"],
+              feedback:{ failed:"可以說：「好，還好卡片有記名！」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼卡片要記名？", task:"說出理由：掉了可以掛失，剩下的錢會退回來",
+              options:["掉了可以掛失，剩下的錢會退回來","比較好看","刷比較快","可以炫耀"],
+              accepted:["掉了可以掛失，剩下的錢會退回來","掉了可以掛失","剩下的錢會退回來","掉了可以掛失，餘額不會不見"], kw:["掛失","退回","餘額"],
+              feedback:{ perfect:"答對了！記名卡掉了可以掛失，剩下的錢會退回來。", failed:"記住：卡片記名，掉了可以掛失，剩下的錢會退回來。" } }),
+          ]
+        },
+        {
+          id: "card_student", name: "購買學生悠遊卡", icon: "🎓", clerkName: "服務台人員",
+          desc: "買學生悠遊卡要帶什麼、買好後要做什麼",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你帶著學生證和買卡的錢，想買一張學生悠遊卡。）你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_student", image:"images/b6/icon-b6-transit-card.png", image_label:"學生悠遊卡", say:"需要什麼服務嗎？", task:"用「請問」問怎麼買學生悠遊卡",
+              options:["請問怎麼買學生悠遊卡？","給我一張最好的卡","有優惠嗎快說","辦卡送什麼"],
+              accepted:["請問怎麼買學生悠遊卡？","怎麼買學生卡","我要買學生悠遊卡","請問怎麼辦學生悠遊卡？"], kw:["學生"],
+              feedback:{ failed:"說清楚要買什麼。可以說：「請問怎麼買學生悠遊卡？」" } }),
+            // 2026-09-26 使用者定：報一般售價 150 元＋補付款（優惠期間現場是 100 元，老師可補充「價格以現場公告為準」）
+            mkStep({ id:"show_id", image:"images/b6/icon-b6-student-id-card.png", image_label:"學生證", say:"買學生卡要看學生證喔！有帶嗎？", task:"先說「有」，再把學生證拿給服務台人員，說「這是我的學生證」",
+              options:["有，這是我的學生證","明天再帶來","用眼神證明我是學生","沒有不行嗎"],
+              accepted:["有，這是我的學生證","這是我的學生證","有帶學生證"], kw:["學生證"],
+              feedback:{ failed:"把學生證拿出來。可以說：「有，這是我的學生證」" } }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"好，學生證沒問題。學生卡一張 150 元。", task:"把 200 元拿給服務台人員，說「給你 200 元」",
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元",
+              options:["給你 200 元","我不想付錢","先欠著下次給","可以算便宜點嗎"], kw:[...KW_PRESETS.hand, "200", "兩百"],
+              accepted:["給你 200 元","我給你 200 元","200 元給你","這是 200 元"] }),
+            mkStep({ id:"get_card", say:"收您 200 元，找您 50 元。回家記得上網記名喔！", task:"先說「好」，再說你回家就去記名，最後說「謝謝」",
+              image:"images/money/50_yuan_front.png", image_label:"找您 50 元",
+              options:["好，我回家就去記名，謝謝！","終於好了","快給我卡","卡片好醜喔"],
+              accepted:["好，我回家就去記名，謝謝！","我回家就去記名，謝謝","好，我會去記名，謝謝"], kw:["記名"],
+              feedback:{ failed:"學生卡要記名才能一直有優惠。可以說：「好，我回家就去記名，謝謝！」" } }),
+            mkStep({ id:"review", say:"（想一想）買證件類的卡要準備什麼？", task:"說出準備：要帶證明文件和費用",
+              options:["要帶證明文件和費用","只要人到就好","帶零食","什麼都不用帶"],
+              accepted:["要帶證明文件和費用","證明文件和費用","帶證件和錢"], kw:["證件","文件","費用"],
+              feedback:{ perfect:"答對了！辦卡要帶證明文件和費用。", failed:"記住：辦卡要帶證明文件（像學生證）和費用。" } }),
+          ]
+        },
+        {
+          id: "card_balance", name: "查詢餘額", icon: "🔍", clerkName: "服務台人員",
+          desc: "出門前查卡片還有多少錢，算算看夠不夠搭來回",
+          steps: [
+            // 2026-09-17 第一批補情境：對方招呼→學生回應，再切入主題
+            { id:"greeting", shopkeeper_prompt:"（明天你要搭捷運去外婆家，來回車資一共60元。你不確定悠遊卡裡還有多少錢，走到悠遊卡服務台。）你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_balance", image:"images/b6/icon-b6-transit-card.png", image_label:"悠遊卡", say:"請問需要什麼服務呢？", task:"告訴服務台人員你想查這張卡還有多少錢",
+              options:["我想查這張卡還有多少錢","卡片給你","我要買新卡","幫我弄一下"],
+              accepted:["我想查這張卡還有多少錢","我想查餘額","請問卡片還剩多少錢"], kw:["餘額","還有多少","剩多少"],
+              feedback:{ failed:"說清楚要做什麼。可以說：「我想查這張卡還有多少錢」" } }),
+            mkStep({ id:"decide_topup", say:"幫你查好了，現在餘額是38元喔！", task:"想想夠不夠搭來回；不夠的話，說你要加值 100 元",
+              image_label:"餘額 38 元，來回要 60 元，不夠",
+              image:["38 元","<","60 元"], options:["38元不夠搭來回，我要加值一百元","38元夠用了，謝謝","隨便啦","你不要騙我喔"],
+              accepted:["38元不夠搭來回，我要加值一百元","不夠，我要加值一百元"], kw:["不夠","加值"],
+              feedback:{ failed:"來回要60元，38元不夠。可以說：「38元不夠搭來回，我要加值一百元」" } }),
+            mkStep({ id:"confirm_enough", say:"好的！加值一百元，現在餘額是138元。", task:"先複誦餘額 138 元，再說搭來回夠了，最後說「謝謝」",
+              options:["138元，搭來回夠了，謝謝！","有加就好","卡片有沒有變重","不用確認直接走"],
+              accepted:["138元，搭來回夠了，謝謝！","餘額138元夠了","138元夠了謝謝"], kw:["138"],
+              feedback:{ failed:"再確認一次餘額。可以說：「138元，搭來回夠了，謝謝！」" } }),
+            mkStep({ id:"review", say:"（想一想）出門搭車前，要先做什麼？", task:"說出重點：先查卡片餘額，不夠就先加值",
+              options:["先查卡片餘額，不夠就先加值","上車再說","跟別人借卡","刷不過就不搭了"],
+              accepted:["先查卡片餘額，不夠就先加值","先查餘額","查餘額不夠就加值"], kw:["餘額"],
+              feedback:{ perfect:"答對了！出門前先查餘額，不夠就先加值。", failed:"記住：出門前先查卡片餘額，不夠就先加值。" } }),
+          ]
+        },
+        {
+          id: "card_refund", name: "退卡退回餘額", icon: "💳", clerkName: "服務台人員",
+          desc: "用不到的卡片退掉，自己算餘額扣手續費，當面點清楚",
+          steps: [
+            mkStep({ id:"greeting", say:"（上個月你買了一張悠遊卡，才用了兩次，後來學校發了有悠遊卡功能的學生證，這張用不到了。你走到悠遊卡服務台想把它退掉。）你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              options:["你好！","謝謝再見","多少錢？","我要走了"], kw:"greet",
+              accepted:["你好！","您好！","哈囉！"] }),
+            mkStep({ id:"want_refund", image:"images/b6/icon-b6-transit-card.png", image_label:"要退的悠遊卡", say:"請問需要什麼服務呢？", task:"說你要退悠遊卡",
+              options:["我要退悠遊卡","我要加值","卡片給你","幫我弄一下"], kw:["退"],
+              accepted:["我要退悠遊卡","我要退卡","我想把悠遊卡退掉"] }),
+            mkStep({ id:"calc", say:"好的！卡片裡還有 85 元，退卡要扣手續費 20 元喔！", task:"自己算一次：85 減 20，說出會退你多少錢，再問「對嗎」",
+              options:["85 減 20，退我 65 元對嗎？","多少都可以","不用算啦","為什麼要扣錢"], kw:["65"],
+              accepted:["85 減 20，退我 65 元對嗎？","85 減 20，退 65 元對嗎","85 減 20 是 65，對嗎"] }),
+            mkStep({ id:"count", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"拿回 65 元", say:"對！這是 65 元，請點一下。", task:"先說「好」，再當面數一數，說 65 元沒錯，最後說「謝謝」",
+              options:["好，65 元沒錯，謝謝","不用數啦","回家再看","（塞進口袋就走）"], kw:["65元","沒錯"],
+              accepted:["好，65 元沒錯，謝謝","65 元沒錯，謝謝","65 元沒錯"] }),
+            mkStep({ id:"review", say:"（想一想）退卡的時候要注意什麼？", task:"說出重點：先算好會退多少，當面點清楚",
+              options:["先算好會退多少，當面點清楚","拿了就走","退多少都可以","叫別人幫我拿"], kw:["算好","點清楚"],
+              accepted:["先算好會退多少，當面點清楚","先算好會退多少","當面點清楚"],
+              feedback:{ perfect:"答對了！先算好會退多少，當面點清楚。", failed:"記住：退卡前先算好會退多少，拿到錢當面點清楚。" } }),
+          ]
+        },
+        {
+          id: "card_broken", name: "卡片折到壞了要換卡", icon: "💳",
+          simple_steps: ["s5","pay","s7"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "普通卡折損且讀不到餘額，辦後送處理；新卡售價與舊卡餘額分開核對",
+          steps: [
+            mkStep({ id:"greeting", say:"（你的普通悠遊卡折損，記得原有 70 元，現在刷不過。你帶 100 元到悠遊卡服務台。）你好！", task:"跟服務台人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-transit-card.png", image_label:"我的悠遊卡", say:"請問需要什麼服務？", task:"說卡片折到刷不過，出示卡片說「這是我的卡片」",
+              options:["卡片折到刷不過，這是我的卡片","卡片丟掉就好","你一定要免費換","不檢查就說機器壞了"], kw:["卡片折","刷不過"] }),
+            mkStep({ id:"s3", say:"這張卡讀不到餘額，要送回悠遊卡公司處理。", task:"用「請問」問舊卡的餘額怎麼處理",
+              options:["請問舊卡的餘額怎麼處理？","直接當成沒有錢","不用查，退我 1000 元","拿別人的餘額給我"], kw:["餘額怎麼處理","舊卡"] }),
+            mkStep({ id:"s4", say:"公司確認後通知退費結果，今天不能直接轉到新卡。", task:"先說「好」，再請他們把舊卡送回去檢查",
+              options:["好，請幫我把舊卡送回去檢查","今天一定要轉過去","新卡一定已經有 70 元","我把壞卡折碎丟掉"], kw:["舊卡送回去檢查","請幫"] }),
+            mkStep({ id:"s5", image:"images/b6/icon-b6-transit-card.png::100 元", image_label:"新的悠遊卡", say:"（你照著指示辦好申請，收好單子，還想買一張新卡。）這款新卡 100 元，裡面沒有錢。", task:"說你要買這款新卡",
+              options:["我要買這款新卡","我要買十張","卡片送我啦","我不付錢就拿走"], kw:["買這款新卡"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"對，這張新卡一共 100 元。", task:"把 100 元交給人員，說「給你 100 元」",
+              options:["給你 100 元","算 50 元啦","我先欠著","我不付錢就拿走"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"s7", say:"（你核對新卡。）這是新卡，目前餘額 0 元。", task:"先說「好」，再複誦新卡餘額 0 元，最後說「謝謝」",
+              options:["好，新卡餘額 0 元，謝謝","新卡餘額 70 元","不用看，直接刷","舊卡餘額不必再確認"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）卡片壞了，該核對哪些事？", task:"說問清楚舊卡餘額怎麼處理，新卡費用和餘額分開看",
+              options:["問清楚舊卡餘額怎麼處理，新卡費用和餘額分開看","買新卡就一定自動轉錢","新卡售價就是餘額","把壞卡丟掉就好"], kw:["問清楚舊卡餘額怎麼處理","餘額分開看","新卡費用"], feedback:{ perfect:"答對了！問清楚舊卡餘額怎麼處理，新卡費用和餘額分開看。", failed:"記住：問清楚舊卡餘額怎麼處理，新卡費用和餘額分開看。" } }),
+          ]
+        },
+        {
+          id: "card_where", name: "悠遊卡還能在哪裡用", icon: "🏪",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "悠遊卡在有標誌的店也能付錢，用了會扣錢，要常看餘額",
+          steps: [
+            mkStep({ id:"greeting", say:"（你剛買了一張悠遊卡，想知道除了搭車，還可以用在哪裡。）你好！這裡是悠遊卡服務台～", task:"跟服務台人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務呢？", task:"用「請問」問：悠遊卡除了搭車，還可以用在哪裡？",
+              options:["請問悠遊卡除了搭車，還可以用在哪裡？","有悠遊卡就能免費買","不用問，每家都能刷","一次隨便刷好多遍"], kw:["悠遊卡除","用在哪裡","搭車"] }),
+            mkStep({ id:"s3", say:"部分商店也能用。看到悠遊卡標誌，可問店員確認。", task:"說看到悠遊卡標誌，會問店員能不能用",
+              options:["看到悠遊卡標誌，我會問店員能不能用","每一家店都可以用","只能搭車","隨便刷都可以"], kw:["會問店員能不能用","悠遊卡標誌"] }),
+            mkStep({ id:"s4", say:"對！不過用了就會扣卡裡的錢，要常常看餘額喔！", task:"先說「好」，再說你會常常看餘額",
+              options:["好，我會常常看餘額","卡片裡的錢用不完吧","刷了不用錢","我不想看"], kw:["會常常看餘額"] }),
+            mkStep({ id:"review", say:"（想一想）用悠遊卡買東西，要注意什麼？", task:"說先確認能不能用，付款會扣錢，要看餘額",
+              options:["先確認能不能用，付款會扣錢，要看餘額","刷卡不用錢","每一家都能刷","不用看餘額"], kw:["確認能不能用","付款會扣錢","要看餘額"], feedback:{ perfect:"答對了！先確認能不能用，付款會扣錢，要看餘額。", failed:"記住：先確認能不能用，付款會扣錢，要看餘額。" } }),
+          ]
+        },
+        {
+          id: "topup_machine", name: "不會用加值機", icon: "🏧",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "自己用加值機：卡片放好再放錢，看螢幕上的餘額，卡片記得拿走",
+          steps: [
+            mkStep({ id:"greeting", say:"（悠遊卡原有 50 元，你帶一張 100 元鈔票，想學用旁邊的加值機。）你好！", task:"跟服務台人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務呢？", task:"說你想加值 100 元，再用「請問」請她教你用加值機",
+              options:["我想加值 100 元，請問可以教我用加值機嗎？","我不排隊，先教我","不看說明亂按","機器爛死了"], kw:["100","用加值機","想加值"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-transit-card.png", image_label:"悠遊卡", say:"先把卡片放在感應區，依螢幕選擇現金加值。", task:"放好卡片並選現金加值，再說「卡片放好了，我選現金加值」",
+              options:["卡片放好了，我選現金加值","先把錢塞進出票口","卡片不用放","看到什麼就亂按"], kw:["選現金加值","卡片放好"] }),
+            mkStep({ id:"s4", say:"（螢幕提示可投入鈔票。）現在把 100 元鈔票放進入鈔口。", task:"投入 100 元鈔票，說「我放入 100 元」",
+              options:["我放入 100 元","我把鈔票塞進硬幣口","不看金額就一直放錢","我把卡片先拿走"], kw:["100","放入"] }),
+            mkStep({ id:"s5", image:"images/b6/icon-b6-topup-screen-150.png", image_label:"加值機螢幕", say:"（你看畫面，機器顯示「加值完成，餘額 150 元」。）現在餘額是多少？", task:"讀出螢幕上的餘額",
+              options:["餘額是 150 元","餘額是 100 元","餘額是 50 元","不用看了"], kw:["150"] }),
+            mkStep({ id:"s6", say:"（畫面已顯示完成，你取回卡片。）卡片請收好。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","卡片留在機器上","卡片隨便給下一個人","不用確認就離開"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）用加值機加值，要注意什麼？", task:"說照著畫面做，加值好看一下餘額，拿回卡片",
+              options:["照著畫面做，加值好看一下餘額，拿回卡片","亂放錢進去","不用看螢幕","卡片放著就走"], kw:["加值好看一下餘額","照著畫面做","拿回卡片"], feedback:{ perfect:"答對了！照著畫面做，加值好看一下餘額，拿回卡片。", failed:"記住：照著畫面做，加值好看一下餘額，拿回卡片。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "ride_manner", name: "車廂禮儀與求助", icon: "🚈", available: true,
+      theme: { color: '#DB2777', bg: '#FCE7F3', accent: '#9D174D' },
+      situations: [
+        {
+          id: "offer_seat", name: "讓座給需要的人", icon: "🧓", clerkName: "老奶奶", clerkImage: "images/clerk-ridemanner-passenger.jpg",
+          desc: "看到更需要座位的人，主動讓座",
+          steps: [
+            mkStep({ id:"give_seat", say:"（你坐在車廂的座位上，今天身體很好，可以安全站著。到站時，一位拿著柺杖的老奶奶走進來，車上已經沒有空位了。）", task:"主動讓座，說「奶奶，這個位子給您坐」",
+              options:["奶奶，這個位子給您坐","（假裝睡覺）","（一直看窗外）","位子是我先搶到的"],
+              accepted:["奶奶，這個位子給您坐","這個位子給您坐","奶奶請坐"], kw:["給您坐","請坐"],
+              feedback:{ failed:"看到需要的人主動讓座。可以說：「奶奶，這個位子給您坐」" } }),
+            mkStep({ id:"reply_kind", say:"哎呀謝謝你，真是好孩子！", task:"先說「不客氣」，再說「您慢慢坐」",
+              options:["不客氣，您慢慢坐","對啊我人超好","要一起擠嗎","站著也不錯啦"],
+              accepted:["不客氣，您慢慢坐","不客氣","不會，不客氣"], kw:["不客氣"],
+              feedback:{ failed:"可以說：「不客氣，您慢慢坐」" } }),
+            mkStep({ id:"review", say:"（想一想）什麼時候要讓座？", task:"說出時機：自己可以站的時候，看到更需要座位的人就讓座",
+              options:["自己可以站的時候，看到更需要座位的人就讓座","被瞪的時候才讓","廣播叫我才讓","永遠不用讓"],
+              accepted:["自己可以站的時候，看到更需要座位的人就讓座","看到更需要座位的人就讓座","有人更需要座位","讓給需要的人"], kw:["需要"],
+              feedback:{ perfect:"答對了！看到更需要座位的人，主動讓座。", failed:"記住：自己可以站的時候，看到老人家、孕婦等更需要座位的人，主動讓座。" } }),
+          ]
+        },
+        {
+          id: "drop_item", name: "東西掉了請人幫忙", icon: "🎒", clerkName: "隔壁乘客", clerkImage: "images/clerk-ridemanner-helper.jpg",
+          desc: "水壺滾到別人腳邊，有禮貌請人幫忙",
+          steps: [
+            mkStep({ id:"ask_pick", say:"（你坐在車廂裡，車子晃了一下，你的水壺掉到地上，滾到隔壁乘客的腳邊。你要有禮貌地請他幫忙撿起來。）", task:"先說「不好意思」，再問「可以幫我撿一下水壺嗎」",
+              options:["不好意思，可以幫我撿一下水壺嗎？","（自己爬過去撿）","喂，踢過來","算了不要了"],
+              accepted:["不好意思，可以幫我撿一下水壺嗎？","可以幫我撿一下嗎","幫我撿水壺"], kw:["幫我撿"],
+              feedback:{ failed:"開口請人幫忙。可以說：「不好意思，可以幫我撿一下水壺嗎？」" } }),
+            mkStep({ id:"thank_pick", say:"來，你的水壺！", task:"說「謝謝你」",
+              options:["謝謝你！","好險","本來就應該幫我撿啊！","嗯"],
+              accepted:["謝謝你！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝你！」" } }),
+            mkStep({ id:"review", say:"（想一想）請別人幫忙要怎麼說？", task:"說出方法：先說不好意思，再有禮貌地請人幫忙",
+              options:["先說不好意思，再有禮貌地請人幫忙","大聲命令別人","用手指比一比","等別人主動來"],
+              accepted:["先說不好意思，再有禮貌地請人幫忙","先說不好意思再請幫忙","有禮貌地請幫忙"], kw:["不好意思","禮貌"],
+              feedback:{ perfect:"答對了！先說不好意思，再有禮貌地請人幫忙。", failed:"記住：請人幫忙先說不好意思，再說請幫我。" } }),
+          ]
+        },
+        {
+          id: "stranger_money", name: "陌生人跟你要錢", icon: "🙅", clerkName: "陌生乘客", clerkImage: "images/clerk-stranger-train.jpg",
+          desc: "火車上有陌生人跟你要錢：拒絕並找列車長",
+          steps: [
+            mkStep({ id:"refuse_give", say:"（你在火車上，一個陌生人靠近你。剛好列車長從車廂另一頭走過來。）同學，借我一百元啦！", task:"先說「不好意思」，再說你不能借",
+              options:["不好意思，我不能借","好啦給你","你好可憐喔","（默默掏錢包）"],
+              accepted:["不好意思，我不能借","我不能借","不借"], kw:["不能借","不借"],
+              feedback:{ failed:"陌生人要錢一律拒絕。可以說：「不好意思，我不能借」" } }),
+            mkStep({ id:"find_staff", say:"不借喔？那你零用錢很多齁～", task:"離開，走向列車長，說「列車長，有人跟我要錢」",
+              options:["（走向列車長）列車長，有人跟我要錢","（繼續坐著不動）","跟他聊天轉移話題","下一站馬上逃走"],
+              accepted:["（走向列車長）列車長，有人跟我要錢","列車長，有人跟我要錢","有人跟我要錢","有人一直跟我要錢"], kw:["跟我要錢"],
+              feedback:{ failed:"馬上靠近工作人員。可以說：「列車長，有人跟我要錢」" } }),
+            mkStep({ id:"thank_safe", say:"好，你站我旁邊，我來處理！", task:"說「謝謝列車長」",
+              clerkName:"列車長", clerkImage:"images/clerk-ridemanner-staff.jpg",   // 這一步說話的是列車長（步驟層覆寫，配 Rasalgethi 男聲；2026-09-26 場景改火車，台詞不變）
+              options:["謝謝列車長","我自己也可以啦","他好可怕","嗚嗚"],
+              accepted:["謝謝列車長","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝列車長」" } }),
+            mkStep({ id:"review", say:"（想一想）車上有陌生人跟你要錢怎麼辦？", task:"說出方法：拒絕，然後找列車長、司機或站務員",
+              options:["拒絕，然後找列車長、司機或站務員","給一點點就好","跟他吵架","下車用跑的"],
+              accepted:["拒絕，然後找列車長、司機或站務員","拒絕然後找列車長","拒絕，然後靠近站務員或司機","拒絕並靠近司機"], kw:["拒絕","列車長","站務員","司機"],
+              feedback:{ perfect:"答對了！拒絕，然後找列車長、司機或站務員幫忙。", failed:"記住：拒絕，然後找列車長、司機或站務員，不要單獨面對。" } }),
+          ]
+        },
+        {
+          id: "feel_sick", name: "身體不舒服找站務員", icon: "🤢", clerkName: "旁邊的阿姨",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "在車上頭暈想吐：告訴旁邊的人，請人通知站務員，再聯絡家人",
+          steps: [
+            mkStep({ id:"tell", say:"（你在捷運上突然覺得頭暈、想吐。旁邊有一位阿姨。）你還好嗎？臉色好白喔！", task:"先說「不好意思」，再說你頭很暈",
+              options:["不好意思，我頭很暈", "沒事啦", "（忍著不說）", "不用你管"], kw:["頭很暈", "頭暈"], accepted:["不好意思，我頭很暈"] }),
+            mkStep({ id:"thanks", say:"你先坐好，我幫你用緊急對講機通知司機，請站務員來幫忙。", task:"先說「好」，再說「謝謝阿姨」",
+              options:["好，謝謝阿姨", "我自己坐到終點", "不要", "我很暈也不用找人幫忙"], kw:["謝謝阿姨"], accepted:["好，謝謝阿姨"] }),
+            mkStep({ id:"tell_staff", say:"（阿姨已經通知司機。列車到站後，站務員在車門邊接應你。）怎麼了嗎？", task:"說你頭暈想吐，需要休息",
+              options:["我頭暈想吐，需要休息", "沒事我要走了", "你走開", "（不說話）"], kw:["頭暈", "休息"], accepted:["我頭暈想吐，需要休息"], clerkName:"站務員" }),
+            mkStep({ id:"call_family", say:"先到這邊椅子坐。要幫你打電話給家人嗎？", task:"先說「好」，再說家人的電話在手機裡",
+              options:["好，家人的電話在我的手機裡", "我故意給你假的電話號碼", "我自己走回家", "我很暈也不用找人幫忙"], kw:["手機"], accepted:["好，家人的電話在我的手機裡"], clerkName:"站務員" }),
+            mkStep({ id:"review", say:"（想一想）在車上身體不舒服，要怎麼做？", task:"說出做法：先坐好，請旁邊的人幫忙通知站務員，再聯絡家人",
+              options:["先坐好，請旁邊的人幫忙通知站務員，再聯絡家人", "忍到下車", "自己走回家", "不好意思說"], kw:["坐好", "站務員"], accepted:["先坐好，請旁邊的人幫忙通知站務員，再聯絡家人"], feedback:{ perfect:"答對了！先坐好，請旁邊的人幫忙通知站務員，再聯絡家人。", failed:"記住：先坐好，請旁邊的人幫忙通知站務員，再聯絡家人。" } }),
+          ]
+        },
+        {
+          id: "excuse_me", name: "要下車請人讓一讓", icon: "🚇", clerkName: "擁擠的乘客",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "車上很擠要下車：先說不好意思我要下車，等別人讓開再走",
+          steps: [
+            mkStep({ id:"excuse", say:"（捷運好擠，下一站你要下車，可是門口站滿了人。廣播說：下一站，台北車站。）", task:"先對擋在前面的乘客說「不好意思，我要下車」，等對方讓開，再往車門走",
+              options:["不好意思，我要下車", "（用力推開人）", "走開啦", "（不說話硬擠）"], kw:["我要下車"], accepted:["不好意思，我要下車"] }),
+            mkStep({ id:"thanks", say:"喔！好，我讓你過。", task:"說「謝謝」",
+              options:["謝謝！", "（不說話直接走）", "早點讓啦", "你不讓我就推你"], kw:["謝謝"], accepted:["謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）車上很擠，要下車時要怎麼做？", task:"說出做法：先說不好意思我要下車，等別人讓開再走，不推人",
+              options:["先說不好意思我要下車，等別人讓開再走，不推人", "用力推開", "車門快關了也要硬擠出去", "大聲叫大家讓開"], kw:["不好意思", "不推人"], accepted:["先說不好意思我要下車，等別人讓開再走，不推人"], feedback:{ perfect:"答對了！先說不好意思我要下車，等別人讓開再走，不推人。", failed:"記住：先說不好意思我要下車，等別人讓開再走，不推人。" } }),
+          ]
+        },
+        {
+          id: "backpack_bump", name: "背包撞到別人", icon: "🎒",
+          clerkName: "被撞到的乘客", clerkImage: "images/clerk-ridemanner-bumped.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "車上人多，背包移到身前、扶穩站好；撞到人要道歉，避免擋住通道",
+          steps: [
+            mkStep({ id:"s1", say:"（捷運上人很多，你背著一個很大的後背包站著。）不好意思，你的背包一直撞到我。", task:"先說「對不起」，再說你把背包拿到前面",
+              options:["對不起，我把背包拿到前面","是你站太近了","車子在晃又不是我","（不理她）"], kw:["對不起","背包拿","前面"] }),
+            mkStep({ id:"s2", say:"謝謝你喔！", task:"說「謝謝提醒」",
+              options:["謝謝提醒","你很煩耶","下次不要站我後面","哼"], kw:["謝謝提醒"] }),
+            mkStep({ id:"review", say:"（想一想）車上人很多的時候，背包要怎麼放？", task:"說背包拿到身前、扶穩，不撞人也不擋通道",
+              options:["背包拿到身前、扶穩，不撞人也不擋通道","背在後面就好","放在座位上","丟在門口"], kw:["不擋通道","背包拿","不撞人"], feedback:{ perfect:"答對了！背包拿到身前、扶穩，不撞人也不擋通道。", failed:"記住：背包拿到身前、扶穩，不撞人也不擋通道。" } }),
+          ]
+        },
+        {
+          id: "too_close", name: "有人一直靠過來", icon: "🛡️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "有人持續貼近、跟隨讓你不舒服：離開對方、向列車長求助，不必先大聲拒絕或證明對方有",
+          steps: [
+            mkStep({ id:"s1", say:"（火車上有人一直貼近你。你走開，他又跟來，你很不舒服。列車長走來。）怎麼了？", task:"說那個人一直靠過來貼著你，你很不舒服",
+              options:["那個人一直靠過來貼著我，我很不舒服","我去追他吵架","我把他的行李扔出去","我跟他去沒人的車廂"], kw:["那個人一直靠過來貼著","很不舒服"] }),
+            mkStep({ id:"s2", say:"你可以站到我旁邊，我會協助你。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我回去找他算帳","我去罵他","我跟他到沒人的地方談"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）在車上有人一直靠過來，讓你很不舒服，要怎麼做？", task:"說離開對方，找列車長或站務員求助",
+              options:["離開對方，找列車長或站務員求助","追過去打他","跟他去沒人的地方","拿他的東西報復"], kw:["站務員求助","離開對方","找列車長"], feedback:{ perfect:"答對了！離開對方，找列車長或站務員求助。", failed:"記住：離開對方，找列車長或站務員求助。" } }),
+          ]
+        },
+        {
+          id: "found_wallet", name: "撿到錢包交給車長", icon: "👛",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "在車上拾得錢包：不占為己有、不翻拍個資，交給列車長或站務員並說明地點",
+          steps: [
+            mkStep({ id:"s1", image:["images/b6/icon-b6-wallet.png"], image_label:"錢包", say:"（你在火車 3 車 8 號座位下撿到錢包，沒有翻看。列車長走來。）有什麼事嗎？", task:"說你在座位下面撿到一個錢包，要交給列車長",
+              options:["我在座位下面撿到一個錢包，交給你","這是我的錢包","錢我先拿一點","（放回座位下面）"], kw:["座位下面撿","一個錢包","交給"] }),
+            mkStep({ id:"s2", say:"謝謝你！在哪一個座位下面撿到的？", task:"說出地點：3 車 8 號的座位下面",
+              options:["3 車 8 號的座位下面","5 車 8 號座位下面","3 車 18 號座位下面","故意亂說一個位子"], kw:["3車8號"] }),
+            mkStep({ id:"s3", say:"我會依規定登記處理。謝謝你交給我。", task:"說「不客氣」",
+              options:["不客氣","我要先拿裡面的錢","不給我錢就不交","我先拍證件傳上網"], kw:["不客氣"] }),
+            mkStep({ id:"review", say:"（想一想）在車上撿到別人的東西，要怎麼做？", task:"說不自己留著，交給列車長或站務員，說清楚在哪裡撿到",
+              options:["不自己留著，交給列車長或站務員，說清楚在哪裡撿到","錢包帶回家","把錢拿走，錢包丟掉","放著不管"], kw:["不自己留著","列車長","站務員"], feedback:{ perfect:"答對了！不自己留著，交給列車長或站務員，說清楚在哪裡撿到。", failed:"記住：不自己留著，交給列車長或站務員，說清楚在哪裡撿到。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "cinema", name: "電影院", icon: "🎬", available: true,
+      theme: { color: '#6D28D9', bg: '#EDE9FE', accent: '#5B21B6' },
+      situations: [
+        {
+          id: "cinema_buy", name: "買電影票", icon: "🎬", clerkName: "電影院店員",
+          desc: "選場次、用學生證買優惠票",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你今天想看《海洋總動員》下午兩點的場次，身上有帶學生證。）你好！歡迎光臨！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_movie", say:"請問要看哪一部電影？", task:"告訴售票員你要一張《海洋總動員》的票",
+              options:["我要一張《海洋總動員》的票","隨便一部","最好看的那部","你幫我選"],
+              accepted:["我要一張《海洋總動員》的票","一張海洋總動員","海洋總動員一張"], kw:["海洋總動員"],
+              feedback:{ failed:"說清楚片名和張數。可以說：「我要一張《海洋總動員》的票」" } }),
+            mkStep({ id:"choose_time", say:"好的！有兩點和四點的場次，要哪一場？", task:"告訴售票員你要兩點的場次",
+              options:["我要兩點的場次","都可以","現在馬上開演的","越晚越好"],
+              accepted:["我要兩點的場次","兩點的場次","我要兩點的"], kw:["兩點"],
+              feedback:{ failed:"選一個場次。可以說：「我要兩點的場次」" } }),
+            mkStep({ id:"student_price", say:"兩點的！全票280元，學生票230元喔！", task:"用學生證買學生票",
+              options:["我有學生證，買學生票","全票好了反正一樣","不用證件算我便宜啦","請問廁所在哪裡？"],
+              accepted:["我有學生證，買學生票","我有學生證買學生票","買學生票"], kw:["學生票"],
+              image:"images/b6/icon-b6-student-id-card.png::學生票 230 元", image_label:"帶學生證比較便宜",
+              feedback:{ failed:"有學生證可以買優惠票。可以說：「我有學生證，買學生票」" } }),
+            mkStep({ id:"pay_movie", say:"好的，學生票230元！", task:"先說「好」，再把 250 元拿給售票員，說「給你 250 元」",
+              options:["好，給你250元","可以算我100元嗎？","賒帳可以嗎","先看完再付"],
+              accepted:["好，給你250元","這是250元","給你250元","好，這是250元"], kw:[...KW_PRESETS.hand, "250"],
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/50_yuan_front.png"], image_label:"250 元",
+              feedback:{ failed:"付錢。可以說：「好，給你250元」" } }),
+            mkStep({ id:"get_ticket", say:"收您 250 元，找您 20 元，這是你的票！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 20 元",
+              options:["20 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["20","二十","對了"],
+              accepted:["20 元，對了，謝謝！","20 元，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）買電影票怎麼比較省錢？", task:"說出方法：有學生優惠時，記得拿出學生證",
+              options:["有學生優惠時，記得拿出學生證","永遠買全票","不用比較","叫別人請客"],
+              accepted:["有學生優惠時，記得拿出學生證","買學生優惠票","用學生證買優惠票","有學生證就買學生優惠票"], kw:["學生","優惠"],
+              feedback:{ perfect:"答對了！有學生優惠時，記得拿出學生證。", failed:"記住：有學生優惠時，記得拿出學生證，可以省錢。" } }),
+          ]
+        },
+        {
+          id: "cinema_snack", name: "加購爆米花", icon: "🍿", clerkName: "電影院店員",
+          desc: "加購前先想預算，需要才買",
+          steps: [
+            mkStep({ id:"ask_combo", say:"（你到電影院買好了票，錢包裡還剩100元。離電影開演還有一點時間，你肚子有點餓，想邊看電影邊吃爆米花。）要不要加購爆米花套餐？有爆米花和可樂，大套餐150元、小套餐90元！", task:"想想預算，說你剩多少錢、要買哪一種套餐",
+              options:["我剩100元，買小套餐就好","大的！錢不夠再說","都買！","你送我一份啦"],
+              accepted:["我剩100元，買小套餐就好","買小套餐就好","我買小套餐"], kw:["小套餐"],
+              image:["images/b6/icon-b6-popcorn-combo-compare.png::大套餐 150 元　小套餐 90 元","100 元",">","小套餐 90 元"], image_label:"100 元不夠買大套餐 150 元，夠買小套餐 90 元",   // 學生自己比較買得起哪一種（使用者定：用金錢圖示提示，不在任務寫答案）
+              feedback:{ failed:"先想想剩多少錢。可以說：「我剩100元，買小套餐就好」" } }),
+            // 外部審閱第六輪：付款一律「給你 ○ 元」、店員找零、學生核對（算找零的練習移到核對那一步）
+            mkStep({ id:"pay_snack", say:"小套餐90元！", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","錢都給你不用找","（放下錢就走）","算80就好"],
+              accepted:["給你 100 元","這是 100 元","100 元給你","這是100元，要找我10元"], kw:[...KW_PRESETS.hand.filter(k => k !== '給你'), "100", "一百"],   // 干擾選項「錢都給你不用找」含「給你」，這步排除它
+              image:"images/money/100_yuan_front.png", image_label:"100 元",
+              feedback:{ failed:"可以說：「給你 100 元」" } }),
+            mkStep({ id:"get_change", say:"收您 100 元，找您 10 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["100 元","−","90 元","=","10 元"], image_label:"付 100 元，小套餐 90 元，找 10 元",
+              options:["10 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["10","十","對了"],
+              accepted:["10 元，對了，謝謝！","10 元，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）加購東西前要想什麼？", task:"說出重點：想想預算夠不夠，需要才買",
+              options:["想想預算夠不夠，需要才買","店員推銷就買","越大份越划算","先買再煩惱"],
+              accepted:["想想預算夠不夠，需要才買","想預算夠不夠","需要才買"], kw:["預算","需要"],
+              feedback:{ perfect:"答對了！加購前先想預算，需要才買。", failed:"記住：加購前先想預算夠不夠、是不是真的需要。" } }),
+          ]
+        },
+        {
+          id: "cinema_late", name: "遲到了", icon: "⏰", clerkName: "電影院店員",
+          desc: "電影開演了才到，請工作人員協助入場",
+          steps: [
+            mkStep({ id:"ask_enter", say:"（你買好了電影票，可是路上塞車，到電影院時電影已經開演10分鐘了。你拿著票走到入口，想問工作人員能不能進場。）", task:"先說「不好意思」，再說你遲到了，問「還可以進場嗎」",
+              options:["不好意思，我遲到了，還可以進場嗎？","（直接衝進去）","退票！","門怎麼打不開"],
+              accepted:["不好意思，我遲到了，還可以進場嗎？","遲到了還可以進場嗎","還能進場嗎"], kw:["進場"],
+              feedback:{ failed:"遲到先問工作人員。可以說：「不好意思，我遲到了，還可以進場嗎？」" } }),
+            mkStep({ id:"follow_staff", say:"可以喔！裡面燈光暗，我帶你進去，小聲一點喔！", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你","我要一邊走一邊講電話","大聲喊我朋友在哪","開燈找位子"],
+              accepted:["好，謝謝你","好的謝謝","謝謝你","好的，謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「好，謝謝你」" } }),
+            mkStep({ id:"review", say:"（想一想）看電影遲到了怎麼辦？", task:"說出方法：請工作人員幫忙，小聲入場",
+              options:["請工作人員幫忙，小聲入場","用衝的進去","在門口生氣","要求重播"],
+              accepted:["請工作人員幫忙，小聲入場","請工作人員幫忙","小聲入場"], kw:["工作人員","小聲"],
+              feedback:{ perfect:"答對了！請工作人員幫忙，小聲入場不影響別人。", failed:"記住：遲到請工作人員帶位，小聲入場。" } }),
+          ]
+        },
+        {
+          id: "sit_together", name: "要跟朋友坐一起", icon: "👫",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "買兩張學生票，說要兩個連在一起的位子",
+          steps: [
+            mkStep({ id:"greeting", say:"（你和同學一起來看下午三點的《太空小狗》，你幫兩個人買票，兩個人都有帶學生證。你們已經說好，要買兩個連在一起的位子。）你好！歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！", "謝謝再見", "快一點", "我要爆米花"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"say_movie", image:["images/b6/icon-b6-student-id-card.png","images/b6/icon-b6-student-id-card.png"], image_label:"兩張學生證", say:"請問要看哪一部電影？", task:"說你要看三點的《太空小狗》，兩張學生票，這是我們的學生證",
+              options:["三點的《太空小狗》，兩張學生票，這是我們的學生證", "隨便一部", "一張全票", "我不知道要看什麼"], kw:["太空小狗", "兩張"], accepted:["三點的《太空小狗》，兩張學生票，這是我們的學生證"] }),
+            mkStep({ id:"ask_seats", say:"好的！請問座位有要坐哪裡嗎？", task:"說你們要兩個連在一起的位子",
+              options:["我們要兩個連在一起的位子", "隨便坐就好", "分開坐比較好", "不用買票，我們直接進去坐"], kw:["連在一起"], accepted:["我們要兩個連在一起的位子"] }),
+            mkStep({ id:"pay", say:"中間這排還有兩個連在一起的，可以嗎？兩張學生票 460 元。", task:"先說「好」，再把 500 元拿給店員，說「給你 500 元」",
+              options:["好，給你 500 元", "太貴了啦", "我只付一張的錢", "等一下再付"], kw:[...KW_PRESETS.hand, "500"], accepted:["好，給你 500 元", "我給你 500 元", "500 元給你", "這是 500 元"], image:"images/money/500_yuan_front.png", image_label:"500 元" }),
+            mkStep({ id:"get_change", say:"收您 500 元，找您 40 元，這是兩張票！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["40 元，對了，謝謝！", "錢我不用數", "票給你就好", "（直接走掉）"], kw:["40", "對了"], accepted:["40 元，對了，謝謝！"], image:["images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png"], image_label:"找您 40 元" }),
+            mkStep({ id:"review", say:"（想一想）跟朋友一起看電影，買票時要說清楚什麼？", task:"說出重點：幾張票，要坐在一起",
+              options:["幾張票，要坐在一起", "什麼都不用說", "進去再換位子", "沒買票也可以直接進去"], kw:["幾張", "坐在一起"], accepted:["幾張票，要坐在一起"], feedback:{ perfect:"答對了！幾張票，要坐在一起。", failed:"記住：幾張票，要坐在一起。" } }),
+          ]
+        },
+        {
+          id: "wrong_show", name: "買錯場次了", icon: "🔄",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "發現買錯時間，開演前禮貌請店員幫忙換，拿到票先確認",
+          steps: [
+            mkStep({ id:"explain", image:"images/b6/icon-b6-movie-ticket-1900.png", image_label:"原來的電影票", say:"（現在下午三點，你發現票上是晚上七點，可是你想看的是下午四點那一場。你拿著原來的票回到櫃檯，把票交給店員。）請問有什麼事嗎？", task:"先說「不好意思」，再說你買錯場次了，想換成下午四點",
+              options:["不好意思，我買錯場次了，想換成下午四點", "你給錯票了啦", "（直接進去看七點的）", "你們亂賣票"], kw:["買錯", "四點"], accepted:["不好意思，我買錯場次了，想換成下午四點"] }),
+            mkStep({ id:"thanks", say:"我看看…依照我們的規定，開演前可以換一次。四點還有位子，幫你換好了！", task:"先說「好」，再說「謝謝你」",
+              options:["好，謝謝你", "早就該換了吧", "那我兩場都要看", "要算便宜一點"], kw:["謝謝"], accepted:["好，謝謝你"] }),
+            mkStep({ id:"check_ticket", image:["images/b6/icon-b6-movie-ticket-1600.png"], image_label:"換好的電影票", say:"這是四點的票，請確認一下時間喔！", task:"看一看票，說「四點，對了，謝謝」",
+              options:["四點，對了，謝謝", "不用看啦", "七點也可以", "（直接走掉）"], kw:["四點", "對了"], accepted:["四點，對了，謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）拿到票以後要先做什麼？", task:"說出做法：馬上確認時間對不對",
+              options:["馬上確認時間對不對", "直接收起來", "進場再看", "丟給朋友看"], kw:["確認時間"], accepted:["馬上確認時間對不對"], feedback:{ perfect:"答對了！馬上確認時間對不對。", failed:"記住：馬上確認時間對不對。" } }),
+          ]
+        },
+        {
+          id: "film_rating", name: "電影有分級", icon: "🔞",
+          simple_steps: ["s5","pay","change"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "買票前看分級，誠實說年齡，不能看就換一部",
+          steps: [
+            mkStep({ id:"greeting", say:"（你 14 歲，想看《夜半驚魂》，海報標著「輔 15」。你帶了 300 元和學生證。）你好！歡迎光臨！", task:"跟售票員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問要看哪一部電影？", task:"說你要看《夜半驚魂》",
+              options:["我要看《夜半驚魂》","不用看分級，直接賣我票","我不說片名，你自己猜","把每部電影都當普遍級"], kw:["看《夜半驚魂》"] }),
+            mkStep({ id:"s3", say:"這部是輔 15 級，要滿 15 歲才能看喔。請問你幾歲？", task:"誠實說你 14 歲",
+              options:["我 14 歲","我 18 歲啦","年齡跟你沒關係","我快 15 歲了，讓我看啦"], kw:["14"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-movie-ticket.png", image_label:"《森林大冒險》學生票", say:"（你也想看《森林大冒險》，三點有空。）這部還不能看。《森林大冒險》是普遍級，三點有一場。", task:"先說「好」，再說你要買一張《森林大冒險》三點的學生票",
+              options:["好，我要買一張《森林大冒險》三點的學生票","我偷偷進去看《夜半驚魂》","叫別人幫我買《夜半驚魂》","我把年齡改成 15 歲就好"], kw:["買一張《森林大冒險》三點","學生票"] }),
+            mkStep({ id:"s5", image:"images/b6/icon-b6-student-id-card.png", image_label:"學生證", say:"學生票要看學生證喔。", task:"把學生證拿給店員看，說「這是我的學生證」",
+              options:["這是我的學生證","拿別人的學生證來用","沒有證件也一定要算學生票","不用核對啦"], kw:["我的學生證"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"300 元", say:"學生票 230 元。", task:"把 300 元拿給售票員，說「給你 300 元」",
+              options:["給你 300 元","我不想付錢","算 200 元啦","先欠著"], kw:[...KW_PRESETS.hand, "300", "三百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找您 70 元", say:"收您 300 元，找您 70 元，這是你的票！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["70 元，對了，謝謝！","錢我不用數","60 元，對了，謝謝！","（直接走掉）"], kw:["70","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）買電影票以前，要先看什麼？", task:"說出要看的：看電影的分級，自己的年齡能不能看",
+              options:["看電影的分級，自己的年齡能不能看","看海報好不好看就好","騙說自己比較大","不用看"], kw:["年齡能不能看","看電影","分級"], feedback:{ perfect:"答對了！看電影的分級，自己的年齡能不能看。", failed:"記住：看電影的分級，自己的年齡能不能看。" } }),
+          ]
+        },
+        {
+          id: "find_seat", name: "找幾廳和座位", icon: "💺",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "看票上的幾廳、幾排、幾號，找不到就問",
+          steps: [
+            mkStep({ id:"s1", image:["images/b6/icon-b6-movie-ticket-5f8.png"], image_label:"電影票：5 廳 F 排 8 號", say:"（你拿著電影票要進場，票上寫著「5 廳 F 排 8 號」，可是你不知道 5 廳在哪裡。）請出示電影票喔！", task:"把票拿給工作人員，說「這是我的票」，再用「請問」問 5 廳在哪裡",
+              options:["這是我的票，請問 5 廳在哪裡？","票不用看啦","我要進 1 廳","隨便一廳都可以"], kw:["廳在哪裡"] }),
+            mkStep({ id:"s2", say:"5 廳在走廊右邊的最後一間！座位上面有寫排和號碼喔。", task:"複誦：走廊右邊的最後一間",
+              options:["走廊右邊的最後一間","左邊第一間","我隨便找一間進去","右邊第一間"], kw:["走廊右邊","最後一間"] }),
+            mkStep({ id:"s3", say:"（你走進 5 廳，找到 F 排。）", task:"看著票，讀出你的排數和座位號碼",
+              options:["F 排 8 號","隨便坐就好","坐最前面","坐別人的位子"], kw:["F排8號"] }),
+            mkStep({ id:"review", say:"（想一想）進電影院找座位，要看票上的什麼？", task:"說出要看的：幾廳、幾排、幾號",
+              options:["幾廳、幾排、幾號","只看電影名字就能知道座位","只看價錢就能知道座位","不用看，隨便坐"], kw:["幾廳","幾排","幾號"], feedback:{ perfect:"答對了！幾廳、幾排、幾號。", failed:"記住：幾廳、幾排、幾號。" } }),
+          ]
+        },
+        {
+          id: "restroom_break", name: "看到一半要上廁所", icon: "🚻",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "中途出去一下：票帶在身上，回來給工作人員看，小聲進去",
+          steps: [
+            mkStep({ id:"s1", say:"（電影看到一半，你想上廁所。你拿著票走出影廳，門口有工作人員。）需要幫忙嗎？", task:"用「請問」問：上完廁所可以再進來嗎？",
+              options:["請問上完廁所可以再進來嗎？","你立刻幫我把電影暫停","不問規定就硬闖回去","別擋路，我要出去"], kw:["上完廁所","再進來"] }),
+            mkStep({ id:"s2", say:"可以喔！回來的時候把票給我看一下。廁所在右手邊。", task:"先說「好」，再複誦：回來把票給你看",
+              options:["好，回來把票給你看","票丟掉沒關係吧","拿別人的票回來就好","我回來不用驗票"], kw:["回來把票給"] }),
+            mkStep({ id:"s3", image:"images/b6/icon-b6-movie-ticket.png", image_label:"電影票", say:"（你上完廁所回來。）回來啦？票給我看一下喔！", task:"把票拿給工作人員，說「這是我的票」",
+              options:["這是我的票","票丟了，你讓我進去啦","你剛剛看過了","我不想給"], kw:["我的票"] }),
+            mkStep({ id:"s4", say:"好，請進，裡面暗暗的，小聲一點喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我要大聲問劇情","我要把手電筒照向觀眾","我要在走道大聲聊天"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）看電影的時候要出去一下，要怎麼做？", task:"說出方法：把票帶在身上，回來給工作人員看，小聲進去",
+              options:["把票帶在身上，回來給工作人員看，小聲進去","把票丟掉再回來","大聲叫朋友","隨便進另一個影廳"], kw:["工作人員看","小聲進去","票帶"], feedback:{ perfect:"答對了！把票帶在身上，回來給工作人員看，小聲進去。", failed:"記住：把票帶在身上，回來給工作人員看，小聲進去。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "ktv", name: "KTV", icon: "🎤", available: true,
+      theme: { color: '#E11D48', bg: '#FFE4E6', accent: '#BE123C' },
+      situations: [
+        {
+          id: "ktv_book", name: "訂包廂問計費", icon: "🎤", clerkName: "KTV店員",
+          desc: "問清楚怎麼計費、算出總價再消費",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"歡迎光臨！", task:"跟櫃檯人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_fee", say:"請問幾位？", task:"先說「3位」，再用「請問」問怎麼計費",
+              options:["三位，請問怎麼計費？","很多人","先進去再說","有得唱就好"],
+              accepted:["三位，請問怎麼計費？","三位怎麼計費"], kw:["計費"],   // 「請問怎麼計費」沒回答幾位，任務寫明三位後拿掉（使用者定 2026-09-19）
+              feedback:{ failed:"先問清楚怎麼算錢。可以說：「三位，請問怎麼計費？」" } }),
+            mkStep({ id:"count_total", say:"三位的話，唱兩小時每人199元，含飲料喝到飽！", task:"先說「好」，再算出總共多少錢，問「對嗎」",
+              image_label:"3 個人，每人 199 元",
+              image:["199 元","+","199 元","+","199 元","=","597 元"], options:["好，三個人總共597元對嗎？","199就是全部的錢吧","不用算了啦","三個人就是三百元吧"],
+              accepted:["好，三個人總共597元對嗎？","三個人總共597元對嗎","總共597元"], kw:["597"],
+              feedback:{ failed:"人數乘單價等於總價。可以說：「好，三個人總共597元對嗎？」" } }),
+            mkStep({ id:"pay_ktv", say:"對！一共597元。", task:"先說「好」，再把 600 元拿給櫃檯人員，說「給你 600 元」",
+              options:["好，給你600元","發票免了算便宜點","一人先付100","唱完再付"],
+              accepted:["好，給你600元","這是600元","給你600元","好，這是600元"], kw:[...KW_PRESETS.hand, "600"],
+              image:["images/money/500_yuan_front.png","images/money/100_yuan_front.png"], image_label:"600 元",
+              feedback:{ failed:"付錢。可以說：「好，給你600元」" } }),
+            mkStep({ id:"get_change", say:"收您 600 元，找您 3 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["images/money/1_yuan_front.png","images/money/1_yuan_front.png","images/money/1_yuan_front.png"], image_label:"找您 3 元",
+              options:["3 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["3元","三元","對了"],
+              accepted:["3 元，對了，謝謝！","3 元，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）跟朋友一起消費，錢怎麼算？", task:"說出方法：先算好總價，大家分攤",
+              options:["先算好總價，大家分攤","誰有錢誰付","都給店員決定","不算直接給"],
+              accepted:["先算好總價，大家分攤","算好總價大家分攤","先算總價再分攤"], kw:["總價","分攤"],
+              feedback:{ perfect:"答對了！先算好總價，大家公平分攤。", failed:"記住：一起消費先算總價，公平分攤。" } }),
+          ]
+        },
+        {
+          id: "ktv_extend", name: "要不要續時", icon: "⏳", clerkName: "KTV店員",
+          desc: "時間到了，照預算婉拒續時",
+          steps: [
+            mkStep({ id:"say_no", say:"（電話響了。你們說好只唱兩小時，帶的錢也剛好夠。）客人好，包廂時間快到囉，要續唱一小時嗎？每人再加99元！", task:"照預算婉拒，先說「不用了」，再說你們唱到這裡就好",
+              options:["不用了，我們唱到這裡就好","續！錢再想辦法","再續三小時","你們請客的話就續"],
+              accepted:["不用了，我們唱到這裡就好","不用了唱到這裡就好","不續了謝謝"], kw:["不用了","不續"],
+              feedback:{ failed:"預算用完就停。可以說：「不用了，我們唱到這裡就好」" } }),
+            mkStep({ id:"go_pay", say:"好的！請到櫃檯結帳～", task:"先說「好」，再說你們馬上過去，最後說「謝謝」",
+              options:["好，我們馬上過去，謝謝","再唱最後十首","假裝沒聽到","從後門走"],
+              accepted:["好，我們馬上過去，謝謝","馬上過去謝謝","好的謝謝"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「好，我們馬上過去，謝謝」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼時間到就結束？", task:"說出理由：照預算玩，才不會花太多錢",
+              options:["照預算玩，才不會花太多錢","被店員趕而已","下次不來了","唱歌不好玩了"],
+              accepted:["照預算玩，才不會花太多錢","照預算玩不會花太多","照預算才不會超支"], kw:["預算"],
+              feedback:{ perfect:"答對了！照預算玩，快樂不透支。", failed:"記住：說好的預算就是界線，時間到就結束。" } }),
+          ]
+        },
+        {
+          id: "ktv_help", name: "點歌機不會用", icon: "🎶", clerkName: "KTV店員",
+          desc: "按服務鈴請店員教，學會操作",
+          steps: [
+            mkStep({ id:"call_staff", say:"（你和同學一起來唱KTV。進到包廂後，點歌機的畫面好複雜，你不知道怎麼點歌。桌上有服務鈴，可以請人來教你。）", task:"按服務鈴，先說「不好意思」，再問「可以教我點歌嗎」",
+              options:["（按服務鈴）不好意思，可以教我點歌嗎？","（隨便亂按）","（用力拍機器）","叫朋友用嘴唱"],
+              accepted:["（按服務鈴）不好意思，可以教我點歌嗎？","不好意思，可以教我點歌嗎？","可以教我點歌嗎","教我用點歌機"], kw:["點歌"],
+              feedback:{ failed:"不會用就求助。可以說：「不好意思，可以教我點歌嗎？」" } }),
+            mkStep({ id:"repeat_learn", say:"當然！輸入歌名按這裡，然後按『點播』就好了！", task:"複誦：輸入歌名，再按點播，最後問「對嗎」",
+              options:["輸入歌名，再按點播，對嗎？","好喔，我等一下亂按","好喔隨便","再教十次"],
+              accepted:["輸入歌名，再按點播，對嗎？","輸入歌名再按點播","按點播對嗎"], kw:["點播"],
+              feedback:{ failed:"覆述一次記得牢。可以說：「輸入歌名，再按點播，對嗎？」" } }),
+            mkStep({ id:"thank_teach", say:"沒錯！學得真快！", task:"說「謝謝你」",
+              options:["謝謝你！","應該的","走吧","嗯"],
+              accepted:["謝謝你！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝你！」" } }),
+            mkStep({ id:"review", say:"（想一想）遇到不會用的東西怎麼辦？", task:"說出方法：開口請人教，學會就是自己的",
+              options:["開口請人教，學會就是自己的","裝懂","放棄","叫別人代勞一輩子"],
+              accepted:["開口請人教，學會就是自己的","開口請人教","請人教我學會"], kw:["請人教","開口"],
+              feedback:{ perfect:"答對了！開口請人教，學會就是自己的。", failed:"記住：不會就開口請人教。" } }),
+          ]
+        },
+        {
+          id: "ktv_bill", name: "結帳發現多算了", icon: "🧾",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "付錢前核對帳單，發現人數多算，禮貌請櫃檯確認",
+          steps: [
+            mkStep({ id:"point_out", image:"images/b6/icon-b6-ktv-bill-597.png", image_label:"帳單", say:"（你和一位同學唱完 KTV，帳單寫著「每人 199 元、3 人、共 597 元」，可是你們只有兩個人。）客人好，這是帳單，一共 597 元。", task:"先看帳單，再說「不好意思」，說我們只有兩個人",
+              options:["不好意思，我們只有兩個人", "好，給你 600 元", "你們亂算", "我不付了"], kw:["兩個人"], accepted:["不好意思，我們只有兩個人"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"400 元", say:"我看看…真的耶，打成三位了！抱歉，兩位是 398 元。", task:"先說「沒關係」，再把 400 元拿給店員，說「給你 400 元」",
+              options:["沒關係，給你 400 元", "那要打折賠我", "給你 597 元", "我不要付了"], kw:["400"], accepted:["沒關係，給你 400 元"] }),
+            mkStep({ id:"get_change", say:"收您 400 元，找您 2 元，謝謝光臨！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["2 元，對了，謝謝！", "錢我不用數", "找少了也不用管", "（直接走掉）"], kw:["2", "對了"], accepted:["2 元，對了，謝謝！"], image:["images/money/1_yuan_front.png", "images/money/1_yuan_front.png"], image_label:"找您 2 元" }),
+            mkStep({ id:"review", say:"（想一想）付錢前為什麼要看帳單？", task:"說出理由：看人數、時間和金額有沒有算錯",
+              options:["看人數、時間和金額有沒有算錯", "看帳單很麻煩", "店家不會算錯", "看完就丟"], kw:["人數", "金額"], accepted:["看人數、時間和金額有沒有算錯"], feedback:{ perfect:"答對了！看人數、時間和金額有沒有算錯。", failed:"記住：看人數、時間和金額有沒有算錯。" } }),
+          ]
+        },
+        {
+          id: "ktv_food", name: "包廂要點一份餐點", icon: "🍟",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "先問餐點價錢，確認在預算內再點",
+          steps: [
+            mkStep({ id:"ask_menu", say:"（你和同學想在包廂吃炸薯條，說好最多花 150 元，錢放在你這裡。）依照我們店裡的規定，每間包廂要點一份餐點喔！", task:"先說「好」，再用「請問」問有哪些餐點、多少錢",
+              options:["好，請問有哪些餐點，多少錢？", "我們不點", "隨便給一份", "最貴的那個"], kw:["哪些餐點", "多少錢"], accepted:["好，請問有哪些餐點，多少錢？"] }),
+            mkStep({ id:"choose", image:["images/a4/icon-a4-french-fries-shop.png","images/b6/icon-b6-potstickers.png","images/a4/icon-a4-chicken-nuggets-shop.png"], image_label:"炸薯條 120 元 ＋ 鍋貼 180 元 ＋ 雞塊 150 元", say:"炸薯條 120 元、鍋貼 180 元、雞塊 150 元。", task:"確認炸薯條沒有超過 150 元，再說你們要一份炸薯條",
+              options:["我們要一份炸薯條", "我們要鍋貼", "三樣都要", "都不要"], kw:["炸薯條"], accepted:["我們要一份炸薯條"] }),
+            mkStep({ id:"pay", say:"好的！炸薯條 120 元，點餐要先付喔。", task:"把 150 元拿給店員，說「給你 150 元」",
+              options:["給你 150 元", "我不付喔", "叫同學付", "你請客"], kw:[...KW_PRESETS.hand, "150"], accepted:["給你 150 元", "我給你 150 元", "150 元給你", "這是 150 元"], image:["images/money/100_yuan_front.png", "images/money/50_yuan_front.png"], image_label:"150 元" }),
+            mkStep({ id:"get_change", say:"收您 150 元，找您 30 元，等一下送到包廂！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["30 元，對了，謝謝！", "錢我不用數", "不用送了", "（直接走掉）"], kw:["30", "對了"], accepted:["30 元，對了，謝謝！"], image:["images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png"], image_label:"找您 30 元" }),
+            mkStep({ id:"review", say:"（想一想）點東西前，為什麼要先問價錢？", task:"說出理由：先知道價錢，才能在預算內選",
+              options:["先知道價錢，才能在預算內選", "問價錢很丟臉", "反正會有人付", "點最貴的比較好"], kw:["先知道價錢", "預算內"], accepted:["先知道價錢，才能在預算內選"], feedback:{ perfect:"答對了！先知道價錢，才能在預算內選。", failed:"記住：先知道價錢，才能在預算內選。" } }),
+          ]
+        },
+        {
+          id: "birthday_cake", name: "帶蛋糕進包廂慶生", icon: "🎂",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "帶外面的食物進店裡，先問規定、照規定做",
+          steps: [
+            mkStep({ id:"greeting", say:"（同學生日，你們帶蛋糕來 KTV 慶生，說好清潔費 50 元以內可以接受。你帶了兩個 50 元硬幣。）歡迎光臨！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務？", task:"用「請問」問可不可以帶蛋糕進包廂",
+              options:["請問可以帶蛋糕進包廂嗎？","我們偷偷帶進去就好","不用問，每家都可以帶","你一定要讓我們帶"], kw:["帶蛋糕進包廂"] }),
+            mkStep({ id:"pay", image:["images/money/50_yuan_front.png"], image_label:"50 元", say:"可以喔！依照我們店裡的規定，清潔費 50 元。", task:"先說「好」，再把 50 元拿給櫃檯人員，說「給你 50 元」",
+              options:["好，給你 50 元","清潔費不用收吧","不付錢也照樣帶進去","先欠著"], kw:[...KW_PRESETS.hand, "50", "五十"] }),
+            mkStep({ id:"s4", say:"收您 50 元，盤子給你。需要切蛋糕可以請我們協助。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","用完的盤子丟在地上","把蛋糕直接放在沙發上","我要拿刀子揮來揮去"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）想帶外面的食物進店裡，要怎麼做？", task:"說出方法：先問店裡的規定，照規定做",
+              options:["先問店裡的規定，照規定做","偷偷帶進去","不用問","店員沒看到就好"], kw:["先問店裡","照規定做"], feedback:{ perfect:"答對了！先問店裡的規定，照規定做。", failed:"記住：先問店裡的規定，照規定做。" } }),
+          ]
+        },
+        {
+          id: "split_bill", name: "各付各的", icon: "🧾",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "跟朋友一起消費：先算好一個人多少，說清楚各付各的",
+          steps: [
+            mkStep({ id:"s1", image:"images/b6/icon-b6-ktv-bill-597.png", image_label:"帳單", say:"（你和兩位同學唱完 KTV，一人 199 元，共 597 元。你們說好各付各的，你帶了 200 元。）這是帳單，一共 597 元。", task:"用「請問」問可以分開付嗎，再說一個人 199 元",
+              options:["請問可以分開付嗎？一個人 199 元","不用問，自己把帳單撕三張","他們付就好，我不付","我要少付一點"], kw:["199","分開付","一個人"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"可以，你這一份是 199 元。", task:"把 200 元拿給櫃檯人員，說「給你 200 元」",
+              options:["給你 200 元","我付 100 元就好","先欠著","把我的費用也算給同學"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/1_yuan_front.png"], image_label:"找您 1 元", say:"收您 200 元，找您 1 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["1 元，對了，謝謝！","錢我不用數","2 元，對了，謝謝！","（直接走掉）"], kw:["1","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）跟朋友一起消費，可以怎麼付錢？", task:"說先約好各付各的，再問店家能不能分開結帳",
+              options:["先約好各付各的，再問店家能不能分開結帳","誰有錢誰付","先欠朋友","不用說，到時候再吵"], kw:["問店家能不能分開結帳","約好各付各"], feedback:{ perfect:"答對了！先約好各付各的，再問店家能不能分開結帳。", failed:"記住：先約好各付各的，再問店家能不能分開結帳。" } }),
+          ]
+        },
+        {
+          id: "add_person", name: "朋友晚到要加一個人", icon: "➕",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先問中途加人的費用與結束時間；同學交給你自己的錢，請你代繳",
+          steps: [
+            mkStep({ id:"greeting", say:"（你和同學已付兩人包廂費 398 元。另一位同學晚到，想加入，請你陪他到櫃檯。）你好！", task:"跟櫃檯人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼服務？", task:"說同學想加一人，再用「請問」問要加多少錢",
+              options:["同學想加一人，請問要加多少錢？","他偷偷進去就好","晚來就一定免費","不報人數，結帳再說"], kw:["要加多少錢","加一人","同學"] }),
+            mkStep({ id:"s3", say:"依照我們店裡的規定，中途加一人也是 199 元，時間不延後。", task:"先說「好」，再算原本兩人加上這一人，共花多少錢",
+              options:["好，三個人一共 597 元","好，三個人一共 398 元","好，三個人一共 199 元","晚到不用計入人數"], kw:["597"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"（同學同意費用和時間，交給你 200 元請你代繳。）對，原本已付 398 元，這次補 199 元。", task:"把同學的 200 元交給櫃檯，說「給你 200 元」",
+              options:["給你 200 元","把我的錢借他，叫他下次還","不補費用也要進去","我只付 100 元"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/1_yuan_front.png"], image_label:"找您 1 元", say:"收您 200 元，找您 1 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["1 元，對了，謝謝！","錢我不用數","2 元，對了，謝謝！","（直接走掉）"], kw:["1","對了"], mode:'all' }),
+            mkStep({ id:"s6", say:"（你把發票和找回的錢交給同學，再一起回包廂。）你們仍在原來的時間結束。", task:"先說「好」，再說不會延後結束",
+              options:["好，我們不會延後結束","多一人就多唱一小時","晚到多久就延後多久","不用管結束時間"], kw:["不會延後結束"] }),
+            mkStep({ id:"review", say:"（想一想）有人中途加入，要怎麼做？", task:"說先報人數，問加收費用和結束時間",
+              options:["先報人數，問加收費用和結束時間","偷偷進去就好","一定都不用加錢","唱完再決定誰幫誰付"], kw:["問加收費用","先報人數","結束時間"], feedback:{ perfect:"答對了！先報人數，問加收費用和結束時間。", failed:"記住：先報人數，問加收費用和結束時間。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "swimming_pool", name: "游泳池", icon: "🏊", available: true,
+      theme: { color: '#0891B2', bg: '#CFFAFE', accent: '#0E7490' },
+      situations: [
+        {
+          id: "pool_ticket", name: "買門票", icon: "🎫", clerkName: "小藍",
+          desc: "買學生優惠票、問場地規則",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你是學生，今天有帶學生證，準備買學生票。）你好！歡迎光臨！", task:"跟售票員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"buy_ticket", say:"游泳池門票全票80元、學生票50元！", task:"說你要一張學生票，再把學生證拿給售票員",
+              options:["一張學生票，這是我的學生證","全票吧沒差","我用看的不用票","多少錢都行"],
+              accepted:["一張學生票，這是我的學生證","一張學生票","學生票一張"], kw:["學生票"],
+              image:"images/b6/icon-b6-student-id-card.png::學生票 50 元", image_label:"帶學生證比較便宜",
+              feedback:{ failed:"記得用學生證買優惠票。可以說：「一張學生票，這是我的學生證」" } }),
+            mkStep({ id:"pay_pool", say:"學生票50元！", task:"先說「好」，再把 50 元拿給售票員，說「給你 50 元」",
+              options:["好，給你50元","沒零錢，算免費","下水再給","刷臉可以嗎"],
+              accepted:["好，給你50元","這是50元","給你50元","好，這是50元"], kw:[...KW_PRESETS.hand, "50"],
+              image:"images/money/50_yuan_front.png", image_label:"50 元",
+              feedback:{ failed:"付錢。可以說：「好，給你50元」" } }),
+            mkStep({ id:"ask_rule", say:"這是你的票！第一次來嗎？", task:"先說「對」，再用「請問」問有什麼要注意的",
+              options:["對，請問有什麼要注意的嗎？","規則看心情","直接跳水","不用說我都會"],
+              accepted:["對，請問有什麼要注意的嗎？","有什麼要注意的嗎","要注意什麼"], kw:["注意"],
+              feedback:{ failed:"第一次去先問規則。可以說：「對，請問有什麼要注意的嗎？」" } }),
+            mkStep({ id:"review", say:"（想一想）進新場所要先做什麼？", task:"說出重點：先了解規則，付費入場",
+              options:["先了解規則，付費入場","直接衝進去","跟著別人混進去","大聲喧嘩"],
+              accepted:["先了解規則，付費入場","先了解規則付費入場","先問規則再入場"], kw:["規則"],
+              feedback:{ perfect:"答對了！先了解規則、付費入場。", failed:"記住：新場所先問規則、付費再進場。" } }),
+          ]
+        },
+        {
+          id: "pool_locker", name: "租置物櫃", icon: "🔒", clerkName: "小藍",
+          desc: "認識押金：暫放的錢，退櫃會還",
+          steps: [
+            mkStep({ id:"ask_locker", say:"（你到游泳池準備游泳，身上背著包包。你想把包包放進置物櫃，看到置物櫃區有一位管理員。）", task:"用「請問」問管理員置物櫃怎麼租",
+              options:["請問置物櫃怎麼租？","這櫃子免費的吧","（隨便塞一格）","包包背著游"],
+              accepted:["請問置物櫃怎麼租？","置物櫃怎麼租","怎麼租置物櫃"], kw:["置物櫃","怎麼租"],
+              feedback:{ failed:"先問清楚。可以說：「請問置物櫃怎麼租？」" } }),
+            mkStep({ id:"know_deposit", say:"租金10元，另外押金20元，退櫃的時候押金會還你喔！", task:"確認押金會退",
+              options:["好，押金20元退櫃會還我對嗎？","那20元是被你賺走嗎","30元全部拿去","請問廁所在哪裡？"],
+              accepted:["好，押金20元退櫃會還我對嗎？","押金20元會還我對嗎","押金會退對嗎"], kw:["押金"],
+              feedback:{ failed:"押金是暫放的錢，會退回。可以說：「好，押金20元退櫃會還我對嗎？」" } }),
+            // 外部審閱第六輪：租金＋押金要先付，退櫃才退押金
+            mkStep({ id:"pay_locker", say:"對，一共先收30元。", task:"把 30 元拿給管理員，說「給你 30 元」",
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"30 元",
+              options:["給你 30 元","我不想付錢","先欠著好了","押金不用付吧"], kw:[...KW_PRESETS.hand, "30", "三十"],
+              accepted:["給你 30 元","我給你 30 元","30 元給你","這是 30 元"] }),
+            mkStep({ id:"get_back", say:"（游完泳退櫃）這是押金20元，還給你！", task:"先說「謝謝」，再說押金你收到了",
+              options:["謝謝，20元收到了","這是小費送你","忘記拿走了","錢變多了嗎"],
+              accepted:["謝謝，20元收到了","20元收到了","謝謝收到了"], kw:["收到"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"退回的押金 20 元",
+              feedback:{ failed:"拿回押金要確認。可以說：「謝謝，20元收到了」" } }),
+            mkStep({ id:"review", say:"（想一想）什麼是押金？", task:"說出概念：押金是暫時放在店家的錢，照規定歸還東西就退回",
+              options:["暫時放在店家的錢，照規定歸還東西就退回","給店家的小費","罰款","租金的一部分不會退"],
+              accepted:["暫時放在店家的錢，照規定歸還東西就退回","歸還東西就退回的錢","暫放店家會退回","暫時放在店家的錢，歸還東西就退回"], kw:["退回"],
+              feedback:{ perfect:"答對了！押金是暫放的錢，照規定歸還東西就會退回。", failed:"記住：押金是暫時放著的錢，照規定把東西還了，就會退回來。" } }),
+          ]
+        },
+        {
+          id: "pool_lost", name: "蛙鏡不見了", icon: "🥽", clerkName: "小藍",
+          desc: "到服務台說清楚特徵，詢問失物招領",
+          steps: [
+            mkStep({ id:"ask_lost", say:"（你在游泳池游完泳，回到置物區準備換衣服，發現蛙鏡不見了。你的蛙鏡是藍色的，鏡帶上有寫你的名字。你走到服務台問問看。）", task:"用「請問」問服務台有沒有人撿到蛙鏡",
+              options:["請問有人撿到蛙鏡嗎？","誰偷了我的東西！","那我拿別人的就好","（哭著回家）"],
+              accepted:["請問有人撿到蛙鏡嗎？","有人撿到蛙鏡嗎","有撿到蛙鏡嗎"], kw:["蛙鏡"],
+              feedback:{ failed:"先到服務台問。可以說：「請問有人撿到蛙鏡嗎？」" } }),
+            mkStep({ id:"describe_item", say:"我看看～是什麼顏色的蛙鏡？", task:"告訴服務台人員：蛙鏡是藍色的，鏡帶上有寫名字",
+              options:["藍色的，鏡帶上有寫名字","就蛙鏡的樣子","你自己去找啦","很好看的那種"],
+              accepted:["藍色的，鏡帶上有寫名字","藍色的有寫名字","藍色的蛙鏡"], kw:["藍色"],
+              feedback:{ failed:"說出顏色等特徵。可以說：「藍色的，鏡帶上有寫名字」" } }),
+            mkStep({ id:"thank_found", say:"找到了！是這支嗎？下次記得放置物櫃喔！", task:"先說「是」，再說「謝謝你」，最後說下次你會放置物櫃",
+              options:["是！謝謝你，下次我會放置物櫃","還好啦沒差","你們應該幫我保管","再見"],
+              accepted:["是！謝謝你，下次我會放置物櫃","謝謝下次會放置物櫃","是的謝謝"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「是！謝謝你，下次我會放置物櫃」" } }),
+            mkStep({ id:"review", say:"（想一想）東西不見了怎麼辦？", task:"說出方法：到服務台說清楚特徵詢問",
+              options:["到服務台說清楚特徵詢問","當作沒發生","懷疑別人偷的","馬上買新的"],
+              accepted:["到服務台說清楚特徵詢問","到服務台說特徵詢問","去服務台問"], kw:["服務台"],
+              feedback:{ perfect:"答對了！到服務台說清楚特徵，找回機會最大。", failed:"記住：東西不見先到服務台，說清楚特徵。" } }),
+          ]
+        },
+        {
+          id: "swim_cap", name: "沒帶泳帽", icon: "🧢",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "規定下水要戴泳帽：問多少錢、買一頂，遵守場所規定",
+          steps: [
+            mkStep({ id:"admit", say:"（你已經買好票，發現忘了帶泳帽，來到服務台找工作人員。）同學，依照我們的規定，下水要戴泳帽喔！", task:"先說「不好意思」，再說你忘了帶泳帽",
+              options:["不好意思，我忘了帶泳帽", "不戴又沒關係", "我游一下就好", "你借我你的"], kw:["忘了帶"], accepted:["不好意思，我忘了帶泳帽"] }),
+            mkStep({ id:"ask_price", image:"images/b6/icon-b6-swim-cap.png", image_label:"泳帽", say:"沒關係，我們這裡有賣。", task:"用「請問」問泳帽多少錢",
+              options:["請問泳帽多少錢？", "可以送我嗎", "我不戴泳帽也要下水", "隨便啦"], kw:["多少錢"], accepted:["請問泳帽多少錢？"] }),
+            mkStep({ id:"pay", say:"一頂 50 元。", task:"先說「好」，再把 50 元拿給工作人員，說「給你 50 元」",
+              options:["好，給你 50 元", "我不付，先下水", "等一下再給", "可以算便宜點嗎"], kw:[...KW_PRESETS.hand, "50"], accepted:["好，給你 50 元", "我給你 50 元", "50 元給你", "這是 50 元"], image:"images/money/50_yuan_front.png", image_label:"50 元" }),
+            mkStep({ id:"thanks", say:"剛好 50 元，這是你的泳帽，戴好再下水喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝！", "不戴也可以吧", "泳帽給同學，我不戴也要下水", "（直接跳下水）"], kw:["謝謝"], accepted:["好，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）為什麼要遵守場所的規定？", task:"說出理由：規定是為了大家的安全和乾淨",
+              options:["規定是為了大家的安全和乾淨", "規定很煩", "沒人看就不用守", "只有別人要守"], kw:["安全", "乾淨"], accepted:["規定是為了大家的安全和乾淨"], feedback:{ perfect:"答對了！規定是為了大家的安全和乾淨。", failed:"記住：規定是為了大家的安全和乾淨。" } }),
+          ]
+        },
+        {
+          id: "cramp", name: "腿抽筋了", icon: "🆘",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "在水裡抽筋，大聲叫救生員，不要硬撐；上岸先休息",
+          steps: [
+            mkStep({ id:"shout", say:"（你在游泳池游泳，右腿突然抽筋，很痛，動不了。救生員就在池邊。）", task:"大聲說「救命！我腿抽筋了！」",
+              options:["救命！我腿抽筋了！", "（忍著繼續游）", "（不好意思叫人）", "沒事沒事"], kw:["救命", "抽筋"], accepted:["救命！我腿抽筋了！"] }),
+            mkStep({ id:"grab", say:"（救生員把浮板遞到你面前。）我來了！抓住浮板，不要亂動！", task:"先說「好」，再說你抓住了",
+              options:["好，我抓住了", "我自己游過去", "放開我", "（亂踢水）"], kw:["抓住"], accepted:["好，我抓住了"] }),
+            mkStep({ id:"better", say:"（救生員幫你上岸，你覺得腿已經比較不痛了。）慢慢把腿伸直。還痛嗎？", task:"說「好多了，謝謝你」",
+              options:["好多了，謝謝你", "我要馬上再下去游", "不用你管", "（不說話）"], kw:["好多了"], accepted:["好多了，謝謝你"] }),
+            mkStep({ id:"rest", say:"先坐著休息，不要馬上下水喔！", task:"先說「好」，再說你會先休息",
+              options:["好，我會先休息", "我現在就要游", "我要去跳水", "沒關係啦"], kw:["休息"], accepted:["好，我會先休息"] }),
+            mkStep({ id:"review", say:"（想一想）在水裡身體不舒服，要怎麼做？", task:"說出方法：馬上大聲叫救生員，不要硬撐",
+              options:["馬上大聲叫救生員，不要硬撐", "忍一下就好", "不好意思叫人", "忍著痛繼續游，不告訴救生員"], kw:["大聲叫救生員", "不要硬撐"], accepted:["馬上大聲叫救生員，不要硬撐"], feedback:{ perfect:"答對了！馬上大聲叫救生員，不要硬撐。", failed:"記住：馬上大聲叫救生員，不要硬撐。" } }),
+          ]
+        },
+        {
+          id: "shallow_end", name: "還不太會游，問淺水區", icon: "🏊",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "初學者在教練確認過的範圍、陪同下練習，累了告知並上岸休息",
+          steps: [
+            mkStep({ id:"s1", say:"（你跟教練來練習，還不太會游。你換好泳衣，走到池邊詢問救生員。）需要幫忙嗎？", task:"說你還不太會游，再用「請問」問哪裡是淺水區",
+              options:["我還不太會游，請問哪裡是淺水區？","我要去最深的地方","我不用問","我要跳水"], kw:["還不太會游","淺水區","哪裡"] }),
+            mkStep({ id:"s2", say:"左邊是淺水區，先請教練確認你能下水的範圍。", task:"複誦左邊是淺水區，再說要請教練確認範圍",
+              options:["左邊是淺水區，我先請教練確認範圍","右邊是淺水區","寫淺水就一定安全","我自己去最深的地方"], kw:["請教練確認範圍","左邊"] }),
+            mkStep({ id:"s3", say:"（教練確認範圍後，在旁陪你練習。）累了就告訴教練，先上岸休息。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我不會累","我要一直游不休息","你好囉嗦"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）還不太會游泳，要注意什麼？", task:"說跟教練在確認過的範圍練習，累了上岸休息",
+              options:["跟教練在確認過的範圍練習，累了上岸休息","去深水區練比較快","一直游不要停","不用聽救生員的"], kw:["範圍練習","上岸休息","確認過"], feedback:{ perfect:"答對了！跟教練在確認過的範圍練習，累了上岸休息。", failed:"記住：跟教練在確認過的範圍練習，累了上岸休息。" } }),
+          ]
+        },
+        {
+          id: "shower_first", name: "下水前要淋浴", icon: "🚿",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "下水前先淋浴，池邊不跑、不跳水，被提醒時道歉",
+          steps: [
+            mkStep({ id:"s1", say:"（你換好泳衣，直接走向泳池，準備跳下去。救生員叫住你。）下水前要先淋浴喔！", task:"先說「不好意思」，再說你先去淋浴",
+              options:["不好意思，我先去淋浴","我在家洗過了啦","一下下就好","你管那麼多"], kw:["先去淋浴"] }),
+            mkStep({ id:"s2", say:"淋浴間在右邊。本池池邊不能跑，也不能跳水。", task:"先說「好」，再複誦：不能跑，不能跳水",
+              options:["好，不能跑，不能跳水","跳水比較好玩","跑快一點才來得及","我要推同學下去"], kw:["不能跳水","不能跑"] }),
+            mkStep({ id:"s3", say:"（你淋浴後走回池邊。）請走階梯，扶好扶手慢慢下水。", task:"先說「好」，再說你會扶著扶手走階梯下水",
+              options:["好，我扶著扶手走階梯下水","跨過扶手直接跳下去","用跑的衝下階梯","推前面的人先下水"], kw:["扶著扶手走階梯下水"] }),
+            mkStep({ id:"review", say:"（想一想）下水游泳以前，要做什麼？", task:"說出方法：先淋浴，在池邊慢慢走，慢慢下水",
+              options:["先淋浴，在池邊慢慢走，慢慢下水","直接跳下去","在池邊跑","不用淋浴"], kw:["池邊慢慢走","慢慢下水","先淋浴"], feedback:{ perfect:"答對了！先淋浴，在池邊慢慢走，慢慢下水。", failed:"記住：先淋浴，在池邊慢慢走，慢慢下水。" } }),
+          ]
+        },
+        {
+          id: "swim_class", name: "報名游泳課", icon: "📋",
+          simple_steps: ["s4","pay","s6"],   // 簡易版練這 3 步（付錢算重點）
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "報名課程要問清楚時間、堂數和費用；上課證每次都要帶",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想學游泳，家人也同意了。公告寫「8 堂 2400 元」，你帶 2400 元來報名。）你好！歡迎光臨！", task:"跟櫃台人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問需要什麼呢？", task:"說你要報名游泳班，再用「請問」問什麼時候上課",
+              options:["我要報名游泳班，請問什麼時候上課？","不用問時間就直接報名","不看班別就報最難的","可以不上課只拿證書嗎？"], kw:["什麼時候上課","報名游泳班"] }),
+            mkStep({ id:"s3", say:"（這個時間你可以來。）每週六早上九點到十點，共 8 堂。", task:"複誦每週六早上九點到十點，共 8 堂",
+              options:["每週六早上九點到十點，共 8 堂","星期天晚上","我想來才來","一共 2 堂"], kw:["每週六早上九點","十點"] }),
+            mkStep({ id:"s4", say:"第一堂是下週六，這天能來嗎？", task:"先說「可以」，再說你下週六會來上第一堂課",
+              options:["可以，我下週六會來上第一堂課","我今天就算上過第一堂","不用看日期，有空再來","第一堂不用來也算出席"], kw:["下週六會來上第一堂課"] }),
+            mkStep({ id:"pay", image:["images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"2400 元", say:"這期一共 2400 元，已含上課入場費。", task:"把 2400 元拿給櫃台人員，說「給你 2400 元」",
+              options:["給你 2400 元","我不想付錢","算 1000 元啦","先欠著"], kw:[...KW_PRESETS.hand, "2400", "兩千四百"] }),
+            mkStep({ id:"s6", say:"收您 2400 元。這是上課證，每次上課都要帶喔！", task:"先說「好」，再說每次上課會帶上課證",
+              options:["好，每次上課我會帶上課證","上課證丟掉沒關係吧","拿別人的上課證來用","不用證件也要求直接進"], kw:["會帶上課證","每次上課"] }),
+            mkStep({ id:"review", say:"（想一想）報名課程的時候，要問清楚什麼？", task:"說出要問的：上課時間、一共幾堂、多少錢",
+              options:["上課時間、一共幾堂、多少錢","什麼都不用問","不問時間就報名","不看費用就付錢"], kw:["上課時間","一共幾堂","多少錢"], feedback:{ perfect:"答對了！上課時間、一共幾堂、多少錢。", failed:"記住：上課時間、一共幾堂、多少錢。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "amusement_park", name: "遊樂園", icon: "🎡", available: true,
+      theme: { color: '#EA580C', bg: '#FFEDD5', accent: '#C2410C' },
+      situations: [
+        {
+          id: "park_ticket", name: "哪種票划算", icon: "🎟️", clerkName: "遊樂園工作人員",
+          desc: "單項券和一日券，算一算哪種划算",
+          steps: [
+            // 外部審閱第六輪：7 項才打平，「想玩很多項」推不出划算 → 設定 8 項，順便練乘法與比大小
+            mkStep({ id:"compare_ticket", say:"（你和朋友來到遊樂園的售票口，今天想玩 8 項設施。）歡迎！單項券一次50元，一日券350元玩到飽，要哪一種？", task:"算一算單項券 8 次要多少錢，再說哪一種比較划算",
+              image_label:"玩 8 項：單項券 400 元，一日券 350 元",
+              image:["images/b6/icon-b6-park-daypass.png::一日券","50 元","×","8 項","=","400 元"], options:["8 次要 400 元，一日券 350 元比較划算","便宜的那個","都買","你覺得呢"],
+              accepted:["8 次要 400 元，一日券 350 元比較划算","8 次要 400 元，一日券比較划算"], kw:["一日券","400"],
+              feedback:{ failed:"50 元乘 8 次是 400 元，比一日券 350 元貴。可以說：「8 次要 400 元，一日券 350 元比較划算」" } }),
+            mkStep({ id:"pay_park", say:"一日券350元！", task:"把 400 元拿給售票員，說「給你 400 元」",
+              options:["給你 400 元","算我300元啦","（丟下錢跑去玩）","可以先玩再付嗎"],
+              accepted:["給你 400 元","這是 400 元","400 元給你","這是400元，請找我50元"], kw:[...KW_PRESETS.hand, "400", "四百"],
+              image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"400 元",
+              feedback:{ failed:"可以說：「給你 400 元」" } }),
+            mkStep({ id:"get_change", say:"收您 400 元，找您 50 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              image:["400 元","−","350 元","=","50 元"], image_label:"付 400 元，一日券 350 元，找 50 元",
+              options:["50 元，對了，謝謝！","錢我不用數","你找錯了啦","（直接走掉）"], kw:["50","五十","對了"],
+              accepted:["50 元，對了，謝謝！","50 元，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）怎麼判斷哪種票划算？", task:"說出方法：算一算玩幾項，比較哪種便宜",
+              options:["算一算玩幾項，比較哪種便宜","買最貴的就對","不用算隨便買","問別人買什麼跟著買"],
+              accepted:["算一算玩幾項，比較哪種便宜","算玩幾項比較便宜","算一算再比較"], kw:["比較","算一算"],
+              feedback:{ perfect:"答對了！先算玩幾項，比較哪種票划算。", failed:"記住：先算會玩幾項，再比較哪種票便宜。" } }),
+          ]
+        },
+        {
+          id: "park_height", name: "設施安全詢問", icon: "📏", clerkName: "遊樂園工作人員",
+          desc: "先問限制、誠實回答，安全第一",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好！", task:"跟工作人員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_limit", say:"要玩這個嗎？", task:"在雲霄飛車入口，用「請問」問工作人員這個設施有什麼限制",
+              options:["請問這個設施有什麼限制嗎？","直接排隊就對了","小孩都能玩吧","不用問啦"],
+              accepted:["請問這個設施有什麼限制嗎？","有什麼限制嗎","有限制嗎"], kw:["限制"],
+              feedback:{ failed:"玩之前先問限制。可以說：「請問這個設施有什麼限制嗎？」" } }),
+            mkStep({ id:"answer_honest", say:"要140公分以上，心臟不好不能搭喔！你OK嗎？", task:"先說你超過 140 公分，再說你心臟沒有問題",
+              // 2026-09-26 使用者定稿：回答事實，不自己下「可以搭」的結論（外部審閱第六輪）
+              options:["我超過 140 公分，心臟沒有問題","差一點點沒關係吧","幫我踮腳量","不知道耶"],
+              accepted:["我超過 140 公分，心臟沒有問題","我超過140公分，心臟沒有問題","我超過140公分，身體健康，可以搭"], kw:["超過","心臟","沒有問題","可以搭"],   // 學生身高各不相同，不硬記 150（使用者定 2026-09-19）
+              feedback:{ failed:"安全規定要誠實回答。可以說：「我超過 140 公分，心臟沒有問題」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼要遵守設施限制？", task:"說出理由：是為了安全，不符合就不搭",
+              options:["是為了安全，不符合就不搭","工作人員找麻煩","規定參考用","排隊比較快"],
+              accepted:["是為了安全，不符合就不搭","為了安全不符合就不搭","規定是為了安全"], kw:["安全"],
+              feedback:{ perfect:"答對了！限制是為了安全，不符合就不搭。", failed:"記住：設施限制是保護你的安全。" } }),
+          ]
+        },
+        {
+          id: "park_lost", name: "和朋友走散了", icon: "😰", clerkName: "遊樂園工作人員",
+          desc: "走散不亂跑：找工作人員、在原地等",
+          steps: [
+            mkStep({ id:"find_help", say:"（你今天和朋友一起去遊樂園玩。人好多，走著走著回頭一看，朋友不見了！你要找穿制服的工作人員幫忙找朋友。）", task:"找到工作人員，先說「不好意思」，再說你和朋友走散了",
+              options:["（找到工作人員）不好意思，我和朋友走散了","（到處亂跑找人）","大聲尖叫","自己回家"],
+              accepted:["（找到工作人員）不好意思，我和朋友走散了","不好意思，我和朋友走散了","我和朋友走散了","和朋友走散了"], kw:["走散"],
+              feedback:{ failed:"走散先找工作人員。可以說：「不好意思，我和朋友走散了」" } }),
+            mkStep({ id:"give_phone", say:"別擔心！你有朋友的電話嗎？我幫你打！（你記得朋友的電話是 0912345678。）", task:"先說「有」，再說他的電話是 0912345678",
+              options:["有，他的電話是0912345678","我不告訴你","電話是秘密","你用猜的"],
+              accepted:["有，他的電話是0912345678","電話是0912345678","0912345678"], kw:["0912345678"],   // 完整號碼才算對（使用者定 2026-09-19）
+              feedback:{ failed:"提供朋友電話。可以說：「有，他的電話是0912345678」" } }),
+            mkStep({ id:"stay_here", say:"打通了！他過來找你，你在服務台這裡等，不要走開喔！", task:"先說「好」，再說你在服務台等，不走開",
+              options:["好，我在服務台等，不走開","我去找他比較快","繞一圈再回來","好無聊喔"],
+              accepted:["好，我在服務台等，不走開","在服務台等不走開","我在原地等"], kw:["服務台等","原地等"],
+              feedback:{ failed:"待在原地最容易被找到。可以說：「好，我在服務台等，不走開」" } }),
+            mkStep({ id:"review", say:"（想一想）走散了怎麼辦？", task:"說出方法：找工作人員幫忙，在原地等",
+              options:["找工作人員幫忙，在原地等","到處跑來跑去找","哭著自己回家","不理朋友了"],
+              accepted:["找工作人員幫忙，在原地等","找工作人員在原地等","找工作人員幫忙"], kw:["工作人員"],
+              feedback:{ perfect:"答對了！找工作人員幫忙，在原地等候。", failed:"記住：走散了找工作人員，然後在原地等。" } }),
+          ]
+        },
+        {
+          id: "souvenir", name: "買紀念品在預算內挑", icon: "🧸",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "先看自己剩多少錢，比較價錢，挑買得起的",
+          steps: [
+            mkStep({ id:"greeting", say:"（玩完了，你走進紀念品店，錢包裡還剩 150 元。你想買一樣紀念品帶回家。）歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！", "謝謝再見", "全部包起來", "我要退票"], kw:"greet", accepted:["你好！", "您好！", "哈囉！", "嗨！"] }),
+            mkStep({ id:"ask_price", say:"請問在找什麼呢？", task:"用「請問」問鑰匙圈和玩偶各多少錢",
+              options:["請問鑰匙圈和玩偶各多少錢？", "我全部都要", "隨便啦", "最貴的是哪個"], kw:["各多少錢", "多少錢"], accepted:["請問鑰匙圈和玩偶各多少錢？"] }),
+            mkStep({ id:"choose", image:["images/b6/icon-b6-keychain.png","images/b6/icon-b6-plush-toy.png"], image_label:"鑰匙圈 120 元 ＋ 玩偶 250 元", say:"鑰匙圈 120 元，玩偶 250 元喔！", task:"先想想你只有 150 元，再說你要買鑰匙圈",
+              options:["我要買鑰匙圈", "我要買玩偶", "兩個都要", "可以算我 150 元嗎"], kw:["鑰匙圈"], accepted:["我要買鑰匙圈"] }),
+            mkStep({ id:"pay", say:"好的！鑰匙圈 120 元。", task:"把 150 元拿給店員，說「給你 150 元」",
+              options:["給你 150 元", "我先欠著", "我不付，先拿走", "等一下再給"], kw:[...KW_PRESETS.hand, "150"], accepted:["給你 150 元", "我給你 150 元", "150 元給你", "這是 150 元"], image:["images/money/100_yuan_front.png", "images/money/50_yuan_front.png"], image_label:"150 元" }),
+            mkStep({ id:"get_change", say:"收您 150 元，找您 30 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["30 元，對了，謝謝！", "錢我不用數", "找多少都不用看", "（直接走掉）"], kw:["30", "對了"], accepted:["30 元，對了，謝謝！"], image:["images/money/10_yuan_front.png", "images/money/10_yuan_front.png", "images/money/10_yuan_front.png"], image_label:"找您 30 元" }),
+            mkStep({ id:"review", say:"（想一想）買東西前，要先想什麼？", task:"說出重點：先看自己有多少錢，再挑買得起的",
+              options:["先看自己有多少錢，再挑買得起的", "看到喜歡的就買", "錢不夠再借", "買最貴的"], kw:["多少錢", "買得起"], accepted:["先看自己有多少錢，再挑買得起的"], feedback:{ perfect:"答對了！先看自己有多少錢，再挑買得起的。", failed:"記住：先看自己有多少錢，再挑買得起的。" } }),
+          ]
+        },
+        {
+          id: "cut_line", name: "有人插隊", icon: "🚶",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "有人插隊不吵架，告訴工作人員",
+          steps: [
+            mkStep({ id:"report", say:"（你排隊等玩旋轉木馬，排了好久。有一個穿紅色衣服的大哥哥直接走到你前面插隊。旁邊有穿制服的工作人員。）有什麼事嗎？", task:"先說「不好意思」，再說有人插隊",
+              options:["不好意思，有人插隊", "（推他一下）", "我也要插隊", "（大聲罵他）"], kw:["有人插隊"], accepted:["不好意思，有人插隊"] }),
+            mkStep({ id:"describe", say:"是哪一位呢？", task:"說是穿紅色衣服的大哥哥，他剛剛走到我前面",
+              options:["穿紅色衣服的大哥哥，他剛剛走到我前面", "你自己看啦", "我不知道", "隨便一個"], kw:["紅色"], accepted:["穿紅色衣服的大哥哥，他剛剛走到我前面"] }),
+            mkStep({ id:"thanks", say:"好，我去請他到後面排隊。謝謝你告訴我！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝！", "你要罵他喔", "我也要插回去", "我要先玩"], kw:["謝謝"], accepted:["好，謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）有人插隊，要怎麼做？", task:"說出做法：不吵架，告訴工作人員",
+              options:["不吵架，告訴工作人員", "推他", "跟著插隊", "大聲罵他"], kw:["不吵架", "工作人員"], accepted:["不吵架，告訴工作人員"], feedback:{ perfect:"答對了！不吵架，告訴工作人員。", failed:"記住：不吵架，告訴工作人員。" } }),
+          ]
+        },
+        {
+          id: "wait_time", name: "時間不多，看排隊時間選", icon: "⏱️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "先看等待、遊玩與走回集合點的時間，選來得及且符合搭乘條件的設施",
+          steps: [
+            mkStep({ id:"greeting", image:"images/b6/icon-b6-ride-wait-time.png", image_label:"等候時間", say:"（離集合還有一小時。雲霄飛車標示等 60 分鐘，碰碰車等 10 分鐘，你兩種都想玩。）你好！", task:"跟工作人員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"需要幫忙嗎？", task:"用「請問」問雲霄飛車是不是要等 60 分鐘",
+              options:["請問雲霄飛車要等 60 分鐘嗎？","讓我插隊啦","我不看時間也一定趕得上","我先去占兩個隊伍的位置"], kw:["60","雲霄飛車","分鐘"] }),
+            mkStep({ id:"s3", say:"對。碰碰車玩一趟約 5 分鐘，走回集合點約 10 分鐘。", task:"算碰碰車等待、遊玩、走回集合點大約共幾分鐘",
+              options:["大約共 25 分鐘","大約共 10 分鐘","大約共 15 分鐘","大約共 60 分鐘"], kw:["25"] }),
+            mkStep({ id:"s4", image:"images/b6/icon-b6-ride-wait-time.png", image_label:"等候時間", say:"碰碰車目前約等 10 分鐘，你想怎麼選？", task:"說先玩碰碰車，因為還要留時間回集合點",
+              options:["我先玩碰碰車，因為還要留時間回集合點","雲霄飛車等完才管集合","我插隊就來得及","玩兩種，遲到沒關係"], kw:["留時間回集合點","先玩碰碰車","因為"] }),
+            mkStep({ id:"s5", say:"碰碰車在前面左轉，路上再留意時間。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我走右邊就好","玩到集合才出發","我不用再看時間"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）時間有限，要怎麼選設施？", task:"說排隊、玩一趟和走回集合點的時間都要算，還要多留一點時間",
+              options:["排隊、玩一趟和走回集合點的時間都要算，還要多留一點時間","只算排隊時間就好","集合時間到了才離開設施","插隊就來得及"], kw:["多留一點時間","走回集合點","時間都要算"], feedback:{ perfect:"答對了！排隊、玩一趟和走回集合點的時間都要算，還要多留一點時間。", failed:"記住：排隊、玩一趟和走回集合點的時間都要算，還要多留一點時間。" } }),
+          ]
+        },
+        {
+          id: "ride_closed", name: "設施暫停了", icon: "⛔",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "設施因安全暫停：遵守封閉指示，詢問並查看開放公告",
+          steps: [
+            mkStep({ id:"s1", say:"（你想搭摩天輪，走到入口。）不好意思，風太大，摩天輪暫停開放。", task:"用「請問」問：什麼時候會再開？",
+              options:["請問什麼時候會再開？","我想坐，你一定要開","你們很爛","風大沒關係啦"], kw:["什麼時候會"] }),
+            mkStep({ id:"s2", say:"時間還不確定，確認安全才會開放，請看現場公告。", task:"先說「好」，再說你先離開入口，看看開放公告",
+              options:["好，我先離開入口，看看開放公告","我堵住入口直到開放","我自己開門進去","我偷偷跨過封鎖線"], kw:["看看開放公告","先離開入口"] }),
+            mkStep({ id:"review", say:"（想一想）設施暫停的時候，要怎麼做？", task:"說不走進關起來的地方，再看公告哪些設施可以玩",
+              options:["不走進關起來的地方，再看公告哪些設施可以玩","大聲吵要坐","偷偷進去玩","一直罵工作人員"], kw:["看公告哪些設施","不走進關起來","地方"], feedback:{ perfect:"答對了！不走進關起來的地方，再看公告哪些設施可以玩。", failed:"記住：不走進關起來的地方，再看公告哪些設施可以玩。" } }),
+          ]
+        },
+        {
+          id: "dizzy", name: "坐完設施頭暈", icon: "😵",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "身體不舒服：停止遊玩，告訴工作人員，請醫護協助並聯絡同行的人",
+          steps: [
+            mkStep({ id:"s1", say:"（你跟老師和同學校外教學來遊樂園。坐完咖啡杯，你覺得頭好暈、想吐，旁邊有一位工作人員。）你還好嗎？臉色不太好喔！", task:"說你坐完咖啡杯，頭很暈，想吐",
+              options:["我坐完咖啡杯，頭很暈，想吐","頭暈也再坐一次","我去玩轉得更快的","我要自己跑回集合點"], kw:["坐完咖啡杯","頭很暈","想吐"] }),
+            mkStep({ id:"s2", say:"先在旁邊安全處坐著，我請醫護來。要幫你聯絡一起來的人嗎？", task:"先說「好」，再說請他幫你聯絡老師",
+              options:["好，請幫我聯絡老師","我還要再坐一次","我自己跑回家","先去玩雲霄飛車再說"], kw:["聯絡老師","請幫"] }),
+            mkStep({ id:"s3", say:"（你指給工作人員看老師在哪裡。）我已通知老師和醫護人員，先不要再玩設施。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","我馬上再坐一次","我自己跑去別的設施","不用評估，我一定沒事"], kw:["謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）在遊樂園身體不舒服，要怎麼做？", task:"說先不要玩，告訴工作人員，請他找醫護人員和一起來的人幫忙",
+              options:["先不要玩，告訴工作人員，請他找醫護人員和一起來的人幫忙","忍著繼續玩","自己一個人離開","不告訴任何人"], kw:["請他找醫護人員","告訴工作人員","先不要玩"], feedback:{ perfect:"答對了！先不要玩，告訴工作人員，請他找醫護人員和一起來的人幫忙。", failed:"記住：先不要玩，告訴工作人員，請他找醫護人員和一起來的人幫忙。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "arcade", name: "電子遊樂場", icon: "🕹️", available: true,
+      theme: { color: '#9333EA', bg: '#F3E8FF', accent: '#7E22CE' },
+      situations: [
+        {
+          id: "arcade_token", name: "換代幣", icon: "🪙", clerkName: "遊樂場店員",
+          desc: "換代幣前先設預算，換剛好就好",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_token", image:"images/b6/icon-b6-game-token.png", image_label:"代幣", say:"這裡玩遊戲要用代幣喔！", task:"用「請問」問店員代幣怎麼換",
+              options:["請問代幣怎麼換？","機器直接投鈔票吧","先玩再換","送我幾個"],
+              accepted:["請問代幣怎麼換？","代幣怎麼換","怎麼換代幣"], kw:["代幣"],
+              feedback:{ failed:"先問清楚。可以說：「請問代幣怎麼換？」" } }),
+            mkStep({ id:"exchange_some", say:"（你今天只打算花 100 元玩遊戲。）100元換10個代幣！", task:"控制預算，說你換 100 元就好",
+              options:["我換100元就好，控制預算","換500元玩個夠","全部零用錢都換","先欠著"],
+              accepted:["我換100元就好，控制預算","換100元就好","我換100元"], kw:["100元"],
+              image:"images/money/100_yuan_front.png", image_label:"換代幣的 100 元",
+              feedback:{ failed:"一次換太多容易花過頭。可以說：「我換100元就好，控制預算」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼不一次換太多代幣？", task:"說出理由：換多容易玩過頭，先設好預算",
+              options:["換多容易玩過頭，先設好預算","代幣會過期","拿著太重","店員會笑"],
+              accepted:["換多容易玩過頭，先設好預算","先設好預算","換多容易玩過頭"], kw:["預算","玩過頭"],
+              feedback:{ perfect:"答對了！先設預算，換剛好就好。", failed:"記住：先設好預算，代幣換剛好就好。" } }),
+          ]
+        },
+        {
+          id: "arcade_stop", name: "夾娃娃要停損", icon: "🧸", clerkName: "遊樂場店員",
+          desc: "玩之前設上限，說到做到守住預算",
+          steps: [
+            mkStep({ id:"set_limit", say:"（你有 10 個代幣，想留一半玩別的遊戲。看到一台夾娃娃機，你想先說好最多夾幾次。）", task:"先設上限：說你最多夾 5 次，夾不到就停",
+              options:["我最多夾5次，夾不到就停","夾到為止！","10個全部投","跟機台拼了"],
+              accepted:["我最多夾5次，夾不到就停","最多夾5次夾不到就停","最多夾5次"], kw:["5次","就停"],
+              feedback:{ failed:"玩之前先設上限。可以說：「我最多夾5次，夾不到就停」" } }),
+            mkStep({ id:"keep_promise", say:"（5次都沒夾到…好想再試一次！）", task:"遵守約定，先說「說好五次就五次」，再說你停手",
+              options:["說好5次就5次，我停手","再一次就好","把剩的全投了","借代幣繼續"],
+              accepted:["說好5次就5次，我停手","說好5次就停手","我停手"], kw:["停手","就停"],
+              feedback:{ failed:"說到做到最厲害。可以說：「說好5次就5次，我停手」" } }),
+            mkStep({ id:"feel_good", say:"（雖然沒夾到，但你守住了約定）", task:"說出正向想法：沒夾到沒關係，我守住了預算",
+              options:["沒夾到沒關係，我守住了預算","我是失敗者","機台壞掉害的","下次投100次"],
+              accepted:["沒夾到沒關係，我守住了預算","沒夾到沒關係守住預算","守住了預算"], kw:["守住","預算"],
+              feedback:{ failed:"守住預算就是贏。可以說：「沒夾到沒關係，我守住了預算」" } }),
+            mkStep({ id:"review", say:"（想一想）夾娃娃機為什麼要設上限？", task:"說出理由：它很難夾到，不設上限，錢會一直花下去",
+              options:["它很難夾到，不設上限，錢會一直花下去","上限是給小孩的","設了比較好夾","店員規定的"],
+              accepted:["它很難夾到，不設上限，錢會一直花下去","不設上限錢會一直花","它很難夾到，不設限會花光錢","很難夾到要設上限"], kw:["一直花","花光","設上限"],
+              feedback:{ perfect:"答對了！夾娃娃很難夾到，設好上限才不會花光錢。", failed:"記住：夾娃娃很難夾中，先設上限、守住預算。" } }),
+          ]
+        },
+        {
+          id: "arcade_eat_coin", name: "機台吃錢了", icon: "😤", clerkName: "遊樂場店員",
+          desc: "機台故障不動手，找店員處理",
+          steps: [
+            mkStep({ id:"tell_broken", say:"（你在電子遊樂場玩遊戲機。投了一個代幣進去，按了好幾次按鈕，機台卻完全沒反應。你要去找店員說明。）", task:"先叫「店員」，再說這台機器吃了你的代幣",
+              options:["店員，這台機器吃了我的代幣","（用力拍機台）","（踢機器）","再塞好幾個代幣進去"],
+              accepted:["店員，這台機器吃了我的代幣","機台吃代幣了","代幣投了沒反應"], kw:["吃了我的代幣","吃代幣","沒反應"],
+              feedback:{ failed:"機台故障找店員處理。可以說：「店員，這台機器吃了我的代幣」" } }),
+            mkStep({ id:"thank_fix", say:"抱歉抱歉！我檢查一下…好了，還你一個代幣！", task:"說「謝謝你」",
+              options:["謝謝你！","早該修了","賠我兩個","哼"],
+              accepted:["謝謝你！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝你！」" } }),
+            mkStep({ id:"review", say:"（想一想）機器故障怎麼辦？", task:"說出方法：不拍不踢，找店員處理",
+              options:["不拍不踢，找店員處理","用力拍就會好","踢一腳試試","走掉算了"],
+              accepted:["不拍不踢，找店員處理","找店員處理","不拍不踢找店員"], kw:["店員"],
+              feedback:{ perfect:"答對了！機器故障不動手，找店員處理。", failed:"記住：機器故障不要拍打，找店員處理。" } }),
+          ]
+        },
+        {
+          id: "arcade_tickets", name: "用彩票換獎品", icon: "🎟️",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "數彩票、看夠換哪一個獎品，算出剩下幾張",
+          steps: [
+            mkStep({ id:"say_count", say:"（你玩遊戲贏了 35 張彩票，拿到兌換櫃檯。你想先換一個橡皮擦，剩下的存起來，下次換小汽車。）要換獎品嗎？", task:"先說「要」，再說你有 35 張彩票",
+              options:["要，我有 35 張彩票", "我有一百張啦", "我沒有彩票，你也要給我獎品", "全部換錢"], kw:["35"], accepted:["要，我有 35 張彩票"] }),
+            mkStep({ id:"choose", image:"images/b6/icon-b6-arcade-prize-board.png", image_label:"獎品兌換", say:"好！這邊的獎品：橡皮擦 20 張、小汽車 50 張、貼紙 10 張。", task:"先想想 35 張夠換哪些，再說你要換橡皮擦",
+              options:["我要換橡皮擦", "我要換小汽車", "全部都要", "換最貴的"], kw:["橡皮擦"], accepted:["我要換橡皮擦"] }),
+            mkStep({ id:"remain", image:"images/b6/icon-b6-arcade-prize-board.png", image_label:"獎品兌換", say:"好！橡皮擦用掉 20 張，你還剩幾張？", task:"算一算 35 張用掉 20 張後還剩幾張，說出剩下的張數",
+              options:["剩下 15 張", "剩下 20 張", "剩下 25 張", "都沒了"], kw:["15"], accepted:["剩下 15 張"] }),
+            mkStep({ id:"save", say:"對！15 張可以再換一張貼紙，還是要存起來下次換？", task:"說你要先存起來，集滿 50 張再換小汽車",
+              options:["我要先存起來，集滿 50 張再換小汽車", "我要換小汽車", "全部丟掉", "隨便"], kw:["存起來", "集滿"], accepted:["我要先存起來，集滿 50 張再換小汽車"] }),
+            mkStep({ id:"thanks", say:"好的，剩下的彩票幫你存進卡片裡！", task:"說「謝謝」",
+              options:["謝謝！", "那我現在就要小汽車", "快一點", "不要存"], kw:["謝謝"], accepted:["謝謝！"] }),
+            mkStep({ id:"review", say:"（想一想）用彩票換獎品，要先做什麼？", task:"說出方法：先數有幾張，再看夠換哪一個",
+              options:["先數有幾張，再看夠換哪一個", "看到喜歡的就換", "叫店員決定", "全部換最便宜的"], kw:["數", "夠換"], accepted:["先數有幾張，再看夠換哪一個"], feedback:{ perfect:"答對了！先數有幾張，再看夠換哪一個。", failed:"記住：先數有幾張，再看夠換哪一個。" } }),
+          ]
+        },
+        {
+          id: "arcade_stranger", name: "陌生人要你幫他付錢", icon: "🙅", clerkName: "陌生大哥哥", clerkImage: "images/clerk-stranger-arcade.jpg",
+          // 2026-09-26 補情境 B／C 組（定稿見 docs/補情境_BC組對話草稿.md，經 ChatGPT 兩輪審閱）
+          desc: "陌生人要你幫他付錢：婉拒、走開、告訴店員",
+          steps: [
+            mkStep({ id:"refuse", say:"（你在玩賽車遊戲，一個不認識的大哥哥走過來。）欸，幫我投兩個代幣好不好？我的用完了！", task:"先說「不好意思」，再說你不能幫他付",
+              options:["不好意思，我不能幫你付", "好啊都給你", "我的代幣全部給你", "你先還我錢"], kw:["不能幫你付"], accepted:["不好意思，我不能幫你付"] }),
+            mkStep({ id:"leave", say:"小氣欸！兩個而已！", task:"說「我要走了」，然後離開去找店員",
+              options:["我要走了", "好啦給你", "跟他吵架", "（站著不動）"], kw:["我要走了"], accepted:["我要走了"] }),
+            mkStep({ id:"report", say:"（你走到櫃檯）怎麼了嗎？", task:"跟店員說：有一個不認識的人一直跟我要代幣",
+              options:["有一個不認識的人一直跟我要代幣", "沒事啦", "我自己處理", "你幫我打他"], kw:["不認識的人", "代幣"], accepted:["有一個不認識的人一直跟我要代幣"], clerkName:"遊樂場店員", clerkImage:"images/clerk-arcade.jpg" }),
+            mkStep({ id:"thanks", say:"謝謝你告訴我！我去處理，你在櫃檯旁邊玩就好。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝！", "我要去罵他", "我要回去把代幣全部給他", "（跑去跟他吵架）"], kw:["謝謝"], accepted:["好，謝謝！"], clerkName:"遊樂場店員", clerkImage:"images/clerk-arcade.jpg" }),
+            mkStep({ id:"review", say:"（想一想）陌生人跟你要錢或代幣，要怎麼做？", task:"說出做法：婉拒，走開，告訴店員或大人",
+              options:["婉拒，走開，告訴店員或大人", "給他就好", "跟他吵架", "自己偷偷躲起來"], kw:["婉拒", "走開", "告訴"], accepted:["婉拒，走開，告訴店員或大人"], feedback:{ perfect:"答對了！婉拒，走開，告訴店員或大人。", failed:"記住：婉拒，走開，告訴店員或大人。" } }),
+          ]
+        },
+        {
+          id: "topup_card", name: "儲值遊戲卡", icon: "💳",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "儲值送點數時照自己的計畫，不因為有送就多儲值",
+          steps: [
+            mkStep({ id:"greeting", say:"（這家電子遊樂場用遊戲卡，你的卡裡是 0 點。今天只打算花 100 元。）歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-arcade-card.png", image_label:"遊戲卡", say:"儲 100 元得 100 點；儲 300 元共得 350 點。要儲多少？", task:"說你只要儲值 100 元",
+              options:["我只要儲值 100 元","送比較多，我儲值 300 元","我儲值 1000 元","免費給我點數"], kw:["只要儲值"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"這次儲值一共 100 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","先欠著","算 50 元啦"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"s4", say:"卡內有 100 點。每台扣點不同，玩之前要看清楚。", task:"先說「好」，再複誦：卡片裡有 100 點",
+              options:["好，卡片裡有 100 點","每台都只扣 1 點","不用看扣多少點","點數永遠用不完"], kw:["100","卡片裡有"] }),
+            mkStep({ id:"review", say:"（想一想）儲值有送點數的時候，要怎麼決定儲值多少？", task:"說出方法：照自己的計畫，不要因為有送就多儲值",
+              options:["照自己的計畫，不要因為有送就多儲值","送越多越划算，儲值最多","把錢全部儲值","借錢來儲值"], kw:["因為有送","照自己","多儲值"], feedback:{ perfect:"答對了！照自己的計畫，不要因為有送就多儲值。", failed:"記住：照自己的計畫，不要因為有送就多儲值。" } }),
+          ]
+        },
+        {
+          id: "take_turns", name: "大家都想玩同一台", icon: "🥁",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本店有人等候時：依序排隊，每人一局後換人",
+          steps: [
+            mkStep({ id:"s1", say:"（你想玩太鼓遊戲，可是有一個人正在玩，旁邊還有一個小弟弟在等。店員走過來。）要玩太鼓嗎？現在有人在玩喔。", task:"用「請問」問店員：要排在哪裡？",
+              options:["請問要排在哪裡？","叫他讓我先玩","我去推他下來","我站前面就好"], kw:["要排在哪裡"] }),
+            mkStep({ id:"s2", say:"排在那個小弟弟後面。有人在等的時候，一人一局就換人。", task:"先說「好」，再複誦：一個人一局，輪流玩",
+              options:["好，一個人一局，輪流玩","我要連玩十局","小弟弟很小，我先玩","隨便啦"], kw:["一個人一局","輪流玩"] }),
+            mkStep({ id:"s3", say:"（你玩完一局了，後面的人還在等。）", task:"說「換你玩」，把位子讓給後面的人",
+              options:["換你玩","我再玩一局就好","我假裝沒看到你","這台是我的"], kw:["換你"] }),
+            mkStep({ id:"review", say:"（想一想）大家都想玩同一台機器，要怎麼做？", task:"說出方法：排隊，一個人一局，輪流玩",
+              options:["排隊，一個人一局，輪流玩","誰大誰先玩","一直玩不讓人","推別人下來"], kw:["一個人一局","輪流玩","排隊"], feedback:{ perfect:"答對了！排隊，一個人一局，輪流玩。", failed:"記住：排隊，一個人一局，輪流玩。" } }),
+          ]
+        },
+        {
+          id: "time_up", name: "玩到約好的時間", icon: "⏰",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "跟家人約好的時間到了就停，點數下次再用",
+          steps: [
+            mkStep({ id:"s1", say:"（現在四點四十五分，你和家人約好此時離店，路程約十分鐘，五點前到家。卡裡還有點數。）還有點數，要再玩一局嗎？", task:"說「不用了」，再說你現在要出發，五點前到家",
+              options:["不用了，我現在要出發，五點前到家","好，再玩十局","晚一點回家沒關係","點數沒用完不能走"], kw:["現在要出發","五點前到家","不用"] }),
+            mkStep({ id:"s2", say:"好，你卡裡這些付費點數可留到下次使用。", task:"先說「好」，再說「謝謝，再見」",
+              options:["好，謝謝，再見！","為了用完點數，我晚點再走","我還要加值繼續玩","卡片丟掉好了"], kw:["謝謝","再見"] }),
+            mkStep({ id:"review", say:"（想一想）玩遊戲的時候，要怎麼知道該停下來？", task:"說先留回家的時間，到約好的離店時間就停；能留下的點數下次用",
+              options:["先留回家的時間，到約好的離店時間就停；能留下的點數下次用","點數用完才停","玩到被罵才停","不用看時間"], kw:["點數下次用","先留回家","離店時間"], feedback:{ perfect:"答對了！先留回家的時間，到約好的離店時間就停；能留下的點數下次用。", failed:"記住：先留回家的時間，到約好的離店時間就停；能留下的點數下次用。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "comic_store", name: "漫畫店", icon: "📚", available: true,
+      theme: { color: '#16A34A', bg: '#DCFCE7', accent: '#15803D' },
+      situations: [
+        {
+          id: "comic_rent", name: "租漫畫", icon: "📖", clerkName: "漫畫店店員",
+          desc: "認識「租」：要歸還、有押金、比較便宜",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（放學後你經過一家漫畫店，想租一本漫畫回家看。你走進店裡。）歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_rent", say:"想找什麼書呢？", task:"用「請問」問租漫畫怎麼算錢",
+              options:["請問租漫畫怎麼算錢？","白看可以嗎","這裡是圖書館吧","我要買飲料"],
+              accepted:["請問租漫畫怎麼算錢？","租漫畫怎麼算錢","租書怎麼算"], kw:["怎麼算"],
+              image:"images/a4/icon-a4-comic-book-shop.png", image_label:"漫畫",
+              feedback:{ failed:"先問規則。可以說：「請問租漫畫怎麼算錢？」" } }),
+            mkStep({ id:"know_deposit2", say:"一本一天10元，要先付100元押金辦租書證喔！", task:"確認押金規則",
+              options:["好，押金退證的時候會還我對嗎？","100元被你賺走了","請問廁所在哪裡？","不辦證直接拿走"],
+              accepted:["好，押金退證的時候會還我對嗎？","押金會還我對嗎","退證會還押金嗎"], kw:["押金"],
+              feedback:{ failed:"押金會退回。可以說：「好，押金退證的時候會還我對嗎？」" } }),
+            // 外部審閱第六輪（必改）：押金要真的付，才教得到「100 元是押金、30 元是租金」
+            mkStep({ id:"pay_rent", say:"對！押金 100 元，加上這本租三天 30 元，一共 130 元。", task:"先說「好」，再把 130 元拿給店員，說「給你 130 元」",
+              options:["好，給你130元","10元租到飽吧","看完再付","借我錢"],
+              accepted:["好，給你130元","這是130元","給你130元","好，這是130元"], kw:[...KW_PRESETS.hand, "130"],
+              image:["images/money/100_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"130 元",
+              feedback:{ failed:"付押金和租金。可以說：「好，給你130元」" } }),
+            mkStep({ id:"review", say:"（想一想）租東西和買東西差在哪？", task:"說出差別：租的要歸還，買的可以自己留下",
+              options:["租的要歸還，買的可以自己留下","一樣的意思","租的可以不還","買比較便宜"],
+              accepted:["租的要歸還，買的可以自己留下","租的要歸還，買的留下","租要歸還","租的是暫時使用，之後要歸還"], kw:["歸還","留下"],
+              feedback:{ perfect:"答對了！租的要歸還，買的可以自己留下。", failed:"記住：租＝借用要歸還，買＝自己的，可以留下。" } }),
+          ]
+        },
+        {
+          id: "comic_overdue", name: "還書遲到了", icon: "😓", clerkName: "漫畫店店員",
+          desc: "逾期主動道歉、付逾期費，負起責任",
+          steps: [
+            // 2026-09-13：原本第一句就要學生道歉，沒有交代「為什麼要道歉」。改成
+            // 旁白先鋪陳（租三天、今天第五天、遲兩天）→ 店員歡迎光臨 → 說明來意 → 才道歉。
+            // 🔴 破音字：「還」單獨出現時 TTS 一律唸成 hái，要寫成「還書」「歸還」才會唸 huán
+            //    （Gemini TTS 與 Edge 都不吃 SSML／注音標記，只能靠改寫文字）。
+            { id:"enter", shopkeeper_prompt:"（你上個星期在漫畫店租了一本漫畫，說好租三天。今天已經是第五天了，你遲了兩天才拿漫畫來還書。）歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "我要走了", "多少錢？", "喂"],
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_return", say:"有什麼需要幫忙的嗎？", task:"告訴店員你要還書",
+              options:["我要還書。","我要買書。","我要辦會員卡。","隨便看看"],
+              accepted:["我要還書。","我要還書","我來還書","我要歸還漫畫"], kw:["還書","歸還"],
+              image:"images/a4/icon-a4-comic-book-shop.png", image_label:"要還的漫畫",
+              feedback:{ failed:"先說出你要做什麼。可以說：「我要還書。」" } }),
+            mkStep({ id:"admit_late", say:"好的，我看一下…這本說好租三天，今天已經第五天了喔。", task:"先說「不好意思」，再說你遲了兩天還書",
+              options:["不好意思，我遲了兩天還書","（把書丟著就跑）","書不是我租的","你們沒提醒我"],
+              accepted:["不好意思，我遲了兩天還書","我遲了兩天還書","遲還了對不起"], kw:["遲","還書"],
+              feedback:{ failed:"遲了就誠實道歉。可以說：「不好意思，我遲了兩天還書」" } }),
+            mkStep({ id:"pay_fee", say:"沒關係，誠實很好！補逾期費一天10元，兩天20元喔！", task:"先說「好」，再把 20 元拿給店員，說「給你 20 元逾期費」",
+              options:["好，給你20元逾期費","可以不要付嗎","下次一起算","好貴喔不想付"],
+              accepted:["好，給你20元逾期費","這是20元逾期費","付20元","好，這是20元逾期費"], kw:[...KW_PRESETS.hand, "20元"],
+              image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"20 元",
+              feedback:{ failed:"逾期費要補。可以說：「好，給你20元逾期費」" } }),
+            mkStep({ id:"review", say:"（想一想）跟人約好的時間做不到怎麼辦？", task:"說出方法：誠實說明道歉，該補的補",
+              options:["誠實說明道歉，該補的補","裝作忘記","怪別人沒提醒","再也不去那家店"],
+              accepted:["誠實說明道歉，該補的補","誠實道歉該補的補","誠實說明道歉"], kw:["誠實","道歉"],
+              feedback:{ perfect:"答對了！誠實道歉，該負的責任要負。", failed:"記住：做不到就誠實道歉，該補的責任要補。" } }),
+          ]
+        },
+        {
+          id: "comic_member", name: "辦會員卡", icon: "💳", clerkName: "漫畫店店員",
+          desc: "分辨合理與不合理的個資要求",
+          steps: [
+            // 2026-09-13：原本一進來店員就講會員卡，沒有前因。補上進店的鋪陳與招呼。
+            { id:"enter", shopkeeper_prompt:"（你已經來這家漫畫店租過好幾次書了。今天放學後你又走進店裡，想再租一本。）歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "我要走了", "多少錢？", "喂"],
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"say_rent", say:"今天想租哪一本呢？", task:"告訴店員你要租這一本漫畫",
+              options:["我要租這一本漫畫。","我要還書。","我要退押金。","不用管我"],
+              accepted:["我要租這一本漫畫。","我要租這一本漫畫","我要租漫畫","我想租這一本"], kw:["租"],
+              image:"images/a4/icon-a4-comic-book-shop.png", image_label:"這一本漫畫",
+              feedback:{ failed:"先說出你要做什麼。可以說：「我要租這一本漫畫。」" } }),
+            mkStep({ id:"ask_member", say:"對了，我們有會員卡，租十送一喔！要辦嗎？", task:"用「請問」問辦會員卡要不要錢",
+              options:["請問辦會員卡要錢嗎？","馬上辦十張","不用問直接辦","會員都是騙人的"],
+              accepted:["請問辦會員卡要錢嗎？","辦會員卡要錢嗎","辦卡要費用嗎"], kw:["要錢","費用"],
+              feedback:{ failed:"先問條件。可以說：「請問辦會員卡要錢嗎？」" } }),
+            mkStep({ id:"judge_info", say:"免費辦卡！只要留姓名和電話就可以囉！（店員說姓名和電話只用來建立會員資料、聯絡你。你知道用途，也願意提供。）", task:"判斷合理後同意：先說「好」，再說常來租的話很划算，最後說「我辦」",
+              options:["好，常來租的話很划算，我辦","電話幹嘛給你","把我家地址身分證都給你","好，我的身分證字號也給你"],
+              accepted:["好，常來租的話很划算，我辦","常來很划算我辦","好我要辦"], kw:["我辦","要辦"],
+              feedback:{ failed:"知道用途、自己也願意，辦會員留姓名電話是可以的；身分證字號不一樣。可以說：「好，常來租的話很划算，我辦」" } }),
+            mkStep({ id:"thank_gift", say:"辦好了！這次租書就先送你一張貼紙！", task:"說「謝謝你」",
+              options:["謝謝你！","貼紙好醜","就這樣？","再送一張"],
+              accepted:["謝謝你！","謝謝","謝謝你"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝你！」" } }),
+            mkStep({ id:"review", say:"（想一想）哪些個資可以給、哪些絕對不行？", task:"說出做法：先問清楚資料要做什麼，只給需要的；身分證字號不能隨便給",
+              options:["先問清楚資料要做什麼，只給需要的；身分證字號不能隨便給","什麼都不能給","什麼都可以給","看心情"],
+              accepted:["先問清楚資料要做什麼，只給需要的；身分證字號不能隨便給","先問清楚資料要做什麼，只給需要的","身分證字號不能隨便給","辦會員可能需要姓名電話，要先問用途，只給需要的資料"], kw:["問清楚","需要","身分證"],
+              feedback:{ perfect:"答對了！先問清楚資料要做什麼、只給需要的，身分證字號不能隨便給。", failed:"記住：先問清楚資料要做什麼，只給需要的；身分證字號不能隨便給。" } }),
+          ]
+        },
+        {
+          id: "comic_seat", name: "座位區計時收費", icon: "⏱️", clerkName: "漫畫店店員",
+          desc: "在店裡看書是算時間收錢，先問清楚怎麼算",
+          steps: [
+            // 2026-09-17 第一批補情境：對方招呼→學生回應，再切入主題
+            { id:"greeting", shopkeeper_prompt:"（週末下午你想待在漫畫店裡看兩小時的書，不想把書租回家。你走進店裡。）歡迎光臨！", task:"跟店員打招呼",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"ask_fee", say:"想找什麼書呢？", task:"用「請問」問在店裡看書怎麼算錢",
+              options:["請問在店裡看書怎麼算錢？","白看可以嗎","我要還書","隨便看看"],
+              accepted:["請問在店裡看書怎麼算錢？","在店裡看怎麼算錢","座位怎麼算錢"], kw:["怎麼算","怎麼收"],
+              feedback:{ failed:"先問清楚規則。可以說：「請問在店裡看書怎麼算錢？」" } }),
+            mkStep({ id:"choose_time", say:"在店裡看是一小時30元，超過一小時就再算一小時喔！", task:"先說「好」，再說你要看兩小時",
+              options:["好，我要看兩小時","看到打烊都不用錢吧","30元看一整天","不付錢可以嗎"],
+              accepted:["好，我要看兩小時","我要看兩小時","我要看兩個小時"], kw:["兩小時","兩個小時","2小時"],
+              feedback:{ failed:"說出要看多久。可以說：「好，我要看兩小時」" } }),
+            mkStep({ id:"pay_seat", say:"兩小時一共60元喔！", task:"先說「好」，再把 60 元拿給店員，說「給你 60 元」",
+              options:["好，給你60元","可以算便宜一點嗎","看完再付","借我錢"],
+              accepted:["好，給你60元","這是60元","給你60元","好，這是60元"], kw:[...KW_PRESETS.hand, "60"],
+              image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png"], image_label:"60 元",
+              feedback:{ failed:"一小時30元，兩小時60元。可以說：「好，給你60元」" } }),
+            mkStep({ id:"review", say:"（想一想）在店裡用座位看書，要注意什麼？", task:"說出重點：先問清楚怎麼算錢，注意時間，超過會多收費",
+              options:["先問清楚怎麼算錢，注意時間，超過會多收費","坐多久都一樣","想看多久就看多久","先看再說"],
+              accepted:["先問清楚怎麼算錢，注意時間，超過會多收費","先問清楚怎麼算錢","注意時間不要超過","先問清楚怎麼算錢，看時間不要超過"], kw:["怎麼算","時間"],
+              feedback:{ perfect:"答對了！先問清楚怎麼算，注意時間。", failed:"記住：先問清楚怎麼算錢，注意時間，超過會多收費。" } }),
+          ]
+        },
+        {
+          id: "comic_damaged", name: "租書前發現漫畫破損", icon: "📕", clerkName: "漫畫店店員",
+          desc: "租之前先檢查，發現原本就破了先告訴店員",
+          steps: [
+            mkStep({ id:"tell_damage", image:"images/a4/icon-a4-comic-book-shop.png", image_label:"要租的漫畫", say:"（你在漫畫店挑了一本漫畫要租，拿起來發現封面已經破了一角，你拿去給店員看。）這本要租嗎？", task:"先說「不好意思」，再告訴店員這本漫畫的封面破了",
+              options:["不好意思，這本漫畫的封面破了","反正不是我弄的","破掉也能看啦","（什麼都不說）"], kw:["封面"],
+              accepted:["不好意思，這本漫畫的封面破了","這本漫畫的封面破了","封面破了"] }),
+            mkStep({ id:"still_rent", say:"真的耶！謝謝你告訴我，我先幫你登記起來。這本還要租嗎？（破一角不影響看，你還是想租這一本。）", task:"先說「要」，再說「謝謝」",
+              options:["要，謝謝","隨便啦","你自己看","不知道"], kw:["要"],
+              accepted:["要，謝謝","要","我要租，謝謝"] }),
+            mkStep({ id:"pay", image:["images/money/10_yuan_front.png"], image_label:"10 元", say:"好，租一天 10 元喔！", task:"把 10 元拿給店員，說「給你 10 元」",
+              options:["給你 10 元","看完再付","可以不用付嗎","我沒帶錢"], kw:["10元","十元"],
+              accepted:["給你 10 元","我給你 10 元","10 元給你","這是 10 元"] }),
+            mkStep({ id:"thanks", say:"收你 10 元，記得明天拿回來喔！", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","知道啦","再說吧","忘記就算了"], kw:["謝謝"],
+              accepted:["好，謝謝","謝謝","好，謝謝你"] }),
+            mkStep({ id:"review", say:"（想一想）租漫畫時發現漫畫本來就有破損，要怎麼做？", task:"說出方法：租之前先告訴店員",
+              options:["租之前先告訴店員","還書再說","自己黏起來","不要說"], kw:["告訴店員"],
+              accepted:["租之前先告訴店員","先告訴店員","租之前告訴店員"],
+              feedback:{ perfect:"答對了！租之前先告訴店員。", failed:"記住：發現本來就有破損，租之前先告訴店員。" } }),
+          ]
+        },
+        {
+          id: "find_book", name: "請店員查書在哪裡", icon: "🔎",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "找不到書請店員查，記住在哪一區哪一排，看完放回原位",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在漫畫店裡看書，想找《海賊冒險》第 20 集，可是找不到，走到櫃檯。）你好！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"想找什麼書呢？", task:"說你想找《海賊冒險》第 20 集",
+              options:["我想找《海賊冒險》第 20 集","我不說書名，你自己猜","把別人正在看的直接拿來","你立刻把每本書都搬給我看"], kw:["20","找《海賊冒險》第"] }),
+            mkStep({ id:"s3", say:"我查一下……在 C 區第三排，現在沒有被租走喔！", task:"複誦：C 區第三排",
+              options:["C 區第三排","A 區第一排","C 區第一排","B 區第三排"], kw:["C區第三排"] }),
+            mkStep({ id:"s4", say:"店裡的書看完，請放回原來的位子。", task:"先說「好」，再說看完會放回原位",
+              options:["好，看完我會放回原位","看完丟在地上","把書塞到別區","沒辦外借就直接帶走"], kw:["會放回原位"] }),
+            mkStep({ id:"review", say:"（想一想）在店裡找不到書，要怎麼做？", task:"說出方法：請店員幫忙查，記住在哪一區哪一排",
+              options:["請店員幫忙查，記住在哪一區哪一排","把書架翻亂找","不說書名卻要求店員立刻找到","拿別人正在看的"], kw:["請店員幫忙查","哪一區哪一排","記住"], feedback:{ perfect:"答對了！請店員幫忙查，記住在哪一區哪一排。", failed:"記住：請店員幫忙查，記住在哪一區哪一排。" } }),
+          ]
+        },
+        {
+          id: "new_book", name: "買包膜的新書", icon: "📘",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "本店未售新書不自行拆膜；可先詢問試閱方式，決定購買再付款",
+          steps: [
+            mkStep({ id:"greeting", say:"（你想買一本剛出的漫畫《魔法學院》第 1 集，書外面包著一層透明的膜。你身上有 200 元。）歡迎光臨！", task:"跟店員打招呼",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-comic-wrapped.png", image_label:"包著膜的新漫畫", say:"想找什麼書呢？", task:"說你要買《魔法學院》第 1 集",
+              options:["我要買《魔法學院》第 1 集","不用問就先拆膜","我不說書名，你自己猜","我要偷偷拆這本看完再放回去"], kw:["買《魔法學院》第"] }),
+            mkStep({ id:"s3", say:"在新書區。新書要買了才能拆膜喔。", task:"先說「好」，再說你買了才拆",
+              options:["好，買了才拆","我先拆開看一下","膜撕掉沒關係吧","我看完再放回去"], kw:["才拆"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"200 元", say:"（你把書拿到櫃台。）《魔法學院》第 1 集，110 元。", task:"把 200 元拿給店員，說「給你 200 元」",
+              options:["給你 200 元","我不想付錢","算 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "200", "二百"] }),
+            mkStep({ id:"change", image:["images/money/50_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png"], image_label:"找你 90 元", say:"收你 200 元，找你 90 元，謝謝！", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["90 元，對了，謝謝！","錢我不用數","80 元，對了，謝謝！","（直接走掉）"], kw:["90","對了"], mode:'all' }),
+            mkStep({ id:"review", say:"（想一想）新書外面有包膜，要怎麼做？", task:"說照店裡的規定，不自己拆膜，買好才拆",
+              options:["照店裡的規定，不自己拆膜，買好才拆","先拆開看再決定","偷偷撕一點","看完再放回去"], kw:["不自己拆膜","買好才拆","照店裡"], feedback:{ perfect:"答對了！照店裡的規定，不自己拆膜，買好才拆。", failed:"記住：照店裡的規定，不自己拆膜，買好才拆。" } }),
+          ]
+        },
+        {
+          id: "order_noodles", name: "在座位區點泡麵", icon: "🍜",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "在本店允許用餐的座位點餐、付款；先收好書，吃完清潔雙手後再看",
+          steps: [
+            mkStep({ id:"s1", image:["images/a4/icon-a4-instant-noodles-shop.png","images/a4/icon-a4-black-tea-shop.png"], image_label:"泡麵 ＋ 紅茶", say:"（你在漫畫店的座位區看書，肚子餓了，想吃泡麵、喝紅茶。你帶 100 元去點餐。）需要什麼嗎？", task:"說你要一碗泡麵和一杯紅茶",
+              options:["我要一碗泡麵和一杯紅茶","不說品項，叫店員自己猜","不點餐就拿別人的泡麵","給我免費的"], kw:["一碗泡麵","一杯紅茶"] }),
+            mkStep({ id:"pay", image:["images/money/100_yuan_front.png"], image_label:"100 元", say:"好！泡麵 45 元、紅茶 20 元，一共 65 元。", task:"把 100 元拿給店員，說「給你 100 元」",
+              options:["給你 100 元","我不想付錢","算 50 元啦","先欠著"], kw:[...KW_PRESETS.hand, "100", "一百"] }),
+            mkStep({ id:"change", image:["images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/10_yuan_front.png","images/money/5_yuan_front.png"], image_label:"找你 35 元", say:"收你 100 元，找你 35 元。", task:"數一數找回的錢，確認金額是否正確，說出金額，再說「對了，謝謝」",
+              options:["35 元，對了，謝謝！","錢我不用數","25 元，對了，謝謝！","（直接走掉）"], kw:["35","對了"], mode:'all' }),
+            mkStep({ id:"s4", say:"（店員將泡麵放妥在用餐桌上。）小心燙，先把書放到旁邊乾淨處。", task:"先說「好」，再說把書收好，等泡麵稍涼再吃",
+              options:["好，我把書收好，等泡麵稍涼再吃","書當墊子剛好","湯滴到書沒關係","我邊吃邊翻書"], kw:["等泡麵稍涼","把書收好"] }),
+            mkStep({ id:"review", say:"（想一想）在漫畫店一邊吃東西一邊看書，要注意什麼？", task:"說先收好書，吃完把手弄乾淨再看",
+              options:["先收好書，吃完把手弄乾淨再看","書髒了沒關係","用沾油的手翻書","用書墊碗"], kw:["先收好書","手弄乾淨","吃完"], feedback:{ perfect:"答對了！先收好書，吃完把手弄乾淨再看。", failed:"記住：先收好書，吃完把手弄乾淨再看。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "job_interview", name: "打工面試", icon: "🤝", available: true,
+      theme: { color: '#2563EB', bg: '#DBEAFE', accent: '#1D4ED8' },
+      situations: [
+        {
+          id: "interview_intro", name: "自我介紹", icon: "🙋", clerkName: "店長",
+          desc: "面試時說清楚名字、會什麼、為什麼想來",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"你好，請坐！", task:"跟面試官問好",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"greet_intro", say:"先自我介紹一下吧！", task:"先說「店長好」，再說你的名字，最後說你來應徵假日工讀",
+              options:["店長好，我是{名字}，來應徵假日工讀","（低頭不說話）","你先說","履歷上都有寫啊"],
+              accepted:["店長好，我是{名字}，來應徵假日工讀","我是{名字}，來應徵工讀","我是{名字}"], kw:["{名字}"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"面試先打招呼，再說你的名字，最後說你來應徵假日工讀。" } }),
+            mkStep({ id:"say_skill", say:"你好！說說看你會什麼？", task:"告訴店長你會整理貨架，也會打掃，做事很仔細",
+              options:["我會整理貨架，也會打掃，做事很仔細","什麼都會","不知道耶","薪水多少先說"],
+              accepted:["我會整理貨架，也會打掃，做事很仔細","我會整理貨架和打掃","做事很仔細"], kw:["整理","仔細"],
+              feedback:{ failed:"說具體會做的事。可以說：「我會整理貨架，也會打掃，做事很仔細」" } }),
+            mkStep({ id:"why_work", say:"為什麼想來打工呢？", task:"說出動機：你想學習工作，自己賺零用錢",
+              options:["我想學習工作，自己賺零用錢","爸媽逼的","無聊","不知道"],
+              accepted:["我想學習工作，自己賺零用錢","想學習工作自己賺錢","想自己賺零用錢"], kw:["賺","學習"],
+              feedback:{ failed:"說出正向的動機。可以說：「我想學習工作，自己賺零用錢」" } }),
+            mkStep({ id:"review", say:"（想一想）面試自我介紹要說什麼？", task:"說出重點：名字、會什麼、為什麼想來",
+              options:["名字、會什麼、為什麼想來","越少越好","隨便聊","背成語"],
+              accepted:["名字、會什麼、為什麼想來","名字會什麼為什麼想來","說名字和會的事"], kw:["名字","會什麼"],
+              feedback:{ perfect:"答對了！名字、會什麼、為什麼想來。", failed:"記住：自我介紹說名字、會什麼、為什麼想來。" } }),
+          ]
+        },
+        {
+          id: "interview_answer", name: "回答問題", icon: "💬", clerkName: "店長",
+          desc: "誠實具體回答時段、通勤等問題",
+          steps: [
+            mkStep({ id:"say_time", say:"（你正在打工面試，已經跟阿宏店長自我介紹完了。）很好！你什麼時間可以來上班？", task:"告訴店長週六和週日的下午你可以",
+              options:["週六和週日的下午我可以","隨時都行吧","看心情","你排我就來"],
+              accepted:["週六和週日的下午我可以","週六週日下午可以","週末下午可以"], kw:["週六","週末"],
+              feedback:{ failed:"說清楚可以的時段。可以說：「週六和週日的下午我可以」" } }),
+            mkStep({ id:"say_commute", say:"那你怎麼來上班呢？", task:"告訴店長你搭公車來，大概二十分鐘",
+              options:["我搭公車來，大概20分鐘","用飛的","很遠很麻煩","家人載看心情"],
+              accepted:["我搭公車來，大概20分鐘","搭公車來20分鐘","我搭公車來"], kw:["公車"],
+              feedback:{ failed:"說清楚怎麼到。可以說：「我搭公車來，大概20分鐘」" } }),
+            mkStep({ id:"wait_result", say:"好！我們會再通知你，這週內會打電話給你！", task:"先說「好」，再說「謝謝店長」，最後說「我等您電話」",
+              options:["好，謝謝店長，我等您電話","現在就告訴我","不錄取我就投訴","喔"],
+              accepted:["好，謝謝店長，我等您電話","謝謝店長我等您電話","好的謝謝","好的，謝謝店長，我等您電話"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「好，謝謝店長，我等您電話」" } }),
+            mkStep({ id:"review", say:"（想一想）回答面試問題的重點？", task:"說出重點：誠實回答，說得具體清楚",
+              options:["誠實回答，說得具體清楚","隨便答","答非所問","都說不知道"],
+              accepted:["誠實回答，說得具體清楚","誠實回答具體清楚","誠實又具體"], kw:["誠實","具體"],
+              feedback:{ perfect:"答對了！誠實回答，說得具體清楚。", failed:"記住：面試回答要誠實、具體。" } }),
+          ]
+        },
+        {
+          id: "interview_ask", name: "問清楚條件", icon: "💰", clerkName: "店長",
+          desc: "問時薪與發薪日；遇到要先繳錢的要小心",
+          steps: [
+            mkStep({ id:"ask_pay", say:"（打工面試快結束了，你還想問清楚薪水的事。）OK！那你還有什麼想問的嗎？", task:"用「請問」問時薪多少、什麼時候發薪水",
+              options:["請問時薪多少？什麼時候發薪水？","沒有問題","可以偷吃東西嗎","幾點下班就好"],
+              accepted:["請問時薪多少？什麼時候發薪水？","時薪多少什麼時候發薪","請問時薪多少"], kw:["時薪"],
+              feedback:{ failed:"工作條件要問清楚。可以說：「請問時薪多少？什麼時候發薪水？」" } }),
+            // 2026-01-01 起最低時薪 196 元（原本 190 元已低於法定）→ 改 200 元（外部審閱第七輪）
+            mkStep({ id:"confirm_pay", say:"時薪200元，每月10號發薪喔！", task:"複誦：時薪 200 元，10 號發薪，最後問「對嗎」",
+              options:["時薪200元，10號發薪，對嗎？","隨便都可以","太少了吧","現金先給我"],
+              accepted:["時薪200元，10號發薪，對嗎？","時薪200元10號發薪對嗎","200元10號發薪"], kw:["200","兩百"],
+              feedback:{ failed:"複誦一次確認。可以說：「時薪200元，10號發薪，對嗎？」" } }),
+            mkStep({ id:"uniform_fee", say:"對了，制服要先跟你收500元喔！", task:"先不答應，說要問家人",
+              options:["這個我要回家問過家人再決定","好，馬上給你500","應該要繳的吧","先欠著之後扣薪水"],
+              accepted:["這個我要回家問過家人再決定","回家問過家人再決定","我要先問家人"], kw:["問過家人","問家人"],
+              feedback:{ failed:"上班前要先繳錢的都要小心。可以說：「這個我要回家問過家人再決定」" } }),
+            mkStep({ id:"review", say:"（想一想）面試遇到要先繳錢的怎麼辦？", task:"說出方法：先不答應，回家問大人",
+              options:["先不答應，回家問大人","馬上繳表示誠意","借錢也要繳","繳了才有工作"],
+              accepted:["先不答應，回家問大人","先不答應回家問大人","回家問大人"], kw:["問大人"],
+              feedback:{ perfect:"答對了！要先繳錢的工作先問大人，多半有問題。", failed:"記住：先繳錢才能上班的，先回家問大人再決定。" } }),
+          ]
+        },
+        {
+          id: "interview_door", name: "進門打招呼、結束道謝", icon: "🚪", clerkName: "店長",
+          desc: "敲門進去先問好、說明來面試，結束時道謝再離開",
+          steps: [
+            mkStep({ id:"enter", say:"（你到店裡面試，辦公室的門關著，你先敲敲門。）請進！", task:"先說「店長好」，再說你的名字，最後說你今天來面試",
+              options:["店長好，我是{名字}，今天來面試","（直接坐下）","（一直站在門口不說話）","人呢"], kw:["面試"],
+              accepted:["店長好，我是{名字}，今天來面試","店長好，我今天來面試","我是來面試的","店長好，我叫{名字}，今天來面試","店長好，我的名字是{名字}，今天來面試"] }),
+            mkStep({ id:"sit", say:"你好，請坐！", task:"說「謝謝店長」，再坐下",
+              options:["謝謝店長","（直接躺在椅子上）","喔","好累"], kw:["謝謝"],
+              accepted:["謝謝店長","謝謝"] }),
+            mkStep({ id:"leave", say:"（面試結束）好，今天就到這裡，結果我們會再通知你。", task:"站起來，先說「謝謝店長給我這個機會」，再說「再見」",
+              options:["謝謝店長給我這個機會，再見","那我錄取了嗎","（直接走）","什麼時候發薪水"], kw:["謝謝"],
+              accepted:["謝謝店長給我這個機會，再見","謝謝店長給我這個機會","謝謝店長，再見"] }),
+            mkStep({ id:"review", say:"（想一想）面試開始和結束的時候要做什麼？", task:"說出重點：進門先問好，結束要道謝",
+              options:["進門先問好，結束要道謝","進門直接坐","結束就走","問薪水就好"], kw:["問好","道謝"],
+              accepted:["進門先問好，結束要道謝","進門先問好","結束要道謝"],
+              feedback:{ perfect:"答對了！進門先問好，結束要道謝。", failed:"記住：進門先問好，結束要道謝。" } }),
+          ]
+        },
+        {
+          id: "interview_reject", name: "沒被錄取的時候", icon: "📞", clerkName: "店長",
+          desc: "沒被錄取時禮貌道謝、問怎麼進步",
+          steps: [
+            mkStep({ id:"answer_call", say:"（面試後過了三天，店長打電話給你。）喂，你好，我是店長。", task:"先說「店長好」，再說你的名字",
+              options:["店長好，我是{名字}","（直接掛斷）","幹嘛","誰啊"], kw:["店長好"],
+              accepted:["店長好，我是{名字}","店長好","店長好，我叫{名字}","店長好，我的名字是{名字}"] }),
+            mkStep({ id:"thank_notice", say:"謝謝你來面試。很可惜，這次我們找了別人。", task:"先說「好」，再說「謝謝店長通知我」",
+              options:["好，謝謝店長通知我","不錄取就算了啦！","你們眼光很差","（直接掛斷）"], kw:["通知"],
+              accepted:["好，謝謝店長通知我","謝謝店長通知我","謝謝你通知我"] }),
+            mkStep({ id:"ask_improve", say:"你表現得不錯，只是有人比較有經驗。", task:"用「請問」問店長，你可以怎麼進步",
+              options:["請問我可以怎麼進步？","那算了","反正我也不想去","你騙人"], kw:["進步","加強"],
+              accepted:["請問我可以怎麼進步？","我可以怎麼進步","請問我要加強什麼"] }),
+            mkStep({ id:"bye", say:"可以多練習跟客人說話，下次有缺我再找你！", task:"先說「好」，再說「謝謝店長，再見」",
+              options:["好，謝謝店長，再見","不用了啦","隨便","（直接掛斷）"], kw:["謝謝"],
+              accepted:["好，謝謝店長，再見","謝謝店長，再見","謝謝店長"] }),
+            mkStep({ id:"review", say:"（想一想）沒被錄取的時候，要怎麼做？", task:"說出方法：禮貌道謝，問怎麼進步，再試別家",
+              options:["禮貌道謝，問怎麼進步，再試別家","生氣掛電話","以後都不找工作了","罵店長"], kw:["道謝","進步"],
+              accepted:["禮貌道謝，問怎麼進步，再試別家","禮貌道謝","問怎麼進步"],
+              feedback:{ perfect:"答對了！禮貌道謝，問怎麼進步，再試別家。", failed:"記住：沒被錄取也要禮貌道謝，問怎麼進步，再試別家。" } }),
+          ]
+        },
+        {
+          id: "call_apply", name: "打電話應徵、約面試", icon: "📞",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "打電話應徵：說在哪裡看到徵人、自己的名字、什麼時候可以面試",
+          steps: [
+            mkStep({ id:"greeting", say:"（你在超市門口看到「徵工讀生」的海報，上面有電話。你打電話過去。）喂，你好！", task:"跟接電話的人說「你好」",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"請問有什麼事？", task:"說你看到徵工讀生的海報，想應徵",
+              options:["我看到徵工讀生的海報，想應徵","不說想做什麼，你自己猜","不用面試，現在就錄取我","海報不用看，我直接來上班"], kw:["徵工讀生","想應徵"] }),
+            mkStep({ id:"s3", say:"（你星期六早上有空。）你叫什麼名字？什麼時候能來面試？", task:"說出你的名字，再說你星期六早上可以",
+              options:["我叫{名字}，星期六早上可以","我用別人的名字應徵","不告訴你時間，你自己猜","不約時間，我想來就來"], accepted:["我是{名字}，星期六早上可以","我的名字是{名字}，星期六早上可以"], kw:["星期六早上","{名字}"] }),
+            mkStep({ id:"s4", say:"星期六早上十點，來店裡找我，我是阿宏店長。", task:"先說「好」，再複誦星期六早上十點，到店裡找阿宏店長",
+              options:["好，星期六早上十點，到店裡找阿宏店長","星期日早上十點","星期六晚上十點","不用約時間，我自己決定"], kw:["星期六早上十點","店裡找阿宏店長"] }),
+            mkStep({ id:"s5", say:"記得帶履歷表。", task:"先說「好」，再說你會帶履歷表",
+              options:["好，我會帶履歷表","帶空白履歷，假裝寫好了","帶別人的履歷就好","履歷上的經歷隨便編"], kw:["會帶履歷表"] }),
+            mkStep({ id:"s6", say:"那星期六見囉！", task:"說「謝謝店長，星期六見」",
+              options:["謝謝店長，星期六見","不說再見就掛斷","還沒上班先付我薪水","你一定要錄取我"], kw:["謝謝店長","星期六見"] }),
+            mkStep({ id:"review", say:"（想一想）打電話應徵工作，要說清楚什麼？", task:"說出要說清楚的：在哪裡看到徵人、自己的名字、什麼時候可以面試",
+              options:["在哪裡看到徵人、自己的名字、什麼時候可以面試","不用說來意，叫店長自己猜","約好時間也不用記","履歷亂寫就好"], kw:["什麼時候","哪裡看","徵人"], feedback:{ perfect:"答對了！在哪裡看到徵人、自己的名字、什麼時候可以面試。", failed:"記住：在哪裡看到徵人、自己的名字、什麼時候可以面試。" } }),
+          ]
+        },
+        {
+          id: "hired_day1", name: "錄取了，問清楚第一天", icon: "🎉",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "被錄取後問清楚：第一天的時間、要穿什麼、要帶什麼",
+          steps: [
+            mkStep({ id:"s1", say:"（你想接受這份工作。面試後兩天，店長打電話給你。）喂，你好，我是阿宏店長。", task:"說「店長好，我是{名字}」",
+              options:["店長好，我是{名字}","你猜我是誰","不說話就掛斷","店長你不要吵我"], accepted:["店長好，我叫{名字}","店長好，我的名字是{名字}"], kw:["{名字}","店長好"] }),
+            mkStep({ id:"s2", say:"恭喜你錄取了！你願意來上班嗎？", task:"先說「謝謝店長」，再說你願意來上班",
+              options:["謝謝店長，我願意來上班","不用問我時間，隨便排","工作內容不用說，我亂做就好","還沒上班先給我整年薪水"], kw:["願意來上班","謝謝店長"] }),
+            mkStep({ id:"s3", say:"（你下星期一下午有空。）下星期一下午兩點開始上班，可以嗎？", task:"先說「可以」，再複誦：下星期一下午兩點",
+              options:["可以，下星期一下午兩點","我想什麼時候去都可以吧","下星期二","隨便啦"], kw:["下星期一下午兩點"] }),
+            mkStep({ id:"s4", say:"好！第一天穿黑色長褲和布鞋，制服我們會給你。", task:"先說「好」，再用「請問」問還要帶什麼東西",
+              options:["好，請問還要帶什麼東西？","我穿拖鞋去就好","制服我不想穿","不問清楚，我自己亂穿"], kw:["帶什麼東西"] }),
+            mkStep({ id:"s5", say:"請帶一支筆，報到文件我會另傳清單給你。", task:"先說「好」，再說「謝謝店長，星期一見」",
+              options:["好，謝謝店長，星期一見","清單不用看，我隨便帶","不說再見就掛斷","還沒問用途就把證件押在店裡"], kw:["謝謝店長","星期一見"] }),
+            mkStep({ id:"review", say:"（想一想）被錄取以後，要問清楚什麼？", task:"說出要問的：第一天幾點上班、要穿什麼、要帶什麼",
+              options:["第一天幾點上班、要穿什麼、要帶什麼","只問薪水","什麼都不用問","到了再說"], kw:["第一天幾點上班","要穿什麼","要帶什麼"], feedback:{ perfect:"答對了！第一天幾點上班、要穿什麼、要帶什麼。", failed:"記住：第一天幾點上班、要穿什麼、要帶什麼。" } }),
+          ]
+        },
+        {
+          id: "say_unavailable", name: "誠實說不能上班的時間", icon: "🗓️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "被問到上班時間：誠實說哪天不行、哪天可以，原因可以簡單說",
+          steps: [
+            mkStep({ id:"s1", say:"（你星期六有空，星期日要陪奶奶去復健，不能上班。）這個工作星期日也要上班，你可以嗎？", task:"誠實說星期日你不行，因為要陪奶奶去復健",
+              options:["星期日我不行，因為要陪奶奶去復健","星期日我都可以","你不用問，直接排星期日","先排星期日，到時候我不來"], kw:["陪奶奶去復健","不行","因為"] }),
+            mkStep({ id:"s2", say:"喔，那星期六可以嗎？", task:"說星期六可以",
+              options:["星期六可以","不管班表，我想來就來","你不用問我，時間亂填就好","先答應，再故意不來"], kw:["星期六"] }),
+            mkStep({ id:"s3", say:"好，謝謝你說清楚！我們會再考慮，再通知你。", task:"說「謝謝店長」",
+              options:["謝謝店長","一定要錄取我喔","不等通知，我明天自己來上班","不錄取我就罵你"], kw:["謝謝店長"] }),
+            mkStep({ id:"review", say:"（想一想）面試的時候，被問到不能上班的時間，要怎麼說？", task:"說誠實講清楚哪一天不行、哪一天可以",
+              options:["誠實講清楚哪一天不行、哪一天可以","明知不能來還答應","先不說，排了再請假","不說時間，叫店長自己猜"], kw:["誠實講清楚哪一天不行"], feedback:{ perfect:"答對了！誠實講清楚哪一天不行、哪一天可以。", failed:"記住：誠實講清楚哪一天不行、哪一天可以。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "first_day", name: "第一天報到", icon: "📋", available: true,
+      theme: { color: '#0D9488', bg: '#CCFBF1', accent: '#0F766E' },
+      situations: [
+        {
+          id: "check_in", name: "到了要先找誰", icon: "🏢", clerkName: "志豪",
+          desc: "到了工作場所主動報到、說明是新來的，確認接下來要去哪裡",
+          steps: [
+            mkStep({ id:"report", say:"（今天是你第一天上班。你提早到了店裡，看到一位工作人員。）你好！", task:"先說「你好」，再說你的名字，最後說你今天第一天來上班",
+              options:["你好，我是{名字}，今天第一天來上班","廁所在哪裡？","我來了","（不說話，自己走進去）"], kw:["第一天","新來的"],
+              accepted:["你好，我是{名字}，今天第一天來上班","我今天第一天來上班","我是新來的","你好，我叫{名字}，今天第一天來上班","你好，我的名字是{名字}，今天第一天來上班"] }),
+            mkStep({ id:"greet_senior", say:"喔！你是今天新來的！我是學長志豪，今天由我帶你。", task:"先說「學長好」，再說「麻煩你了」",
+              options:["學長好，麻煩你了","所以我要幹嘛？","喔","你就是帶我的人喔"], kw:["麻煩","學長好"],
+              accepted:["學長好，麻煩你了","麻煩你了","學長好"] }),
+            mkStep({ id:"confirm", say:"不會！你先把東西放到休息室，再到櫃台找我。", task:"先說「好」，再確認一次：放好東西後，到櫃台找你",
+              options:["好，放好東西後，到櫃台找你","我自己隨便走走","等一下再說","我先坐著"], kw:["櫃台"],
+              accepted:["好，放好東西後，到櫃台找你","放好東西到櫃台找你","到櫃台找你"] }),
+            mkStep({ id:"thanks", say:"對！不知道休息室在哪裡，可以問我喔。", task:"先說「好」，再說「謝謝」",
+              options:["好，謝謝","你一定要帶我去！","休息室關我什麼事","找不到再回家"], kw:["謝謝"],
+              accepted:["好，謝謝","謝謝","謝謝學長"] }),
+            mkStep({ id:"review", say:"（想一想）第一天到工作場所，要先做什麼？", task:"說出方法：主動報到，找到負責帶我的人，聽清楚接下來要做什麼",
+              options:["主動報到，找到負責帶我的人，聽清楚接下來要做什麼","自己到處走","坐著等別人來找","直接開始做"], kw:["報到","負責"],
+              accepted:["主動報到，找到負責帶我的人，聽清楚接下來要做什麼","主動報到","找到負責帶我的人"],
+              feedback:{ perfect:"答對了！主動報到，找到負責帶你的人，聽清楚接下來要做什麼。", failed:"記住：第一天先主動報到，找到負責帶你的人，聽清楚接下來要做什麼。" } }),
+          ]
+        },
+        {
+          id: "greet_all", name: "跟大家打招呼", icon: "👋", clerkName: "志豪",
+          desc: "主動打招呼，留下好印象",
+          steps: [
+            mkStep({ id:"intro_team", say:"（第一天上班，前輩帶你認識大家）來，這是新同事！", task:"先說「大家好」，再說你的名字，最後說「請多多指教」",
+              options:["大家好，我是{名字}，請多多指教","（躲在後面）","嗨","你們是誰"],
+              accepted:["大家好，我是{名字}，請多多指教","大家好，我是{名字}，請多指教","我是{名字}，請多指教"], kw:["{名字}","指教"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"先主動打招呼，再說你的名字，最後說請多多指教。" } }),
+            mkStep({ id:"reply_welcome", say:"歡迎歡迎！有問題都可以問我們喔！", task:"先說「謝謝大家」，再說你會努力學習",
+              options:["謝謝大家，我會努力學習","應該的","不用你們幫啦！","不會有問題啦"],
+              accepted:["謝謝大家，我會努力學習","謝謝大家我會努力學習","謝謝大家"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝大家，我會努力學習」" } }),
+            mkStep({ id:"review", say:"（想一想）到新環境的第一步是什麼？", task:"說出重點：主動打招呼，留下好印象",
+              options:["主動打招呼，留下好印象","等別人來認識我","裝忙","躲起來"],
+              accepted:["主動打招呼，留下好印象","主動打招呼","主動打招呼留好印象"], kw:["打招呼"],
+              feedback:{ perfect:"答對了！主動打招呼，留下好印象。", failed:"記住：新環境先主動打招呼。" } }),
+          ]
+        },
+        {
+          id: "listen_task", name: "聽工作說明", icon: "📝", clerkName: "志豪",
+          desc: "聽指令複誦重點，不懂就問",
+          steps: [
+            mkStep({ id:"repeat_task", say:"（今天是你第一天打工，打完招呼後，學長志豪帶你到飲料區。）你今天的工作是把飲料補到冰箱，日期舊的放前面喔！", task:"先說「好」，再複誦：補飲料到冰箱，舊的放前面，最後問「對嗎」",
+              options:["好，補飲料到冰箱，舊的放前面，對嗎？","知道了啦","太簡單了","（點頭就走）"],
+              accepted:["好，補飲料到冰箱，舊的放前面，對嗎？","補飲料舊的放前面對嗎","舊的放前面對嗎"], kw:["舊的放前面"],
+              feedback:{ failed:"複誦重點確認。可以說：「好，補飲料到冰箱，舊的放前面，對嗎？」" } }),
+            mkStep({ id:"ask_where", say:"沒錯！很會聽重點喔！", task:"用「請問」問飲料要去哪裡搬",
+              options:["請問飲料要去哪裡搬？","我自己找找","應該在某處吧","等等再說"],
+              accepted:["請問飲料要去哪裡搬？","飲料去哪裡搬","去哪裡搬飲料"], kw:["哪裡搬"],
+              feedback:{ failed:"不知道就問。可以說：「請問飲料要去哪裡搬？」" } }),
+            mkStep({ id:"review", say:"（想一想）聽工作指令的訣竅？", task:"說出方法：複誦一次重點，不懂就問",
+              options:["複誦一次重點，不懂就問","記在心裡就好","邊聽邊滑手機","猜猜看"],
+              accepted:["複誦一次重點，不懂就問","複誦重點不懂就問","複誦一次重點"], kw:["複誦"],
+              feedback:{ perfect:"答對了！複誦重點、不懂就問。", failed:"記住：聽完指令複誦一次，不懂馬上問。" } }),
+          ]
+        },
+        {
+          id: "ask_stuff", name: "問制服與置物", icon: "👕", clerkName: "志豪",
+          desc: "問清楚換裝與物品放置，儀容整齊",
+          steps: [
+            mkStep({ id:"ask_uniform", say:"（第一天打工，學長志豪拿了東西過來給你。）對了，這是你的制服和名牌！", task:"用「請問」問哪裡可以換衣服、包包放哪裡",
+              options:["請問哪裡可以換衣服、包包放哪裡？","直接在這換","包包背著工作","名牌好醜"],
+              accepted:["請問哪裡可以換衣服、包包放哪裡？","哪裡換衣服包包放哪","哪裡可以換衣服"], kw:["換衣服"],
+              feedback:{ failed:"問清楚再行動。可以說：「請問哪裡可以換衣服、包包放哪裡？」" } }),
+            mkStep({ id:"go_change", say:"員工休息室在後面，有你的置物櫃！", task:"先說「謝謝」，再說你去換好就開始工作",
+              options:["謝謝，我去換好就開始工作","休息室先睡一下","置物櫃是我的了","喔"],
+              accepted:["謝謝，我去換好就開始工作","換好就開始工作","謝謝我去換"], kw:["換好","謝謝"],
+              feedback:{ failed:"可以說：「謝謝，我去換好就開始工作」" } }),
+            mkStep({ id:"review", say:"（想一想）上班的服裝儀容？", task:"說出重點：照規定穿制服，整齊乾淨",
+              options:["照規定穿制服，整齊乾淨","穿自己喜歡的","髒了也沒差繼續穿","不戴名牌"],
+              accepted:["照規定穿制服，整齊乾淨","照規定穿制服整齊乾淨","照規定穿制服"], kw:["制服","整齊"],
+              feedback:{ perfect:"答對了！照規定穿制服，保持整齊乾淨。", failed:"記住：照規定穿制服，整齊乾淨是基本。" } }),
+          ]
+        },
+        {
+          id: "ask_break", name: "問休息吃飯時間", icon: "🍱", clerkName: "志豪",
+          desc: "問清楚幾點休息、在哪裡吃飯，時間到準時回來",
+          steps: [
+            mkStep({ id:"ask_break", say:"（第一天打工，快到中午了，你不知道什麼時候可以休息吃飯。學長志豪剛好走過來。）還習慣嗎？", task:"先說「還可以」，再用「請問」問中午什麼時候可以休息吃飯",
+              options:["還可以，請問中午什麼時候可以休息吃飯？","我肚子餓了，先走囉","（自己跑出去吃）","好累喔不想做了"],
+              accepted:["還可以，請問中午什麼時候可以休息吃飯？","請問什麼時候可以休息","中午什麼時候吃飯"], kw:["休息","吃飯"],
+              feedback:{ failed:"不知道就問。可以說：「還可以，請問中午什麼時候可以休息吃飯？」" } }),
+            mkStep({ id:"repeat_time", say:"12點到1點休息，時間到要記得回來喔！", task:"先說「好」，再複誦：十二點到一點休息，一點回來",
+              options:["好，12點到1點休息，1點回來","休息越久越好","吃完再慢慢回來","隨便啦"],
+              accepted:["好，12點到1點休息，1點回來","12點到1點休息","1點回來"], kw:["12點","1點","一點回來"],   // 單獨的「一點」不轉成 1 點（怕「差一點」被當數字），「一點回來」另外補
+              feedback:{ failed:"把時間再說一次。可以說：「好，12點到1點休息，1點回來」" } }),
+            mkStep({ id:"ask_place", say:"沒錯！很會聽重點喔！", task:"用「請問」問便當可以在哪裡吃",
+              options:["請問便當可以在哪裡吃？","我在收銀台吃就好","邊工作邊吃","躲在倉庫吃"],
+              accepted:["請問便當可以在哪裡吃？","便當在哪裡吃","請問在哪裡吃飯"], kw:["哪裡吃"],
+              feedback:{ failed:"問清楚吃飯的地方。可以說：「請問便當可以在哪裡吃？」" } }),
+            mkStep({ id:"thank_trash", say:"休息室就可以吃，吃完垃圾記得帶走喔！", task:"先說「好」，再說「謝謝學長」，最後說吃完你會把垃圾帶走",
+              options:["好，謝謝學長，吃完我會把垃圾帶走","丟桌上就好","喔","等清潔阿姨收"],
+              accepted:["好，謝謝學長，吃完我會把垃圾帶走","謝謝學長，我會把垃圾帶走","謝謝學長","好的，謝謝學長，吃完我會把垃圾帶走"], kw:["垃圾","謝謝"],
+              feedback:{ failed:"道謝並答應。可以說：「好，謝謝學長，吃完我會把垃圾帶走」" } }),
+            mkStep({ id:"review", say:"（想一想）第一天上班，休息吃飯要問清楚什麼？", task:"說出重點：幾點休息、在哪裡吃，時間到準時回來",
+              options:["幾點休息、在哪裡吃，時間到準時回來","想休息就休息","不用問，跟著別人走","肚子餓就先吃"],
+              accepted:["幾點休息、在哪裡吃，時間到準時回來","幾點休息在哪裡吃","時間到準時回來"], kw:["幾點","準時"],
+              feedback:{ perfect:"答對了！問清楚時間和地點，時間到準時回來。", failed:"記住：問清楚幾點休息、在哪裡吃，時間到準時回來。" } }),
+          ]
+        },
+        {
+          id: "clock_in", name: "學打卡", icon: "🕘",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "上下班都要打卡，公司才知道你的工作時間、算薪水",
+          steps: [
+            mkStep({ id:"s1", say:"（第一天上班，你到了店裡。學長志豪站在打卡機旁邊。）來，上班要先打卡喔！", task:"用「請問」問：卡要怎麼打？",
+              options:["請問卡要怎麼打？","不打卡也可以吧","拿別人的卡來打","打卡好麻煩，我不想學"], kw:["卡要怎麼打"] }),
+            mkStep({ id:"s2", say:"把員工卡靠近感應區，再看螢幕有沒有打卡成功。", task:"先說「好」，再說你會看螢幕有沒有打卡成功",
+              options:["好，我會看螢幕有沒有打卡成功","聽到任何聲音都算成功","不看結果就走","卡片放上去就一定成功"], kw:["會看螢幕有沒有打卡成功"] }),
+            mkStep({ id:"s3", say:"上班和下班都要打卡。", task:"先說「好」，再複誦上班下班都要打卡",
+              options:["好，上班下班都要打卡","只打上班卡就好","下班不用打吧","打卡好麻煩"], kw:["上班下班"] }),
+            mkStep({ id:"s4", say:"（你刷卡後，看見自己的名字和「上班打卡成功，08:55」。）這樣就打好了。", task:"說「打好了，謝謝學長」",
+              options:["打好了，謝謝學長","名字不對也不用管","時間不對也不用問","我要再打十次"], kw:["謝謝學長","打好"] }),
+            mkStep({ id:"review", say:"（想一想）為什麼上班、下班都要打卡？", task:"說記下上下班時間，用來核對工作時數和薪水",
+              options:["記下上下班時間，用來核對工作時數和薪水","時間隨便填就好","打完下班卡還要免費工作","幫沒來的同事打卡"], kw:["用來核對工作時數","記下上下班時間","薪水"], feedback:{ perfect:"答對了！記下上下班時間，用來核對工作時數和薪水。", failed:"記住：記下上下班時間，用來核對工作時數和薪水。" } }),
+          ]
+        },
+        {
+          id: "forgot_name", name: "忘了同事的名字", icon: "🙋",
+          clerkName: "同事小芳", clerkImage: "images/clerk-coworker-xiaofang.jpg",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "忘了名字：說不好意思，有禮貌地再問一次",
+          steps: [
+            mkStep({ id:"greeting", say:"（第一天認識了好幾位同事。下午一位同事向你打招呼，你忘了她的名字。）嗨！", task:"跟同事說「你好」",
+              options:["你好！","謝謝再見","你不要吵我","我要結帳"], kw:"greet" }),
+            mkStep({ id:"s2", say:"有不懂的都可以問我喔！", task:"先說「不好意思」，再用「請問」問她叫什麼名字",
+              options:["不好意思，請問你叫什麼名字？","喂，你叫什麼？","我叫你阿姨就好","名字不重要啦"], kw:["叫什麼名字"] }),
+            mkStep({ id:"s3", say:"我叫小芳！一次認識很多人，記不住很正常啦！", task:"說「小芳，謝謝你」",
+              options:["小芳，謝謝你","我只叫你喂就好","你名字好奇怪","不管你叫什麼，我都亂叫"], kw:["小芳","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）忘了別人的名字，要怎麼做？", task:"說出方法：說不好意思，有禮貌地再問一次",
+              options:["說不好意思，有禮貌地再問一次","故意亂叫名字","一直叫他喂","拿他的名字開玩笑"], kw:["有禮貌地","問一次"], feedback:{ perfect:"答對了！說不好意思，有禮貌地再問一次。", failed:"記住：說不好意思，有禮貌地再問一次。" } }),
+          ]
+        },
+        {
+          id: "next_shift", name: "下班前問明天的班", icon: "📅",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "下班前確認：下次幾點上班、班表貼在哪裡、記得打卡",
+          steps: [
+            mkStep({ id:"s1", say:"（第一天快下班了，你不知道明天幾點要來。學長志豪在旁邊。）今天辛苦了！", task:"先說「謝謝學長」，再用「請問」問明天幾點上班",
+              options:["謝謝學長，請問明天幾點上班？","不看班表，猜一個時間","你自己記就好，不用告訴我","我把班表改成我想來的時間"], kw:["明天幾點上班","謝謝學長"] }),
+            mkStep({ id:"s2", say:"明天是早上九點到下午一點的班。班表貼在休息室的牆上喔！", task:"複誦：明天早上九點到下午一點",
+              options:["明天早上九點到下午一點","明天下午再來","我想幾點來就幾點來","隨便啦"], kw:["明天早上九點","下午一點"] }),
+            mkStep({ id:"s3", say:"對！下班記得打卡喔！", task:"下班打卡後，先說「好」，再說「學長再見」",
+              options:["好，學長再見","還沒下班先打卡走人","我不打卡直接走","明天我想幾點來就幾點來"], kw:["學長再見"] }),
+            mkStep({ id:"review", say:"（想一想）下班前要確認什麼？", task:"說出要確認的：下次幾點上班、班表貼在哪裡，記得打卡",
+              options:["下次幾點上班、班表貼在哪裡，記得打卡","不看班表自己改時間","打卡時間不用看","不用打卡"], kw:["下次幾點上班","記得打卡","班表貼"], feedback:{ perfect:"答對了！下次幾點上班、班表貼在哪裡，記得打卡。", failed:"記住：下次幾點上班、班表貼在哪裡，記得打卡。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "ask_at_work", name: "不懂就問", icon: "🙋", available: true,
+      theme: { color: '#F59E0B', bg: '#FEF3C7', accent: '#B45309' },
+      situations: [
+        {
+          id: "not_understand", name: "聽不懂指令", icon: "🤔", clerkName: "陳師傅",
+          desc: "聽不懂就請對方再說一次，不用猜的",
+          steps: [
+            mkStep({ id:"ask_again", say:"（你在賣場打工，陳師傅正在交代你工作。）你去把那個『棧板』上的貨搬過來！", task:"先說「不好意思」，再問什麼是棧板，最後問「可以再說一次嗎」",
+              options:["不好意思，什麼是棧板？可以再說一次嗎？","（隨便搬個東西）","喔好（其實聽不懂）","自己用猜的"],
+              accepted:["不好意思，什麼是棧板？可以再說一次嗎？","什麼是棧板可以再說一次嗎","可以再說一次嗎"], kw:["再說一次","棧板"],
+              feedback:{ failed:"聽不懂馬上問。可以說：「不好意思，什麼是棧板？可以再說一次嗎？」" } }),
+            mkStep({ id:"got_it", say:"喔！就是地上那個木頭墊板，貨都疊在上面！", task:"先說「我懂了」，再複誦：木頭墊板上的貨，最後說「馬上搬」",
+              options:["我懂了，木頭墊板上的貨，馬上搬","還是不懂但算了","木頭喔","（發呆）"],
+              accepted:["我懂了，木頭墊板上的貨，馬上搬","懂了木頭墊板上的貨","我懂了馬上搬"], kw:["懂了"],
+              feedback:{ failed:"聽懂了就回應。可以說：「我懂了，木頭墊板上的貨，馬上搬」" } }),
+            mkStep({ id:"review", say:"（想一想）聽不懂指令怎麼辦？", task:"說出方法：馬上問清楚，不要用猜的",
+              options:["馬上問清楚，不要用猜的","假裝懂","隨便做","等被罵"],
+              accepted:["馬上問清楚，不要用猜的","馬上問清楚不用猜","問清楚不要猜"], kw:["問清楚"],
+              feedback:{ perfect:"答對了！馬上問清楚，不要用猜的。", failed:"記住：聽不懂就問，用猜的容易做錯。" } }),
+          ]
+        },
+        {
+          id: "made_mistake", name: "做錯了", icon: "😅", clerkName: "陳師傅",
+          desc: "做錯主動承認，問清楚怎麼改",
+          steps: [
+            mkStep({ id:"admit_wrong", say:"（你在賣場打工，負責把飲料補到冰箱。你不小心把日期新的飲料放在前面了，被陳師傅發現了。）", task:"先說「對不起」，再說你放錯了，馬上重排",
+              options:["對不起，我放錯了，馬上重排","不是我放的","本來就這樣","誰規定的"],
+              accepted:["對不起，我放錯了，馬上重排","對不起放錯了馬上重排","對不起我放錯了"], kw:["對不起","放錯"],
+              feedback:{ failed:"做錯就承認。可以說：「對不起，我放錯了，馬上重排」" } }),
+            mkStep({ id:"know_why", say:"沒關係，新人都會錯！記得舊的放前面，客人才會先買到舊的！", task:"先說「我懂了」，再說舊的先賣掉才不會過期",
+              options:["我懂了，舊的先賣掉才不會過期","規則好多喔","隨便放不行嗎","喔"],
+              accepted:["我懂了，舊的先賣掉才不會過期","舊的先賣掉才不會過期","懂了不會過期"], kw:["過期"],
+              feedback:{ failed:"了解原因才記得住。可以說：「我懂了，舊的先賣掉才不會過期」" } }),
+            mkStep({ id:"review", say:"（想一想）工作做錯了怎麼辦？", task:"說出方法：主動承認，問清楚怎麼改",
+              options:["主動承認，問清楚怎麼改","藏起來","怪別人","裝沒事"],
+              accepted:["主動承認，問清楚怎麼改","主動承認問怎麼改","主動承認錯誤"], kw:["主動承認"],
+              feedback:{ perfect:"答對了！主動承認，問清楚怎麼改。", failed:"記住：做錯了主動承認，學會怎麼改。" } }),
+          ]
+        },
+        {
+          id: "cant_operate", name: "不會操作機器", icon: "🖨️", clerkName: "陳師傅",
+          desc: "請人示範、自己試做、說謝謝",
+          steps: [
+            mkStep({ id:"ask_demo", say:"（你在賣場打工，陳師傅拿著一台標價機走過來，你還沒用過這台機器。）幫我用這台標價機打一下價格標！", task:"先說你還不會用，再問「可以示範一次給我看嗎」",
+              options:["我還不會用，可以示範一次給我看嗎？","（亂按一通）","我不要用機器","叫別人做"],
+              accepted:["我還不會用，可以示範一次給我看嗎？","可以示範一次給我看嗎","不會用可以示範嗎"], kw:["示範"],
+              feedback:{ failed:"不會就請人示範。可以說：「我還不會用，可以示範一次給我看嗎？」" } }),
+            mkStep({ id:"try_it", say:"看好喔…這樣就好了！換你試試！", task:"先說「好」，再說你試試看，最後說「做錯請提醒我」",
+              options:["好，我試試看，做錯請提醒我","不用看著我啦","好緊張不敢用","我趁沒人的時候再亂按"],
+              accepted:["好，我試試看，做錯請提醒我","我試試看做錯請提醒","我試試看"], kw:["試試"],
+              feedback:{ failed:"勇敢試做。可以說：「好，我試試看，做錯請提醒我」" } }),
+            mkStep({ id:"thank_teach", say:"上手了嘛！學得很快！", task:"說「謝謝前輩教我」",
+              options:["謝謝前輩教我！","小事一樁","我本來就會","嗯"],
+              accepted:["謝謝前輩教我！","謝謝","謝謝前輩"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝前輩教我！」" } }),
+            mkStep({ id:"review", say:"（想一想）學新技能的三步驟？", task:"說出步驟：請人示範、自己試做、說謝謝",
+              options:["請人示範、自己試做、說謝謝","直接上手","看一眼就會","躲開不學"],
+              accepted:["請人示範、自己試做、說謝謝","示範試做說謝謝","請人示範自己試做"], kw:["示範","試做"],
+              feedback:{ perfect:"答對了！請人示範、自己試做、說謝謝。", failed:"記住：示範→試做→道謝，新技能就學會了。" } }),
+          ]
+        },
+        {
+          id: "ask_next", name: "做完了問下一步", icon: "✅", clerkName: "陳師傅",
+          desc: "工作做完主動回報，問下一步要做什麼",
+          steps: [
+            mkStep({ id:"report_done", say:"（你在賣場打工，陳師傅交代你把飲料補滿冰箱。你已經全部補好了，陳師傅正在旁邊整理紙箱。你要主動跟他說。）", task:"先叫「陳師傅」，再說飲料補好了，最後問「接下來要做什麼」",
+              options:["陳師傅，飲料補好了，接下來要做什麼？","（滑手機等下班）","（躲到倉庫休息）","好無聊喔"],
+              accepted:["陳師傅，飲料補好了，接下來要做什麼？","飲料補好了，接下來要做什麼","我做完了，接下來要做什麼"], kw:["補好了","做完了","接下來"],
+              feedback:{ failed:"做完要主動回報。可以說：「陳師傅，飲料補好了，接下來要做什麼？」" } }),
+            mkStep({ id:"repeat_next", say:"補得很快喔！那你去把門口的推車排整齊。", task:"先說「好」，再複誦：把門口的推車排整齊，最後說「我現在去」",
+              options:["好，把門口的推車排整齊，我現在去","等一下再說","那個不是我的工作","喔"],
+              accepted:["好，把門口的推車排整齊，我現在去","把門口的推車排整齊","我去排推車"], kw:["推車"],
+              feedback:{ failed:"複誦一次再出發。可以說：「好，把門口的推車排整齊，我現在去」" } }),
+            mkStep({ id:"promise_report", say:"對，排成一直線，排好再跟我說一聲！", task:"先說「好」，再說「排好我再跟您說」",
+              options:["好，排好我再跟您說","不用說了吧","我排完就下班了","隨便排一排"],
+              accepted:["好，排好我再跟您說","排好再跟您說","排好我會跟你說","好的，排好我再跟您說"], kw:["跟您說","跟你說","回報"],
+              feedback:{ failed:"答應做完再回報。可以說：「好，排好我再跟您說」" } }),
+            mkStep({ id:"review", say:"（想一想）工作做完了，要怎麼做？", task:"說出方法：主動回報，問下一步要做什麼",
+              options:["主動回報，問下一步要做什麼","偷偷休息","等別人發現","假裝還在忙"],
+              accepted:["主動回報，問下一步要做什麼","主動回報，問下一步","做完主動回報"], kw:["回報","下一步"],
+              feedback:{ perfect:"答對了！做完主動回報，問下一步。", failed:"記住：工作做完，主動回報，問下一步要做什麼。" } }),
+          ]
+        },
+        {
+          id: "not_enough_material", name: "材料不夠了", icon: "📦", clerkName: "陳師傅",
+          desc: "發現材料快用完，提早告訴主管",
+          steps: [
+            mkStep({ id:"report", say:"（你在賣場負責包裝禮盒，發現包裝紙只剩兩張，還有十個禮盒要包。你去找陳師傅。）怎麼了？", task:"先叫「陳師傅」，再說包裝紙只剩兩張，還有十個禮盒要包",
+              options:["陳師傅，包裝紙只剩兩張，還有十個禮盒要包","（不說，包到沒有再說）","沒紙了我不做了","隨便用報紙包"], kw:["包裝紙"],
+              accepted:["陳師傅，包裝紙只剩兩張，還有十個禮盒要包","包裝紙只剩兩張，還有十個禮盒要包","包裝紙剩兩張，還有十個要包"] }),
+            mkStep({ id:"ask_first", say:"好，倉庫還有，我去拿一包給你！", task:"先說「好」，再用「請問」問你可不可以先包這兩個",
+              options:["好，請問我可以先包這兩個嗎？","那我先休息","喔","你快點喔"], kw:["先包"],
+              accepted:["好，請問我可以先包這兩個嗎？","我可以先包這兩個嗎","我先包這兩個可以嗎"] }),
+            mkStep({ id:"thanks", say:"可以，先包，包完等我回來。", task:"先說「好」，再說「謝謝陳師傅」",
+              options:["好，謝謝陳師傅","嗯","應該的吧","慢慢來沒關係"], kw:["謝謝"],
+              accepted:["好，謝謝陳師傅","謝謝陳師傅","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）發現材料快不夠了，要怎麼做？", task:"說出方法：提早告訴主管，不要等用完才說",
+              options:["提早告訴主管，不要等用完才說","用完再說","自己想辦法","不要講"], kw:["提早","主管"],
+              accepted:["提早告訴主管，不要等用完才說","提早告訴主管","提早跟主管說"],
+              feedback:{ perfect:"答對了！提早告訴主管，不要等用完才說。", failed:"記住：材料快不夠了，提早告訴主管，不要等用完才說。" } }),
+          ]
+        },
+        {
+          id: "which_first", name: "兩件事不知道先做哪件", icon: "🔀",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "同時有兩件工作：說清楚兩件事，問主管先做哪一件",
+          steps: [
+            mkStep({ id:"s1", say:"（陳師傅叫你補餅乾，店長又叫你掃門口，你不知道要先做哪一件。）怎麼了？", task:"說你有補餅乾和掃門口兩件事，再用「請問」問先做哪件",
+              options:["我有補餅乾和掃門口兩件事，請問先做哪件？","我兩件都不想做","我隨便挑一件","你們自己吵好再叫我"], kw:["掃門口兩件事","有補餅乾","先做哪件"] }),
+            mkStep({ id:"s2", say:"先掃門口，客人快來了。掃完再補餅乾。", task:"複誦先掃門口，再補餅乾",
+              options:["先掃門口，再補餅乾","先補餅乾","兩件都做到一半就停","不問就隨便選"], kw:["先掃門口","再補餅乾"] }),
+            mkStep({ id:"s3", say:"對！兩件都做完再跟我說一聲。", task:"先說「好」，再說做完會跟他說",
+              options:["好，做完我會跟你說","我故意說做完，其實沒做完","做完也不讓你知道","你自己來看"], kw:["會跟"] }),
+            mkStep({ id:"review", say:"（想一想）同時有兩件工作，不知道先做哪一件，要怎麼做？", task:"說出方法：說清楚兩件事，問主管先做哪一件",
+              options:["說清楚兩件事，問主管先做哪一件","挑喜歡的做","兩件都不做","一起做一半"], kw:["清楚兩件事","做哪一件","問主管"], feedback:{ perfect:"答對了！說清楚兩件事，問主管先做哪一件。", failed:"記住：說清楚兩件事，問主管先做哪一件。" } }),
+          ]
+        },
+        {
+          id: "work_injury", name: "工作時受傷了", icon: "🩹",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "工作時受傷：馬上告訴主管，先處理傷口，不要忍著不說",
+          steps: [
+            mkStep({ id:"s1", say:"（搬紙箱時，你的手指被紙箱割到，流了一點血。你先停下來，陳師傅走過來。）怎麼了？", task:"說你的手指被紙箱割到，流血了",
+              options:["我的手指被紙箱割到，流血了","繼續搬，血沾到箱子也不管","拿髒抹布擦傷口","不處理就再碰髒東西"], kw:["手指被紙箱割","流血"] }),
+            mkStep({ id:"s2", say:"先別搬，你去用乾淨的水清洗一下傷口。", task:"先說「好」，再說「謝謝師傅」",
+              options:["好，謝謝師傅","不用，流血也繼續搬","用髒衣服擦就好","把膠帶直接貼在沒洗的傷口上"], kw:["謝謝師傅"] }),
+            mkStep({ id:"s3", say:"（傷口洗好，血已止住。）先貼好 OK 繃，休息一下，今天先別搬箱子。", task:"先說「好」，再說你今天先不搬箱子",
+              options:["好，我今天先不搬箱子","貼好就能碰所有髒東西","傷口流血也不用換","我繼續搬重箱子"], kw:["不搬箱子","今天"] }),
+            mkStep({ id:"review", say:"（想一想）工作的時候受傷了，要怎麼做？", task:"說先停下來，告訴主管，先處理傷口",
+              options:["先停下來，告訴主管，先處理傷口","忍著繼續搬","用髒抹布擦掉血就好","沒處理就碰食物"], kw:["先處理傷口","先停下來","告訴主管"], feedback:{ perfect:"答對了！先停下來，告訴主管，先處理傷口。", failed:"記住：先停下來，告訴主管，先處理傷口。" } }),
+          ]
+        },
+        {
+          id: "cant_find", name: "找不到要拿的東西", icon: "📦",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "找不到東西時，說明找過哪裡，再問清楚位置與標示",
+          steps: [
+            mkStep({ id:"s1", say:"（陳師傅叫你去倉庫拿一箱衛生紙，你在倉庫找了很久都找不到，回去找陳師傅。）拿到了嗎？", task:"先說「不好意思」，再說你在倉庫找不到衛生紙",
+              options:["不好意思，我在倉庫找不到衛生紙","倉庫沒有啦","你自己去拿","我拿別的代替"], kw:["倉庫找不","衛生紙"] }),
+            mkStep({ id:"s2", say:"在倉庫最裡面，第二層架子上，箱子上有寫「衛生紙」。", task:"複誦：最裡面，第二層架子",
+              options:["最裡面，第二層架子","門口第一層","最裡面第三層","門口第二層"], kw:["第二層架子"] }),
+            mkStep({ id:"s3", say:"（你找到了衛生紙，搬回來。）找到了嗎？", task:"說「找到了，謝謝師傅」",
+              options:["找到了，謝謝師傅","拿錯了也不管","箱上寫別的也當衛生紙","下次你自己拿"], kw:["謝謝師傅","找到"] }),
+            mkStep({ id:"review", say:"（想一想）找了很久找不到東西，要怎麼做？", task:"說出方法：不要一直找，回去問清楚放在哪裡",
+              options:["不要一直找，回去問清楚放在哪裡","不看標示亂拿","隨便拿別的","謊稱拿到了，其實沒找到"], kw:["回去問清楚放","不要一直找","哪裡"], feedback:{ perfect:"答對了！不要一直找，回去問清楚放在哪裡。", failed:"記住：不要一直找，回去問清楚放在哪裡。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "call_leave", name: "打電話請假", icon: "📞", available: true,
+      theme: { color: '#DC2626', bg: '#FEF2F2', accent: '#991B1B' },
+      situations: [
+        {
+          id: "sick_leave", name: "生病請假", icon: "🤒", clerkName: "店長",
+          desc: "提早打電話、說清楚原因",
+          steps: [
+            // 2026-08-19：特殊情境也要先有基本對話（對方招呼→學生回應）再切入主題
+            { id:"greeting", shopkeeper_prompt:"（你發燒了，明天要上班…打電話給店長）喂，你好！", task:"在電話裡跟店長問好",
+              keywords:["你好", "您好", "哈囉", "嗨", "早", "早安", "午安", "晚安", "hi", "請問"], keywords_mode:'any',
+              accepted_phrases:["你好！", "您好！", "哈囉！", "嗨！", "早安！", "午安！", "晚安！", "hi！"],
+              options:["你好！", "謝謝再見", "多少錢？", "我要走了"],
+              frame:{ template:"{greet}", slots:{ greet:{ answer:"你好！", choices:[
+                { text:"你好！", emoji:"👋" }, { text:"謝謝再見", emoji:"🙋" },
+                { text:"多少錢？", emoji:"💰" }, { text:"我要走了", emoji:"🚶" } ] } } },
+              feedback:{"perfect": "打招呼打得很好！", "partial": "不錯！可以說得更完整一點", "failed": "可以這樣說：「你好！」"} },
+            mkStep({ id:"call_sick", say:"請問是哪位？", task:"先說「店長好」，再說你的名字，然後說你發燒了，明天想請病假",
+              options:["店長好，我是{名字}，我發燒了，明天想請病假","明天我不去了喔（掛斷）","（傳貼圖就好）","不去就知道了吧"],
+              accepted:["店長好，我是{名字}，我發燒了，明天想請病假","我是{名字}，我發燒了，想請病假","我發燒了想請假"], kw:["請病假","請假"],
+              feedback:{ perfect:"說得很清楚！", partial:"說出了重點！", failed:"請假要說清楚：先打招呼，說你是誰，再說你發燒了，明天想請病假。" } }),
+            // 病假證明不限診斷證明書，門診收據、藥單都可以（勞動部）→ 說「就醫證明」
+            mkStep({ id:"say_proof", say:"好，知道了！你好好休息，記得看醫生喔！", task:"先說「謝謝店長」，再說你會好好休息、去看醫生",
+              options:["謝謝店長，我會好好休息、去看醫生","不用看醫生啦","好了再說","喔耶放假"],
+              accepted:["謝謝店長，我會好好休息、去看醫生","謝謝店長，我會去看醫生","謝謝店長","謝謝店長，我看完醫生會把就醫證明傳給您","謝謝店長，我看完醫生會傳證明"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝店長，我會好好休息、去看醫生」" } }),
+            mkStep({ id:"review", say:"（想一想）請假的重點是什麼？", task:"說出重點：提早說、講清楚原因和天數",
+              options:["提早說、講清楚原因和天數","當天不出現就好","叫同學代打電話","傳個貼圖"],
+              accepted:["提早說、講清楚原因和天數","提早說清楚原因天數","提早說講清楚原因"], kw:["提早","原因"],
+              feedback:{ perfect:"答對了！提早說、講清楚原因和天數。", failed:"記住：請假要提早、親自說、講清楚原因。" } }),
+          ]
+        },
+        {
+          id: "sudden_leave", name: "臨時有事", icon: "😣", clerkName: "店長",
+          desc: "誠心道歉、主動配合補班",
+          steps: [
+            mkStep({ id:"call_sudden", say:"（家裡臨時有急事，今天的班沒辦法上了）喂？", task:"先說「店長對不起」，再說家裡有急事，今天沒辦法上班，最後用「請問」問接下來要怎麼安排",
+              options:["店長對不起，家裡有急事，今天沒辦法上班，請問接下來要怎麼安排？","今天不來了","有事，先這樣","你自己想辦法"],
+              accepted:["店長對不起，家裡有急事，今天沒辦法上班，請問接下來要怎麼安排？","對不起，家裡有急事，今天沒辦法上班","對不起今天沒辦法上班","店長對不起，家裡有急事，今天沒辦法上班，需要補班嗎？"], kw:["對不起","急事"],
+              feedback:{ failed:"臨時請假更要道歉。可以說：「店長對不起，家裡有急事，今天沒辦法上班，請問接下來要怎麼安排？」" } }),
+            mkStep({ id:"agree_makeup", say:"了解，臨時有事沒辦法！我找人代班，你下週六補班好嗎？（你下週六有空，也願意換班。）", task:"先說「好」，再說下週六可以，最後說「謝謝店長」",
+              options:["好，下週六可以，謝謝店長","再看看","不要啦","隨便"],
+              accepted:["好，下週六可以，謝謝店長","下週六可以，謝謝店長","好，下週六我一定到，謝謝店長","好的，下週六我一定到，謝謝店長"], kw:["下週六"],
+              feedback:{ failed:"可以說：「好，下週六可以，謝謝店長」" } }),
+            mkStep({ id:"review", say:"（想一想）臨時有急事不能上班，要怎麼做？", task:"說出重點：有急事要盡快通知，說清楚情況，再確認之後怎麼安排",
+              options:["有急事要盡快通知，說清楚情況，再確認之後怎麼安排","等明天再說就好","沒什麼好說的","消失就好"],
+              accepted:["有急事要盡快通知，說清楚情況，再確認之後怎麼安排","盡快通知，說清楚情況","盡快通知，確認之後怎麼安排"], kw:["通知","說清楚","安排"],
+              feedback:{ perfect:"答對了！有急事要盡快通知、說清楚，再確認之後怎麼安排。", failed:"記住：有急事要盡快通知，說清楚情況，再確認之後怎麼安排。" } }),
+          ]
+        },
+        {
+          id: "late_notice", name: "要遲到了", icon: "⏰", clerkName: "店長",
+          desc: "遲到先通知，預估到達時間",
+          steps: [
+            mkStep({ id:"call_late", say:"（公車誤點，上班要遲到了…先打電話）喂？", task:"先叫「店長」，再說公車誤點，你大概晚 15 分鐘到，最後說「很抱歉」",
+              options:["店長，公車誤點，我大概晚15分鐘到，很抱歉","反正會到","（不打電話，用跑的）","都是公車的錯"],
+              accepted:["店長，公車誤點，我大概晚15分鐘到，很抱歉","公車誤點晚15分鐘到很抱歉","我會晚15分鐘到"], kw:["15分"],
+              feedback:{ failed:"要遲到先通知。可以說：「店長，公車誤點，我大概晚15分鐘到，很抱歉」" } }),
+            mkStep({ id:"arrive_soon", say:"沒問題，路上小心，不用跑！", task:"先說「謝謝店長」，再說你盡快到",
+              options:["謝謝店長，我盡快到","那我慢慢走","下次還是會遲到","好喔"],
+              accepted:["謝謝店長，我盡快到","謝謝我盡快到","謝謝店長"], kw:["謝謝"],
+              feedback:{ failed:"可以說：「謝謝店長，我盡快到」" } }),
+            mkStep({ id:"review", say:"（想一想）為什麼遲到要先通知？", task:"說出理由：讓店裡能先安排，也表示負責",
+              options:["讓店裡能先安排，也表示負責","不通知也沒差","通知了就不算遲到","怕被罵而已"],
+              accepted:["讓店裡能先安排，也表示負責","讓店裡先安排表示負責","先通知表示負責"], kw:["安排","負責"],
+              feedback:{ perfect:"答對了！先通知讓店裡能安排，也表示負責。", failed:"記住：要遲到先通知、預估時間，這是負責任。" } }),
+          ]
+        },
+        {
+          id: "leave_early", name: "上班中要提早下班", icon: "🏥", clerkName: "店長",
+          desc: "上班時家裡有急事，打電話問店長能不能提早下班，並把工作交代好",
+          steps: [
+            mkStep({ id:"call", say:"（你正在店裡上班，媽媽打電話說阿嬤住院了，要你六點前到醫院。店長今天不在店裡，你打電話給林店長。）喂，你好！", task:"先說「店長好」，再說你的名字",
+              options:["店長好，我是{名字}","我要走了喔","（直接掛斷）","喂喂喂"], kw:["店長好"],
+              accepted:["店長好，我是{名字}","店長好","店長好，我叫{名字}","店長好，我的名字是{名字}"] }),
+            mkStep({ id:"ask_leave", say:"怎麼了嗎？", task:"先說「不好意思」，再說阿嬤住院了，最後用「請問」問可不可以五點提早下班",
+              options:["不好意思，我阿嬤住院了，請問可以五點提早下班嗎？","我要先走了喔","（不說話，偷偷走）","我不想做了"], kw:["提早下班","住院"],
+              accepted:["不好意思，我阿嬤住院了，請問可以五點提早下班嗎？","我阿嬤住院了，可以提早下班嗎","請問可以五點提早下班嗎"] }),
+            mkStep({ id:"handover", say:"這樣啊，沒關係。你手上的工作先交給店裡的同事。", task:"先說「好」，再說你會把工作交代清楚",
+              options:["好，我會把工作交代清楚","我直接走就好","他們自己會做","喔"], kw:["交代"],
+              accepted:["好，我會把工作交代清楚","我會把工作交代清楚","我會交代好"] }),
+            mkStep({ id:"thanks", say:"快去吧，路上小心！", task:"說「謝謝店長」",
+              options:["謝謝店長","嗯","早就該讓我走了","（直接掛斷）"], kw:["謝謝"],
+              accepted:["謝謝店長","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）上班時臨時要提早下班，要怎麼做？", task:"說出方法：先打給店長說原因，把工作交代好",
+              options:["先打給店長說原因，把工作交代好","直接走就好","叫同事幫我說","傳個貼圖"], kw:["原因","交代"],
+              accepted:["先打給店長說原因，把工作交代好","先打給店長說原因","把工作交代好"],
+              feedback:{ perfect:"答對了！先打給店長說原因，把工作交代好。", failed:"記住：臨時要提早下班，先打給店長說原因，把工作交代好。" } }),
+          ]
+        },
+        {
+          id: "back_to_work", name: "病好了，打電話說明天回去", icon: "📱", clerkName: "店長",
+          desc: "請假結束前先打電話說哪天回去，道謝並問交接",
+          steps: [
+            mkStep({ id:"call", say:"（你請了兩天病假，今天病好了，打電話給林店長。）喂，你好！", task:"先說「店長好」，再說你的名字",
+              options:["店長好，我是{名字}","我好了啦","（直接掛斷）","喂喂喂"], kw:["店長好"],
+              accepted:["店長好，我是{名字}","店長好","店長好，我叫{名字}","店長好，我的名字是{名字}"] }),
+            mkStep({ id:"tell_back", say:"身體好點了嗎？", task:"先說「好多了」，再說你明天會回去上班",
+              options:["好多了，我明天會回去上班","我不想跟你說","幹嘛問","再說吧"], kw:["明天"],
+              accepted:["好多了，我明天會回去上班","我明天會回去上班","明天回去上班"] }),
+            mkStep({ id:"ask_handover", say:"那就好！這兩天是同事幫你代班喔。", task:"先說「謝謝」，再用「請問」問店長這兩天有什麼事要交接",
+              options:["謝謝，請問這兩天有什麼事要交接給我？","那是他應該的","跟我沒關係吧","等一下再說"], kw:["交接"],
+              accepted:["謝謝，請問這兩天有什麼事要交接給我？","請問有什麼事要交接","有什麼要交接的嗎"] }),
+            mkStep({ id:"repeat", say:"以後收到的發票要放進抽屜的藍色盒子。", task:"先說「好」，再複誦：發票放進抽屜的藍色盒子",
+              options:["好，發票放進抽屜的藍色盒子","發票隨便放","我記不住啦","喔"], kw:["藍色盒子"],
+              accepted:["好，發票放進抽屜的藍色盒子","發票放進抽屜的藍色盒子","放進藍色盒子"] }),
+            mkStep({ id:"review", say:"（想一想）請假後要回去上班，要做什麼？", task:"說出重點：先說哪天回去，道謝，問清楚交接的事",
+              options:["先說哪天回去，道謝，問清楚交接的事","直接回去就好","不用跟別人說","假裝沒請假"], kw:["交接","哪天回去"],
+              accepted:["先說哪天回去，道謝，問清楚交接的事","先說哪天回去","問清楚交接的事"],
+              feedback:{ perfect:"答對了！先說哪天回去，道謝，問清楚交接的事。", failed:"記住：請假後要回去上班，先說哪天回去、道謝，再問清楚交接的事。" } }),
+          ]
+        },
+        {
+          id: "early_leave", name: "提早一週請假", icon: "📆",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "已經知道哪天不能上班：提早請假，說清楚哪一天、為什麼",
+          steps: [
+            mkStep({ id:"s1", say:"（今天星期三，下星期三要去醫院回診，剛好有早上九點到下午一點的班。你打電話給林店長。）喂，你好！", task:"說「店長你好，我是{名字}」",
+              options:["店長你好，我是{名字}","喂，是我啦","你猜我是誰","（不說話）"], accepted:["店長你好，我叫{名字}","店長你好，我的名字是{名字}"], kw:["{名字}","店長"] }),
+            mkStep({ id:"s2", say:"怎麼了嗎？", task:"說下星期三早上九點到下午一點要去回診，想請假",
+              options:["下星期三早上九點到下午一點要去回診，想請假","不說哪天，你自己猜","我不來了，掰掰","等到那天再說"], kw:["下星期三早上九點","下午一點","去回診"] }),
+            mkStep({ id:"s3", say:"好，這段時間請假，我會安排人手。", task:"先說「謝謝店長」，再說你會照規定補請假資料",
+              options:["謝謝店長，我會照規定補請假資料","不用辦請假，反正說過了","不說再見就掛斷","我順便多休一天也不告訴你"], kw:["會照規定補請假資料","謝謝店長"] }),
+            mkStep({ id:"review", say:"（想一想）已經知道哪一天不能上班，要怎麼做？", task:"說提早說日期、要請多久和原因，照規定辦請假",
+              options:["提早說日期、要請多久和原因，照規定辦請假","等到當天再說","不用說直接不去","只說要請假，不說哪天"], kw:["照規定辦請假","提早說日期","請多久"], feedback:{ perfect:"答對了！提早說日期、要請多久和原因，照規定辦請假。", failed:"記住：提早說日期、要請多久和原因，照規定辦請假。" } }),
+          ]
+        },
+        {
+          id: "no_answer", name: "店長沒接電話", icon: "📵",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "請假電話沒人接：留下清楚訊息，未收到回覆再聯絡",
+          steps: [
+            mkStep({ id:"s1", say:"（你發燒，今天不能上班。打電話給林店長沒人接，你先傳訊息。）", task:"說出訊息：「店長你好，我是{名字}，我發燒了，今天想請一天病假」",
+              options:["店長你好，我是{名字}，我發燒了，今天想請一天病假","不來了","店長你怎麼不接電話","（什麼都不傳）"], accepted:["店長你好，我叫{名字}，我發燒了，今天想請一天病假","店長你好，我的名字是{名字}，我發燒了，今天想請一天病假"], kw:["請一天病假","{名字}","發燒"] }),
+            mkStep({ id:"s2", say:"（過一會兒，店長回電。）我看到訊息了，你今天發燒不能來嗎？", task:"先說「對」，再說你今天想請一天病假",
+              options:["對，我今天想請一天病假","不說清楚哪天，叫你自己猜","訊息亂寫的，你自己想辦法","請幾天都不用告訴你"], kw:["請一天病假","今天"] }),
+            mkStep({ id:"s3", say:"好，今天請病假，你先休息，請假資料之後再補。", task:"說「謝謝店長」",
+              options:["謝謝店長","我沒來也叫同事幫我打卡","我再多休幾天都不用說","不說再見就掛斷"], kw:["謝謝店長"] }),
+            mkStep({ id:"review", say:"（想一想）請假打電話沒人接，要怎麼做？", task:"說先傳訊息說清楚，還沒回覆就再聯絡",
+              options:["先傳訊息說清楚，還沒回覆就再聯絡","沒接就不用請了","一直打到接為止","不去就好"], kw:["傳訊息","沒回覆","清楚"], feedback:{ perfect:"答對了！先傳訊息說清楚，還沒回覆就再聯絡。", failed:"記住：先傳訊息說清楚，還沒回覆就再聯絡。" } }),
+          ]
+        },
+        {
+          id: "typhoon", name: "颱風天問要不要上班", icon: "🌀",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "颱風天不知道要不要上班：打電話問店長，不自己冒險出門",
+          steps: [
+            mkStep({ id:"s1", say:"（颱風來了，政府公告你住的地方停班。你原有下午的班，在家打電話給林店長。）喂，你好！", task:"說「店長你好，我是{名字}」",
+              options:["店長你好，我是{名字}","喂，是我啦","不說名字就叫店長自己猜","打去罵店長才肯報名字"], accepted:["店長你好，我叫{名字}","店長你好，我的名字是{名字}"], kw:["{名字}"] }),
+            mkStep({ id:"s2", say:"怎麼了嗎？", task:"說住的地方已公告停班，再用「請問」問下午的班怎麼安排",
+              options:["我住的地方已公告停班，請問下午的班怎麼安排？","風雨再大我都衝出去","不看路況，直接騎車來","不管公告，我先冒險出門"], kw:["地方已公告停班","班怎麼安排","下午"] }),
+            mkStep({ id:"s3", say:"今天店裡不開，不用來喔！在家注意安全！", task:"先說「好」，再說「謝謝店長」",
+              options:["好，謝謝店長","不用上班，我去淹水的地方玩","店沒開我也一定要去","我去海邊看大浪"], kw:["謝謝店長"] }),
+            mkStep({ id:"review", say:"（想一想）颱風天不知道要不要上班，要怎麼做？", task:"說先看政府停班公告，聯絡店長確認安排，不冒險出門",
+              options:["先看政府停班公告，聯絡店長確認安排，不冒險出門","風雨越大越要趕去","只看店有沒有開，不管路能不能走","為了打卡闖過淹水路段"], kw:["聯絡店長確認安排","看政府停班公告","不冒險出門"], feedback:{ perfect:"答對了！先看政府停班公告，聯絡店長確認安排，不冒險出門。", failed:"記住：先看政府停班公告，聯絡店長確認安排，不冒險出門。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "get_paid", name: "領薪水", icon: "💵", available: true,
+      theme: { color: '#65A30D', bg: '#ECFCCB', accent: '#4D7C0F' },
+      situations: [
+        {
+          id: "check_pay", name: "核對薪資", icon: "🧮", clerkName: "秀琴阿姨",
+          desc: "時薪×時數自己算一次，當面點清楚",
+          steps: [
+            mkStep({ id:"count_first", say:"（今天是發薪水的日子，你到辦公室找會計秀琴阿姨。）這是你這個月的薪水袋，時薪200元、你做了20小時！", task:"自己算一次：時薪乘時數，說出算式和總數，再問「對嗎」",
+              image_label:"時薪 × 工作時數",
+              image:["200 元","×","20 小時","=","4000 元"], options:["200乘20，應該是4000元對嗎？","多少都行","不用算啦","直接收走"],
+              accepted:["200乘20，應該是4000元對嗎？","200乘20是4000對嗎","應該是4000元"], kw:["4000","四千"],
+              feedback:{ failed:"自己的薪水自己算。可以說：「200乘20，應該是4000元對嗎？」" } }),
+            mkStep({ id:"count_cash", say:"沒錯，4000元！當面點一點喔！", task:"先說「好」，再當面數一下，說出數到多少錢",
+              options:["好，我當面數一下…4000元沒錯","不用啦相信你","回家再看","（塞進口袋）"],
+              accepted:["好，我當面數一下…4000元沒錯","當面數一下4000沒錯","我數一下"], kw:["數一下","4000","四千"],
+              image:["images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/1000_yuan_front.png"], image_label:"薪水袋裡的錢",
+              feedback:{ failed:"當面點清楚。可以說：「好，我當面數一下…4000元沒錯」" } }),
+            mkStep({ id:"review", say:"（想一想）領薪水要做什麼？", task:"說出重點：自己算一次，當面點清楚",
+              options:["自己算一次，當面點清楚","拿了就跑","不好意思數","都給媽媽處理"],
+              accepted:["自己算一次，當面點清楚","算一次當面點清楚","自己算當面點"], kw:["當面","算"],
+              feedback:{ perfect:"答對了！自己算一次，當面點清楚。", failed:"記住：領薪水先自己算，再當面點清楚。" } }),
+          ]
+        },
+        {
+          id: "pay_wrong", name: "薪水算錯了", icon: "😲", clerkName: "秀琴阿姨",
+          desc: "發現金額不對，有禮貌反映請對方確認",
+          steps: [
+            mkStep({ id:"speak_up", say:"（今天發薪水。你自己算過，這個月的薪水應該是4000元，可是打開薪水袋數了兩次，裡面只有3800元。）", task:"先說「不好意思」，再說你算是四千，這裡只有三千八，最後問「可以再確認嗎」",
+              options:["不好意思，我算是4000，這裡只有3800，可以再確認嗎？","你少給我錢！","你一定是故意少給我！","偷偷再拿別的"],
+              accepted:["不好意思，我算是4000，這裡只有3800，可以再確認嗎？","我算是4000這裡只有3800可以確認嗎","少了可以再確認嗎"], kw:["3800","確認"],
+              image:["images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/500_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png","images/money/100_yuan_front.png"], image_label:"薪水袋裡只有 3800 元",
+              feedback:{ failed:"發現不對有禮貌說。可以說：「不好意思，我算是4000，這裡只有3800，可以再確認嗎？」" } }),
+            mkStep({ id:"accept_fix", say:"哎呀真的耶，是我數錯了！補你200元，謝謝你有算！", task:"先說「沒關係」，再說「謝謝阿姨」",
+              options:["沒關係，謝謝阿姨","早就該給了","罰你雙倍","下次再錯試試看"],
+              accepted:["沒關係，謝謝阿姨","沒關係謝謝","謝謝"], kw:["謝謝"],   // 領薪水的角色是會計秀琴阿姨，原本寫「謝謝店長」叫錯人（使用者定 2026-09-19）
+              image:["images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/1000_yuan_front.png","images/money/1000_yuan_front.png"], image_label:"補好了，4000 元",
+              feedback:{ failed:"可以說：「沒關係，謝謝阿姨」" } }),
+            mkStep({ id:"review", say:"（想一想）發現錢不對要怎麼說？", task:"說出方法：有禮貌地說出來，請對方確認",
+              options:["有禮貌地說出來，請對方確認","大聲罵人","忍住不說","上網公審"],
+              accepted:["有禮貌地說出來，請對方確認","有禮貌說出來請確認","有禮貌反映"], kw:["有禮貌"],
+              feedback:{ perfect:"答對了！有禮貌地說出來，請對方確認。", failed:"記住：錢不對就有禮貌反映，不吵架也不吃虧。" } }),
+          ]
+        },
+        {
+          id: "plan_save", name: "薪水怎麼用", icon: "🐷", clerkName: "秀琴阿姨",
+          desc: "自己賺的錢：先存一部分再安排",
+          steps: [
+            mkStep({ id:"say_plan", say:"（你第一次領到自己打工賺的薪水，你想先存 1000 元。秀琴阿姨笑著問你。）第一次領薪水，有什麼打算？", task:"說出儲蓄規劃：先存一部分，剩下的當零用錢",
+              options:["我要先存1000元，剩下的當零用錢","全部花光慶祝","都拿去夾娃娃","借同學一半"],
+              accepted:["我要先存1000元，剩下的當零用錢","先存1000剩下當零用","我要先存一部分"], kw:["存"],
+              feedback:{ failed:"先想怎麼存。可以說：「我要先存1000元，剩下的當零用錢」" } }),
+            mkStep({ id:"be_proud", say:"太棒了！會存錢的人最厲害！", task:"先說「謝謝」，再說這是你自己賺的錢，要好好規劃",
+              options:["謝謝！這是我自己賺的錢，要好好規劃","存錢好無聊","隨便說說的","明天就花掉"],
+              accepted:["謝謝！這是我自己賺的錢，要好好規劃","自己賺的錢要好好規劃","謝謝我會好好規劃"], kw:["規劃"],
+              feedback:{ failed:"可以說：「謝謝！這是我自己賺的錢，要好好規劃」" } }),
+            mkStep({ id:"review", say:"（想一想）賺來的錢怎麼安排？", task:"說出方法：先存一部分，再安排花費",
+              options:["先存一部分，再安排花費","賺多少花多少","放著不管","全部藏床下"],
+              accepted:["先存一部分，再安排花費","先存一部分再安排","先存再花"], kw:["先存"],
+              feedback:{ perfect:"答對了！先存一部分，剩下的再安排——這就是理財的開始。", failed:"記住：領到錢先存一部分，剩下再安排。" } }),
+          ]
+        },
+        {
+          id: "pay_late", name: "薪水還沒發", icon: "📅", clerkName: "秀琴阿姨",
+          desc: "發薪日沒拿到薪水，有禮貌問清楚哪一天發",
+          steps: [
+            mkStep({ id:"ask_when", say:"（面試時店長說每個月10號發薪水。今天已經10號了，你還沒有拿到薪水。你到辦公室找會計秀琴阿姨。）有什麼事嗎？", task:"先說「阿姨好」，再用「請問」問這個月的薪水什麼時候會發",
+              options:["阿姨好，請問這個月的薪水什麼時候會發？","你們是不是不想給我錢！","算了，不要了","（坐在門口一直等）"],
+              accepted:["阿姨好，請問這個月的薪水什麼時候會發？","請問薪水什麼時候會發","薪水哪一天會發"], kw:["什麼時候","哪一天","哪天"],
+              feedback:{ failed:"有禮貌地問日期。可以說：「阿姨好，請問這個月的薪水什麼時候會發？」" } }),
+            mkStep({ id:"confirm_date", say:"不好意思喔，這個月銀行作業比較慢，15號才會發！", task:"先說「好」，再複誦：15 號發薪水，最後問「對嗎」",
+              options:["好，是15號發薪水，對嗎？","太慢了，我不做了","今天就要給我","隨便啦"],
+              accepted:["好，是15號發薪水，對嗎？","15號發薪水對嗎","是15號嗎","好的，是15號發薪水，對嗎？"], kw:["15"],
+              feedback:{ failed:"把日期再說一次確認。可以說：「好，是15號發薪水，對嗎？」" } }),
+            mkStep({ id:"thank_tell", say:"對，15號一定發，謝謝你體諒！", task:"先說「好」，再說「謝謝阿姨告訴我」",
+              options:["好，謝謝阿姨告訴我","哼","最好是","下次早點說啦"],
+              accepted:["好，謝謝阿姨告訴我","謝謝阿姨","謝謝","好的，謝謝阿姨告訴我"], kw:["謝謝"],
+              feedback:{ failed:"有禮貌地道謝。可以說：「好，謝謝阿姨告訴我」" } }),
+            mkStep({ id:"review", say:"（想一想）薪水沒有準時發，要怎麼做？", task:"說出方法：約好的發薪日不能隨便延後；有禮貌問清楚哪天發，到時還沒發就告訴家人或老師",
+              // 外部審閱第七輪：勞基法要求工資定期給付；對話保留（真實會發生），結論不可教成「延後也沒關係」
+              options:["約好的發薪日不能隨便延後；有禮貌問清楚哪天發，到時還沒發就告訴家人或老師","大吵大鬧","一直等都不問","不做了直接走"],
+              accepted:["約好的發薪日不能隨便延後；有禮貌問清楚哪天發，到時還沒發就告訴家人或老師","有禮貌問清楚哪天發，到時還沒發就告訴家人或老師","有禮貌問清楚哪天發，到時還沒發就告訴家人","有禮貌問清楚哪天發"], kw:["問清楚","家人","老師"],
+              feedback:{ perfect:"答對了！約好的發薪日不能隨便延後；先有禮貌問清楚，到時還沒發就告訴家人或老師。", failed:"記住：約好的發薪日不能隨便延後；有禮貌問清楚哪天發，到時還沒發就告訴家人或老師。" } }),
+          ]
+        },
+        {
+          id: "payslip", name: "薪資單看不懂", icon: "🧾", clerkName: "秀琴阿姨",
+          desc: "看不懂薪資單上的扣款，問會計，再自己算一次實發金額",
+          steps: [
+            mkStep({ id:"ask", image:"images/b6/icon-b6-payslip-4000.png", image_label:"薪資單", say:"（你的薪資單寫著「應發 4000 元、勞保 277 元、實發 3723 元」。你看不懂「勞保」，去找會計秀琴阿姨。）怎麼啦？", task:"先叫「秀琴阿姨」，再用「請問」問勞保是什麼",
+              options:["秀琴阿姨，請問勞保是什麼？","為什麼扣我錢","（不問，自己亂猜）","我不要被扣錢"], kw:["勞保"],
+              accepted:["秀琴阿姨，請問勞保是什麼？","請問勞保是什麼","勞保是什麼"] }),
+            // 未滿 5 人的公司不強制勞保（就保一定要保）→ 拿掉「有工作的人都要保」；277 元＝部分工時最低級距，時薪改 200 不影響
+            mkStep({ id:"calc", say:"勞保就是勞工保險，受傷、生病或失業時有保障，每個月從薪水扣一點。", task:"先說「好」，再自己算：4000 減 277，說出實發多少，問「對嗎」",
+              options:["好，4000 減 277，實發 3723 元對嗎？","不用算啦","多少都好","你算就好"], kw:["3723"],
+              accepted:["好，4000 減 277，實發 3723 元對嗎？","4000 減 277，實發 3723 元對嗎","4000 減 277 是 3723"] }),
+            mkStep({ id:"thanks", say:"對！算得很好。", task:"說「謝謝秀琴阿姨」",
+              options:["謝謝秀琴阿姨","嗯","本來就會","（直接走）"], kw:["謝謝"],
+              accepted:["謝謝秀琴阿姨","謝謝阿姨","謝謝"] }),
+            mkStep({ id:"review", say:"（想一想）看不懂薪資單的時候，要怎麼做？", task:"說出方法：直接問會計，自己再算一次",
+              options:["直接問會計，自己再算一次","不懂就算了","直接簽名","問同學就好"], kw:["問會計","再算"],
+              accepted:["直接問會計，自己再算一次","直接問會計","自己再算一次"],
+              feedback:{ perfect:"答對了！直接問會計，自己再算一次。", failed:"記住：看不懂薪資單就直接問會計，自己再算一次。" } }),
+          ]
+        },
+        {
+          id: "payroll_account", name: "給公司薪水帳號", icon: "🏦",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "確認薪轉用途，提供必要收款資料；自己保管帳戶，不把卡片或密碼交給公司操作",
+          steps: [
+            mkStep({ id:"s1", say:"（你開始打工，會計秀琴阿姨拿出薪轉單。）薪水會轉進你的帳戶，請填這張單子。", task:"用「請問」問要填哪些資料",
+              options:["請問要填哪些資料？","不用問用途，全部資料都給","連提款密碼一起填","把卡片寄給陌生人辦薪轉"], kw:["填哪些資料"] }),
+            mkStep({ id:"s2", say:"這張填戶名和郵局局號、帳號。", task:"先說「好」，再說你會填戶名和郵局局號、帳號",
+              options:["好，我會填戶名和郵局局號、帳號","我要填別人的戶名","提款密碼也一起寫","帳號隨便填就好"], kw:["會填戶名","郵局局號"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-payroll-form.png"], image_label:"薪轉單", say:"（你填好單子。）填好交給我，存摺和提款卡自己收好。", task:"先說「好」，再交出單子，說「這是填好的單子」",
+              options:["好，這是填好的單子","存摺正本押在公司就好","提款卡交給公司自由使用","把整本交易紀錄發到群組"], kw:["填好","單子"] }),
+            mkStep({ id:"s4", say:"領薪水不用提供提款密碼或簡訊驗證碼。", task:"先說「好」，再說密碼和驗證碼不給公司",
+              options:["好，密碼和驗證碼不給公司","把密碼告訴老闆就好","驗證碼轉傳給公司","提款卡和密碼一起交出去"], kw:["驗證碼不"] }),
+            mkStep({ id:"review", say:"（想一想）公司要資料來轉薪水，要注意什麼？", task:"說先問用途，只給需要的收款資料，卡片自己保管、密碼不給",
+              options:["先問用途，只給需要的收款資料，卡片自己保管、密碼不給","只要說發薪水，什麼都能給","領薪水一定要交提款卡","公司能用我的帳戶收別人的錢"], kw:["卡片自己保管","先問用途","只給需要"], feedback:{ perfect:"答對了！先問用途，只給需要的收款資料，卡片自己保管、密碼不給。", failed:"記住：先問用途，只給需要的收款資料，卡片自己保管、密碼不給。" } }),
+          ]
+        },
+        {
+          id: "check_deposit", name: "刷存摺看薪水進來了沒", icon: "📒",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "薪水轉帳以後，刷存摺確認金額對不對",
+          steps: [
+            mkStep({ id:"s1", say:"（今天發薪水，你拿著薪資單來問。）這次實際轉入你的帳戶是 4000 元，已轉好了。", task:"用「請問」問：要怎麼知道錢進來了？",
+              options:["請問要怎麼知道錢進來了？","不用確認，帳號對不對也不管","只看別人的存摺就好","看到帳戶有錢就算公司付了"], kw:["怎麼知道錢進來"] }),
+            mkStep({ id:"s2", say:"刷存摺後，找這次薪水的日期和存入金額，對照薪資單。", task:"說刷存摺，找這次薪水的日期和存入金額，對照薪資單",
+              options:["刷存摺，找這次薪水的日期和存入金額，對照薪資單","只看最後一行","把餘額當成這次薪水","只看提款那一筆"], kw:["找這次薪水","對照薪資單","存入金額"] }),
+            mkStep({ id:"s3", image:["images/b6/icon-b6-passbook-salary-4000.png"], image_label:"刷好的存摺", say:"（你刷存摺後看到：9/10 薪資存入 4000 元；下一筆提款 500 元。你回來找會計。）有找到薪水那一筆嗎？", task:"說你看到了，9 月 10 日薪水存入 4000 元",
+              options:["我看到了，9 月 10 日薪水存入 4000 元","薪水是提款的 500 元","只看最後一筆，薪水沒進來","把所有存入的錢都當薪水"], kw:["4000","10","日薪水存入"] }),
+            mkStep({ id:"review", say:"（想一想）薪水轉帳以後，要怎麼確認？", task:"說查入帳紀錄，找薪水那一筆，跟薪資單的實發金額核對",
+              options:["查入帳紀錄，找薪水那一筆，跟薪資單的實發金額核對","只看帳戶還剩多少錢","問同事拿多少就算自己的薪水","不看日期和存入金額"], kw:["找薪水那一筆","實發金額核對","查入帳紀錄"], feedback:{ perfect:"答對了！查入帳紀錄，找薪水那一筆，跟薪資單的實發金額核對。", failed:"記住：查入帳紀錄，找薪水那一筆，跟薪資單的實發金額核對。" } }),
+          ]
+        },
+        {
+          id: "extra_shift", name: "多排班前問怎麼算", icon: "🧮",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "多排班前先問計薪方式，核對班表後再算本次金額；不把「自己同意」當成免加班費的理由",
+          steps: [
+            mkStep({ id:"s1", say:"（店長問你能不能多上 4 小時，你來找會計問薪水怎麼算。）有什麼想問的嗎？", task:"用「請問」問多上的 4 小時薪水怎麼算",
+              options:["請問多上的 4 小時，薪水怎麼算？","只要自己答應就沒有加班費","多上的都不用給錢","不管哪一天都一定同價"], kw:["薪水怎麼算","小時"] }),
+            mkStep({ id:"s2", say:"要看班表和工作時間，才能知道這次怎麼算。", task:"先說「好」，再問能不能幫你看班表",
+              options:["好，可以幫我看班表嗎？","不用看班表，隨便算","說是多排班就一定不用加班費","只看我有沒有答應就好"], kw:["可以"] }),
+            mkStep({ id:"s3", say:"看過班表，這次是一般平日工時，約定每小時 200 元。", task:"算這 4 小時的工資，說出算式和金額",
+              options:["4 小時乘 200 元，是 800 元","4 小時乘 200 元，是 400 元","4 小時乘 200 元，是 600 元","多上的 4 小時不用算"], kw:["800"] }),
+            mkStep({ id:"s4", say:"這 4 小時的工資會列在薪資單上。", task:"先說「好」，再說你會核對時數和金額",
+              options:["好，我會核對時數和金額","薪資單不用看","工時寫多少都可以","少算的時數就送公司"], kw:["會核對時數","金額"] }),
+            mkStep({ id:"review", say:"（想一想）多排班時，薪水要怎麼確認？", task:"說先問怎麼算，再核對工作時數和金額",
+              options:["先問怎麼算，再核對工作時數和金額","自己答應就一律不用加班費","只看老闆願意給多少","多上的一律不算錢"], kw:["核對工作時數","先問怎麼算","金額"], feedback:{ perfect:"答對了！先問怎麼算，再核對工作時數和金額。", failed:"記住：先問怎麼算，再核對工作時數和金額。" } }),
+          ]
+        },
+      ]
+    },
+
+    {
+      id: "serve_customer", name: "接待客人", icon: "👥", available: true,
+      theme: { color: '#4F46E5', bg: '#E0E7FF', accent: '#3730A3' },
+      situations: [
+        {
+          id: "greet_customer", name: "基本服務用語", icon: "😊", clerkName: "客人",
+          desc: "換你當店員：歡迎光臨、請稍等、謝謝光臨",
+          steps: [
+            mkStep({ id:"say_welcome", say:"（今天你在店裡當店員。門口的鈴聲響了，有一位客人走進店裡。你要先跟客人打招呼。）", task:"跟客人說「歡迎光臨」",
+              options:["歡迎光臨！","（繼續滑手機）","來了喔","買什麼快說"],
+              accepted:["歡迎光臨！","歡迎光臨"], kw:["歡迎光臨"],
+              feedback:{ failed:"客人進門要打招呼。可以說：「歡迎光臨！」" } }),
+            mkStep({ id:"be_patient", say:"（客人走到櫃台前，又轉頭看了看貨架。）結帳可以等我一下嗎？我還要拿個東西。", task:"先說「好」，再說「請慢慢來，我等您」",
+              options:["好，請慢慢來，我等您","快一點喔","不行喔要下班了","（翻白眼）"],
+              accepted:["好，請慢慢來，我等您","請慢慢來我等您","好的請慢慢來","好的，請慢慢來，我等您"], kw:["慢慢來"],
+              feedback:{ failed:"對客人要有耐心。可以說：「好，請慢慢來，我等您」" } }),
+            mkStep({ id:"say_bye", say:"（客人結完帳要離開了）", task:"送客，說「謝謝光臨，歡迎再來」",
+              options:["謝謝光臨，歡迎再來！","終於走了","慢走不送","下一位"],
+              accepted:["謝謝光臨，歡迎再來！","謝謝光臨歡迎再來","謝謝光臨"], kw:["謝謝光臨"],
+              feedback:{ failed:"送客要有禮貌。可以說：「謝謝光臨，歡迎再來！」" } }),
+            mkStep({ id:"review", say:"（想一想）服務客人的基本態度？", task:"說出重點：有禮貌、有耐心，客人才會再來",
+              options:["有禮貌、有耐心，客人才會再來","客人趕快買完就好","心情好才服務","不理客人"],
+              accepted:["有禮貌、有耐心，客人才會再來","有禮貌有耐心","禮貌又耐心"], kw:["禮貌","耐心"],
+              feedback:{ perfect:"答對了！有禮貌、有耐心，客人才會再來。", failed:"記住：對客人有禮貌、有耐心。" } }),
+          ]
+        },
+        {
+          id: "hard_question", name: "被客人問倒了", icon: "🤷", clerkName: "客人",
+          desc: "不裝懂，找懂的人來回答",
+          steps: [
+            mkStep({ id:"dont_guess", say:"（你在店裡當店員，一位客人拿著保養品來問你問題，這個問題你不知道答案。）請問，這個孕婦可以用嗎？", task:"不裝懂，先說「這個我不確定」，再說「我請店長來為您說明」",
+              options:["這個我不確定，我請店長來為您說明","可以吧應該","不可以吧大概","隨便選一個答"],
+              accepted:["這個我不確定，我請店長來為您說明","不確定請店長來說明","我請店長來"], kw:["店長"],
+              feedback:{ failed:"不確定不能亂答。可以說：「這個我不確定，我請店長來為您說明」" } }),
+            mkStep({ id:"relay_q", say:"（你去找店長）", task:"先叫「店長」，再說客人想問這個保養品孕婦能不能用，最後說「麻煩您了」",
+              options:["店長，客人想問這個保養品孕婦能不能用，麻煩您了","有人找你","你去看一下啦","客人好煩"],
+              accepted:["店長，客人想問這個保養品孕婦能不能用，麻煩您了","客人問孕婦能不能用麻煩您","客人想問孕婦能不能用"], kw:["孕婦"],
+              feedback:{ failed:"轉達要說清楚問題。可以說：「店長，客人想問這個保養品孕婦能不能用，麻煩您了」" } }),
+            mkStep({ id:"review", say:"（想一想）被客人問倒了怎麼辦？", task:"說出方法：不裝懂，找懂的人來回答",
+              options:["不裝懂，找懂的人來回答","隨便答一個","說不知道就走開","叫客人自己查"],
+              accepted:["不裝懂，找懂的人來回答","不裝懂找懂的人","找懂的人回答"], kw:["不裝懂","懂的人"],
+              feedback:{ perfect:"答對了！不裝懂，找懂的人來回答。", failed:"記住：不會的問題不亂答，找懂的人幫忙。" } }),
+          ]
+        },
+        {
+          id: "angry_customer", name: "客人不高興", icon: "😠", clerkName: "客人",
+          desc: "先道歉，處理不了請主管",
+          steps: [
+            mkStep({ id:"say_sorry", say:"（今天你在店裡當店員，排隊結帳的人很多。輪到一位等了很久的客人，他很生氣。）我等很久了！你們動作太慢了吧！", task:"先道歉，說「真的很抱歉讓您久等了」",
+              options:["真的很抱歉讓您久等了","是你自己來的時間不對","急什麼","（跑走）"],
+              accepted:["真的很抱歉讓您久等了","很抱歉讓您久等了","對不起讓您久等"], kw:["久等"],
+              feedback:{ failed:"客人不高興先道歉。可以說：「真的很抱歉讓您久等了」" } }),
+            mkStep({ id:"get_manager", say:"（客人還是很生氣）", task:"請主管處理，說「我請店長來協助您，請稍等」",
+              options:["我請店長來協助您，請稍等","你再吵我報警","不然你要怎樣","（哭出來）"],
+              accepted:["我請店長來協助您，請稍等","請店長來協助您","我請店長來"], kw:["店長"],
+              feedback:{ failed:"處理不了就找主管。可以說：「我請店長來協助您，請稍等」" } }),
+            mkStep({ id:"review", say:"（想一想）遇到生氣的客人怎麼辦？", task:"說出方法：先道歉，處理不了就請主管",
+              options:["先道歉，處理不了就請主管","跟客人吵回去","躲起來","裝聽不到"],
+              accepted:["先道歉，處理不了就請主管","先道歉請主管","道歉後請主管處理"], kw:["道歉","主管"],
+              feedback:{ perfect:"答對了！先道歉，處理不了就請主管。", failed:"記住：先道歉安撫，處理不了請主管，不用自己硬扛。" } }),
+          ]
+        },
+        {
+          id: "give_change", name: "收錢並找零給客人", icon: "💰", clerkName: "客人",
+          desc: "換你當店員：算總價，說出收多少、找多少",
+          steps: [
+            mkStep({ id:"total", image:["images/a4/icon-a4-cookies-shop.png::250 元","images/a4/icon-a4-juice-shop.png::70 元"], image_label:"餅乾 ＋ 果汁", say:"（你在店裡當店員。一位客人拿了一盒餅乾和一瓶果汁到櫃台，餅乾 250 元、果汁 70 元。）你好，我要結帳。", task:"算出總共多少錢，跟客人說「總共 320 元」",
+              options:["總共 320 元","你自己算","250 元","不知道耶"], kw:["320"],
+              accepted:["總共 320 元","一共 320 元","320 元"] }),
+            mkStep({ id:"change", say:"好，給你 500 元。", task:"先說「收您 500 元」，再說「找您 180 元」",
+              options:["收您 500 元，找您 180 元","不用找了吧","收您 500 元，找您 280 元","錢你自己拿"], kw:["180"],
+              accepted:["收您 500 元，找您 180 元","收您 500 元，找您 180","收 500 元，找 180 元"] }),
+            mkStep({ id:"bye", say:"（客人數了一下）好，180 元沒錯。", task:"先說「謝謝光臨」，再說「歡迎再來」",
+              options:["謝謝光臨，歡迎再來","終於走了","下一位","喔"], kw:["謝謝光臨","歡迎再來"],
+              accepted:["謝謝光臨，歡迎再來","謝謝光臨","歡迎再來"] }),
+            mkStep({ id:"review", say:"（想一想）收錢找零的時候要怎麼做？", task:"說出方法：說出收多少、找多少，讓客人當面點清楚",
+              options:["說出收多少、找多少，讓客人當面點清楚","錢丟給客人就好","找多少沒關係","不用說出來"], kw:["收多少","點清楚"],
+              accepted:["說出收多少、找多少，讓客人當面點清楚","說出收多少找多少","讓客人當面點清楚"],
+              feedback:{ perfect:"答對了！說出收多少、找多少，讓客人當面點清楚。", failed:"記住：收錢找零要說出收多少、找多少，讓客人當面點清楚。" } }),
+          ]
+        },
+        {
+          id: "sold_out", name: "客人要的東西賣完了", icon: "🥛", clerkName: "客人",
+          desc: "缺貨時先道歉、推薦類似商品，轉告店長交代的補貨時間",
+          steps: [
+            mkStep({ id:"tell_sold_out", say:"（你在店裡當店員。早上店長交代過：草莓牛奶賣完了，明天早上才會補貨。一位客人走過來問你。）請問，還有草莓牛奶嗎？", task:"先說「不好意思」，再說草莓牛奶賣完了",
+              options:["不好意思，草莓牛奶賣完了","沒了啦","自己去找","不知道"], kw:["賣完"],
+              accepted:["不好意思，草莓牛奶賣完了","草莓牛奶賣完了","賣完了，不好意思"] }),
+            mkStep({ id:"recommend", say:"啊，賣完了喔…那還有什麼可以買？", task:"跟客人說「我們還有巧克力牛奶，您要看看嗎？」",
+              options:["我們還有巧克力牛奶，您要看看嗎？","沒有了","隨便你","去別家買"], kw:["巧克力"],
+              accepted:["我們還有巧克力牛奶，您要看看嗎？","還有巧克力牛奶","我們有巧克力牛奶"] }),
+            mkStep({ id:"restock", say:"好啊，那我買巧克力牛奶。草莓牛奶什麼時候會再來？", task:"先說「好」，再說店長說草莓牛奶明天早上會補貨",
+              options:["好，店長說草莓牛奶明天早上會補貨","不知道","永遠不會來了","自己明天來看"], kw:["補貨","明天早上"],
+              accepted:["好，店長說草莓牛奶明天早上會補貨","明天早上會補貨","店長說明天早上會補貨"] }),
+            mkStep({ id:"review", say:"（想一想）客人要的東西賣完了，要怎麼做？", task:"說出方法：先道歉，推薦類似的，把知道的補貨時間告訴客人",
+              options:["先道歉，推薦類似的，把知道的補貨時間告訴客人","說沒有就好","叫客人自己找","隨便說個時間"], kw:["道歉","推薦"],
+              accepted:["先道歉，推薦類似的，把知道的補貨時間告訴客人","先道歉，推薦類似的","先道歉，再推薦類似的"],
+              feedback:{ perfect:"答對了！先道歉，推薦類似的，把知道的補貨時間告訴客人。", failed:"記住：先道歉，推薦類似的商品，把知道的補貨時間告訴客人。" } }),
+          ]
+        },
+        {
+          id: "where_item", name: "客人問東西在哪裡", icon: "🔋",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "客人問東西：說在哪裡，可以的話帶他過去",
+          steps: [
+            mkStep({ id:"s1", say:"（你在便利商店當店員。一位客人走過來。電池放在收銀台旁邊的架子上。）請問，電池放在哪裡？", task:"說電池在收銀台旁邊的架子上，再說你帶客人過去，稱呼用「您」",
+              options:["電池在收銀台旁邊的架子上，我帶您過去","不看位置就隨便指","故意說賣完了","你自己找，不要煩我"], kw:["收銀台旁邊","架子上","電池"] }),
+            mkStep({ id:"s2", say:"（你帶客人走到架子前面。）喔，找到了，謝謝你！", task:"說「不客氣，需要幫忙再叫我」",
+              options:["不客氣，需要幫忙再叫我","你早就該看到了","快點買一買","（不說話走掉）"], kw:["不客氣","幫忙"] }),
+            mkStep({ id:"review", say:"（想一想）客人問東西在哪裡，要怎麼做？", task:"說出方法：告訴他在哪裡，可以的話帶他過去",
+              options:["告訴他在哪裡，可以的話帶他過去","叫他自己去找","不知道還裝懂亂說","明明知道也叫他別煩我"], kw:["話帶他過去","告訴他","哪裡"], feedback:{ perfect:"答對了！告訴他在哪裡，可以的話帶他過去。", failed:"記住：告訴他在哪裡，可以的話帶他過去。" } }),
+          ]
+        },
+        {
+          id: "bag_fee", name: "客人要袋子", icon: "🛍️",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "客人要袋子：先說袋子要多少錢，問要不要，再算進總金額",
+          steps: [
+            mkStep({ id:"s1", image:"images/b6/icon-b6-plastic-bag.png::2 元", image_label:"袋子", say:"（你在便利商店當店員。客人買了三瓶飲料，一共 75 元。依照店裡的規定，塑膠袋一個 2 元。）我要一個袋子。", task:"說袋子要 2 元，再問客人「可以嗎」",
+              options:["袋子要 2 元，可以嗎？","袋子 20 元，可以嗎？","不說袋費就直接加進去","價錢我隨便決定"], kw:["袋子要"] }),
+            mkStep({ id:"s2", say:"好，那一共多少？", task:"算飲料加一個袋子的總價，說「一共」再說金額",
+              options:["一共 77 元","一共 75 元","一共 80 元","你自己算"], kw:["77"] }),
+            mkStep({ id:"s3", image:["images/money/100_yuan_front.png"], image_label:"客人給 100 元", say:"給你 100 元。", task:"先說「收您 100 元」，再算找多少錢，說「找您」和金額，把錢交給客人",
+              options:["收您 100 元，找您 23 元","找您 25 元","100 元不用找了","找您 3 元"], kw:["23"] }),
+            mkStep({ id:"review", say:"（想一想）客人要袋子，要怎麼做？", task:"說出方法：先說袋子要多少錢，問客人要不要，再算進總金額",
+              options:["先說袋子要多少錢，問客人要不要，再算進總金額","沒問要不要就加袋費","有標價也私下不收","故意不告訴客人價格"], kw:["算進總金額","多少錢","問客人"], feedback:{ perfect:"答對了！先說袋子要多少錢，問客人要不要，再算進總金額。", failed:"記住：先說袋子要多少錢，問客人要不要，再算進總金額。" } }),
+          ]
+        },
+        {
+          id: "cancel_item", name: "結帳前取消一樣商品", icon: "❌",
+          // 2026-09-29 補情境到八個（定稿見 docs/補情境到八個/）
+          desc: "付款前客人改變購買品項，確認要取消什麼，再核對剩下商品與總價",
+          steps: [
+            mkStep({ id:"s1", image:["images/a4/icon-a4-rice-ball-shop.png::35 元","images/a4/icon-a4-soy-milk-shop.png::25 元"], image_label:"飯糰 ＋ 豆漿", say:"（你已刷入飯糰 35 元和豆漿 25 元，客人還沒付款。）豆漿不要了，可以幫我取消嗎？", task:"先說「好」，再說你幫客人取消豆漿，稱呼用「您」",
+              options:["好，我幫您取消豆漿","刷過就一定要買","不用問，我把飯糰也取消","豆漿偷偷算在帳裡就好"], kw:["取消豆漿"] }),
+            mkStep({ id:"s2", image:"images/b6/icon-b6-pos-rice-ball-35.png", image_label:"收銀機畫面", say:"（你在收銀機取消豆漿，畫面剩一個飯糰 35 元。）現在一共多少？", task:"說剩一個飯糰，再說出現在的總價",
+              options:["剩一個飯糰，一共 35 元","一共 60 元","只取消畫面，還是收兩樣的錢","一共 25 元"], kw:["剩一個飯糰","35"] }),
+            mkStep({ id:"s3", image:["images/money/50_yuan_front.png"], image_label:"客人給 50 元", say:"給你 50 元。", task:"先說「收您 50 元」，再算找多少，說「找您」和金額，把錢交給客人",
+              options:["收您 50 元，找您 15 元","收您 50 元，找您 25 元","收您 50 元，不用找","收您 50 元，找您 5 元"], kw:["15"] }),
+            mkStep({ id:"s4", image:["images/b6/icon-b6-invoice.png"], image_label:"發票", say:"好，15 元沒錯。", task:"把發票交給客人，說「這是您的發票，謝謝光臨」",
+              options:["這是您的發票，謝謝光臨","取消的商品也要拿走","下次不准改變主意","發票自己找"], kw:["謝謝光臨"] }),
+            mkStep({ id:"review", say:"（想一想）結帳前客人想取消一樣商品，要怎麼做？", task:"說先問清楚取消哪一樣，再核對剩下的商品和總價",
+              options:["先問清楚取消哪一樣，再核對剩下的商品和總價","全部刪掉就好","照原來的總價收錢","客人改變主意就罵他"], kw:["問清楚取消哪一樣","再核對剩下","商品和總價"], feedback:{ perfect:"答對了！先問清楚取消哪一樣，再核對剩下的商品和總價。", failed:"記住：先問清楚取消哪一樣，再核對剩下的商品和總價。" } }),
+          ]
+        },
+      ]
+    }
+
+  ]
+};

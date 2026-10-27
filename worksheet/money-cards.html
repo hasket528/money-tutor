@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<script src="../js/emoji-font.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>列印金錢教材教具卡</title>
+<style>
+  /* 2026-09-21：由「固定內容的教具卡頁」改成老師可自己編修的列印頁。
+     設定在左、預覽在右；設定存 localStorage，下次開啟沿用。
+     版面與掃描標記的算法沿用 tests/marker-cards.html（實驗室版，量最小可用尺寸用）。 */
+  :root {
+    --ink:#1f2937; --line:#94a3b8; --muted:#475569; --bg:#f1f5f9;
+    --money-scale: .7;                      /* 1 ＝ 1:1 真實尺寸；預設 0.7（央行規定：<0.75 或 >1.25，中間只提示） */
+    --mk-mm: 8mm;                           /* 掃描標記本體邊長（6 模組）*/
+    --mk-quiet: 1mm;
+    --mk-box: calc(var(--mk-mm) * 8 / 6);   /* SVG 含 1 模組靜區的佔位 */
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:"Microsoft JhengHei","PingFang TC",sans-serif; }
+  [hidden] { display:none !important; }
+
+  .app { display:flex; align-items:flex-start; }
+  .wrap { flex:1 1 auto; min-width:0; padding:18px 24px 60px; }
+
+  /* ── 設定欄 ── */
+  .panel { position:sticky; top:0; flex:0 0 340px; width:340px; height:100vh; overflow-y:auto;
+           background:#0f172a; color:#e2e8f0; padding:14px 18px 30px; z-index:20; }
+  .panel h1 { font-size:1.05rem; margin:0 0 4px; }
+  .panel .hint { font-size:.8rem; color:#94a3b8; line-height:1.6; margin:0 0 12px; }
+  .grp { border-top:1px solid #1e293b; padding-top:12px; margin-top:12px; }
+  .grp > h3 { margin:0 0 8px; font-size:.9rem; color:#7dd3fc; }
+  .ctrl { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+  .ctrl > label { font-size:.8rem; color:#94a3b8; font-weight:600; }
+  .val { color:#7dd3fc; font-variant-numeric:tabular-nums; }
+  .ctrl input[type=range] { width:100%; accent-color:#38bdf8; }
+  .ctrl select, .ctrl input[type=number] { background:#1e293b; color:#e2e8f0; border:1px solid #334155;
+        border-radius:7px; padding:6px 9px; font-size:.9rem; font-family:inherit; }
+  .ctrl input[type=number] { width:80px; }
+  .two { display:flex; gap:12px; }
+  .chk { display:flex; align-items:center; gap:6px; font-size:.86rem; color:#cbd5e1; cursor:pointer; }
+  .chk input { accent-color:#38bdf8; width:16px; height:16px; }
+  .denoms { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .denoms .chk { padding:5px 8px; border:1px solid #334155; border-radius:8px; background:#1e293b; }
+  .denoms .chk:has(input:checked) { background:#1d4ed8; border-color:#3b82f6; color:#fff; }
+  .quick { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .mini { padding:4px 10px; border:1px solid #334155; border-radius:999px; background:#0b1220;
+          color:#cbd5e1; font-size:.78rem; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn { padding:10px 18px; border:none; border-radius:10px; background:#16a34a; color:#fff;
+         font-size:1rem; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn.secondary { background:#334155; color:#e2e8f0; font-size:.9rem; padding:8px 14px; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .sum { margin-top:12px; background:#1e293b; border:1px solid #334155; border-radius:9px;
+         padding:9px 12px; font-size:.83rem; line-height:1.8; }
+  .sum b { color:#7dd3fc; }
+  .sum .warn { color:#fcd34d; }
+
+  /* ── 內容 ── */
+  .calib { background:#fff7ed; border:2px dashed #f59e0b; border-radius:10px; padding:12px 14px; margin:0 0 16px; }
+  .calib .ruler { position:relative; width:100mm; height:14mm; border-left:1px solid var(--ink);
+                  border-bottom:1px solid var(--ink); margin-top:8px; }
+  .calib .tick { position:absolute; bottom:0; width:0; border-left:1px solid var(--ink); height:5mm; }
+  .calib .tick.major { height:9mm; }
+  .calib .tick span { position:absolute; bottom:-6mm; left:2px; font-size:9px; color:var(--muted); }
+  /* 每個 .sheet ＝ 一張紙的可列印區（寬度由 JS 依紙張減邊界設定，所以預覽的換行位置＝印出來的）*/
+  .sheet { background:#fff; border-radius:4px; padding:6mm; margin:0 0 18px; box-shadow:0 1px 4px rgba(0,0,0,.12);
+           box-sizing:content-box; }
+  .sheet h2 { font-size:.9rem; margin:0 0 8px; color:var(--muted); }
+  .sheet.pb { break-before:page; page-break-before:always; }
+  .row { display:flex; flex-wrap:wrap; gap:6mm; align-items:flex-start; }
+  .item { break-inside:avoid; page-break-inside:avoid; }
+  .empty { color:#94a3b8; text-align:center; padding:40px 0; }
+  .wrap { overflow-x:auto; }
+
+  /* 標記（掃描付款用）*/
+  .mk { display:block; background:#fff; padding:var(--mk-quiet);
+        width:calc(var(--mk-box) + var(--mk-quiet) * 2); height:calc(var(--mk-box) + var(--mk-quiet) * 2); }
+  .mk img { display:block; width:100%; height:100%; }
+
+  /* 紙鈔：真實 W×70mm，乘 --money-scale */
+  .bill { position:relative; border:1px dashed var(--line); border-radius:2mm; overflow:hidden;
+          background:#fff; height:calc(70mm * var(--money-scale)); }
+  .bill > img.face { width:100%; height:100%; object-fit:cover; display:block; }
+  .bill > .mk { position:absolute; border-radius:.5mm; }
+  .bill.pos-br > .mk { right:.8mm; bottom:.8mm; }  .bill.pos-bl > .mk { left:.8mm; bottom:.8mm; }
+  .bill.pos-tr > .mk { right:.8mm; top:.8mm; }     .bill.pos-tl > .mk { left:.8mm; top:.8mm; }
+  .b100  { width:calc(145mm * var(--money-scale)); } .b200  { width:calc(150mm * var(--money-scale)); }
+  .b500  { width:calc(155mm * var(--money-scale)); } .b1000 { width:calc(160mm * var(--money-scale)); }
+  .b2000 { width:calc(165mm * var(--money-scale)); }
+
+  /* 硬幣：正方形虛線框（邊長由 JS 依幣徑與標記算），幣面在正中央；標記可放四個角落（同紙鈔）*/
+  .c1  { --disc:calc(20mm * var(--money-scale)); } .c5  { --disc:calc(22mm * var(--money-scale)); }
+  .c10 { --disc:calc(26mm * var(--money-scale)); } .c50 { --disc:calc(28mm * var(--money-scale)); }
+  .coincard { position:relative; display:flex; align-items:center; justify-content:center;
+              border:1px dashed var(--line); border-radius:1.5mm; background:#fff; }
+  .coincard .disc { width:var(--disc); height:var(--disc); border-radius:50%; overflow:hidden; }
+  .coincard .disc img { width:100%; height:100%; object-fit:cover; display:block; }
+  .coincard > .mk { position:absolute; border-radius:.5mm; }
+  .coincard.pos-br > .mk { right:.8mm; bottom:.8mm; } .coincard.pos-bl > .mk { left:.8mm; bottom:.8mm; }
+  .coincard.pos-tr > .mk { right:.8mm; top:.8mm; }    .coincard.pos-tl > .mk { left:.8mm; top:.8mm; }
+  body.no-cut .bill, body.no-cut .coincard { border-color:transparent; }
+  /* 面額文字在虛線框裡面：硬幣貼框內下緣、紙鈔放上緣正中（下緣中間是國字面額，不能蓋）*/
+  .lab { display:none; position:absolute; font-size:8pt; line-height:4mm; height:4mm; color:var(--muted);
+         white-space:nowrap; text-align:center; }
+  body.with-label .lab { display:block; }
+  /* 🔴 「教具」字樣（2026-09-25，中央銀行印製新臺幣圖文規定）：預設印，老師可以關（使用者定：彈性選項）。
+     規定要「單一字體長寬都大於 5 毫米、字色與底色有顯著對比」→ 字級 7mm（中文字面約 0.88em≈6.2mm），
+     白底黑字加黑框，不管底下是紅色 100 元還是藍色 1000 元都看得清楚。放正中間：一眼就看得出不是鈔票。 */
+  .stamp { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:2;
+           font-size:7mm; line-height:1.15; font-weight:900; letter-spacing:.5mm; white-space:nowrap;
+           color:#111; background:rgba(255,255,255,.92); border:.5mm solid #111; border-radius:1mm; padding:.4mm 1.6mm; }
+  body.no-stamp .stamp { display:none; }
+  .coincard > .stamp { font-size:6mm; letter-spacing:0; padding:.3mm 1mm; }
+  /* 字樣位置（2026-10-04 使用者定）：上方／中間／下方，硬幣、紙鈔分開選；預設硬幣上方、紙鈔中間（DEFAULTS.stampC／stampB）。
+     打開「顯示面額文字」時避開它：硬幣的面額在框內下緣、紙鈔的在上緣正中 */
+  .st-top > .stamp { top:1mm; transform:translateX(-50%); }
+  .st-bot > .stamp { top:auto; bottom:1mm; transform:translateX(-50%); }
+  body.with-label .coincard.st-bot > .stamp { bottom:5.5mm; }
+  body.with-label .bill.st-top > .stamp { top:5.5mm; }
+  .hint.warn-note { color:#fcd34d; }
+  .legal { margin:14px 0 0; background:#1e293b; border:1px solid #475569; border-radius:9px; padding:10px 12px;
+           font-size:.8rem; line-height:1.7; color:#cbd5e1; }
+  .legal h3 { margin:0 0 6px; font-size:.88rem; color:#fcd34d; }
+  .legal ol { margin:0 0 6px; padding-left:1.3em; }
+  .legal li { margin:2px 0; }
+  .legal a { color:#7dd3fc; word-break:break-all; }
+  .foot { margin-top:3mm; font-size:8pt; line-height:1.5; color:#334155; }
+  .coincard > .lab { left:0; right:0; bottom:1mm; }
+  .bill > .lab { top:1mm; left:50%; transform:translateX(-50%); padding:0 2mm; background:rgba(255,255,255,.85);
+                 border-radius:1mm; }
+
+  @media (max-width:900px) {
+    .app { display:block; }
+    .panel { position:static; width:auto; height:auto; flex:none; }
+  }
+  @media print {
+    .app { display:block; }
+    .panel, .no-print { display:none !important; }
+    body { background:#fff; }
+    .wrap { padding:0; }
+    .sheet { box-shadow:none; border-radius:0; padding:0; margin:0; }
+    .calib { border:none; padding:0; margin:0 0 3mm; }
+    .calib { break-inside:avoid; }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+<!-- @page 的 size 解析不到 var()，換紙張只能整條重寫（同 tests/marker-cards.html）-->
+<style id="page-style">@media print { @page { size:A4; margin:12mm; } }</style>
+</head>
+<body>
+<div class="app">
+
+<div class="panel">
+  <h1>🪙 列印金錢教材教具卡</h1>
+  <p class="hint">勾選要印的面額、調整大小，右邊即時預覽；設定會記住，下次開啟沿用。</p>
+
+  <div class="grp" style="border-top:none;margin-top:0;padding-top:0">
+    <h3>① 要印的面額</h3>
+    <div class="denoms" id="denoms"></div>
+    <div class="quick">
+      <button class="mini" data-pick="all">全選</button>
+      <button class="mini" data-pick="coin">只選硬幣</button>
+      <button class="mini" data-pick="bill">只選紙鈔</button>
+      <button class="mini" data-pick="none">全不選</button>
+    </div>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" id="fill" checked>自動填滿整頁（依面額與圖示大小算張數）</label>
+    <div class="two" id="manual" style="margin-top:10px" hidden>
+      <div class="ctrl"><label>硬幣每種（枚）</label><input type="number" id="ncoin" min="1" max="60" value="6"></div>
+      <div class="ctrl"><label>紙鈔每種（張）</label><input type="number" id="nbill" min="1" max="30" value="2"></div>
+    </div>
+    <p class="hint" style="margin:8px 0 0">選一種面額＝整頁都印它；全選＝硬幣一頁、紙鈔一頁（各面額平均分配）。放不下一頁時自動分頁。</p>
+  </div>
+
+  <div class="grp">
+    <h3>② 大小</h3>
+    <div class="ctrl">
+      <label>金錢圖示大小 <span class="val" id="v-scale">70 %</span>（與真錢相比）</label>
+      <input type="range" id="scale" min="50" max="150" step="5" value="70">
+    </div>
+    <div class="quick" style="margin:-2px 0 4px">
+      <button class="mini" data-scale="70">縮小 70%（預設）</button>
+      <button class="mini" data-scale="100">↺ 1:1 真實大小</button>
+      <button class="mini" data-scale="130">放大 130%</button>
+    </div>
+    <p class="hint" id="scale-note" style="margin:4px 0 0">依中央銀行規定，大小要小於 75% 或大於 125%；選在 75%～125% 之間也可以印，但只能靠卡片上的「教具」字樣符合規定，一定要單面列印。</p>
+  </div>
+
+  <div class="grp">
+    <h3>③ 列印方式</h3>
+    <div class="ctrl"><label>印哪一面</label>
+      <select id="face"><option value="front">只印正面</option><option value="back">只印反面</option><option value="both">正反面都印</option></select></div>
+    <div class="ctrl"><label>紙張</label>
+      <select id="paper">
+        <option value="A4">A4 直式</option><option value="A4 landscape">A4 橫式</option>
+        <option value="A3">A3 直式</option><option value="A3 landscape">A3 橫式</option>
+        <option value="B4">B4 直式</option><option value="Letter">Letter 直式</option>
+      </select></div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <label class="chk"><input type="checkbox" id="cut" checked>虛線裁切線</label>
+      <label class="chk"><input type="checkbox" id="label" checked>顯示面額文字</label>
+      <label class="chk"><input type="checkbox" id="stamp-on" checked>印「教具」字樣（紙鈔印「教具・非真鈔」）</label>
+      <div id="stamp-opts">
+        <div class="ctrl"><label>教具字樣位置（硬幣）</label>
+          <select id="stamp-cpos"><option value="top">上方</option><option value="mid">中間</option><option value="bot">下方</option></select></div>
+        <div class="ctrl"><label>教具字樣位置（紙鈔）</label>
+          <select id="stamp-pos"><option value="top">上方</option><option value="mid">中間</option><option value="bot">下方</option></select></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="ruler-on" checked>印出校正尺規</label>
+    </div>
+  </div>
+
+  <div class="grp">
+    <h3>④ 掃描付款（選用）</h3>
+    <label class="chk"><input type="checkbox" id="qr-toggle">加上掃描碼（給「掃描付款」用）</label>
+    <div id="qr-opts" hidden style="margin-top:10px">
+      <div class="ctrl"><label>標記大小 <span class="val" id="v-size">8.0 mm（預設建議）</span></label>
+        <input type="range" id="size" min="5" max="20" step="0.5" value="8"></div>
+      <div class="ctrl"><label>標記位置（硬幣）</label>
+        <select id="cpos"><option value="br">右下角</option><option value="bl">左下角</option><option value="tr">右上角</option><option value="tl">左上角</option></select></div>
+      <div class="ctrl"><label>標記位置（紙鈔）</label>
+        <select id="pos"><option value="br">右下角</option><option value="bl">左下角</option>
+          <option value="tr">右上角</option><option value="tl">左上角</option></select></div>
+    </div>
+  </div>
+
+  <div class="legal" id="legal">
+    <h3>⚖️ 列印新臺幣圖樣的規定</h3>
+    用紙張印製新臺幣圖文，必須符合下列<b>其中一個</b>條件：
+    <ol>
+      <li><b>尺寸差異</b>：長寬必須<b>大於</b>真實鈔券的 125%，或<b>小於</b> 75%。</li>
+      <li><b>色系差異</b>：色系與真實鈔券明顯不同，讓人一眼看出不是鈔票。</li>
+      <li><b>單面標示</b>：只印單面，並明顯標示「樣張」「玩具鈔」「便條紙」等避免混淆的字樣；字色與底色對比明顯，每個字的長寬都大於 5 毫米。</li>
+    </ol>
+    新臺幣圖樣與尺寸來源：中央銀行「新臺幣鈔票」<a href="https://www.cbc.gov.tw/public/data/issue/money/a1/t02.html" target="_blank" rel="noopener">https://www.cbc.gov.tw/public/data/issue/money/a1/t02.html</a>
+  </div>
+
+  <div class="sum" id="sum"></div>
+  <div class="btns">
+    <button class="btn" id="btn-print">🖨️ 列印</button>
+    <button class="btn secondary" id="btn-reset">↺ 恢復預設</button>
+    <button class="btn secondary" onclick="history.length>1?history.back():location.href='../index.html'">← 返回</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="calib" id="calib">
+    <strong>📏 校正尺規</strong>：列印後用尺量下面這條線，<span style="color:#b45309;font-weight:700">正好 10 公分＝照 100% 實際大小印出</span>。
+    金錢圖示要印多大，老師可以依自己的需求在左邊調整。
+    <div class="ruler" id="ruler"></div>
+  </div>
+  <div id="sheets"></div>
+</div>
+
+</div>
+
+<script src="../js/scan-pay/vendor/aruco/cv.js"></script>
+<script src="../js/scan-pay/vendor/aruco/aruco.js"></script>
+<script src="../js/scan-pay/vendor/aruco/dictionaries/apriltag_16h5.js"></script>
+<script src="../js/scan-pay/mt-markers.js"></script>
+<script>
+(function () {
+  'use strict';
+  var IMG = '../images/money/';
+  var COINS = [1, 5, 10, 50];
+  var BILLS = [100, 200, 500, 1000, 2000];
+  var KEY = 'mt_moneycards_cfg2';         // 2026-09-21 預設值改了（面額文字關、掃描碼開）→ 換 key 讓舊設定不蓋掉新預設
+  var OLD_QR_KEY = 'mt_moneycards_qr';     // 舊版只存「加上掃描碼」一個開關
+  var FACE_LABEL = { front: '', back: '（背面）' };
+  var root = document.documentElement;
+  function $(id) { return document.getElementById(id); }
+
+  var DEFAULTS = {
+    picked: [1, 5, 10, 50, 100, 200, 500, 1000, 2000],
+    ncoin: 6, nbill: 2, scale: 70, face: 'front', paper: 'A4',
+    fill: true, cut: true, label: false, ruler: true, stamp: true,
+    qr: true, size: 8, pos: 'br', cpos: 'br', stampC: 'top', stampB: 'mid'
+  };
+  var STAMP_POS = ['top', 'mid', 'bot'];
+  var cfg = load();
+
+  function load() {
+    var c = JSON.parse(JSON.stringify(DEFAULTS));
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (s && typeof s === 'object') Object.keys(c).forEach(function (k) { if (k in s) c[k] = s[k]; });
+      else if (localStorage.getItem(OLD_QR_KEY) === '1') c.qr = true;
+    } catch (e) {}
+    if (['br', 'bl', 'tr', 'tl'].indexOf(c.cpos) < 0) c.cpos = 'br';   // 舊版存過 side／disc
+    if (STAMP_POS.indexOf(c.stampC) < 0) c.stampC = DEFAULTS.stampC;
+    if (STAMP_POS.indexOf(c.stampB) < 0) c.stampB = DEFAULTS.stampB;
+    c.scale = clampScale(c.scale);
+    return c;
+  }
+  // 大小可以自由選（使用者 2026-09-25：「比例可以選，有提示就好」）。
+  // 中央銀行規定圖樣要小於真鈔 75% 或大於 125%；落在中間時只靠「教具」字樣＋單面列印符合規定 → 只提示、不擋。
+  // **「接近真錢大小」的判斷只寫在 nearReal()**，提示文字與摘要都用它。
+  function clampScale(v) { return Math.max(50, Math.min(150, Math.round(+v || 70))); }
+  function nearReal(v) { return v >= 75 && v <= 125; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
+
+  // 校正尺規
+  (function () {
+    var r = $('ruler');
+    for (var mm = 0; mm <= 100; mm += 5) {
+      var t = document.createElement('div');
+      t.className = 'tick' + (mm % 10 === 0 ? ' major' : '');
+      t.style.left = mm + 'mm';
+      if (mm % 10 === 0) { var s = document.createElement('span'); s.textContent = mm / 10; t.appendChild(s); }
+      r.appendChild(t);
+    }
+  })();
+
+  // 面額勾選
+  COINS.concat(BILLS).forEach(function (v) {
+    var l = document.createElement('label');
+    l.className = 'chk';
+    l.innerHTML = '<input type="checkbox" data-v="' + v + '">' + v + ' 元';
+    $('denoms').appendChild(l);
+  });
+
+  function marker(v) {
+    var box = document.createElement('div');
+    box.className = 'mk';
+    box.innerHTML = '<img src="' + MTMarkers.dataURI(v) + '" alt="' + v + ' 元的掃描標記">';
+    return box;
+  }
+
+  function faces() { return cfg.face === 'both' ? ['front', 'back'] : [cfg.face]; }
+
+  // ── 版面計算 ──────────────────────────────────────────────────
+  // 每頁可用區＝紙張 − 四邊各 MARGIN。邊界故意留大（12mm）：多數印表機最少要 5～6mm，
+  // 貼著邊印會被裁掉；再多扣 SLACK 當瀏覽器四捨五入的緩衝，寧可少放一張也不要溢出到下一頁。
+  var PAPERS = { A4: [210, 297], A3: [297, 420], B4: [250, 353], Letter: [216, 279] };
+  var MARGIN = 12, GAP = 6, SLACK_W = 1, SLACK_H = 4, RULER_H = 30, CAP_H = 4, PAD = 6, FOOT_H = 12;   // FOOT_H＝每頁底下的教具聲明＋出處
+  var DISC = { 1: 20, 5: 22, 10: 26, 50: 28 };
+  var BILL_W = { 100: 145, 200: 150, 500: 155, 1000: 160, 2000: 165 };
+  var BILL_H = 70;
+
+  function usable() {
+    var parts = cfg.paper.split(' '), d = PAPERS[parts[0]] || PAPERS.A4;
+    var w = d[0], h = d[1];
+    if (parts[1] === 'landscape') { var t = w; w = h; h = t; }
+    return { w: w - MARGIN * 2, h: h - MARGIN * 2 };
+  }
+  function markerBox() { return cfg.size * MTMarkers.BOX_RATIO + 2; }   // 含 1mm 白邊 ×2
+
+  /** 硬幣方框邊長：幣面 + 邊距；開掃描碼時再加大到「標記放角落也不蓋到幣面」 */
+  function coinSide(v) {
+    var d = DISC[v] * cfg.scale / 100, side = d + (cfg.label ? CAP_H * 2 : PAD);   // 文字在框內：上下各留一個字高，才不壓到幣面
+    if (cfg.qr) side = Math.max(side, 2 * (d / 2 / Math.SQRT2 + 0.8 + markerBox()));
+    return side;
+  }
+
+  /** 依序排入頁面：回傳每頁的張數。reserveFirst＝第一頁要讓出校正尺規的高度 */
+  function paginate(n, w, h, reserveFirst) {
+    var u = usable(), W = u.w - SLACK_W, H = u.h - SLACK_H - FOOT_H;
+    var pages = [], cnt = 0, x = 0, y = 0, room = H - (reserveFirst ? RULER_H : 0);
+    for (var i = 0; i < n; i++) {
+      if (x > 0 && x + w > W) { x = 0; y += h + GAP; }            // 換行
+      if (y + h > room && cnt > 0) { pages.push(cnt); cnt = 0; x = 0; y = 0; room = H; }  // 換頁
+      x += w + GAP; cnt++;
+    }
+    if (cnt) pages.push(cnt);
+    return pages;
+  }
+
+  /** 一個類別（硬幣或紙鈔）的排版：算出每種幾張、分成幾頁 */
+  function plan(list, isCoin, reserveFirst) {
+    if (!list.length) return null;
+    var groups = list.length * faces().length;
+    var w, h;
+    if (isCoin) {
+      var side = Math.max.apply(null, list.map(coinSide));   // 同一頁的方框一律同大小
+      w = side; h = side;
+    } else {
+      // 紙鈔寬度各不同：用最寬的那張估（保守；選單一面額時就是它自己）
+      w = Math.max.apply(null, list.map(function (v) { return BILL_W[v]; })) * cfg.scale / 100;
+      h = BILL_H * cfg.scale / 100;
+    }
+    var per;
+    if (cfg.fill) {
+      per = 1;
+      for (var k = 1; k <= 80; k++) {
+        if (paginate(k * groups, w, h, reserveFirst).length > 1) break;
+        per = k;
+      }
+    } else {
+      per = isCoin ? cfg.ncoin : cfg.nbill;
+    }
+    var total = per * groups;
+    return { list: list, isCoin: isCoin, per: per, total: total, w: w, h: h,
+             pages: paginate(total, w, h, reserveFirst) };
+  }
+
+  function plans() {
+    var picked = cfg.picked;
+    var coins = COINS.filter(function (v) { return picked.indexOf(v) >= 0; });
+    var bills = BILLS.filter(function (v) { return picked.indexOf(v) >= 0; });
+    var pc = plan(coins, true, cfg.ruler);
+    var pb = plan(bills, false, cfg.ruler && !pc);
+    return [pc, pb].filter(Boolean);
+  }
+
+  function labEl(v, face) {
+    var lab = document.createElement('div');
+    lab.className = 'lab';
+    lab.textContent = v + ' 元' + FACE_LABEL[face];
+    return lab;
+  }
+  function stampEl(text) {
+    var st = document.createElement('div');
+    st.className = 'stamp';
+    st.textContent = text;
+    return st;
+  }
+  function coinItem(v, face, side) {
+    var it = document.createElement('div');
+    it.className = 'item';
+    var c = document.createElement('div');
+    c.className = 'coincard c' + v + ' pos-' + cfg.cpos + ' st-' + cfg.stampC;
+    c.style.width = c.style.height = side + 'mm';
+    c.innerHTML = '<div class="disc"><img src="' + IMG + v + '_yuan_' + face + '.png" alt="' + v + ' 元' + FACE_LABEL[face] + '"></div>';
+    if (cfg.qr) c.appendChild(marker(v));
+    c.appendChild(labEl(v, face));
+    c.appendChild(stampEl('教具'));
+    it.appendChild(c);
+    return it;
+  }
+  function billItem(v, face) {
+    var it = document.createElement('div');
+    it.className = 'item';
+    var b = document.createElement('div');
+    b.className = 'bill b' + v + ' pos-' + cfg.pos + ' st-' + cfg.stampB;
+    b.innerHTML = '<img class="face" src="' + IMG + v + '_yuan_' + face + '.png" alt="' + v + ' 元' + FACE_LABEL[face] + '">';
+    if (cfg.qr) b.appendChild(marker(v));
+    b.appendChild(labEl(v, face));
+    b.appendChild(stampEl('教具・非真鈔'));
+    it.appendChild(b);
+    return it;
+  }
+
+  function build() {
+    var host = $('sheets');
+    // 校正尺規會被搬進第一張 sheet 一起排版；清空前先搬回來，不然 innerHTML='' 會把它連根刪掉
+    host.parentNode.insertBefore($('calib'), host);
+    host.innerHTML = '';
+    var ps = plans();
+    if (!ps.length) {
+      host.innerHTML = '<div class="sheet"><div class="empty">請在左邊至少勾選一種面額</div></div>';
+      return;
+    }
+    var u = usable(), firstSheet = true;
+    ps.forEach(function (p) {
+      // 各面額×正反面平均分配，依序排好再切成頁
+      var seq = [];
+      p.list.forEach(function (v) {
+        faces().forEach(function (face) {
+          for (var i = 0; i < p.per; i++) seq.push({ v: v, face: face });
+        });
+      });
+      var pos = 0;
+      p.pages.forEach(function (n, pi) {
+        var sh = document.createElement('div');
+        sh.className = 'sheet' + (firstSheet ? '' : ' pb');
+        sh.style.width = u.w + 'mm';
+        var h2 = document.createElement('h2');
+        h2.className = 'no-print';
+        h2.textContent = (p.isCoin ? '硬幣' : '紙鈔') + '　第 ' + (pi + 1) + ' / ' + p.pages.length + ' 頁';
+        sh.appendChild(h2);
+        if (firstSheet && cfg.ruler) sh.appendChild($('calib'));
+        var row = document.createElement('div');
+        row.className = 'row';
+        row.style.gap = GAP + 'mm';
+        seq.slice(pos, pos + n).forEach(function (it) {
+          row.appendChild(p.isCoin ? coinItem(it.v, it.face, p.w) : billItem(it.v, it.face));
+        });
+        pos += n;
+        sh.appendChild(row);
+        var ft = document.createElement('div');
+        ft.className = 'foot';
+        ft.textContent = '教學用教具，不是真鈔。圖樣大小為真鈔的 ' + cfg.scale + '%，請單面列印。' +
+          '新臺幣圖樣與尺寸來源：中央銀行「新臺幣鈔票」https://www.cbc.gov.tw/public/data/issue/money/a1/t02.html';
+        sh.appendChild(ft);
+        host.appendChild(sh);
+        firstSheet = false;
+      });
+    });
+  }
+
+  function summary() {
+    var ps = plans();
+    var html = ps.length ? '' : '尚未選擇面額';
+    ps.forEach(function (p) {
+      html += (p.isCoin ? '硬幣' : '紙鈔') + '：每種 <b>' + p.per * faces().length + '</b> 張 × ' + p.list.length +
+              ' 種 ＝ <b>' + p.total + '</b> 張，<b>' + p.pages.length + '</b> 頁<br>';
+    });
+    if (!nearReal(cfg.scale))
+      html += '大小：真錢的 <b>' + cfg.scale + '%</b>（' + (cfg.scale < 75 ? '小於 75%' : '大於 125%') + '，符合規定）<br>';
+    else if (cfg.stamp)
+      html += '<span class="warn">⚠️ 大小是真錢的 ' + cfg.scale + '%，在 75%～125% 之間，跟真錢太接近。依中央銀行規定只能靠卡片上的「教具」字樣符合，<b>一定要單面列印</b>；想更保險請改成 70% 以下或 130% 以上。</span><br>';
+    else
+      html += '<span class="warn">🚫 大小是真錢的 ' + cfg.scale + '%（在 75%～125% 之間），又沒有印「教具」字樣——<b>這樣不符合中央銀行的規定</b>。請勾選「印『教具』字樣」，或把大小改成 70% 以下或 130% 以上。</span><br>';
+    var u = usable();
+    var tooWide = cfg.picked.some(function (v) { return BILL_W[v] && BILL_W[v] * cfg.scale / 100 > u.w; });
+    if (tooWide) html += '<span class="warn">⚠️ 紙鈔比紙張可印寬度（' + u.w + 'mm）還寬，請縮小圖示或改橫式／大張紙</span><br>';
+    if (cfg.fill && ps.some(function (p) { return p.pages.length > 1; })) {
+      html += '<span class="warn">這個大小一頁放不下所有面額各一張，已自動分頁；可縮小圖示或換大張紙。</span><br>';
+    }
+    $('sum').innerHTML = html;
+  }
+
+  function applyAll() {
+    root.style.setProperty('--money-scale', String(cfg.scale / 100));
+    root.style.setProperty('--mk-mm', cfg.size + 'mm');
+    $('v-scale').textContent = cfg.scale + ' %';
+    $('scale-note').classList.toggle('warn-note', nearReal(cfg.scale));
+    $('v-size').textContent = cfg.size.toFixed(1) + ' mm' + (cfg.size === DEFAULTS.size ? '（預設建議）' : '');
+    document.body.classList.toggle('no-cut', !cfg.cut);
+    document.body.classList.toggle('with-label', cfg.label);
+    document.body.classList.toggle('no-stamp', !cfg.stamp);
+    $('stamp-on').checked = cfg.stamp;
+    $('stamp-opts').hidden = !cfg.stamp;
+    $('stamp-cpos').value = cfg.stampC; $('stamp-pos').value = cfg.stampB;
+    $('calib').hidden = !cfg.ruler;
+    $('qr-opts').hidden = !cfg.qr;
+    $('manual').hidden = cfg.fill;
+    $('page-style').textContent = '@media print { @page { size:' + cfg.paper + '; margin:' + MARGIN + 'mm; } }';
+    document.querySelectorAll('#denoms input').forEach(function (i) { i.checked = cfg.picked.indexOf(+i.dataset.v) >= 0; });
+    $('ncoin').value = cfg.ncoin; $('nbill').value = cfg.nbill; $('scale').value = cfg.scale;
+    $('face').value = cfg.face; $('paper').value = cfg.paper; $('fill').checked = cfg.fill;
+    $('cut').checked = cfg.cut; $('label').checked = cfg.label;
+    $('ruler-on').checked = cfg.ruler; $('qr-toggle').checked = cfg.qr;
+    $('size').value = cfg.size; $('pos').value = cfg.pos; $('cpos').value = cfg.cpos;
+    summary();
+  }
+
+  function num(id, min, max, def) {
+    var n = parseInt($(id).value, 10);
+    return isNaN(n) ? def : Math.max(min, Math.min(max, n));
+  }
+  // 幾乎每個設定都會改變排版（張數、頁數）→ 一律重建
+  function changed() { save(); applyAll(); build(); }
+
+  $('denoms').addEventListener('change', function () {
+    cfg.picked = [].filter.call(document.querySelectorAll('#denoms input'), function (i) { return i.checked; })
+                   .map(function (i) { return +i.dataset.v; });
+    changed();
+  });
+  document.querySelectorAll('[data-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.dataset.pick;
+      cfg.picked = k === 'all' ? COINS.concat(BILLS) : k === 'coin' ? COINS.slice() : k === 'bill' ? BILLS.slice() : [];
+      changed();
+    });
+  });
+  document.querySelectorAll('[data-scale]').forEach(function (b) {
+    b.addEventListener('click', function () { cfg.scale = clampScale(b.dataset.scale); changed(); });
+  });
+  $('ncoin').addEventListener('change', function () { cfg.ncoin = num('ncoin', 1, 60, 6); changed(); });
+  $('nbill').addEventListener('change', function () { cfg.nbill = num('nbill', 1, 30, 2); changed(); });
+  $('fill').addEventListener('change', function () { cfg.fill = this.checked; changed(); });
+  $('scale').addEventListener('input', function () { cfg.scale = clampScale(this.value); changed(); });
+  $('size').addEventListener('input', function () { cfg.size = +this.value; changed(); });
+  $('face').addEventListener('change', function () { cfg.face = this.value; changed(); });
+  $('paper').addEventListener('change', function () { cfg.paper = this.value; changed(); });
+  $('pos').addEventListener('change', function () { cfg.pos = this.value; changed(); });
+  $('cpos').addEventListener('change', function () { cfg.cpos = this.value; changed(); });
+  $('cut').addEventListener('change', function () { cfg.cut = this.checked; changed(); });
+  $('label').addEventListener('change', function () { cfg.label = this.checked; changed(); });
+  $('stamp-on').addEventListener('change', function () { cfg.stamp = this.checked; changed(); });
+  $('stamp-cpos').addEventListener('change', function () { cfg.stampC = this.value; changed(); });
+  $('stamp-pos').addEventListener('change', function () { cfg.stampB = this.value; changed(); });
+  $('ruler-on').addEventListener('change', function () { cfg.ruler = this.checked; changed(); });
+  $('qr-toggle').addEventListener('change', function () { cfg.qr = this.checked; changed(); });
+  $('btn-reset').addEventListener('click', function () {
+    cfg = JSON.parse(JSON.stringify(DEFAULTS)); changed();
+  });
+  $('btn-print').addEventListener('click', function () { window.print(); });
+
+  applyAll();
+  build();
+})();
+</script>
+</body>
+</html>

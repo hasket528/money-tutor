@@ -1,0 +1,12 @@
+本目錄的三個檔案取自 js-aruco2，未經修改。
+
+  aruco.js  cv.js      MIT License
+                       Copyright (c) 2020 Damiano Falcioni
+                       Copyright (c) 2011 Juan Mellado
+                       https://github.com/damianofalcioni/js-aruco2
+
+  apriltag_16h5.js     BSD 2-Clause
+                       Copyright (C) 2013-2016, The Regents of The University of Michigan
+                       字典原始出處 https://github.com/AprilRobotics/apriltag-generation
+
+各檔案開頭均保留完整授權條文。

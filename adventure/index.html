@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+<meta charset="UTF-8">
+<script src="../js/emoji-font.js"></script>
+<meta name="darkreader-lock"><!-- 本站自帶深淺色切換：請 Dark Reader 等外掛別再疊一層（2026-09-24） -->
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem("mt_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<script src="../js/tablet-layout.js"></script><!-- iPad 橫式版面判斷：要在所有 CSS 之前（2026-10-03） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一日金錢冒險</title>
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <style>
+        * { box-sizing: border-box; }
+        /* ── 地點主色變數（各關卡由 JS 切換；預設＝早晨暖黃）────────── */
+        :root {
+            --loc-main:   #D97706;   /* 主 accent：按鈕、進度條、當前節點、價格 */
+            --loc-deep:   #92400E;   /* 深色：標題、主要文字 */
+            --loc-border: #FBBF24;   /* 邊框 */
+            --loc-bg1:    #fef3c7;   /* 背景漸層・起 */
+            --loc-bg2:    #fcd34d;   /* 背景漸層・迄 */
+        }
+        /* 深色模式：--loc-main／--loc-border 是每一關卡各自的識別色（由 JS 用 inline
+           style 逐關切換，CSS 蓋不掉單一關卡的值，所以刻意保留原色不動）；
+           --loc-bg1/bg2（背景漸層）與 --loc-deep（深色文字，深底會看不見）改成
+           全站統一的中性深色，失去「每關卡淡色背景」的變化但換來畫面真的夠暗、字讀得到。
+           --adv-sub-text／--adv-card-r/g/b 是本檔既有大量 color: var(--adv-sub-text, #78350f) 與
+           rgba(255,255,255,N) 卡片色的變數化（含 fallback，淺色模式行為不變）。
+           全站統一寫法見 CLAUDE.md「深色模式規則」。 */
+        [data-theme="dark"] {
+            /* !important 是必要的：adventure.js 每關會用 inline style 逐一覆寫
+               --loc-bg1/bg2/deep（見 LOC_THEME／_drawRoad 之類的套用邏輯），
+               沒有 !important 只有設定頁（進關卡前）會變深，實際玩到一半又跳回淺色。 */
+            --loc-bg1: #14161f !important; --loc-bg2: #1c1f2b !important; --loc-deep: #e2e8f0 !important;
+            --adv-sub-text: #cbd5e1;
+            --adv-card-r: 30; --adv-card-g: 35; --adv-card-b: 48;
+            --adv-sum-title: #a0aec0; --adv-sum-text: #e2e8f0; --adv-sum-line: rgba(255,255,255,0.1);
+            --adv-sum-link: #fcd34d; --adv-sum-link-bg: rgba(251,191,36,0.12);
+            --adv-card-bg: linear-gradient(135deg, #1f2433 0%, #262b3b 100%);
+            --adv-tint: rgba(251,191,36,0.16); --adv-tint-2: rgba(251,191,36,0.28); --adv-surface: #2a3040;
+            --adv-ok-bg: rgba(16,185,129,0.2); --adv-ok-text: #6ee7b7; --adv-ng-bg: rgba(239,68,68,0.2); --adv-ng-text: #fca5a5;
+            --adv-accent-text: #fbbf24; --adv-text: #e2e8f0;
+            --adv-accent-strong: #fcd34d; --adv-btn-text: #e2e8f0;
+            --adv-hero-cap-bg: linear-gradient(135deg, #2a2618, #302a18); --adv-hero-doc-bg: linear-gradient(135deg, #1a2438, #1e2a44);
+            --adv-doc-name: #93c5fd; --adv-doc-line: #bfdbfe;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --loc-bg1: #14161f !important; --loc-bg2: #1c1f2b !important; --loc-deep: #e2e8f0 !important;
+                --adv-sub-text: #cbd5e1;
+                --adv-card-r: 30; --adv-card-g: 35; --adv-card-b: 48;
+                --adv-sum-title: #a0aec0; --adv-sum-text: #e2e8f0; --adv-sum-line: rgba(255,255,255,0.1);
+                --adv-sum-link: #fcd34d; --adv-sum-link-bg: rgba(251,191,36,0.12);
+                --adv-card-bg: linear-gradient(135deg, #1f2433 0%, #262b3b 100%);
+                --adv-tint: rgba(251,191,36,0.16); --adv-tint-2: rgba(251,191,36,0.28); --adv-surface: #2a3040;
+                --adv-ok-bg: rgba(16,185,129,0.2); --adv-ok-text: #6ee7b7; --adv-ng-bg: rgba(239,68,68,0.2); --adv-ng-text: #fca5a5;
+                --adv-accent-text: #fbbf24; --adv-text: #e2e8f0;
+                --adv-accent-strong: #fcd34d; --adv-btn-text: #e2e8f0;
+                --adv-hero-cap-bg: linear-gradient(135deg, #2a2618, #302a18); --adv-hero-doc-bg: linear-gradient(135deg, #1a2438, #1e2a44);
+                --adv-doc-name: #93c5fd; --adv-doc-line: #bfdbfe;
+            }
+        }
+        body {
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, var(--loc-bg1) 0%, var(--loc-bg2) 100%);
+            min-height: 100vh;
+            transition: background 0.6s ease;   /* 換關卡時背景平滑換色 */
+        }
+        #app { min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* ── 設定頁 ─────────────────────────────────────────── */
+        .adv-settings {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 100vh; padding: 24px 20px;
+        }
+        .adv-settings-card {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.92);
+            border: 3px solid var(--loc-border);
+            border-radius: 28px;
+            padding: 32px 28px;
+            width: 100%; max-width: 480px;
+            box-shadow: 0 8px 40px rgba(180,83,9,0.18);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .adv-logo  { font-size: 72px; line-height: 1; margin-bottom: 8px; }
+        .adv-title { font-size: 2.2rem; font-weight: 900; color: var(--loc-deep); margin: 0 0 6px; text-align: center; }
+        .adv-sub   { font-size: 1rem; color: var(--adv-sub-text, #78350f); margin: 0 0 20px; text-align: center; }
+        /* （原首頁的關卡條列 .adv-preview/.adv-chip 已於 2026-08-04 改版移除，
+            改用下方的冒險路徑 .adv-road；.adv-preview-bar 是場景預覽列，另在 JS 內定義）*/
+        .adv-btn-row { display: flex; gap: 12px; width: 100%; }
+        .adv-start-btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--loc-main), #b45309);
+            color: #fff; border: none; border-radius: 16px;
+            padding: 14px 16px; font-size: 1.1rem; font-weight: 800;
+            cursor: pointer; box-shadow: 0 4px 16px rgba(180,83,9,0.35);
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; text-align: center;
+        }
+        .adv-start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(180,83,9,0.45); }
+        /* ⚠️ <a> 按鈕：ai-theme 的 a:not(.selection-btn):not(.choice-btn)（特異性 0,3,1）會把字染成連結藍，
+           綠底藍字看不清（淺深都是）→ color 要 !important（見 CLAUDE.md 主頁踩雷） */
+        .adv-home-btn {
+            color: #fff !important;
+            background: linear-gradient(135deg, #059669, #047857);
+            box-shadow: 0 4px 16px rgba(4,120,87,0.35);
+        }
+        .adv-home-btn:hover { box-shadow: 0 6px 20px rgba(4,120,87,0.45); }
+
+        /* ── 遊戲頁 ─────────────────────────────────────────── */
+        .adv-game {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 14px 16px 32px; min-height: 100vh;
+        }
+        .adv-back-btn {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.75); border: 2px solid var(--loc-border);
+            border-radius: 10px; padding: 6px 12px; font-size: 0.82rem;
+            cursor: pointer; color: var(--loc-deep); font-weight: 700; white-space: nowrap;
+        }
+        .adv-prog-wrap {
+            flex: 1; height: 10px; background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.5);
+            border-radius: 5px; overflow: hidden;
+        }
+        .adv-prog-bar {
+            height: 100%; background: linear-gradient(90deg, var(--loc-main), #f59e0b);
+            border-radius: 5px; transition: width 0.5s ease;
+        }
+        .adv-level-tag { font-size: 0.82rem; font-weight: 700; color: var(--loc-deep); white-space: nowrap; }
+        .adv-card {
+            background: var(--adv-card-bg, linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%));
+            border: 3px solid var(--loc-border); border-radius: 24px;
+            padding: 22px 26px; width: 100%; max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        }
+        .adv-card-hdr {
+            display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px;
+        }
+        .adv-card-icon  { font-size: 34px; flex-shrink: 0; }
+        .adv-card-info  { flex: 1; }
+        .adv-card-title { font-size: 1.15rem; font-weight: 800; color: var(--loc-deep); }
+        .adv-card-scene { font-size: 0.85rem; color: var(--adv-sub-text, #78350f); margin-top: 3px; }
+        .adv-replay-btn {
+            background: none; border: 1px solid var(--loc-border); border-radius: 8px;
+            padding: 4px 8px; cursor: pointer; font-size: 1rem; flex-shrink: 0;
+        }
+        .adv-content { margin-bottom: 18px; }
+        .adv-question {
+            font-size: 1.05rem; font-weight: 700; color: var(--adv-text, #1e293b);
+            margin-bottom: 14px; text-align: center;
+        }
+        .adv-choices {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
+        }
+        .adv-choices-2 { grid-template-columns: 1fr 1fr; }
+        .adv-choice-btn {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.85); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 12px 8px; font-size: 1rem;
+            font-weight: 700; color: var(--loc-deep); cursor: pointer;
+            transition: all 0.15s; text-align: center; line-height: 1.3;
+        }
+        .adv-choice-btn:hover:not(:disabled) {
+            background: var(--adv-tint, #fef3c7); border-color: var(--loc-main); transform: translateY(-2px);
+        }
+        .adv-choice-btn:disabled { cursor: default; }
+        .adv-choice-btn.adv-ok { background: var(--adv-ok-bg, #d1fae5); border-color: #10b981; color: var(--adv-ok-text, #065f46); }
+        .adv-choice-btn.adv-ng { background: var(--adv-ng-bg, #fee2e2); border-color: #ef4444; color: var(--adv-ng-text, #991b1b); }
+        .adv-feedback {
+            text-align: center; font-size: 1rem; font-weight: 700;
+            min-height: 26px; padding: 2px 0;
+        }
+        .adv-fb-ok   { color: var(--adv-ok-text, #065f46); }
+        .adv-fb-ng   { color: var(--adv-ng-text, #991b1b); }
+        .adv-hint    { font-size: 0.85rem; font-weight: 400; color: #7c3aed; }
+
+        /* ── 各關卡內容 ────────────────────────────────────── */
+        .adv-coins {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center; align-items: center; padding: 12px;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.55); border-radius: 14px;
+        }
+        .adv-fallback-coin {
+            font-size: 14px; font-weight: 700; background: var(--adv-tint, #fef3c7);
+            border: 2px solid var(--loc-border); border-radius: 50%;
+            padding: 6px 8px; display: inline-block;
+        }
+        .adv-enough {
+            display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px;
+        }
+        .adv-ew-box {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.65); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 12px 18px; min-width: 100px;
+        }
+        .adv-ew-lbl   { font-size: 0.82rem; color: var(--adv-sub-text, #78350f); margin-bottom: 4px; }
+        .adv-ew-amt   { font-size: 1.6rem; font-weight: 900; color: var(--loc-main); }
+        .adv-ew-price { font-size: 1.2rem; font-weight: 700; color: var(--loc-main); }
+        .adv-ew-arr   { font-size: 1.4rem; color: var(--loc-deep); }
+        .adv-item-img { width: 64px; height: 64px; object-fit: contain; margin-bottom: 4px; }
+        .adv-change {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.55); border-radius: 14px; padding: 14px 18px;
+        }
+        .adv-cw-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 7px 0; border-bottom: 1px dashed var(--loc-border); font-size: 0.95rem;
+        }
+        .adv-cw-row:last-child { border-bottom: none; }
+        .adv-cw-lbl   { color: var(--adv-sub-text, #78350f); }
+        .adv-cw-price { font-size: 1.15rem; font-weight: 700; color: var(--loc-main); }
+        .adv-cw-paid  { font-size: 1.15rem; font-weight: 700; color: #059669; }
+        .adv-cw-q     { font-size: 1.15rem; font-weight: 700; color: #7c3aed; }
+        .adv-cmp-center {
+            display: flex; flex-direction: column; align-items: center; margin-bottom: 14px;
+        }
+        .adv-cmp-img  { width: 80px; height: 80px; object-fit: contain; margin-bottom: 6px; }
+        .adv-cmp-name { font-size: 1.1rem; font-weight: 700; color: var(--loc-deep); }
+        .adv-vs-grid  { display: flex; align-items: center; justify-content: center; gap: 14px; }
+        .adv-vs-store {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.65); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 12px 20px;
+        }
+        .adv-vs-name  { font-size: 0.9rem; color: var(--adv-sub-text, #78350f); margin-bottom: 4px; }
+        .adv-vs-price { font-size: 1.4rem; font-weight: 900; color: var(--loc-main); }
+        .adv-vs-mid   { font-size: 1.2rem; font-weight: 700; color: var(--loc-deep); }
+        .adv-multi-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+        .adv-ms-store {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.65); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 10px 12px;
+        }
+        .adv-ms-name  { font-size: 0.85rem; color: var(--adv-sub-text, #78350f); text-align: center; margin-bottom: 4px; }
+        .adv-ms-price { font-size: 1.2rem; font-weight: 700; color: var(--loc-main); }
+        .adv-save { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+        .adv-sv-item {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.65); border: 2px solid var(--loc-border);
+            border-radius: 16px; padding: 14px 24px;
+        }
+        .adv-sv-name  { font-size: 1.1rem; font-weight: 700; color: var(--loc-deep); }
+        .adv-sv-price { font-size: 1.4rem; font-weight: 700; color: var(--loc-main); }
+        .adv-sv-daily { font-size: 1rem; color: var(--adv-sub-text, #78350f); font-weight: 600; text-align: center; }
+
+        /* ── 數字輸入器 ──────────────────────────────────── */
+        .adv-input-row { margin: 8px 0 6px; }
+        .adv-input-display {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 12px 18px; font-size: 1.4rem; font-weight: 800;
+            color: var(--loc-deep); text-align: center; cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .adv-input-display:hover { border-color: var(--loc-main); }
+        .adv-input-ok { border-color: #10b981 !important; color: var(--adv-ok-text, #065f46); }
+        .adv-input-ng { border-color: #ef4444 !important; color: var(--adv-ng-text, #991b1b); }
+        .adv-numpad { background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.85); border: 2px solid var(--loc-border); border-radius: 14px; padding: 8px; margin-top: 6px; }
+        .adv-numpad-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+        .adv-np-btn {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 2px solid var(--loc-border);
+            border-radius: 10px; padding: 10px; font-size: 1.1rem; font-weight: 700;
+            color: var(--loc-deep); cursor: pointer; transition: all 0.12s;
+        }
+        .adv-np-btn:hover { background: var(--adv-tint, #fef3c7); border-color: var(--loc-main); }
+
+        /* ── 便利商店選購 ─────────────────────────────── */
+        .adv-l3-budget-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.75); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 8px 14px; margin-bottom: 12px; font-size: 0.9rem; font-weight: 600; color: var(--adv-sub-text, #78350f);
+        }
+        .adv-l3-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+        .adv-l3-item {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.7); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 10px 8px; transition: border-color 0.15s;
+        }
+        .adv-l3-selected { border-color: #10b981; background: var(--adv-ok-bg, #d1fae5); }
+        .adv-l3-img   { width: 128px; height: 128px; object-fit: contain; margin-bottom: 6px; }
+        .adv-l3-emoji { font-size: 64px; display: block; margin-bottom: 6px; }
+        .adv-l3-name  { font-size: 0.82rem; font-weight: 700; color: var(--adv-sub-text, #78350f); margin-bottom: 2px; }
+        .adv-l3-price { font-size: 0.88rem; font-weight: 700; color: var(--loc-main); margin-bottom: 6px; }
+        .adv-l3-toggle {
+            background: var(--loc-main); color: #fff; border: none; border-radius: 10px;
+            padding: 10px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+            min-height: 44px; min-width: 76px;   /* 無障礙觸控目標 ≥44px（精細動作弱的學生防誤觸）*/
+            touch-action: manipulation;
+        }
+        .adv-l3-selected .adv-l3-toggle { background: #059669; }
+
+        /* ── 勝利畫面 ────────────────────────────────────── */
+        .adv-victory {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 100vh; padding: 24px 20px; text-align: center;
+        }
+        .adv-v-card-wrap { width: 100%; max-width: 480px; text-align: center; }
+        .adv-v-trophy {
+            font-size: 80px; line-height: 1; margin-bottom: 8px;
+            animation: advTrophyBounce 2s ease-in-out infinite;
+        }
+        @keyframes advTrophyBounce {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-12px); }
+        }
+        .adv-v-title  { font-size: 2rem; font-weight: 900; color: var(--loc-deep); margin: 0 0 8px; }
+        .adv-v-sub    { font-size: 1rem; color: var(--adv-sub-text, #78350f); margin: 0 0 22px; }
+        /* 三張彩色統計卡片（對齊 24 單元／對話練習測驗結束卡片風格）*/
+        .adv-v-stats {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; width: 100%; margin-bottom: 20px;
+        }
+        .adv-v-card {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            padding: 15px 6px 13px; border-radius: 14px; color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.14);
+        }
+        .adv-vc-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .adv-vc-blue   { background: linear-gradient(135deg, #2980b9, #3498db); }
+        .adv-vc-orange { background: linear-gradient(135deg, #e67e22, #f39c12); }
+        .adv-v-ico  { font-size: 1.6rem; line-height: 1; }
+        .adv-v-lbl  { font-size: 0.78rem; font-weight: 700; opacity: 0.95; }
+        .adv-v-val  { font-size: 1.25rem; font-weight: 900; text-align: center; line-height: 1.2; }
+        @media (prefers-reduced-motion: reduce) { .adv-v-trophy { animation: none; } }
+        .adv-v-btn  {
+            display: block; border: none; border-radius: 14px; padding: 13px;
+            font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: center;
+            text-decoration: none;
+        }
+
+        /* ── 結算：金博士講評＋七項金錢技能清單 ──────────────────
+           2026-09-23 使用者指定與生活情境對話完成頁同一套樣式：
+           角色全身圖＋橘色泡泡（對應 dialogue 的 .complete-encourage／.dlg-perf-badge），
+           下方「📋 …」清單（對應 .dlg-summary-block／.summary-row）。
+           money_doctor.png 是直式人物圖 → 鎖高度、寬度自動，contain 才不會把他壓扁。 */
+        .adv-encourage { display: flex; align-items: center; justify-content: center; gap: 14px;
+            flex-wrap: nowrap; margin-bottom: 16px; }
+        .adv-encourage-hero { width: auto; height: 140px; object-fit: contain; flex-shrink: 0;
+            filter: drop-shadow(0 6px 16px rgba(0,0,0,0.28));
+            animation: advFloatBob 3.6s ease-in-out infinite; }
+        /* 微幅上下浮動＝主頁金博士同一個效果（index.html 的 floatBob：10px、3.6s；2026-09-23） */
+        @keyframes advFloatBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @media (prefers-reduced-motion: reduce) { .adv-encourage-hero { animation: none; } }
+        .adv-perf-badge { background: linear-gradient(45deg, #f39c12, #e67e22); color: #fff;
+            font-size: 1.05rem; font-weight: 700; padding: 10px 22px; border-radius: 24px;
+            box-shadow: 0 4px 14px rgba(230,126,34,0.4); text-align: center; line-height: 1.4; }
+        @media (max-width: 520px) {
+            .adv-encourage-hero { height: 108px; }
+            .adv-encourage { gap: 10px; }
+            .adv-perf-badge { padding: 10px 16px; font-size: 1rem; }
+        }
+        .adv-sum-block { width: 100%; box-sizing: border-box; background: rgba(148,163,184,0.12);
+            border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; text-align: left; }
+        .adv-sum-title { font-size: 0.9rem; font-weight: 700; color: var(--adv-sum-title, #4b5563); margin-bottom: 6px; }
+        .adv-sum-row { display: flex; align-items: center; gap: 10px; padding: 8px 0;
+            border-bottom: 1px solid var(--adv-sum-line, #e5e7eb); font-size: 0.95rem;
+            color: var(--adv-sum-text, #1f2937); }
+        .adv-sum-row:last-child { border-bottom: none; }
+        .adv-sum-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .adv-sum-task { flex: 1; font-weight: 600; }
+        .adv-sum-link { flex-shrink: 0; font-size: 0.85rem; font-weight: 700; color: var(--adv-sum-link, #b45309);
+            text-decoration: none; border: 1.5px solid #fbbf24; border-radius: 9px; padding: 4px 9px;
+            background: var(--adv-sum-link-bg, #fff); }
+        .adv-sum-link:active { background: var(--adv-tint, #fef3c7); }
+
+        /* ── 公式輸入列 + 計算機 ──────────────────────────── */
+        .adv-formula-row {
+            display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.75); border-radius: 12px;
+            padding: 10px 14px; margin: 10px 0; font-size: 1rem; font-weight: 700; color: var(--adv-sub-text, #78350f);
+        }
+        .adv-fml-text  { color: var(--adv-sub-text, #78350f); white-space: nowrap; }
+        .adv-fml-unit  { color: var(--adv-sub-text, #78350f); }
+        .adv-ans-display {
+            min-width: 72px; background: var(--adv-surface, #fff); border: 2px solid var(--loc-border);
+            border-radius: 8px; padding: 6px 12px; cursor: pointer; text-align: center;
+            font-size: 1.2rem; font-weight: 800; color: var(--adv-accent-strong, var(--loc-main)); transition: border-color 0.15s;
+        }
+        .adv-ans-display:hover { border-color: var(--loc-main); }
+        .adv-ans-display.adv-input-ok { border-color: #10b981 !important; color: var(--adv-ok-text, #065f46); }
+        .adv-ans-display.adv-input-ng { border-color: #ef4444 !important; color: var(--adv-ng-text, #991b1b); }
+        .adv-calc-section { width: 100%; max-width: 600px; margin-top: 8px; }
+        .adv-calc-toggle-btn {
+            color: var(--adv-btn-text, buttontext);   /* 原本沒寫字色＝UA 預設；深色下要自己給 */
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 2px solid var(--loc-border);
+            border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 1.1rem;
+        }
+        .adv-calc-toggle-btn:hover { background: var(--adv-tint, #fef3c7); }
+        /* 🧮 鈕在標題列喇叭左側＋計算機彈窗（2026-09-23，由 _advCalcBind 搬位置）。
+           外觀與 .adv-replay-btn 同款；彈窗沿用數字鍵盤的 .adv-np-overlay／.adv-np-popup。 */
+        .adv-calc-hdr-btn {
+            background: none; border: 1px solid var(--loc-border); border-radius: 8px;
+            padding: 4px 8px; cursor: pointer; font-size: 1rem; flex-shrink: 0;
+            color: var(--adv-btn-text, buttontext);
+        }
+        .adv-calc-hdr-btn:hover { background: var(--adv-tint, #fef3c7); }
+        .adv-calc-overlay[hidden] { display: none !important; }   /* .adv-np-overlay 的 display:flex 會蓋掉 [hidden] */
+        .adv-calc-popup { width: min(340px, calc(100vw - 32px)); padding-top: 44px; }
+        .adv-calc-pop-title { position: absolute; top: 14px; left: 20px; font-weight: 800; color: var(--loc-deep); }
+        .adv-calc-popup .adv-calc { margin-top: 0; }
+        .adv-calc-popup .adv-cb { padding: 14px 4px; font-size: 1.2rem; }
+        .adv-calc {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.95); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 10px; width: 100%; margin-top: 6px;
+        }
+        .adv-calc-expr { font-size: 0.78rem; color: var(--adv-sub-text, #78350f); min-height: 16px; text-align: right; padding: 0 4px 2px; }
+        .adv-calc-disp {
+            background: var(--adv-tint, #fef3c7); border: 1px solid var(--loc-border); border-radius: 8px;
+            padding: 6px 10px; font-size: 1.3rem; font-weight: 800;
+            color: var(--adv-accent-strong, var(--loc-main)); text-align: right; margin-bottom: 6px;
+        }
+        .adv-calc-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+        .adv-cb {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 1.5px solid var(--loc-border);
+            border-radius: 7px; padding: 12px 4px; font-size: 1.05rem;
+            font-weight: 700; color: var(--loc-deep); cursor: pointer; text-align: center;
+        }
+        .adv-cb:hover { background: var(--adv-tint, #fef3c7); }
+        .adv-cb.op { background: var(--adv-tint-2, #fde68a); }
+        .adv-cb.sp { background: var(--adv-ng-bg, #fee2e2); color: var(--adv-ng-text, #991b1b); border-color: #fca5a5; }
+        .adv-cb.eq { background: linear-gradient(135deg,var(--loc-main),#b45309); color:#fff; border-color:#b45309; }
+        .adv-confirm-btn {
+            width: 100%; background: linear-gradient(135deg,#059669,#047857);
+            color: #fff; border: none; border-radius: 12px; padding: 12px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 10px;
+            transition: opacity 0.15s;
+        }
+        .adv-confirm-btn:disabled { opacity: 0.4; cursor: default; }
+
+        /* ── 數字鍵盤彈窗 ─────────────────────────────── */
+        .adv-np-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center; z-index: 10100;
+        }
+        .adv-np-popup {
+            background: var(--adv-surface, #fff); border-radius: 20px; padding: 48px 20px 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3); width: 320px; position: relative;
+        }
+        .adv-np-close {
+            position: absolute; top: 12px; right: 14px;
+            background: none; border: none; font-size: 1.2rem;
+            cursor: pointer; color: var(--adv-sub-text, #78350f); padding: 4px 8px;
+        }
+        .adv-np-disp {
+            background: var(--adv-tint, #fef3c7); border: 2px solid var(--loc-border); border-radius: 10px;
+            padding: 12px; font-size: 1.8rem; font-weight: 800; color: var(--loc-deep);
+            text-align: center; margin-bottom: 12px; min-height: 58px;
+        }
+        .adv-np-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+        .adv-np-key {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 2px solid var(--loc-border);
+            border-radius: 10px; padding: 14px; font-size: 1.2rem; font-weight: 700;
+            color: var(--loc-deep); cursor: pointer;
+        }
+        .adv-np-key:hover { background: var(--adv-tint, #fef3c7); }
+        .adv-np-ok-btn {
+            width: 100%; background: linear-gradient(135deg,#059669,#047857);
+            color: #fff; border: none; border-radius: 10px;
+            padding: 12px; font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+
+        /* ── L5 Phase2 區塊 ──────────────────────────── */
+        .adv-l5p2-area { padding: 4px 0; }
+        .adv-formula-info {
+            font-size: 0.95rem; font-weight: 600; color: var(--adv-sub-text, #78350f);
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.7); border-radius: 10px; padding: 8px 12px;
+            margin-bottom: 4px; text-align: center;
+        }
+
+        /* ── L3 桌面水平佈局 ─────────────────────────── */
+        @media (min-width: 620px) {
+            .adv-card.adv-l3-wide { max-width: 1100px; }
+            .adv-l3-grid { grid-template-columns: repeat(4,1fr); }
+            .adv-l3-item { padding: 14px 10px; }
+        }
+
+        @media (max-width: 480px) {
+            .adv-title { font-size: 1.8rem; }
+            .adv-settings-card { padding: 24px 16px; }
+            .adv-card  { padding: 16px 14px; }
+            .adv-btn-row { gap: 8px; }
+            .adv-start-btn { font-size: 0.95rem; padding: 12px 10px; }
+            .adv-enough { gap: 8px; }
+            .adv-ew-amt { font-size: 1.3rem; }
+            .adv-v-stats { gap: 8px; }
+            .adv-v-card { padding: 12px 4px 10px; }
+            .adv-v-ico { font-size: 1.35rem; }
+            .adv-v-lbl { font-size: 0.7rem; }
+            .adv-v-val { font-size: 1.05rem; }
+            .adv-trans-card { padding: 28px 18px; }
+            .adv-trans-icon { font-size: 56px; }
+            .adv-trans-text { font-size: 1rem; }
+        }
+
+        /* ── 標題旁的跳頁三角形（「一日金錢冒險 ▶」→ 回站台主頁）──
+           站台主頁 index.html、對話首頁 dialogue/index.html 各有一份同名樣式，改視覺要三處一起改。
+           顏色照「目的地」走：回主頁＝主頁的藍。命中區固定 44×44。 */
+        .title-jump-wrap { position: relative; }
+        .title-jump {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; vertical-align: middle;
+            margin-left: 4px; border-radius: 50%;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.15s, filter 0.15s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .title-jump:hover  { background: rgba(37,99,235,0.14); }
+        .title-jump:active { filter: brightness(0.85); }
+        .title-jump .tj-tri {
+            width: 0; height: 0; color: #2563eb;
+            border-top: 0.3em solid transparent;
+            border-bottom: 0.3em solid transparent;
+            border-left: 0.44em solid currentColor;   /* 右指三角形 */
+        }
+        .title-tip {
+            position: absolute; left: 50%; top: 100%;
+            transform: translateX(-50%);
+            background: #1e293b; color: #fff;
+            font-size: 0.9rem; font-weight: 600; letter-spacing: 0; line-height: 1.4;
+            padding: 7px 14px; border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            white-space: nowrap; pointer-events: none; z-index: 5;
+            opacity: 0; visibility: hidden; transition: opacity 0.18s;
+        }
+        .title-jump-wrap:hover .title-tip,
+        .title-jump:focus-visible + .title-tip { opacity: 1; visibility: visible; }
+        @media (max-width: 640px) {
+            .title-tip { font-size: 0.78rem; white-space: normal; max-width: 84vw; }
+        }
+
+        /* ── 首頁改版（2026-08-04）：上方雙角色卡 ─────────────────
+           左＝金隊長（記錄給誰＋今天由誰去冒險）／右＝金博士（今天的任務說明），
+           排版比照站台主頁的 .home-duo：窄螢幕上下堆疊、寬螢幕左右等寬。 */
+        .adv-home-card { max-width: 1060px; }
+        /* ── 準備頁（主頁點角色方格進來，2026-09-28）：上＝角色＋選學生、下＝今天的冒險 ── */
+        .adv-prep-card { max-width: 1060px; }   /* 同首頁卡寬：七站固定一行才放得下 */
+        .adv-prep-top { width: 100%; display: flex; }
+        .adv-prep-back { font-size: 0.9rem; font-weight: 700; color: var(--adv-accent-text, #b45309) !important;
+            text-decoration: none; padding: 8px 4px; min-height: 44px; display: inline-flex; align-items: center; }
+        .adv-prep-back:hover { text-decoration: underline; }
+        .adv-prep-char { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 14px; flex-wrap: wrap; }
+        .adv-prep-char .adv-title, .adv-prep-char .adv-sub { text-align: left; }
+        .adv-prep-face { width: 96px; height: 96px; border-color: var(--loc-main); }
+        .adv-duo { display: flex; flex-wrap: wrap; gap: 14px; width: 100%; margin-bottom: 6px; }
+        .adv-duo > * { flex: 1 1 320px; min-width: 0; }
+        @media (min-width: 880px) {
+            .adv-duo { flex-wrap: nowrap; align-items: stretch; }
+            .adv-duo > * { flex: 1 1 0; }
+        }
+        .adv-hero-card {
+            display: flex; flex-direction: column; gap: 10px;
+            border-radius: 18px; padding: 14px 16px; box-sizing: border-box;
+        }
+        .adv-hero-card.cap { background: var(--adv-hero-cap-bg, linear-gradient(135deg,#fffdf5,#fff7e0)); border: 2px solid #f5d576; }
+        .adv-hero-card.doc { background: var(--adv-hero-doc-bg, linear-gradient(135deg,#eff6ff,#dbeafe)); border: 2px solid #93c5fd; }
+        .adv-hero-head { display: flex; align-items: center; gap: 12px; }
+        .adv-hero-ava  { width: clamp(64px,13vw,96px); height: clamp(64px,13vw,96px); flex-shrink: 0; }
+        .adv-hero-ava img { width: 100%; height: 100%; object-fit: contain; animation: advFloat 3s ease-in-out infinite; }
+        @keyframes advFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @media (prefers-reduced-motion: reduce) { .adv-hero-ava img { animation: none; } }
+        .adv-hero-txt  { flex: 1; min-width: 0; text-align: left; }
+        .adv-hero-name { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1rem; color: var(--loc-deep); }
+        .adv-hero-card.doc .adv-hero-name { color: var(--adv-doc-name, #1e40af); }
+        .adv-hero-line { font-size: 0.84rem; line-height: 1.6; color: var(--adv-sub-text, #78350f); margin-top: 4px; }
+        .adv-hero-card.doc .adv-hero-line { color: var(--adv-doc-line, #1e3a8a); }
+        .adv-voice-btn {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid var(--loc-border); background: var(--adv-surface, #fff); cursor: pointer;
+            font-size: 0.9rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .adv-hero-card.doc .adv-voice-btn { border-color: #93c5fd; }
+        .adv-voice-btn:active { filter: brightness(0.9); }
+        .adv-pick-lbl { font-size: 0.82rem; font-weight: 800; color: var(--adv-accent-text, #b45309); text-align: left; }
+        .adv-doc-tips { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .adv-doc-tips li {
+            font-size: 0.82rem; line-height: 1.5; color: var(--adv-doc-line, #1e3a8a); text-align: left;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.72); border-radius: 10px; padding: 7px 10px;
+        }
+        /* 卡片裡的角色格：四個並排、圓圈縮小，才塞得進半張卡 */
+        .adv-hero-card .adv-char-grid  { grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 0; }
+        .adv-hero-card .adv-co-circle  { width: clamp(50px,11vw,68px); height: clamp(50px,11vw,68px); border-width: 2px; font-size: 30px; }
+        .adv-hero-card .adv-co-name    { font-size: 0.8rem; }
+        .adv-hero-card .adv-student-bar { margin: 0; font-size: 0.84rem; padding: 7px 10px; }
+
+        /* ── 冒險路徑：方格由左至右，中間用彎曲斜線＋箭頭相連 ──────
+           節點用 HTML 排版（文字好縮放、換行交給 grid），連線是 JS 依實際座標畫的 SVG
+           （見 adventure.js 的 _drawRoad）——所以換幾行、縮放視窗都接得準。 */
+        /* 七關一律排成同一行（上下兩列的鋸齒），不換行——換行會多出一條「從最右繞回最左」的長虛線。
+           窄螢幕塞不下就橫向捲動：外層 .adv-road 負責捲，內層 .adv-road-inner 用 max-content 撐出實際寬度，
+           SVG 疊在 inner 上（不是疊在捲動容器上），捲動時連線才會跟著方格一起走。 */
+        .adv-road { position: relative; width: 100%; margin: 4px 0 20px; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; }
+        .adv-road-inner { position: relative; width: max-content; min-width: 100%; }
+        .adv-road-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+        .adv-road-grid {
+            position: relative; z-index: 1;
+            /* 欄寬寫死（不用 1fr）：inner 是 max-content，用 1fr 會讓欄寬跟著文字的不換行寬度跑，
+               整條路線被撐爆、最後一格掉到可視範圍外。固定欄寬＋space-between：
+               寬螢幕多出來的空間會平均加到欄距上，斜線只會更長，不會溢出。 */
+            display: grid; grid-template-columns: repeat(7, 96px);
+            justify-content: space-between; gap: 0 50px; align-items: start;
+        }
+        .adv-road-node { width: 100%; }
+        .adv-road-hint { font-size: 0.72rem; color: var(--adv-accent-text, #b45309); text-align: center; margin: -12px 0 16px; display: none; }
+        .adv-road-node {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.92); border: 2px solid var(--loc-border);
+            border-radius: 14px; padding: 10px 6px 8px; text-align: center;
+            box-shadow: 0 3px 10px rgba(180,83,9,0.12);
+        }
+        /* 高低錯落成上下兩列：奇數格（第1、3、5、7關）在上、偶數格（第2、4、6關）在下 */
+        .adv-road-node:nth-child(even) { margin-top: 34px; }
+        .adv-road-num {
+            width: 22px; height: 22px; margin: 0 auto 4px; border-radius: 50%;
+            background: var(--loc-main); color: #fff; font-size: 12px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .adv-road-icon  { font-size: 26px; line-height: 1.1; }
+        .adv-road-title { font-size: 0.78rem; font-weight: 700; color: var(--adv-sub-text, #78350f); line-height: 1.35; margin-top: 3px; }
+        @media (max-width: 700px) {
+            .adv-road-grid { grid-template-columns: repeat(7, 88px); gap: 0 38px; }
+            .adv-road-node:nth-child(even) { margin-top: 28px; }
+            .adv-road-title { font-size: 0.72rem; }
+            .adv-road-hint { display: block; }   /* 窄螢幕才提示可以左右滑 */
+        }
+
+        /* ── 設定頁：章節標籤 ───────────────────────────────── */
+        .adv-section-lbl {
+            font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em;
+            color: var(--adv-accent-text, #b45309); text-transform: uppercase;
+            margin: 8px 0 6px; align-self: flex-start;
+        }
+
+        /* ── 角色選擇格 ─────────────────────────────────── */
+        .adv-char-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            width: 100%; margin-bottom: 4px;
+        }
+        .adv-char-opt {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            background: none; border: none; padding: 6px 4px; cursor: pointer;
+            transition: transform 0.18s; text-align: center;
+        }
+        .adv-char-opt:hover { transform: translateY(-2px); }
+        /* 圓圈頭像（點擊出現詳情彈窗） */
+        .adv-co-circle {
+            width: 88px; height: 88px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--adv-surface, #fff); border: 3px solid var(--loc-border);
+            font-size: 46px; line-height: 1; overflow: hidden;
+            transition: all 0.18s; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .adv-char-opt:hover .adv-co-circle { border-color: var(--loc-main); }
+        .adv-char-opt.selected .adv-co-circle {
+            border-color: var(--loc-main); box-shadow: 0 0 0 4px rgba(217,119,6,0.28);
+        }
+        .adv-co-circle .adv-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .adv-co-emoji { font-size: 2.2rem; line-height: 1; }
+        /* 角色頭像圖片：以 em 對齊各容器的 Emoji 大小（1.35em 略大於字型框，較貼近 Emoji 視覺） */
+        .adv-avatar-img { width: 1.35em; height: 1.35em; object-fit: contain; vertical-align: middle; }
+        .adv-co-name  { font-size: 0.95rem; font-weight: 800; color: var(--loc-deep); }
+        .adv-char-opt.selected .adv-co-name { color: var(--loc-main); }
+        .adv-co-desc  { font-size: 0.68rem; color: var(--adv-sub-text, #78350f); line-height: 1.35; }
+
+        /* ── 角色詳情彈窗（點圓圈出現）───────────────────── */
+        .adv-char-modal { position: fixed; inset: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: center; }
+        .adv-char-modal[hidden] { display: none; }
+        .adv-cm-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
+        .adv-cm-card { position: relative; background: var(--adv-surface, #fff); border-radius: 20px;
+            padding: 28px 24px 24px; max-width: 320px; width: 86%; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .adv-cm-close { position: absolute; top: 10px; right: 12px; background: none;
+            border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; line-height: 1; }
+        .adv-cm-circle { width: 140px; height: 140px; border-radius: 50%;
+            margin: 4px auto 14px; background: var(--adv-surface, #fff); border: 4px solid var(--loc-border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 72px; line-height: 1; overflow: hidden; }
+        .adv-cm-circle .adv-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .adv-cm-name { font-size: 1.35rem; font-weight: 800; color: var(--loc-deep); margin-bottom: 6px; }
+        .adv-cm-desc { font-size: 0.95rem; color: var(--adv-sub-text, #78350f); line-height: 1.6; margin-bottom: 18px; }
+        /* 選這位角色：改為置中的自適應寬度按鈕（.adv-cm-card 為 text-align:center；用 id 選擇器才會生效） */
+        #adv-cm-select { display: inline-flex; flex: none; padding: 12px 30px; }
+
+        /* ── 目前學生列（決定學習歷程記給誰）───────────────── */
+        .adv-student-bar {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.7); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 8px 14px; margin: 0 0 18px; width: 100%;
+            font-size: 0.9rem; color: var(--loc-deep); font-weight: 700; cursor: pointer;
+        }
+        .adv-student-bar.guest { border-color: #ef4444; color: var(--adv-ng-text, #991b1b); background: var(--adv-ng-bg, #fef2f2); }
+        .adv-student-bar:hover { border-color: var(--loc-main); }
+        .adv-stu-change {
+            font-size: 0.78rem; color: #fff; background: var(--loc-main);
+            border: none; border-radius: 8px; padding: 3px 10px; font-weight: 700; cursor: pointer;
+        }
+        .adv-stu-item {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.9); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 8px 12px; cursor: pointer;
+            text-align: left; font-size: 0.98rem; font-weight: 700; color: var(--loc-deep);
+        }
+        .adv-stu-item:hover { background: var(--adv-tint, #fef3c7); border-color: var(--loc-main); }
+        .adv-stu-item.current { border-color: var(--loc-main); box-shadow: 0 0 0 2px rgba(217,119,6,0.25); }
+        .adv-stu-avatar {
+            width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+            background: var(--adv-tint, #fef3c7); border: 2px solid var(--loc-border); overflow: hidden;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .adv-stu-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* ── 難度切換（普通／簡單）───────────────────────── */
+        .adv-diff-row { display: flex; gap: 8px; width: 100%; margin-bottom: 18px; }
+        .adv-diff-btn {
+            flex: 1; background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.85); border: 2px solid var(--loc-border);
+            border-radius: 12px; padding: 9px 8px; font-size: 0.92rem; font-weight: 700;
+            color: var(--loc-deep); cursor: pointer; transition: all 0.15s; font-family: inherit;
+        }
+        .adv-diff-btn:hover { border-color: var(--loc-main); }
+        .adv-diff-btn.active {
+            background: var(--loc-main); color: #fff; border-color: var(--loc-main);
+            box-shadow: 0 2px 8px rgba(217,119,6,0.3);
+        }
+
+        /* ── 旅程地圖（遊戲標題列內）────────────────────── */
+        .adv-topbar {
+            display: flex; align-items: center; gap: 6px;
+            width: 100%; max-width: 600px; margin-bottom: 14px;
+        }
+        .adv-journey-map {
+            flex: 1; display: flex; align-items: flex-start;
+            overflow: hidden; min-width: 0;
+        }
+        .adv-jm-node {
+            flex: 0 0 auto; display: flex; flex-direction: column;
+            align-items: center; gap: 2px;
+        }
+        .adv-jm-dot {
+            width: 26px; height: 26px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; line-height: 1;
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.55);
+            border: 2px solid rgba(251,191,36,0.4);
+            transition: all 0.25s;
+        }
+        .adv-jm-node.done .adv-jm-dot {
+            background: var(--adv-ok-bg, #d1fae5); border-color: #10b981;
+            font-size: 11px; font-weight: 900; color: var(--adv-ok-text, #065f46);
+        }
+        .adv-jm-node.current .adv-jm-dot {
+            background: var(--adv-tint, #fef3c7); border-color: var(--loc-main); border-width: 2.5px;
+            box-shadow: 0 0 8px rgba(217,119,6,0.5);
+            animation: jmPulse 1.8s ease-in-out infinite;
+        }
+        .adv-jm-node.future .adv-jm-dot { opacity: 0.35; }
+        @keyframes jmPulse {
+            0%,100% { box-shadow: 0 0 6px rgba(217,119,6,0.4); }
+            50%      { box-shadow: 0 0 14px rgba(217,119,6,0.8); }
+        }
+        .adv-jm-lbl {
+            font-size: 9px; font-weight: 700; color: var(--loc-deep);
+            white-space: nowrap; line-height: 1.1;
+        }
+        .adv-jm-node.future .adv-jm-lbl { opacity: 0.35; }
+        .adv-jm-line {
+            flex: 1; height: 2px; margin-top: 12px;
+            background: rgba(251,191,36,0.25); border-radius: 1px; min-width: 3px;
+        }
+        .adv-jm-line.done { background: #10b981; }
+        .adv-char-badge {
+            flex: 0 0 auto; font-size: 1.6rem; line-height: 1;
+            margin-top: 2px;
+        }
+        /* 手機：旅程地圖 9 節點在窄幅會被 overflow:hidden 裁掉尾端（存錢/完成消失）。
+           改為只留圖示、縮小點徑，唯「目前關卡」放大並顯示名稱——全部節點放得下，
+           進度感不中斷（特教生依賴這條地圖理解「我走到哪了」）。 */
+        @media (max-width: 560px) {
+            .adv-topbar   { gap: 4px; }
+            .adv-back-btn { font-size: 0.78rem; padding: 6px 8px; }
+            .adv-jm-dot   { width: 22px; height: 22px; font-size: 11px; }
+            .adv-jm-node.done .adv-jm-dot { font-size: 10px; }
+            .adv-jm-lbl   { display: none; }
+            .adv-jm-node.current .adv-jm-lbl { display: block; font-size: 10px; }
+            .adv-jm-node.current .adv-jm-dot { width: 26px; height: 26px; font-size: 13px; }
+            .adv-jm-line  { margin-top: 10px; }
+        }
+
+        /* ── 過場：角色大圖 ──────────────────────────────── */
+        .adv-trans-char {
+            flex-shrink: 0; width: 160px; height: 160px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 96px; line-height: 1;
+        }
+        .adv-trans-char .adv-avatar-img { width: 100%; height: 100%; object-fit: contain; }
+        .adv-trans-body {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 14px; margin-bottom: 20px;
+        }
+        .adv-trans-info { text-align: center; }
+
+        /* ── 過場敘述畫面 ─────────────────────────────────── */
+        .adv-transition {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 24px 20px;
+        }
+        .adv-trans-card {
+            background: rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.92); border: 3px solid var(--loc-border);
+            border-radius: 28px; padding: 36px 28px;
+            width: 100%; max-width: 480px; text-align: center;
+            box-shadow: 0 8px 40px rgba(180,83,9,0.18);
+            animation: adv-trans-in 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes adv-trans-in {
+            from { opacity: 0; transform: scale(0.88) translateY(24px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .adv-trans-icon { font-size: 72px; line-height: 1; margin-bottom: 16px; text-align: center; }
+        .adv-trans-text {
+            font-size: 1.1rem; font-weight: 600; color: var(--adv-sub-text, #78350f);
+            line-height: 1.9; margin: 0;
+        }
+        .adv-trans-btn {
+            background: linear-gradient(135deg, var(--loc-main), #b45309);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 12px 32px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; font-family: inherit; transition: transform 0.15s;
+        }
+        .adv-trans-btn:active { transform: scale(0.97); }
+        /* 過場按鈕列：🔊 重聽 ＋ 繼續，橫排置中 */
+        .adv-trans-btns { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .adv-trans-replay {
+            width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+            background: var(--adv-surface, #fff); border: 2px solid var(--loc-main); color: var(--loc-main);
+            font-size: 1.2rem; cursor: pointer; font-family: inherit;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.15s;
+        }
+        .adv-trans-replay:active { transform: scale(0.92); }
+        /* 自動播放被瀏覽器擋掉時，🔊 鈕閃爍提示「想聽故事點我」（繼續鈕不受影響、隨時可按）*/
+        .adv-trans-replay.hint {
+            animation: advReplayHint 1.1s ease-in-out infinite;
+            background: var(--loc-main); color: #fff;
+        }
+        @keyframes advReplayHint {
+            0%,100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.5); }
+            50%     { box-shadow: 0 0 0 8px rgba(217,119,6,0); }
+        }
+
+        /* 桌面端：過場頭像放大 300×300 靠左，🌅＋文字置於右側（上：圖示、下：文字）*/
+        @media (min-width: 768px) {
+            .adv-trans-card { max-width: 660px; }
+            .adv-trans-body { flex-direction: row; align-items: center; gap: 24px; }
+            .adv-trans-info { flex: 1; text-align: left; }
+            .adv-trans-char { width: 300px; height: 300px; font-size: 180px; }
+        }
+
+        /* ── 桌面大螢幕：依內容自動放大（2026-09-23 使用者：桌面沒佔滿視窗，儘量大一點）──
+           倍率 --adv-zoom 由 adventure.js 檔尾依「目前畫面內容高 vs 視窗高」計算（手機／< 1280 寬＝1），
+           這裡只負責套用。⚠️ #app 內 min-height:100vh 也會被 zoom 放大（960 高撐成 1250，多一截捲動），
+           所以各畫面的 100vh 要除以倍率；.adv-fit-measure 是量內容高時暫時拿掉 min-height 用的。
+           ⚠️ zoom 下 getBoundingClientRect 是放大後的值，依座標畫圖要換算（見 _drawRoad 的 k）。 */
+        #app { zoom: var(--adv-zoom, 1); min-height: calc(100vh / var(--adv-zoom, 1)); }
+        #app .adv-settings, #app .adv-game, #app .adv-victory, #app .adv-transition {
+            min-height: calc(100vh / var(--adv-zoom, 1));
+        }
+        /* 導覽列看得到時（首頁／準備頁／結算頁）扣掉它的高度，否則 min-height:100vh 再加上導覽列＝永遠多捲一截
+           （2026-10-03 使用者：桌面版也修）。關卡中導覽列被 JS 藏起來（行內 display:none）→ 不扣。
+           導覽列一行約 53px；手機上會折成兩三行，扣 53 仍比原本少捲。 */
+        .site-nav:not([style*="none"]) ~ #app,
+        .site-nav:not([style*="none"]) ~ #app .adv-settings, .site-nav:not([style*="none"]) ~ #app .adv-game,
+        .site-nav:not([style*="none"]) ~ #app .adv-victory, .site-nav:not([style*="none"]) ~ #app .adv-transition {
+            min-height: calc((100vh - 53px) / var(--adv-zoom, 1));
+        }
+        #app.adv-fit-measure, #app.adv-fit-measure .adv-settings, #app.adv-fit-measure .adv-game,
+        #app.adv-fit-measure .adv-victory, #app.adv-fit-measure .adv-transition { min-height: 0 !important; }
+    </style>
+    <!-- iPad 橫式版面（只在 html.tablet-land 生效，必須在頁內 <style> 之後） -->
+    <link rel="stylesheet" href="../css/tablet-landscape.css">
+</head>
+<body>
+    <style>
+      .site-nav { position: sticky; top: 0; z-index: 10000; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:9px 14px; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 2px 10px rgba(0,0,0,0.12); }
+      .site-nav a { color:#fff; text-decoration:none; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.14); white-space:nowrap; transition:background .15s; }
+      .site-nav a:hover { background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.30); }
+      .theme-toggle-btn { color:#fff; font-weight:700; font-size:0.88rem; padding:7px 14px; border-radius:10px; background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.14); border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s; }
+      .theme-toggle-btn:hover { background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.30); }
+    </style>
+    <nav class="site-nav">
+      <a href="../index.html">🏠 主頁(金錢核心課程)</a>
+      <a href="../index.html?hero=chatdog">💬 生活情境對話</a>
+      <a href="../index.html?hero=doctor">🗺️ 一日金錢冒險</a>
+      <a href="../index.html?hero=detective">🎮 小遊戲</a>
+      <a href="../reward/index.html?page=growth">🌟 成就與寵物</a>
+      <a href="../reward/index.html" class="nav-teacher">🏆 優良表現獎勵板</a>
+      <a href="../teacher.html" class="nav-teacher">📊 學習歷程總覽</a>
+      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn"></button>
+      <button class="nav-login-btn" onclick="siteNavLogin()" style="color:#fff;font-weight:700;font-size:0.88rem;padding:7px 14px;border-radius:10px;background:rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.22);border:1px solid rgba(var(--adv-card-r,255),var(--adv-card-g,255),var(--adv-card-b,255),0.45);cursor:pointer;font-family:inherit;white-space:nowrap;">🔓 教師登入</button>
+    </nav>
+    <div id="app"></div>
+
+    <audio id="correct-sound" src="../audio/units/correct02.mp3" preload="auto"></audio>
+    <audio id="success-sound" src="../audio/units/success.mp3"   preload="auto"></audio>
+    <audio id="error-sound"   src="../audio/units/error.mp3"     preload="auto"></audio>
+    <!-- 情境音效：換場、各地點特色動作音（沉浸感） -->
+    <audio id="adv-sfx-warp"   src="../audio/games/level-up.mp3"         preload="auto"></audio>
+    <audio id="adv-sfx-coin"   src="../audio/units/countmoney.mp3"       preload="auto"></audio>
+    <audio id="adv-sfx-keypad" src="../audio/units/keypad.mp3"           preload="auto"></audio>
+    <audio id="adv-sfx-cash"   src="../audio/games/g3-cash-register.mp3" preload="auto"></audio>
+    <audio id="adv-sfx-select" src="../audio/units/select.mp3"           preload="auto"></audio>
+    <audio id="adv-sfx-drop"   src="../audio/games/g4-coin-drop.mp3"     preload="auto"></audio>
+
+    <script src="../js/confetti.browser.min.js"></script>
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/reward-launcher.js"></script>
+    <script src="../js/learning-tracker.js"></script>
+    <script src="../js/iep-reminder.js"></script>
+    <script src="../js/theme-switch.js"></script>
+    <script src="../js/nav-auth.js"></script>
+    <script src="../js/number-speech-utils.js"></script>
+    <script src="adventure.js"></script>
+</body>
+</html>

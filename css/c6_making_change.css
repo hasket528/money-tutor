@@ -1,0 +1,317 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+
+        /* 🔧 [新增] 點擊放置功能樣式 */
+        .money-item.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.1) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .money-item {
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+
+        .money-item:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+
+/* ── 步驟二「拖曳找零」（普通／困難，2026-10-04，參考 B5／B6 步驟三）──────────────────
+   由上而下：購買物品 → 找零面額托盤（可重複拖曳）→ 我的錢包 → 確認找零。 */
+.c6c-container { display: flex; flex-direction: column; gap: 14px; max-width: 980px; margin: 0 auto; padding: 14px 16px 20px; }
+.c6c-info { margin: 0; }
+.c6c-need { text-align: center; font-size: 1.15em; font-weight: 700; color: #374151; margin-top: 6px; }
+.c6c-need strong { color: #e67e22; font-size: 1.25em; }
+.c6c-hint-btn { background: linear-gradient(135deg, #f39c12, #e67e22); color: #fff; border: none; padding: 8px 15px; border-radius: 20px; font-size: .9em; font-weight: bold; cursor: pointer; }
+.c6c-tray, .c6c-wallet { background: #fff; border: 2px solid #e5e7eb; border-radius: 16px; padding: 12px 16px; }
+.c6c-tray-title, .c6c-wallet-title { font-weight: 800; font-size: 1.05em; color: #1f2937; margin-bottom: 10px; text-align: center; }
+.c6c-wallet-info { font-weight: 600; color: #059669; font-size: .9em; }
+.c6c-hidden { display: none; }
+.c6c-tray-coins { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.c6c-denom-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 10px; border: 2px solid #e5e7eb; border-radius: 12px; background: #f9fafb; color: #1f2937; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.c6c-denom-card:active { filter: brightness(.92); transform: none !important; }
+.c6c-denom-card.c6c-next { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, .45); }
+.c6c-bill { width: 90px; height: auto; display: block; pointer-events: none; }
+.c6c-coin { width: 54px; height: 54px; display: block; pointer-events: none; }
+.c6c-denom-label { font-size: .85em; font-weight: 700; color: #374151; }
+.c6c-wallet { border: 3px dashed #93c5fd; background: #f0f7ff; transition: background .15s, border-color .15s; }
+.c6c-wallet.c6c-drop-active { background: #dbeafe; border-color: #3b82f6; }
+.c6c-wallet-coins { min-height: 96px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+.c6c-wallet-empty { color: #6b7280; font-weight: 600; }
+.c6c-wc-item, .c6c-ghost-slot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border-radius: 10px; }
+.c6c-wc-item { background: #fff; border: 2px solid #bfdbfe; }
+.c6c-ghost-slot { border: 2px dashed #cbd5e1; }
+.c6c-ghost-slot img, .c6c-ghost-slot .c6c-denom-label { opacity: .3; }
+.c6c-wc-remove { position: absolute; top: -10px; right: -10px; width: 28px; height: 28px; border-radius: 50%; border: none; background: #ef4444; color: #fff; font-weight: 800; font-size: 16px; line-height: 1; cursor: pointer; }
+.c6c-wc-remove:active { transform: none !important; filter: brightness(.9); }
+.c6c-confirm-btn { align-self: center; margin: 0 !important; cursor: pointer !important; background: linear-gradient(135deg, #4CAF50, #45a049) !important; color: #fff !important; }
+.c6c-confirm-btn.ready { box-shadow: 0 0 0 4px rgba(76, 175, 80, .35); }
+.c6c-shake { animation: c6cShake .4s ease; }
+@keyframes c6cShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.c6c-touch-ghost { position: fixed; z-index: 9999; pointer-events: none; background: rgba(255, 255, 255, .95); border-radius: 12px; padding: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
+.c6c-touch-ghost img { width: 72px; height: auto; display: block; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .c6-unit .c6c-need { color: #e5e7eb; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-tray { background: #1f2937; border-color: #374151; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-tray-title,
+    :root:not([data-theme="light"]) .c6-unit .c6c-wallet-title,
+    :root:not([data-theme="light"]) .c6-unit .c6c-denom-label { color: #e5e7eb; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-denom-card { background: #111827; border-color: #374151; color: #e5e7eb; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-wallet { background: #172033; border-color: #3b5b8f; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-wallet.c6c-drop-active { background: #1e3a5f; border-color: #60a5fa; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-wallet-empty { color: #9ca3af; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-wc-item { background: #111827; border-color: #3b5b8f; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-ghost-slot { border-color: #4b5563; }
+    :root:not([data-theme="light"]) .c6-unit .c6c-wallet-info { color: #34d399; }
+}
+[data-theme="dark"] .c6-unit .c6c-need { color: #e5e7eb; }
+[data-theme="dark"] .c6-unit .c6c-tray { background: #1f2937; border-color: #374151; }
+[data-theme="dark"] .c6-unit .c6c-tray-title,
+[data-theme="dark"] .c6-unit .c6c-wallet-title,
+[data-theme="dark"] .c6-unit .c6c-denom-label { color: #e5e7eb; }
+[data-theme="dark"] .c6-unit .c6c-denom-card { background: #111827; border-color: #374151; color: #e5e7eb; }
+[data-theme="dark"] .c6-unit .c6c-wallet { background: #172033; border-color: #3b5b8f; }
+[data-theme="dark"] .c6-unit .c6c-wallet.c6c-drop-active { background: #1e3a5f; border-color: #60a5fa; }
+[data-theme="dark"] .c6-unit .c6c-wallet-empty { color: #9ca3af; }
+[data-theme="dark"] .c6-unit .c6c-wc-item { background: #111827; border-color: #3b5b8f; }
+[data-theme="dark"] .c6-unit .c6c-ghost-slot { border-color: #4b5563; }
+[data-theme="dark"] .c6-unit .c6c-wallet-info { color: #34d399; }
+
+/* 困難模式「目前總額」外面多包一層 #payment-info-display（行內 width:100%），會擠到下一行 → 縮成內容寬，
+   跟其他模式一樣放在商品那一列右邊（2026-10-06 使用者定） */
+.c6-unit #payment-info-display { width: auto !important; flex: 0 0 auto; }
+
+/* >>> DARK-AUTO 深色：遊戲／任務／完成畫面（2026-09-23）
+   亮底改同色相深色、深色字改淺色；狀態規則（.selected/:hover…）一併給深色版本。
+   兩塊選擇器與數值逐字對應，只有外層 gate 不同（改一邊就要改另一邊）；淺色模式不受影響。
+   守門：node tests/_e2e_units_dark.js <單元> ＋ node tests/_audit_dark_mirror.js */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .c6-unit .btn-text {
+        color: #b5c9e3 !important;
+    }
+    :root:not([data-theme="light"]) .c6-unit .hint-btn {
+        background: linear-gradient(135deg, #2d2d44, #2d2d44);
+    }
+    :root:not([data-theme="light"]) .c6-unit .iic-paid {
+        background: linear-gradient(135deg, #2d2d44, #2d2d44);
+    }
+    :root:not([data-theme="light"]) .c6-unit .drop-zone {
+        background: linear-gradient(135deg, #2d2d44 0%, #2d2d44 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .iic-price {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .money-item {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option {
+        background: linear-gradient(135deg, #223044 0%, #253141 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .section-title {
+        color: #e2e8f0;
+    }
+    :root:not([data-theme="light"]) .c6-unit .c6-easy-layout {
+        background: linear-gradient(135deg, #16242a 0%, #16282a 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .hint-btn:hover {
+        background: linear-gradient(135deg, #2d2d44, #2d2d44);
+    }
+    :root:not([data-theme="light"]) .c6-unit .wallet-section {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .c6-purchase-info {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .drop-zone.filled {
+        background: rgba(0, 0, 0, 0);
+    }
+    :root:not([data-theme="light"]) .c6-unit .wallet-container {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .item-info-compact {
+        background: #1c314a;
+    }
+    :root:not([data-theme="light"]) .c6-unit .item-info-section {
+        background: linear-gradient(135deg, #223044 0%, #212f45 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .drop-zone.dragover {
+        background: rgba(0, 0, 0, 0);
+    }
+    :root:not([data-theme="light"]) .c6-unit .c6-hard-confirm-btn {
+        background: linear-gradient(135deg, #263240 0%, #29323d 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .calculation-display {
+        background: linear-gradient(135deg, #1c374a 0%, #1c354a 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-options-area {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .drop-zone.drag-over {
+        background: linear-gradient(135deg, #204621 0%, #1f4721 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .payment-placeholder {
+        color: #e2e8f0 !important;
+    }
+    :root:not([data-theme="light"]) .c6-unit .item-payment-section {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .option-money-display {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option::before {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .money-item.selected-item {
+        background: rgba(31, 71, 33, 0.1) !important;
+    }
+    :root:not([data-theme="light"]) .c6-unit .drop-zone.filled.dragover {
+        background: rgba(0, 0, 0, 0);
+    }
+    :root:not([data-theme="light"]) .c6-unit .c6-hard-confirm-btn:disabled {
+        background: linear-gradient(135deg, #263240 0%, #29323d 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.correct-selected {
+        background: linear-gradient(135deg, #3c4a1c 0%, #1c4a22 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.incorrect-selected {
+        background: linear-gradient(135deg, #4a1c1e 0%, #4a261c 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .money-item.show-correct-tick::after {
+        background: #28a745;
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.correct-selected::after {
+        background: #28a745;
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.incorrect-selected::after {
+        background: #dc3545;
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.correct-selected .option-amount-display {
+        background: linear-gradient(135deg, #3c4a1c 0%, #1c4a22 100%);
+    }
+    :root:not([data-theme="light"]) .c6-unit .change-option.incorrect-selected .option-amount-display {
+        background: linear-gradient(135deg, #4a1c1e 0%, #4a261c 100%);
+    }
+}
+[data-theme="dark"] .c6-unit .btn-text {
+    color: #b5c9e3 !important;
+}
+[data-theme="dark"] .c6-unit .hint-btn {
+    background: linear-gradient(135deg, #2d2d44, #2d2d44);
+}
+[data-theme="dark"] .c6-unit .iic-paid {
+    background: linear-gradient(135deg, #2d2d44, #2d2d44);
+}
+[data-theme="dark"] .c6-unit .drop-zone {
+    background: linear-gradient(135deg, #2d2d44 0%, #2d2d44 100%);
+}
+[data-theme="dark"] .c6-unit .iic-price {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .money-item {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .change-option {
+    background: linear-gradient(135deg, #223044 0%, #253141 100%);
+}
+[data-theme="dark"] .c6-unit .section-title {
+    color: #e2e8f0;
+}
+[data-theme="dark"] .c6-unit .c6-easy-layout {
+    background: linear-gradient(135deg, #16242a 0%, #16282a 100%);
+}
+[data-theme="dark"] .c6-unit .hint-btn:hover {
+    background: linear-gradient(135deg, #2d2d44, #2d2d44);
+}
+[data-theme="dark"] .c6-unit .wallet-section {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .c6-purchase-info {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .drop-zone.filled {
+    background: rgba(0, 0, 0, 0);
+}
+[data-theme="dark"] .c6-unit .wallet-container {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .item-info-compact {
+    background: #1c314a;
+}
+[data-theme="dark"] .c6-unit .item-info-section {
+    background: linear-gradient(135deg, #223044 0%, #212f45 100%);
+}
+[data-theme="dark"] .c6-unit .drop-zone.dragover {
+    background: rgba(0, 0, 0, 0);
+}
+[data-theme="dark"] .c6-unit .c6-hard-confirm-btn {
+    background: linear-gradient(135deg, #263240 0%, #29323d 100%);
+}
+[data-theme="dark"] .c6-unit .calculation-display {
+    background: linear-gradient(135deg, #1c374a 0%, #1c354a 100%);
+}
+[data-theme="dark"] .c6-unit .change-options-area {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .drop-zone.drag-over {
+    background: linear-gradient(135deg, #204621 0%, #1f4721 100%);
+}
+[data-theme="dark"] .c6-unit .payment-placeholder {
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .c6-unit .item-payment-section {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .option-money-display {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c6-unit .change-option::before {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+[data-theme="dark"] .c6-unit .money-item.selected-item {
+    background: rgba(31, 71, 33, 0.1) !important;
+}
+[data-theme="dark"] .c6-unit .drop-zone.filled.dragover {
+    background: rgba(0, 0, 0, 0);
+}
+[data-theme="dark"] .c6-unit .c6-hard-confirm-btn:disabled {
+    background: linear-gradient(135deg, #263240 0%, #29323d 100%);
+}
+[data-theme="dark"] .c6-unit .change-option.correct-selected {
+    background: linear-gradient(135deg, #3c4a1c 0%, #1c4a22 100%);
+}
+[data-theme="dark"] .c6-unit .change-option.incorrect-selected {
+    background: linear-gradient(135deg, #4a1c1e 0%, #4a261c 100%);
+}
+[data-theme="dark"] .c6-unit .money-item.show-correct-tick::after {
+    background: #28a745;
+}
+[data-theme="dark"] .c6-unit .change-option.correct-selected::after {
+    background: #28a745;
+}
+[data-theme="dark"] .c6-unit .change-option.incorrect-selected::after {
+    background: #dc3545;
+}
+[data-theme="dark"] .c6-unit .change-option.correct-selected .option-amount-display {
+    background: linear-gradient(135deg, #3c4a1c 0%, #1c4a22 100%);
+}
+[data-theme="dark"] .c6-unit .change-option.incorrect-selected .option-amount-display {
+    background: linear-gradient(135deg, #4a1c1e 0%, #4a261c 100%);
+}
+/* <<< DARK-AUTO */

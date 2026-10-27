@@ -1,0 +1,238 @@
+/**
+ * hero-modal.css — 角色彈窗（金好聊／金隊長）的共用樣式
+ *
+ * 🔴 **站台主頁與對話模組載入同一份**（見 js/hero-modal.js 的說明）：同一個角色在兩個頁面
+ *    長得不一樣，使用者會以為畫面壞掉（2026-09-16 實測回報：從主頁點自訂場景進對話模組、
+ *    按上一頁停在對話首頁，再點金好聊就得到另一個比較小的彈窗）。
+ *
+ * ⚠️ **不依賴任何一頁的 CSS 變數**：主頁用 --card-bg／--text-primary，對話模組用 --white／--gray-900，
+ *    共用樣式若引用其中一組，另一頁就會掉回 fallback。這裡自己宣告 --hm-* 一整組，深色三態自己處理。
+ * ⚠️ 深色寫法照全站規則：`@media (prefers-color-scheme: dark)` 內用 `:root:not([data-theme="light"])`
+ *    包住（跟隨系統），再加一份 `[data-theme="dark"]`（強制深色），兩塊數值逐字對應。
+ */
+
+.hm-overlay {
+  --hm-surface: #ffffff;
+  --hm-ink:     #1e293b;
+  --hm-muted:   #64748b;
+  --hm-line:    #e2e8f0;
+  --hm-accent:  #16a34a;      /* 金好聊＝綠（呼應領巾）；金隊長由 .hm-captain 覆寫成琥珀 */
+  --hm-accent-bg: #f0fdf4;
+
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9700;              /* 高於一般彈窗 9000；學生試聽彈窗還要更高（見 .hm-overlay--student） */
+  background: rgba(0, 0, 0, 0.45);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.hm-overlay.open { display: flex; }
+/* ⚠️ ai-theme.css 有一條 `[onclick]:active, button:active { transform: scale(.95) !important }`，
+   遮罩本身可點（點外面關閉）→ 不擋的話點彈窗任何地方整個視窗都會縮一下 */
+.hm-overlay:active { transform: none !important; }
+.hm-overlay--student { z-index: 9750; }   /* 它是從金好聊彈窗裡叫出來的，必須更高 */
+
+.hm-captain { --hm-accent: #d97706; --hm-accent-bg: #fffbeb; }
+/* ⚠️ 金婆婆**不要**另外縮小角色圖：五個角色彈窗的角色圖一律同尺寸（使用者指定，2026-09-16；
+   原本為了讓底下的建立學生表單不太長而縮成 110／180px，看起來像另一種彈窗） */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hm-overlay {
+    --hm-surface: #1e293b;
+    --hm-ink:     #e2e8f0;
+    --hm-muted:   #cbd5e1;
+    --hm-line:    #334155;
+    --hm-accent-bg: #0f2a1a;
+  }
+  :root:not([data-theme="light"]) .hm-captain { --hm-accent-bg: #2d2410; }
+}
+[data-theme="dark"] .hm-overlay {
+  --hm-surface: #1e293b;
+  --hm-ink:     #e2e8f0;
+  --hm-muted:   #cbd5e1;
+  --hm-line:    #334155;
+  --hm-accent-bg: #0f2a1a;
+}
+[data-theme="dark"] .hm-captain { --hm-accent-bg: #2d2410; }
+
+.hm-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+  background: var(--hm-surface);
+  color: var(--hm-ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  font-family: inherit;
+  text-align: left;
+  animation: hmPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes hmPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hm-card { animation: none; } }
+
+/* 關閉鈕：命中區 44×44（手機手指點得到）；⚠️ :active 只變色不改幾何 */
+.hm-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--hm-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+.hm-close:hover, .hm-close:focus-visible { background: var(--hm-line); color: var(--hm-ink); outline: none; }
+.hm-close:active { background: var(--hm-line); transform: none !important; }
+
+/* 角色圖＋說話泡泡 */
+.hm-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.hm-avatar {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+.hm-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.hm-bubble {
+  position: relative;
+  flex: 0 1 auto;
+  padding: 10px 14px;
+  border: 2px solid var(--hm-accent);
+  border-radius: 14px;
+  background: var(--hm-accent-bg);
+  color: var(--hm-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;               /* 點泡泡＝再聽一次 */
+}
+.hm-bubble::before, .hm-bubble::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+}
+.hm-bubble::before { left: -10px; border-right-color: var(--hm-accent); }
+.hm-bubble::after  { left: -7px; border: 5px solid transparent; border-right-color: var(--hm-accent-bg); }
+
+/* 動作卡（主頁的「購物對話練習」；對話模組裡不顯示——已經在模組內了） */
+.hm-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 2px solid var(--hm-accent);
+  border-radius: 16px;
+  background: var(--hm-accent-bg);
+  color: var(--hm-ink);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.hm-action:hover { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); }
+.hm-action:active { transform: none !important; }
+.hm-action-title { font-weight: 800; font-size: 1rem; }
+.hm-action-desc { font-size: 0.82rem; color: var(--hm-muted); }
+
+/* 學生語音（兩頁共用同一份資料：localStorage sp_studentVoiceIdx） */
+.hm-pick { border-top: 1px dashed var(--hm-line); padding-top: 14px; }
+.hm-pick-title { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.98rem; }
+.hm-pick-note { margin: 4px 0 10px; font-size: 0.78rem; line-height: 1.6; color: var(--hm-muted); }
+.hm-pick-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.hm-pick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hm-pick-item img, .hm-pick-emoji {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--hm-line);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hm-pick-item.on img, .hm-pick-item.on .hm-pick-emoji {
+  border-color: var(--hm-accent);
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22);
+}
+.hm-captain .hm-pick-item.on img, .hm-captain .hm-pick-item.on .hm-pick-emoji {
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.22);
+}
+.hm-pick-name { font-size: 0.82rem; font-weight: 700; }
+.hm-pick-item.on .hm-pick-name { color: var(--hm-accent); }
+.hm-pick-item:active { transform: none !important; }
+
+/* 學生試聽小彈窗 */
+.hm-student-card { max-width: 360px; text-align: center; }
+.hm-student-card img {
+  width: clamp(120px, 34vw, 200px);
+  height: clamp(120px, 34vw, 200px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+  background: var(--hm-line);
+}
+.hm-student-name { margin-top: 10px; font-size: 1.3rem; font-weight: 800; }
+.hm-student-line { margin: 8px 0 16px; font-size: 0.95rem; line-height: 1.7; color: var(--hm-muted); }
+.hm-student-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.hm-btn {
+  padding: 11px 20px;
+  border: 1.5px solid var(--hm-line);
+  border-radius: 12px;
+  background: none;
+  color: var(--hm-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.hm-btn:active { transform: none !important; }
+.hm-btn--primary { border-color: transparent; background: var(--hm-accent); color: #fff; }
+
+/* 呼叫端塞進來的額外內容（主頁的成長基地：建立學生、任務、備份…） */
+.hm-extra { margin-top: 16px; }
+.hm-extra:empty { display: none; }
+
+/* 桌面：角色圖放大、彈窗加寬（原本主頁那個彈窗的規格，兩頁一起套用） */
+@media (min-width: 768px) {
+  .hm-card { max-width: 660px; }
+  .hm-avatar { width: 300px; height: 300px; }
+  .hm-bubble { font-size: 1rem; }
+}

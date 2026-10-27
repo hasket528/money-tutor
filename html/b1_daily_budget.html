@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+<meta charset="UTF-8">
+<script src="../js/emoji-font.js"></script>
+<meta name="darkreader-lock"><!-- 本站自帶深淺色切換：請 Dark Reader 等外掛別再疊一層（2026-09-24） -->
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem("mt_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<script src="../js/tablet-layout.js"></script><!-- iPad 橫式版面判斷：要在所有 CSS 之前（2026-10-02） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B1 今天帶多少錢</title>
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/shared-game-base.css">
+    <link rel="stylesheet" href="../css/b-series.css?v=3.0">
+    <link rel="stylesheet" href="../css/b1_daily_budget.css?v=6.0">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+    <!-- iPad 橫式版面（只在 html.tablet-land 生效，必須最後載入） -->
+    <link rel="stylesheet" href="../css/tablet-landscape.css">
+</head>
+<body class="b1-unit b-series">
+    <div id="app"></div>
+    <audio id="correct-sound"  src="../audio/units/correct02.mp3" preload="auto"></audio>
+    <audio id="success-sound"  src="../audio/units/success.mp3"   preload="auto"></audio>
+    <audio id="error-sound"    src="../audio/units/error.mp3"   preload="auto"></audio>
+    <audio id="click-sound"    src="../audio/units/click.mp3"     preload="auto"></audio>
+    <audio id="coin-sound"     src="../audio/units/coin01.mp3"    preload="auto"></audio>
+    <audio id="keypad-sound"   src="../audio/units/keypad.mp3"   preload="auto"></audio>
+    <script src="../js/confetti.browser.min.js"></script>
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-switch.js"></script>
+    <script src="../js/learning-tracker.js"></script>
+    <script src="../js/result-voice.js"></script>
+    <script src="../js/reward-launcher.js"></script>
+    <script src="../js/student-badge.js"></script>
+    <script src="../js/student-picker.js"></script>
+    <script src="../js/number-speech-utils.js"></script>
+    <script src="../js/b1_daily_budget.js?v=5.6"></script>
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 掃描付款（外掛層，不改本單元的 js 一個字；不載入就完全回到原行為）
+         B 系列共用 scan-pay-b.js：B1 用在步驟二「準備錢幣」。
+         入口預設不顯示，由設定頁「困難」右邊的開關打開。設計：doc/開發計畫/開發計畫_掃描付款_QR教具卡.md -->
+    <script src="../js/scan-pay/vendor/aruco/cv.js"></script>
+    <script src="../js/scan-pay/vendor/aruco/aruco.js"></script>
+    <script src="../js/scan-pay/vendor/aruco/dictionaries/apriltag_16h5.js"></script>
+    <script src="../js/scan-pay/mt-markers.js"></script>
+    <script src="../js/scan-pay/scan-pay.js"></script>
+    <script src="../js/scan-pay/units/scan-pay-b.js"></script>
+    <script src="../js/scan-pay/settings-tools.js"></script>
+</body>
+</html>

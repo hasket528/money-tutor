@@ -1,0 +1,559 @@
+/* =================================================================
+   FILE: css/c-series.css - C 系列專屬樣式
+   從 unit6.css 分拆（2026-03-07）
+
+   包含所有 .c-series 前綴的頂層規則（C1~C6 專屬）
+   載入順序：ai-theme.css → shared-game-base.css → c-series.css → cX_unit.css
+   ================================================================= */
+
+/* 紙鈔容器調整 */
+.c-series .money-item.banknote {
+    min-height: 140px;
+    min-width: 120px;
+}
+/* 硬幣容器調整 */
+.c-series .money-item.coin {
+    min-height: 120px;
+    min-width: 80px;
+}
+/* 紙鈔圖示放大 - 錢包中的紙鈔 */
+.c-series .money-item.banknote img {
+    width: var(--u6-banknote-size-sm);
+    height: auto;
+    max-height: var(--u6-banknote-max-h-sm);
+    object-fit: contain;
+}
+/* 硬幣圖示保持標準大小 */
+.c-series .money-item.coin img {
+    width: var(--u6-coin-size-sm);
+    height: var(--u6-coin-size-sm);
+    border-radius: 50%;
+}
+/* 提示區域容器調整 */
+.c-series .hint-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+}
+/* 紙鈔圖示放大 - 付款提示中的紙鈔 */
+.c-series .hint-item img[src*="100_yuan"],
+.c-series .hint-item img[src*="200_yuan"],
+.c-series .hint-item img[src*="500_yuan"],
+.c-series .hint-item img[src*="1000_yuan"],
+.c-series .hint-item img[src*="2000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: auto;
+    max-height: var(--u6-banknote-max-h);
+    object-fit: contain;
+}
+/* 硬幣圖示 - 付款提示中的硬幣 */
+.c-series .hint-item img:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    width: var(--u6-coin-size-hint);
+    height: var(--u6-coin-size-hint);
+    object-fit: contain;
+    border-radius: 50%;
+}
+/* 紙鈔圖示放大 - 付款金錢中的紙鈔 */
+.c-series .payment-money-item img[src*="100_yuan"],
+.c-series .payment-money-item img[src*="200_yuan"],
+.c-series .payment-money-item img[src*="500_yuan"],
+.c-series .payment-money-item img[src*="1000_yuan"],
+.c-series .payment-money-item img[src*="2000_yuan"] {
+    width: var(--u6-banknote-size-sm);
+    height: auto;
+    max-height: var(--u6-banknote-max-h-sm);
+    object-fit: contain;
+}
+/* 紙鈔圖示放大 - 找零中的紙鈔 */
+.c-series .change-money img[src*="100_yuan"],
+.c-series .change-money img[src*="200_yuan"],
+.c-series .change-money img[src*="500_yuan"],
+.c-series .change-money img[src*="1000_yuan"],
+.c-series .change-money img[src*="2000_yuan"] {
+    width: var(--u6-banknote-size-sm);
+    height: auto;
+    max-height: var(--u6-banknote-max-h-sm);
+    object-fit: contain;
+}
+.c-series .target-item-display,
+.c-series .selected-item-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    background: none;
+    border: none;
+    border-radius: 0;
+}
+/* 題目區域的圖示大小（與選項區域一致） */
+.c-series .target-item-display img,
+.c-series .selected-item-display img,
+.c-series .target-money-img {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* 錢幣圖示大小（保持原本 --u6-coin-size，但外框是 --u6-banknote-size） */
+.c-series .target-item-display img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.c-series .selected-item-display img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.c-series .target-money-img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]),
+.c-series .product-item img[src*="_yuan_"]:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+}
+/* 紙鈔圖示大小（保持 --u6-banknote-size） */
+.c-series .target-item-display img[src*="100_yuan"],
+.c-series .target-item-display img[src*="200_yuan"],
+.c-series .target-item-display img[src*="500_yuan"],
+.c-series .target-item-display img[src*="1000_yuan"],
+.c-series .target-item-display img[src*="2000_yuan"],
+.c-series .selected-item-display img[src*="100_yuan"],
+.c-series .selected-item-display img[src*="200_yuan"],
+.c-series .selected-item-display img[src*="500_yuan"],
+.c-series .selected-item-display img[src*="1000_yuan"],
+.c-series .selected-item-display img[src*="2000_yuan"],
+.c-series .target-money-img[src*="100_yuan"],
+.c-series .target-money-img[src*="200_yuan"],
+.c-series .target-money-img[src*="500_yuan"],
+.c-series .target-money-img[src*="1000_yuan"],
+.c-series .target-money-img[src*="2000_yuan"],
+.c-series .product-item img[src*="100_yuan"],
+.c-series .product-item img[src*="200_yuan"],
+.c-series .product-item img[src*="500_yuan"],
+.c-series .product-item img[src*="1000_yuan"],
+.c-series .product-item img[src*="2000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+}
+/* Unit2 金錢圖示大小統一 */
+.c-series #coin-display-area img {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit2 紙鈔圖示大小（硬幣的150%） */
+.c-series #coin-display-area img[src*="100_yuan"],
+.c-series #coin-display-area img[src*="200_yuan"],
+.c-series #coin-display-area img[src*="500_yuan"],
+.c-series #coin-display-area img[src*="1000_yuan"],
+.c-series #coin-display-area img[src*="2000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+}
+/* Unit3 金錢圖示大小統一 */
+.c-series .exchange-item img,
+.c-series .exchange-placeholder img,
+.c-series .exchanged-target-item img,
+.c-series #my-money-area .exchange-item img {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    max-height: var(--u6-coin-size);
+    max-width: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit3 紙鈔圖示大小（硬幣的150%） */
+.c-series .exchange-item img[src*="100_yuan"],
+.c-series .exchange-item img[src*="500_yuan"], 
+.c-series .exchange-item img[src*="1000_yuan"],
+.c-series .exchange-placeholder img[src*="100_yuan"],
+.c-series .exchange-placeholder img[src*="500_yuan"],
+.c-series .exchange-placeholder img[src*="1000_yuan"],
+.c-series .exchanged-target-item img[src*="100_yuan"],
+.c-series .exchanged-target-item img[src*="500_yuan"],
+.c-series .exchanged-target-item img[src*="1000_yuan"],
+.c-series #my-money-area .exchange-item img[src*="100_yuan"],
+.c-series #my-money-area .exchange-item img[src*="500_yuan"],
+.c-series #my-money-area .exchange-item img[src*="1000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    max-height: var(--u6-banknote-size);
+    max-width: var(--u6-banknote-size);
+}
+/* Unit3 我的金錢區底框要白色 */
+.c-series #my-money-area {
+    background: #ffffff;
+    border: 2px solid #ddd;
+}
+/* Unit3 淡化圖示大小統一與正常圖示一樣 */
+.c-series .placeholder-item img,
+.c-series .target-group-item {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    max-height: var(--u6-coin-size);
+    max-width: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit3 淡化紙鈔圖示大小 */
+.c-series .placeholder-item img[src*="100_yuan"],
+.c-series .placeholder-item img[src*="500_yuan"],
+.c-series .placeholder-item img[src*="1000_yuan"],
+.c-series .target-group-item[src*="100_yuan"],
+.c-series .target-group-item[src*="500_yuan"],
+.c-series .target-group-item[src*="1000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    max-height: var(--u6-banknote-size);
+    max-width: var(--u6-banknote-size);
+}
+/* Unit3 簡單模式目標淡化圖示大小統一與正常圖示一樣 */
+.c-series .easy-target-group.target-faded .target-group-item,
+.c-series .easy-target-group.target-faded img,
+.c-series .target-item.target-faded img {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    max-height: var(--u6-coin-size);
+    max-width: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit3 簡單模式目標淡化紙鈔圖示大小 */
+.c-series .easy-target-group.target-faded .target-group-item[src*="100_yuan"],
+.c-series .easy-target-group.target-faded .target-group-item[src*="500_yuan"], 
+.c-series .easy-target-group.target-faded .target-group-item[src*="1000_yuan"],
+.c-series .easy-target-group.target-faded img[src*="100_yuan"],
+.c-series .easy-target-group.target-faded img[src*="500_yuan"],
+.c-series .easy-target-group.target-faded img[src*="1000_yuan"],
+.c-series .target-item.target-faded img[src*="100_yuan"],
+.c-series .target-item.target-faded img[src*="500_yuan"],
+.c-series .target-item.target-faded img[src*="1000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    max-height: var(--u6-banknote-size);
+    max-width: var(--u6-banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit3 簡單模式目標點亮圖示大小統一與正常圖示一樣 */
+.c-series .easy-target-group.target-appear .target-group-item,
+.c-series .easy-target-group.target-appear img,
+.c-series .target-item.target-appear img,
+.c-series .target-item.target-visible-static img {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    max-height: var(--u6-coin-size);
+    max-width: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit3 簡單模式目標點亮紙鈔圖示大小 */
+.c-series .easy-target-group.target-appear .target-group-item[src*="100_yuan"],
+.c-series .easy-target-group.target-appear .target-group-item[src*="500_yuan"], 
+.c-series .easy-target-group.target-appear .target-group-item[src*="1000_yuan"],
+.c-series .easy-target-group.target-appear img[src*="100_yuan"],
+.c-series .easy-target-group.target-appear img[src*="500_yuan"],
+.c-series .easy-target-group.target-appear img[src*="1000_yuan"],
+.c-series .target-item.target-appear img[src*="100_yuan"],
+.c-series .target-item.target-appear img[src*="500_yuan"],
+.c-series .target-item.target-appear img[src*="1000_yuan"],
+.c-series .target-item.target-visible-static img[src*="100_yuan"],
+.c-series .target-item.target-visible-static img[src*="500_yuan"],
+.c-series .target-item.target-visible-static img[src*="1000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    max-height: var(--u6-banknote-size);
+    max-width: var(--u6-banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit4 金錢圖示大小統一 */
+.c-series .unit4-money-source .money-item img,
+.c-series .unit4-drop-zone .money-item img,
+.c-series #money-source-area .money-item img,
+.c-series #drop-zone-area .money-item img {
+    width: var(--u6-coin-size);
+    height: var(--u6-coin-size);
+    max-height: var(--u6-coin-size);
+    max-width: var(--u6-coin-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit4 紙鈔圖示大小 */
+.c-series .unit4-money-source .money-item img[src*="100_yuan"],
+.c-series .unit4-money-source .money-item img[src*="500_yuan"],
+.c-series .unit4-money-source .money-item img[src*="1000_yuan"],
+.c-series .unit4-drop-zone .money-item img[src*="100_yuan"],
+.c-series .unit4-drop-zone .money-item img[src*="500_yuan"],
+.c-series .unit4-drop-zone .money-item img[src*="1000_yuan"],
+.c-series #money-source-area .money-item img[src*="100_yuan"],
+.c-series #money-source-area .money-item img[src*="500_yuan"],
+.c-series #money-source-area .money-item img[src*="1000_yuan"],
+.c-series #drop-zone-area .money-item img[src*="100_yuan"],
+.c-series #drop-zone-area .money-item img[src*="500_yuan"],
+.c-series #drop-zone-area .money-item img[src*="1000_yuan"] {
+    width: var(--u6-banknote-size);
+    height: var(--u6-banknote-size);
+    max-height: var(--u6-banknote-size);
+    max-width: var(--u6-banknote-size);
+    object-fit: contain;
+    border-radius: 10px;
+}
+/* Unit4 金錢項目容器樣式 */
+.c-series .unit4-money-source .money-item,
+.c-series .unit4-drop-zone .money-item,
+.c-series #money-source-area .money-item,
+.c-series #drop-zone-area .money-item,
+.c-series .hint-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: grab;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    min-height: 140px;
+}
+.c-series .product-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border: 3px solid #e0e0e0;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    width: 180px;
+    height: 180px;
+    max-width: 200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+.c-series .product-item:hover,
+.c-series .product-item:focus {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    transform: translateY(-5px);
+}
+.c-series .product-item.selected {
+    border-color: #4CAF50;
+    background: #f8fff9;
+}
+.c-series .product-item.incorrect-selection {
+    border-color: #f44336;
+    background: #ffebee;
+}
+.c-series .product-item img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}
+.c-series .product-item:hover .purchase-indicator {
+    opacity: 1;
+}
+.c-series .money-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    background: white;
+    cursor: grab;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    min-height: 120px;
+    position: relative;
+}
+.c-series .money-item:hover,
+.c-series .money-item:focus {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    border-color: #2E7D32;
+}
+.c-series .money-item:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+.c-series .money-item img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+/* 簡單模式專用樣式 - 確保全寬度橫框佈局 */
+.c-series .change-verification.easy-mode .change-check-area {
+    background: white;
+    margin: 20px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    width: calc(100% - 40px);
+    box-sizing: border-box;
+}
+.c-series .change-verification.easy-mode .change-check-area h3 {
+    color: #333;
+    margin-bottom: 20px;
+}
+.c-series .change-verification.easy-mode .wallet-area {
+    background: white;
+    margin: 20px;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: calc(100% - 40px);
+    box-sizing: border-box;
+}
+.c-series .change-verification.easy-mode .wallet-area h3 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+.c-series .change-verification.easy-mode .store-change {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    border-radius: 15px;
+    border: 2px solid #FF9800;
+}
+.c-series .change-verification.easy-mode .wallet-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 120px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    transition: all 0.3s ease;
+}
+.c-series .change-money {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+.c-series .change-money:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+}
+.c-series .change-money img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+/* 找零中的硬幣保持圓形 */
+.c-series .change-money img:not([src*="100_yuan"]):not([src*="200_yuan"]):not([src*="500_yuan"]):not([src*="1000_yuan"]):not([src*="2000_yuan"]) {
+    border-radius: 50%;
+}
+.c-series .change-money span {
+    font-weight: bold;
+    color: #2E7D32;
+}
+/* =====================================================
+   多選模式樣式
+   ===================================================== */
+.c-series .product-item.multi-select-mode {
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+}
+.c-series .product-item.multi-select-mode:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-medium);
+}
+.c-series .product-item.multi-select-mode.selected {
+    border: 3px solid var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+.c-series .product-item.multi-select-mode.selected .selection-indicator {
+    opacity: 1;
+}
+.c-series .products-grid.horizontal-layout .product-item {
+    flex: 0 0 auto;
+    width: 180px;
+    height: 180px;
+    max-width: 200px;
+}
+/* unit2專用樣式 */
+.c-series #coin-display-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
+    margin: 20px auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 1000px;
+}
+.c-series .countable-item.counted {
+    background: #f0f9ff;
+    border-color: #667eea;
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+.c-series .total-display.simple-display {
+    cursor: default;
+}
+.c-series .total-display.simple-display:hover {
+    background: #f8f9fa;
+    border-color: #ddd;
+    transform: none;
+    box-shadow: none;
+}
+.c-series .payment-money-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 8px;
+    background: rgba(255,255,255,0.9);
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-light);
+}
+/* 可拖回錢包的付款金錢項目樣式 */
+.c-series .payment-money-item.draggable-back {
+    cursor: grab;
+    transition: all 0.3s ease;
+    border: 2px solid #4CAF50;
+}
+.c-series .payment-money-item.draggable-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    border-color: #2E7D32;
+}
+.c-series .payment-money-item.draggable-back:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+.c-series .positive-change {
+    color: #4CAF50;
+    font-weight: bold;
+}
+.c-series .negative-change {
+    color: #f44336;
+    font-weight: bold;
+}

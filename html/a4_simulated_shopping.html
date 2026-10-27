@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+<meta charset="UTF-8">
+<script src="../js/emoji-font.js"></script>
+<meta name="darkreader-lock"><!-- 本站自帶深淺色切換：請 Dark Reader 等外掛別再疊一層（2026-09-24） -->
+<meta name="color-scheme" content="light dark">
+<script>(function(){try{var t=localStorage.getItem("mt_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<script src="../js/tablet-layout.js"></script><!-- iPad 橫式版面判斷：要在所有 CSS 之前（2026-10-02） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A4模擬購物</title>
+
+    <!-- 簡化主題系統樣式 -->
+    <link rel="stylesheet" href="../css/ai-theme.css">
+    <link rel="stylesheet" href="../css/a4_simulated_shopping.css?v=9.52.06">
+    <link rel="stylesheet" href="../css/common-modal-responsive.css">
+    <link rel="stylesheet" href="../css/dark-mode-simple.css">
+    <!-- 聊天機器人樣式 -->
+    <link rel="stylesheet" href="../css/chatbot.css">
+    <!-- iPad 橫式版面（只在 html.tablet-land 生效，必須最後載入） -->
+    <link rel="stylesheet" href="../css/tablet-landscape.css">
+
+</head>
+<body class="a4-unit">
+    <!-- 跳過導航連結（無障礙功能） -->
+    <a href="#main-content" class="skip-link" aria-label="跳過導航，直接到主要內容">
+        跳到主要內容
+    </a>
+    
+    <!-- 載入指示器 -->
+    <div id="loading-screen" class="loading-screen" aria-label="遊戲載入中">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">載入中...</div>
+    </div>
+    
+    <!-- 主要應用程式容器 -->
+    <main id="app" role="main" aria-label="上街買東西遊戲主要內容">
+        <!-- 內容將由 JavaScript 動態生成 -->
+        <noscript>
+            <div class="noscript-message">
+                <h1>需要啟用 JavaScript</h1>
+                <p>此遊戲需要 JavaScript 才能正常運作，請在瀏覽器設定中啟用 JavaScript。</p>
+                <p>如需協助，請聯絡您的老師或家長。</p>
+            </div>
+        </noscript>
+    </main>
+    
+    <!-- 錯誤邊界處理 -->
+    <div id="error-boundary" class="error-boundary" style="display: none;" role="alert">
+        <div class="error-content">
+            <h2>發生錯誤</h2>
+            <p>遊戲執行時發生問題，請重新整理頁面再試一次。</p>
+            <p>如果問題持續發生，請聯絡您的老師。</p>
+            <button onclick="location.reload()" class="reload-btn">重新載入</button>
+        </div>
+    </div>
+    
+    <!-- 全域錯誤處理與載入控制 -->
+    <script>
+        // 錯誤處理（只處理 JS 執行錯誤，忽略音訊/圖片資源載入失敗）
+        window.addEventListener('error', function(event) {
+            if (!event.error) return; // event.error=null 表示資源載入失敗（非 JS 錯誤），忽略
+            console.error('JavaScript 錯誤:', event.error);
+            document.getElementById('error-boundary').style.display = 'flex';
+            document.getElementById('loading-screen').style.display = 'none';
+        });
+
+        // 載入完成後隱藏載入畫面
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1000);
+        });
+    </script>
+    
+    <!-- 成功音效 -->
+    <audio id="success-sound" src="../audio/units/success.mp3" preload="auto"></audio>
+
+    <!-- Canvas Confetti 動畫庫 -->
+    <script src="../js/confetti.browser.min.js"></script>
+    
+    <!-- 主題系統腳本 -->
+    <script src="../js/audio-unlocker.js"></script>
+    <script src="../js/theme-switch.js"></script>
+    <script src="../js/touch-drag-utility.js?v=2.3"></script>
+
+    <!-- 獎勵系統 -->
+    <script src="../js/learning-tracker.js"></script>
+    <script src="../js/result-voice.js"></script>
+    <script src="../js/reward-launcher.js"></script>
+    <script src="../js/student-badge.js"></script>
+    <script src="../js/student-picker.js"></script>
+
+    <!-- 數字語音轉換工具 -->
+    <script src="../js/number-speech-utils.js"></script>
+
+    <!-- 共用商品資料 -->
+    <script src="../js/a4-shared-products.js"></script>
+
+    <!-- 主要遊戲腳本 -->
+    <script src="../js/choice-mark.js"></script>
+    <script src="../js/a4_simulated_shopping.js?v=9.53.12"></script>
+    
+    <!-- 效能監控（開發用） -->
+    <script>
+        // 簡單的效能監控
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    const perfData = performance.timing;
+                    const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+                    console.log('頁面載入時間:', loadTime + 'ms');
+                    
+                    // 如果載入時間過長，可以提供建議
+                    if (loadTime > 5000) {
+                        console.warn('載入時間較長，建議檢查網路連線');
+                    }
+                }, 0);
+            });
+        }
+    </script>
+    
+    <!-- ServiceWorker removed - sw.js file does not exist -->
+
+    <!-- 聊天機器人 -->
+    <script src="../js/chatbot-content.js"></script>
+    <script src="../js/chatbot-context.js"></script>
+    <script src="../js/chatbot-engine.js"></script>
+
+    <!-- 手機端除錯工具 -->
+
+    <!-- 掃描付款（外掛層，不改本單元的 js 一個字；不載入就完全回到原行為）
+         入口預設不顯示，網址加 ?scanpay=1 才會出現——教具卡要先印得出來才有意義。
+         教具卡：worksheet/money-cards.html　設計：doc/開發計畫/開發計畫_掃描付款_QR教具卡.md -->
+    <script src="../js/scan-pay/vendor/aruco/cv.js"></script>
+    <script src="../js/scan-pay/vendor/aruco/aruco.js"></script>
+    <script src="../js/scan-pay/vendor/aruco/dictionaries/apriltag_16h5.js"></script>
+    <script src="../js/scan-pay/mt-markers.js"></script>
+    <script src="../js/scan-pay/scan-pay.js"></script>
+    <script src="../js/scan-pay/units/scan-pay-a4.js"></script>
+    <script src="../js/scan-pay/settings-tools.js"></script>
+
+<script src="../js/money-label-hint.js"></script><!-- 付款／找零：金額字按提示才顯示（2026-10-06） -->
+</body>
+</html>
+

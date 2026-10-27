@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="../js/emoji-font.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>語音檢查</title>
+<!-- 2026-10-02：iPad 下載美佳高音質後網頁聲音沒變，用來查「這台裝置給網頁哪些聲音、網站實際用了哪一個」。
+     內部除錯頁，不掛導覽列、不進主頁目錄。網址：html/voice-check.html -->
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --text:#222; --muted:#666; --line:#ddd; --hi:#e8f5e9; --accent:#3f51b5; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1e1e2e; --card:#2a2a3c; --text:#eee; --muted:#aaa; --line:#444; --hi:#24442a; --accent:#8c9eff; } }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:16px/1.5 -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  h1 { font-size:22px; margin:0 0 8px; }
+  h2 { font-size:18px; margin:20px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
+  .muted { color:var(--muted); font-size:14px; }
+  button { font:inherit; color:#fff; background:var(--accent); border:0; border-radius:8px; padding:10px 14px; margin:4px 4px 4px 0; touch-action:manipulation; }
+  button.small { padding:6px 10px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 4px; text-align:left; vertical-align:top; word-break:break-all; }
+  tr.zh td { background:var(--hi); }
+  #result { white-space:pre-wrap; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:13px; }
+  .big { font-size:18px; font-weight:bold; }
+</style>
+</head>
+<body>
+<h1>語音檢查</h1>
+<p class="muted">列出這台裝置「開放給網頁用」的聲音，並測試網站實際會用哪一個。Siri 聲音不會出現在清單裡，這是 Apple 的限制。</p>
+
+<div class="card">
+  <div class="muted" id="ua"></div>
+  <div class="big" id="count">讀取聲音清單中…</div>
+  <div id="guard" class="big"></div>
+  <button id="reload">重新讀取清單</button>
+  <button id="copy">複製檢查結果</button>
+  <span class="muted" id="copied"></span>
+</div>
+
+<h2>① 網站實際會用哪個聲音</h2>
+<div class="card">
+  <p class="muted">按下去會照單元的方式唸一句（先挑第一個台灣中文聲，再經過全站共用的語音守門與升級）。</p>
+  <button id="test-unit">像單元一樣唸一句</button>
+  <button id="test-none">不指定聲音唸一句</button>
+  <div id="picked" class="big" style="white-space:pre-wrap"></div>
+</div>
+
+<h2>② 每個中文聲音聽聽看</h2>
+<div class="card">
+  <p class="muted">這裡<b>直接</b>用該聲音唸，不經過升級，用來比較各版本的音質。</p>
+  <div id="zh-list"></div>
+</div>
+
+<h2>③ 全部聲音（綠底＝中文）</h2>
+<div class="card" style="overflow-x:auto">
+  <table><thead><tr><th>#</th><th>名稱</th><th>語言</th><th>voiceURI</th><th>本機</th><th>預設</th><th>音質等級</th><th>同一位判定</th></tr></thead>
+  <tbody id="all"></tbody></table>
+</div>
+
+<h2>檢查結果（會被複製的內容）</h2>
+<div class="card"><div id="result"></div></div>
+
+<script src="../js/audio-unlocker.js"></script>
+<script>
+(function () {
+  const synth = window.speechSynthesis;
+  const $ = (id) => document.getElementById(id);
+  const SAMPLE = '數數看有幾元，一共是兩百五十元。';
+  const isZh = (v) => /^zh/i.test(String(v.lang || '').replace('_', '-'));
+  const log = [];
+  let voices = [];
+
+  $('ua').textContent = navigator.userAgent;
+
+  if (!synth || !('SpeechSynthesisUtterance' in window)) {
+    $('count').textContent = '這個瀏覽器不支援網頁語音（speechSynthesis）';
+    return;
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])); }
+
+  const G = window.MTVoiceGuard;
+  const TIER = { 0: '最低（Eloquence）', 1: '一般', 2: '加強', 3: '高音質' };
+  function guardLine() {
+    if (!G) return '語音守門：沒有載入（js/audio-unlocker.js 讀不到）';
+    const m = G.meijia && G.meijia();
+    return `語音守門版本 ${G.ver}｜${G.hooked ? '已掛上' : '⚠️ 沒掛上（這個瀏覽器不讓網頁改 speak）'}` +
+           (G.isIOS ? `｜iPad／iPhone：中文一律用 ${m ? m.name : '（找不到美佳）'}` : '') +
+           (G.lastError ? `｜⚠️ 錯誤：${G.lastError}` : '');
+  }
+  function render() {
+    voices = synth.getVoices() || [];
+    $('guard').textContent = guardLine();
+    const zh = voices.filter(isZh);
+    $('count').textContent = `共 ${voices.length} 個聲音，其中中文 ${zh.length} 個`;
+    $('all').innerHTML = voices.map((v, i) =>
+      `<tr class="${isZh(v) ? 'zh' : ''}"><td>${i}</td><td>${esc(v.name)}</td><td>${esc(v.lang)}</td><td>${esc(v.voiceURI)}</td><td>${v.localService ? '是' : '否'}</td><td>${v.default ? '★' : ''}</td><td>${G ? G.tier(v) : '?'}</td><td>${G ? esc(G.base(v)) : '?'}</td></tr>`).join('');
+    $('zh-list').innerHTML = zh.length
+      ? zh.map(v => `<div><button class="small" data-i="${voices.indexOf(v)}">▶ ${esc(v.name)}</button> <span class="muted">${esc(v.lang)}｜${esc(v.voiceURI)}</span></div>`).join('')
+      : '<p>沒有任何中文聲音。</p>';
+    updateResult();
+  }
+
+  // 送出後讀回 u.voice＝audio-unlocker 守門／升級後實際送出的聲音。noUpgrade＝②逐一試聽，暫停升級。
+  function speak(voice, label, noUpgrade) {
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(SAMPLE);
+    if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = 'zh-TW'; }
+    const asked = voice ? voice.name : '（不指定）';
+    window.__mtNoVoiceUpgrade = !!noUpgrade;
+    try { synth.speak(u); } finally { window.__mtNoVoiceUpgrade = false; }
+    const used = u.voice ? `${u.voice.name}｜${u.voice.voiceURI}` : '（交給系統挑，網頁看不到是哪個）';
+    let line = `${label}：指定 ${asked} → 實際送出 ${used}`;
+    if (G && voice && !noUpgrade) {
+      try { const w = G.upgrade(voice); line += `
+　升級判斷：${voice.name}（${TIER[G.tier(voice)]}）→ ${w.name}（${TIER[G.tier(w)]}）`; }
+      catch (e) { line += `
+　升級判斷出錯：${e.message}`; }
+    }
+    if (G && G.lastError) line += `
+　⚠️ 守門錯誤：${G.lastError}`;
+    $('guard').textContent = guardLine();
+    log.push(line);
+    $('picked').textContent = line;
+    updateResult();
+  }
+
+  $('test-unit').onclick = () => {
+    // 與 C2 等單元相同的挑法（js/c2_money_counting.js speech.init）
+    const v = voices.find(v => v.name.startsWith('Microsoft Yating')) ||
+              voices.find(v => /microsoft/i.test(v.name) && /online/i.test(v.name) && v.lang.startsWith('zh')) ||
+              voices.find(v => /google/i.test(v.name) && v.lang.startsWith('zh')) ||
+              voices.find(v => v.lang === 'zh-TW') ||
+              voices.find(v => v.lang.startsWith('zh')) || null;
+    speak(v, '像單元一樣');
+  };
+  $('test-none').onclick = () => speak(null, '不指定');
+  $('zh-list').onclick = (e) => {
+    const b = e.target.closest('button[data-i]');
+    if (b) speak(voices[+b.dataset.i], '直接指定', true);
+  };
+  $('reload').onclick = render;
+
+  function updateResult() {
+    const zh = voices.filter(isZh);
+    $('result').textContent = [
+      '【語音檢查】' + new Date().toLocaleString(),
+      'UA：' + navigator.userAgent,
+      guardLine(),
+      `聲音總數：${voices.length}，中文：${zh.length}`,
+      '中文聲音：',
+      ...zh.map(v => `  - ${v.name}｜${v.lang}｜${v.voiceURI}｜本機:${v.localService ? '是' : '否'}${v.default ? '｜預設' : ''}${G ? `｜等級:${G.tier(v)}｜判定:${G.base(v)}` : ''}`),
+      '測試紀錄：',
+      ...(log.length ? log.map(l => '  ' + l) : ['  （還沒按測試鈕）'])
+    ].join('\n');
+  }
+
+  $('copy').onclick = async () => {
+    const text = $('result').textContent;
+    try { await navigator.clipboard.writeText(text); $('copied').textContent = '已複製'; }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove(); $('copied').textContent = '已複製';
+    }
+  };
+
+  // iPad 的清單常常一開始是空的，晚一點才到
+  render();
+  if ('onvoiceschanged' in synth) synth.addEventListener('voiceschanged', render);
+  let tries = 0;
+  const t = setInterval(() => { if ((synth.getVoices() || []).length !== voices.length) render(); if (++tries > 10) clearInterval(t); }, 500);
+})();
+</script>
+</body>
+</html>

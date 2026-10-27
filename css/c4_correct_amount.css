@@ -1,0 +1,126 @@
+
+
+/* === migrated from HTML <style> block (2026-03-07) === */
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* 點擊選擇視覺反饋樣式 - 參考 c3_money_exchange */
+        .unit4-easy-source-item.selected-item,
+        .unit4-normal-source-item.selected-item,
+        .unit4-hard-source-item.selected-item,
+        .unit4-easy-dropped-item.selected-item,
+        .unit4-normal-dropped-item.selected-item,
+        .unit4-hard-dropped-item.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        /* 確保點擊事件正常工作 */
+        .unit4-easy-source-item,
+        .unit4-normal-source-item,
+        .unit4-hard-source-item,
+        .unit4-easy-dropped-item,
+        .unit4-normal-dropped-item,
+        .unit4-hard-dropped-item {
+            cursor: pointer;
+        }
+        
+        /* 防止圖片內容干擾點擊事件，但保留容器的觸控功能 */
+        .unit4-easy-source-item img,
+        .unit4-normal-source-item img,
+        .unit4-hard-source-item img,
+        .unit4-easy-dropped-item img,
+        .unit4-normal-dropped-item img,
+        .unit4-hard-dropped-item img {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        
+        /* 確保錢幣容器能接收觸控事件 */
+        .unit4-easy-source-item,
+        .unit4-normal-source-item,
+        .unit4-hard-source-item,
+        .unit4-easy-dropped-item,
+        .unit4-normal-dropped-item,
+        .unit4-hard-dropped-item,
+        .money-item {
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+
+/* >>> DARK-AUTO 深色：遊戲／任務／完成畫面（2026-09-23）
+   亮底改同色相深色、深色字改淺色；狀態規則（.selected/:hover…）一併給深色版本。
+   兩塊選擇器與數值逐字對應，只有外層 gate 不同（改一邊就要改另一邊）；淺色模式不受影響。
+   守門：node tests/_e2e_units_dark.js <單元> ＋ node tests/_audit_dark_mirror.js */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .c4-unit .btn-text {
+        color: #b5c9e3 !important;
+    }
+    :root:not([data-theme="light"]) .c4-unit .hint-item {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c4-unit .money-item {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) .c4-unit .money-value {
+        color: #b4e4b7;
+    }
+    :root:not([data-theme="light"]) .c4-unit .store-layout {
+        background: linear-gradient(135deg, #16242a 0%, #16282a 100%);
+    }
+    :root:not([data-theme="light"]) .c4-unit .section-title {
+        color: #b5e3e3 !important;
+    }
+    :root:not([data-theme="light"]) .c4-unit .exchange-section {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c4-unit .my-money-section {
+        background: #2d2d44;
+    }
+    :root:not([data-theme="light"]) .c4-unit .target-amount-display {
+        color: #f4aca4 !important;
+    }
+}
+[data-theme="dark"] .c4-unit .btn-text {
+    color: #b5c9e3 !important;
+}
+[data-theme="dark"] .c4-unit .hint-item {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c4-unit .money-item {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] .c4-unit .money-value {
+    color: #b4e4b7;
+}
+[data-theme="dark"] .c4-unit .store-layout {
+    background: linear-gradient(135deg, #16242a 0%, #16282a 100%);
+}
+[data-theme="dark"] .c4-unit .section-title {
+    color: #b5e3e3 !important;
+}
+[data-theme="dark"] .c4-unit .exchange-section {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c4-unit .my-money-section {
+    background: #2d2d44;
+}
+[data-theme="dark"] .c4-unit .target-amount-display {
+    color: #f4aca4 !important;
+}
+/* <<< DARK-AUTO */

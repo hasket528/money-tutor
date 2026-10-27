@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>💰</text></svg>">
+<meta charset="UTF-8">
+<script src="../../js/emoji-font.js"></script>
+  <script src="../../js/tablet-layout.js"></script><!-- iPad 橫式版面判斷：要在所有 CSS 之前（2026-10-03） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>快速找零</title>
+  <link rel="stylesheet" href="../../css/ai-theme.css">
+  <link rel="stylesheet" href="../css/games-base.css">
+  <link rel="stylesheet" href="change.css">
+  <!-- iPad 橫式版面（只在 html.tablet-land 生效，必須最後載入） -->
+  <link rel="stylesheet" href="../../css/tablet-landscape.css">
+</head>
+<body class="game-body">
+
+  <div id="game-area">
+
+    <!-- 題目資訊 -->
+    <div id="question-panel">
+      <!-- 購買商品 -->
+      <div id="items-display"></div>
+
+      <!-- 付款 − 商品 = 找零 算式 -->
+      <div id="transaction-display">
+        <div class="txn-block">
+          <div class="txn-label">付款</div>
+          <div id="paid-display">--</div>
+          <div class="txn-unit">元</div>
+        </div>
+        <div class="txn-op">−</div>
+        <div class="txn-block">
+          <div class="txn-label">商品</div>
+          <div id="price-sum-display">--</div>
+          <div class="txn-unit">元</div>
+        </div>
+        <div class="txn-op">=</div>
+        <div class="txn-block txn-change">
+          <div class="txn-label">找零</div>
+          <div id="change-display">??</div>
+          <div class="txn-unit">元</div>
+        </div>
+      </div>
+
+      <!-- 已選金額 -->
+      <div id="selected-bar">
+        <span class="sel-label">已選</span>
+        <span id="selected-sum">0</span>
+        <span class="sel-unit">元</span>
+        <div id="selected-progress-track">
+          <div id="selected-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 計時進度條 -->
+    <div id="question-timer-bar"><div id="question-timer-fill"></div></div>
+
+    <!-- 硬幣選盤 -->
+    <div id="coin-panel"></div>
+
+    <!-- 確認按鈕 -->
+    <button id="confirm-btn" disabled>確認找零</button>
+
+  </div>
+
+  <script src="../../js/audio-unlocker.js"></script>
+  <script src="../js/game-engine.js"></script>
+  <script src="../js/game-ui.js"></script>
+  <script src="../js/game-audio.js"></script>
+  <script src="change.js"></script>
+</body>
+</html>

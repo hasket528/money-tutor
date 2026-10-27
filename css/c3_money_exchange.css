@@ -1,0 +1,1946 @@
+/* =============================================================
+   C3 金錢幣值的兌換 — 單元專用樣式
+   從 html/c3_money_exchange.html 的 <style> 塊遷移
+   遷移日期：2026-03-06
+   載入順序：ai-theme.css → unit6.css → c3_money_exchange.css
+             → common-modal-responsive.css → dark-mode-simple.css
+   ============================================================= */
+
+        /* 確保 script 標籤不會顯示 */
+        script {
+            display: none !important;
+        }
+
+        /* 【修正版】徹底禁用行動裝置上的下拉重新整理功能
+           同時針對 html, body, 和 #app 容器進行設置，確保完全覆蓋 */
+        html, body, #app {
+            overscroll-behavior-y: contain;
+        }
+
+        /* 兌換目標金錢水平排列 */
+        .target-money-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* 統一結果容器自適應調整 - 置中靠攏布局 */
+        .unified-results-container {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-start;
+            justify-content: center; /* 置中靠攏 */
+            gap: 8px; /* 適當間距保持緊湊 */
+            flex-wrap: wrap !important; /* 強制換行，防止重疊 */
+            padding: 16px; /* 增加內間距 */
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            min-height: 120px;
+            width: 100%; /* 明確設定寬度確保換行生效 */
+            max-width: 100%; /* 確保不超出容器 */
+            box-sizing: border-box;
+        }
+
+        /* 我的金錢區自適應調整 - 優化flexbox布局 */
+        .my-money-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly; /* 平均分配空間 */
+            align-items: center;
+            gap: 10px; /* 增加容器間距 */
+            padding: 20px; /* 增加容器內間距 */
+            min-height: 180px; /* 增加最小高度適應新容器 */
+            max-width: 100%; /* 確保不超出容器 */
+            box-sizing: border-box;
+        }
+
+        /* 兌換區自適應調整 - 優化flexbox布局 */
+        .exchange-area, .drop-zone {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly; /* 平均分配空間 */
+            align-items: center;
+            gap: 12px; /* 增加容器間距避免重疊 */
+            padding: 20px; /* 增加容器內間距 */
+            min-height: 180px; /* 增加最小高度適應新容器 */
+            max-width: 100%; /* 確保不超出容器 */
+            box-sizing: border-box;
+        }
+
+        /* 放置框對齊修正 - 優化紙鈔容器空間 */
+        .drop-zone, .exchange-drop-zone {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 180px; /* 增加高度適應紙鈔容器 */
+            min-width: 160px; /* 確保足夠寬度容納紙鈔容器 145px + 邊距 */
+            padding: 15px; /* 調整內間距 */
+            margin: 5px; /* 添加外間距避免重疊 */
+            box-sizing: border-box;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            flex-shrink: 0; /* 防止放置框被壓縮 */
+        }
+
+        /* 放置框內的元素垂直居中 */
+        .drop-zone > *,
+        .exchange-drop-zone > * {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* Unit3 專用金錢圖示樣式 - 使用專用類名避免衝突 */
+
+        /* Unit3 硬幣樣式 */
+        .unit3-coin {
+            width: 80px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 50%;
+            margin: 0; /* 移除邊距確保與金額數字對齊 */
+            display: block;
+            flex-shrink: 0; /* 防止圖示縮小 */
+        }
+
+        /* Unit3 紙鈔樣式 */
+        .unit3-banknote {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 10px;
+            margin: 0;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        /* Unit3 兌換目標金錢標籤 */
+        .money-label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin: 4px 0 0 0;
+        }
+
+        /* Unit3 金錢價值標籤基本樣式 */
+        .money-value {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0 0 3px 0; /* 底部留 3px 讓文字不緊貼邊框 */
+            margin: 4px 0 0 0; /* 圖示與數字間距 */
+            line-height: 1; /* 移除 half-leading，文字底部貼齊容器 */
+            text-align: center;
+            width: 100%; /* 確保金額數字占滿容器寬度以實現居中 */
+            z-index: 10;
+            position: relative;
+        }
+
+        /* Unit3 激活效果 - 增強視覺反饋 */
+        .unit3-coin.target-active,
+        .unit3-banknote.target-active,
+        .target-active {
+            opacity: 1 !important;
+            transform: scale(1.05);
+            transition: all 0.5s ease-in-out;
+            filter: brightness(1.1);
+        }
+
+        .unit3-coin.target-active:hover,
+        .unit3-banknote.target-active:hover,
+        .target-active:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        /* Unit3 專用容器樣式 - 解決紙鈔重疊問題 */
+        .unit3-coin-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+            border: 2px solid #4CAF50;
+            border-radius: 12px;
+            background: white;
+            cursor: grab;
+            transition: all 0.3s ease;
+            min-width: 90px;
+            max-width: 95px;
+            height: auto !important;
+            position: relative;
+            flex-shrink: 0;
+            margin: 3px;
+        }
+
+        .unit3-banknote-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+            border: 2px solid #4CAF50;
+            border-radius: 12px;
+            background: white;
+            cursor: grab;
+            transition: all 0.3s ease;
+            min-width: 124px;
+            max-width: 126px;
+            height: auto !important;
+            position: relative;
+            flex-shrink: 0;
+            margin: 3px;
+        }
+
+        /* Unit3 容器懸停效果 */
+        .unit3-coin-container:hover,
+        .unit3-coin-container:focus,
+        .unit3-banknote-container:hover,
+        .unit3-banknote-container:focus {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .unit3-coin-container:active,
+        .unit3-banknote-container:active {
+            transform: translateY(-1px);
+        }
+
+        /* 兌換區域專用間距規則 - 解決紙鈔重疊 + 垂直置中 */
+        .exchange-drop-zone .unit3-banknote-container,
+        .drop-zone .unit3-banknote-container,
+        .exchange-area .unit3-banknote-container {
+            margin: 6px 8px !important; /* 增加兌換區域的紙鈔間距 */
+            min-width: 128px !important;
+            flex-shrink: 0 !important;
+            width: 128px !important;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2px !important;
+        }
+
+        .exchange-drop-zone .unit3-coin-container,
+        .drop-zone .unit3-coin-container,
+        .exchange-area .unit3-coin-container {
+            margin: 4px 6px !important; /* 適當增加硬幣間距 */
+            min-width: 92px !important;
+            flex-shrink: 0 !important;
+        }
+
+        /* 兌換區域整體布局優化 */
+        .exchange-area {
+            min-width: 0; /* 允許flexbox正確計算寬度 */
+            overflow-x: auto; /* 如果內容過寬允許橫向滾動 */
+        }
+
+        /* 🏆 最佳解決方案：外層Grid + 內層標準塊級元素 */
+        /* 放置框主容器 - 使用標準塊級元素 */
+        .drop-zone-area {
+            /* 移除 display: flex，讓它作為標準塊級容器 */
+            /* 高度將由內部內容自動決定 */
+        }
+
+        .flexible-zone {
+            /* 使用Grid系統精確控制寬度，避免初始變寬和閃爍 */
+            display: grid;
+            grid-template-columns: 1fr;
+            width: 100%;
+            min-height: 120px;
+            /* 高度由內容決定 */
+            overflow: visible;
+        }
+
+        /* 放置的金錢容器 - 內層使用Flexbox處理錢幣排列 */
+        .placed-coins-container {
+            /* 🎯 微觀佈局：專注於錢幣的水平排列和換行 */
+            display: flex;
+            flex-wrap: wrap; /* 錢幣先水平排列，寬度不足時自動換行 */
+            gap: 10px;
+            align-items: flex-start; /* 避免垂直居中導致的佈局變化 */
+            justify-content: flex-start; /* 錢幣從左側開始排列 */
+            padding: 10px;
+            /* 🏆 高度自適應核心設定 */
+            min-height: 0; /* 重要：避免Flexbox默認高度限制 */
+            height: auto; /* 高度完全由內容決定 */
+            /* 🛡️ 佈局穩定性保證 */
+            width: 100%; /* 確保寬度穩定 */
+            box-sizing: border-box; /* 包含padding在寬度計算內 */
+            /* 🎯 換行優化 */
+            align-content: flex-start; /* 多行內容從頂部開始排列 */
+        }
+
+        /* 🔧 拖曳狀態下保持佈局穩定性 */
+        .placed-coins-container.dragover {
+            /* 在dragover狀態下不改變尺寸 */
+            transform: none;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            border: 2px dashed #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        /* 錢幣容器內的子元素穩定性 */
+        .placed-coins-container > * {
+            flex-shrink: 0; /* 防止錢幣被壓縮 */
+        }
+
+        /* 🎯 換行後高度自適應優化 */
+        /* 當錢幣數量較多需要換行時的動態高度調整 */
+        .placed-coins-container[data-rows="1"] {
+            min-height: 100px; /* 單行錢幣的基本高度 */
+        }
+
+        .placed-coins-container[data-rows="2"] {
+            min-height: 200px; /* 雙行錢幣的高度 */
+        }
+
+        .placed-coins-container[data-rows="3"] {
+            min-height: 300px; /* 三行錢幣的高度 */
+        }
+
+        /* 響應式錢幣間距調整 - 確保換行時不重疊 */
+        @media (max-width: 600px) {
+            .placed-coins-container {
+                gap: 8px; /* 小螢幕減少間距 */
+                padding: 8px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .placed-coins-container {
+                gap: 6px; /* 極小螢幕進一步減少間距 */
+                padding: 6px;
+            }
+        }
+
+        /* 新兌換結果金錢動畫 */
+        .new-result-coin {
+            animation: newCoinAppear 0.8s ease-in-out;
+        }
+
+        @keyframes newCoinAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-20px);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1) translateY(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* 兌換區轉場動畫 - 簡單模式專用 */
+        .exchange-area-exit {
+            animation: exchangeAreaExit 0.4s ease-out forwards;
+            /* 動畫結束時保持隱藏狀態 - forwards已包含在上面 */
+        }
+
+        .exchange-area-enter {
+            animation: exchangeAreaEnter 0.5s ease-in-out forwards;
+            animation-delay: 0.2s;
+            /* 動畫開始前保持隱藏狀態 */
+            opacity: 0;
+            transform: translateY(10px);
+            visibility: hidden;
+        }
+
+        /* 兌換區隱藏狀態 - 高優先級確保隱藏 */
+        #game-area.exchange-area-hidden {
+            opacity: 0 !important;
+            transform: translateY(10px) !important;
+            visibility: hidden !important;
+            transition: none !important;
+        }
+
+        @keyframes exchangeAreaExit {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+                visibility: visible;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(10px);
+                visibility: hidden;
+            }
+        }
+
+        @keyframes exchangeAreaEnter {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+                visibility: hidden;
+            }
+            1% {
+                visibility: visible;
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+                visibility: visible;
+            }
+        }
+
+        /* 拖放區域水平排列 - 增加間距避免紙鈔重疊 */
+        .drop-zones-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 18px; /* 增加間距適應紙鈔容器 145px */
+            flex-wrap: wrap;
+        }
+
+        .exchange-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px; /* 增加間距避免紙鈔重疊 */
+            flex-wrap: wrap;
+        }
+
+        .target-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 🏆 核心修正：drop-zone-area 使用標準塊級佈局 */
+        .drop-zone-area {
+            /* 移除 display: flex - 使用標準塊級元素 */
+            /* 讓高度由內部 .flexible-zone 和 .placed-coins-container 決定 */
+            width: 100%;
+            min-height: 0; /* 重要：不限制最小高度 */
+            /* 使用 Grid 系統精確控制佈局 */
+            display: grid;
+            grid-template-columns: 1fr;
+            align-items: stretch; /* 讓內部元素填滿可用空間 */
+        }
+
+        /* 自適應容器大小 - 根據內容數量調整 */
+        .money-container-adaptive {
+            min-height: 150px;
+            max-height: none; /* 允許內容決定高度 */
+            overflow: visible; /* 確保內容不被裁切 */
+        }
+
+        /* 當金錢數量較多時的自適應樣式 */
+        .money-area[data-count="high"] {
+            min-height: 200px;
+            gap: 6px;
+        }
+
+        .money-area[data-count="medium"] {
+            min-height: 175px;
+            gap: 7px;
+        }
+
+        .money-area[data-count="low"] {
+            min-height: 150px;
+            gap: 8px;
+        }
+
+        /* 響應式調整 - 小螢幕優化兌換區間距 */
+        @media (max-width: 768px) {
+            .my-money-area, .exchange-area, .drop-zone, .exchange-drop-zone, .unified-results-container {
+                padding: 15px;
+                gap: 8px; /* 保持適當間距 */
+                min-height: 160px; /* 調整高度 */
+            }
+
+            /* 調整兌換區域間距 */
+            .drop-zones-row {
+                gap: 12px; /* 小螢幕減少間距但保持不重疊 */
+            }
+
+            .exchange-row {
+                gap: 15px; /* 小螢幕減少間距但保持不重疊 */
+            }
+
+            .drop-zone, .exchange-drop-zone {
+                min-width: 130px; /* 小螢幕調整最小寬度 */
+                padding: 12px;
+                margin: 3px;
+            }
+
+            .unit3-coin-container {
+                min-width: 80px;
+                max-width: 85px;
+                padding: 2px;
+                margin: 2px;
+            }
+
+            .unit3-banknote-container {
+                min-width: 88px;
+                max-width: 95px;
+                padding: 2px;
+                margin: 2px;
+            }
+
+            /* 兌換區域專用間距調整 */
+            .exchange-drop-zone .unit3-banknote-container,
+            .drop-zone .unit3-banknote-container {
+                margin: 4px 6px !important;
+                min-width: 90px !important;
+            }
+
+            .unit3-coin {
+                width: 65px;
+                height: 65px;
+                margin: 2px 4px;
+            }
+
+            .unit3-banknote {
+                width: 90px;
+                height: 90px;
+                margin: 2px 4px;
+            }
+        }
+
+        /* 超小螢幕調整 - 優化兌換區間距 */
+        @media (max-width: 480px) {
+            .my-money-area, .exchange-area, .drop-zone, .exchange-drop-zone, .unified-results-container {
+                padding: 10px;
+                gap: 6px;
+                min-height: 140px;
+            }
+
+            /* 超小螢幕兌換區域間距 */
+            .drop-zones-row {
+                gap: 8px; /* 進一步減少但保持不重疊 */
+            }
+
+            .exchange-row {
+                gap: 12px;
+            }
+
+            .drop-zone, .exchange-drop-zone {
+                min-width: 110px; /* 超小螢幕最小寬度 */
+                padding: 8px;
+                margin: 2px;
+            }
+
+            .unit3-coin-container {
+                min-width: 70px;
+                max-width: 75px;
+            }
+
+            .unit3-banknote-container {
+                min-width: 85px;
+                max-width: 92px;
+            }
+
+            /* 超小螢幕兌換區域專用間距 */
+            .exchange-drop-zone .unit3-banknote-container,
+            .drop-zone .unit3-banknote-container {
+                margin: 2px 4px !important;
+                min-width: 88px !important;
+            }
+
+            .unit3-coin {
+                width: 55px;
+                height: 55px;
+            }
+
+            .unit3-banknote {
+                width: 75px;
+                height: 75px;
+            }
+        }
+
+        /* 數量高亮顯示樣式 - 用於標題中的×個×元 */
+        .count-highlight {
+            color: #ff6b35;
+            font-weight: bold;
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #ffb74d;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            display: inline-block;
+            margin: 0 2px;
+            transition: all 0.3s ease;
+        }
+
+        .count-highlight:hover {
+            background: linear-gradient(135deg, #ffe0b2, #ffcc02);
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(255,107,53,0.3);
+        }
+
+        /* =====================================================
+           Unit3 深色模式專用樣式 - 僅影響 unit3.html
+           ===================================================== */
+
+        /* Unit3 測驗頁面主要區域 */
+        [data-theme="dark"] #app {
+            background: var(--background-primary) !important;
+            color: var(--text-primary) !important;
+            min-height: 100vh !important;
+        }
+
+        [data-theme="dark"] #dynamic-game-container,
+        [data-theme="dark"] #game-container {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: var(--border-thick) solid var(--border-color) !important;
+            border-radius: var(--radius-large) !important;
+            box-shadow: var(--shadow-medium) !important;
+        }
+
+        /* Unit3 標題和區域標頭 */
+        [data-theme="dark"] .unit3-easy-section-title,
+        [data-theme="dark"] .unit3-normal-section-title,
+        [data-theme="dark"] .unit3-hard-section-title {
+            background: var(--background-secondary) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-medium) !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Unit3 我的金錢區 */
+        [data-theme="dark"] .my-money-area {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        /* Unit3 兌換區 */
+        [data-theme="dark"] .exchange-area,
+        [data-theme="dark"] .drop-zone,
+        [data-theme="dark"] .exchange-drop-zone {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--warning-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        [data-theme="dark"] .drop-zone.filled,
+        [data-theme="dark"] .exchange-drop-zone.filled {
+            background: var(--background-card) !important;
+            border-color: var(--success-color) !important;
+        }
+
+        /* Unit3 兌換結果區 */
+        [data-theme="dark"] .unified-results-container {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--success-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        /* Unit3 金錢容器 */
+        [data-theme="dark"] .unit3-coin-container,
+        [data-theme="dark"] .unit3-banknote-container {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--success-color) !important;
+            border-radius: var(--radius-small) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        /* Unit3 金錢項目 - 覆蓋白色背景 */
+        [data-theme="dark"] .money-item {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--success-color) !important;
+        }
+
+        [data-theme="dark"] .exchange-money-item {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Unit3 所有可能的白色背景覆蓋 */
+        [data-theme="dark"] .money-source-container {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--border-color) !important;
+        }
+
+        [data-theme="dark"] #exchange-results-area {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        [data-theme="dark"] .unit3-coin-container:hover,
+        [data-theme="dark"] .unit3-banknote-container:hover {
+            background: var(--background-secondary) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: var(--shadow-orange) !important;
+        }
+
+        /* Unit3 金錢圖示和價值標籤 */
+        [data-theme="dark"] .money-value {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: var(--text-primary) !important;
+            background: var(--background-secondary) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: var(--radius-small) !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+            z-index: 15;
+        }
+
+        /* Unit3 深色模式下確保淡化狀態的金額數字可見 */
+        [data-theme="dark"] .exchange-item.faded .money-value,
+        [data-theme="dark"] .money-item.faded .money-value,
+        [data-theme="dark"] .placeholder-money .faded + .money-value,
+        [data-theme="dark"] .target-money .faded + .money-value,
+        [data-theme="dark"] .placeholder-money .money-value,
+        [data-theme="dark"] .target-money .money-value {
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
+            z-index: 15;
+        }
+
+        /* Unit3 目標金錢顯示 */
+        [data-theme="dark"] .target-display,
+        [data-theme="dark"] .target-money-row {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        [data-theme="dark"] .target-display.active {
+            background: var(--background-secondary) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: var(--shadow-orange) !important;
+        }
+
+        [data-theme="dark"] .target-display.faded {
+            background: var(--background-light) !important;
+            opacity: 0.4 !important;
+        }
+
+        /* Unit3 按鈕樣式 */
+        [data-theme="dark"] .complete-exchange-btn,
+        [data-theme="dark"] .next-question-btn,
+        [data-theme="dark"] .return-money-btn {
+            background: linear-gradient(145deg, var(--primary-color), var(--primary-dark)) !important;
+            color: var(--text-inverse) !important;
+            border: 2px solid var(--primary-dark) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-orange) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }
+
+        [data-theme="dark"] .complete-exchange-btn:hover,
+        [data-theme="dark"] .next-question-btn:hover,
+        [data-theme="dark"] .return-money-btn:hover {
+            background: linear-gradient(145deg, var(--primary-light), var(--primary-color)) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 15px rgba(79, 140, 255, 0.4) !important;
+        }
+
+        /* Unit3 拖放提示 */
+        [data-theme="dark"] .transparent-drop-hint {
+            color: var(--text-secondary) !important;
+            background: transparent !important;
+        }
+
+        [data-theme="dark"] .drop-zone:hover .transparent-drop-hint,
+        [data-theme="dark"] .exchange-drop-zone:hover .transparent-drop-hint {
+            color: var(--text-primary) !important;
+        }
+
+        /* Unit3 放置容器 */
+        [data-theme="dark"] .placed-coins-container {
+            background: transparent !important;
+        }
+
+        /* Unit3 進度和狀態顯示 */
+        [data-theme="dark"] .progress-display,
+        [data-theme="dark"] .status-display,
+        [data-theme="dark"] .score-display {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        /* Unit3 數量高亮顯示保持原有橘色 */
+        [data-theme="dark"] .count-highlight {
+            color: #ff6b35 !important;
+            background: linear-gradient(135deg, var(--background-secondary), var(--background-light)) !important;
+            border: 1px solid var(--border-color) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }
+
+        [data-theme="dark"] .count-highlight:hover {
+            background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+            box-shadow: 0 2px 4px rgba(255,107,53,0.3) !important;
+        }
+
+        /* Unit3 深色模式下的點擊選擇樣式 */
+        [data-theme="dark"] .money-item.selected-item,
+        [data-theme="dark"] .unit3-coin-container.selected-item,
+        [data-theme="dark"] .unit3-banknote-container.selected-item {
+            border: 3px solid var(--success-color) !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.15) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* Unit3 結果佔位符 */
+        [data-theme="dark"] .results-placeholder {
+            color: var(--text-secondary) !important;
+            background: transparent !important;
+        }
+
+        /* Unit3 動畫元素 */
+        [data-theme="dark"] .new-result-coin {
+            border-color: var(--success-color) !important;
+        }
+
+        /* Unit3 難度指示器 */
+        [data-theme="dark"] .difficulty-indicator {
+            background: var(--background-light) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-small) !important;
+        }
+
+        /* Unit3 遊戲統計 */
+        [data-theme="dark"] .game-stats,
+        [data-theme="dark"] .quiz-progress {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        /* Unit3 額外的白色背景覆蓋 - 更全面的深色模式 */
+        [data-theme="dark"] .setup-section,
+        [data-theme="dark"] .game-section,
+        [data-theme="dark"] .question-section,
+        [data-theme="dark"] .answer-section {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+        }
+
+        /* Unit3 通用容器深色覆蓋 */
+        [data-theme="dark"] div[class*="area"],
+        [data-theme="dark"] div[class*="container"]:not(.unit3-coin-container):not(.unit3-banknote-container),
+        [data-theme="dark"] div[class*="section"] {
+            background: var(--background-card) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Unit3 確保所有白色背景被覆蓋 */
+        [data-theme="dark"] * {
+            background-color: inherit !important;
+        }
+
+        /* Unit3 重新設定關鍵容器背景 */
+        [data-theme="dark"] #app,
+        [data-theme="dark"] #dynamic-game-container,
+        [data-theme="dark"] .my-money-area,
+        [data-theme="dark"] .exchange-area,
+        [data-theme="dark"] .unified-results-container,
+        [data-theme="dark"] .unit3-coin-container,
+        [data-theme="dark"] .unit3-banknote-container {
+            background: var(--background-light) !important;
+        }
+
+        [data-theme="dark"] #app {
+            background: var(--background-primary) !important;
+        }
+
+        [data-theme="dark"] #dynamic-game-container {
+            background: var(--background-card) !important;
+        }
+
+        /* Unit3 更強力的白色背景消除規則 */
+        [data-theme="dark"] div:not([style*="background"]) {
+            background-color: transparent !important;
+        }
+
+        /* Unit3 確保關鍵區域有正確的深色背景 */
+        [data-theme="dark"] .my-money-area,
+        [data-theme="dark"] .money-source-container {
+            background: linear-gradient(135deg, var(--background-light), var(--background-secondary)) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--border-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        [data-theme="dark"] .exchange-area,
+        [data-theme="dark"] .drop-zone,
+        [data-theme="dark"] .exchange-drop-zone {
+            background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--warning-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        [data-theme="dark"] .unified-results-container,
+        [data-theme="dark"] #exchange-results-area {
+            background: linear-gradient(135deg, var(--background-card), var(--background-light)) !important;
+            color: var(--text-primary) !important;
+            border: 2px dashed var(--success-color) !important;
+            border-radius: var(--radius-medium) !important;
+            box-shadow: var(--shadow-light) !important;
+        }
+
+        /* Unit3 覆蓋任何可能的白色背景 */
+        [data-theme="dark"] .placeholder-money,
+        [data-theme="dark"] .target-money,
+        [data-theme="dark"] .exchange-item,
+        [data-theme="dark"] .placed-coins-container {
+            background: transparent !important;
+        }
+
+        /* Unit3 更徹底的白色背景消除 - 針對容器元素 */
+        [data-theme="dark"] div:not(.unit3-coin):not(.unit3-banknote):not(img) {
+            background-color: inherit !important;
+        }
+
+        /* Unit3 重新定義關鍵容器的背景 */
+        [data-theme="dark"] body,
+        [data-theme="dark"] html {
+            background: var(--background-primary) !important;
+        }
+
+        [data-theme="dark"] #app {
+            background: var(--background-primary) !important;
+        }
+
+        [data-theme="dark"] #dynamic-game-container {
+            background: var(--background-card) !important;
+        }
+
+        [data-theme="dark"] .my-money-area,
+        [data-theme="dark"] .money-source-container {
+            background: linear-gradient(135deg, var(--background-light), var(--background-secondary)) !important;
+        }
+
+        [data-theme="dark"] .exchange-area,
+        [data-theme="dark"] .drop-zone,
+        [data-theme="dark"] .exchange-drop-zone {
+            background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+        }
+
+        [data-theme="dark"] .unified-results-container,
+        [data-theme="dark"] #exchange-results-area {
+            background: linear-gradient(135deg, var(--background-card), var(--background-light)) !important;
+        }
+
+        /* Unit3 透明背景的元素 */
+        [data-theme="dark"] .placeholder-money,
+        [data-theme="dark"] .target-money,
+        [data-theme="dark"] .exchange-item,
+        [data-theme="dark"] .placed-coins-container,
+        [data-theme="dark"] img {
+            background: transparent !important;
+        }
+
+        /* Unit3 確保 placeholder-money 在深色模式下正確顯示 */
+        [data-theme="dark"] .placeholder-money {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            visibility: visible !important;
+        }
+
+        [data-theme="dark"] .placeholder-money img {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* Unit3 深色模式下的激活效果 */
+        [data-theme="dark"] .unit3-coin.target-active,
+        [data-theme="dark"] .unit3-banknote.target-active,
+        [data-theme="dark"] .target-active {
+            opacity: 1 !important;
+            transform: scale(1.05);
+            transition: all 0.5s ease-in-out;
+            filter: brightness(1.2);
+        }
+
+        [data-theme="dark"] .faded .unit3-coin,
+        [data-theme="dark"] .faded .unit3-banknote {
+            opacity: 0.4 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* Unit3 確保兌換區的淡化圖示正確顯示 */
+        [data-theme="dark"] .exchange-item.faded,
+        [data-theme="dark"] .exchange-item.faded img,
+        [data-theme="dark"] .money-item.faded,
+        [data-theme="dark"] .money-item.faded img,
+        [data-theme="dark"] .placeholder-money .faded,
+        [data-theme="dark"] .placeholder-money .faded img,
+        [data-theme="dark"] .target-money .faded,
+        [data-theme="dark"] .target-money .faded img {
+            opacity: 0.4 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* Unit3 基本淡化圖示樣式（非深色模式） */
+        .exchange-item.faded,
+        .exchange-item.faded img,
+        .money-item.faded,
+        .money-item.faded img,
+        .placeholder-money .faded,
+        .placeholder-money .faded img,
+        .target-money .faded,
+        .target-money .faded img {
+            opacity: 0.4 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* 🔧 [新增] 點擊放置功能樣式 */
+        .money-item.selected-item,
+        .unit3-coin-container.selected-item,
+        .unit3-banknote-container.selected-item {
+            border: 3px solid #4CAF50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            background: rgba(76, 175, 80, 0.1) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .money-item,
+        .unit3-coin-container,
+        .unit3-banknote-container {
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+
+        .money-item:hover,
+        .unit3-coin-container:hover,
+        .unit3-banknote-container:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* 確保圖片不會干擾點擊事件，但保留容器的觸控功能 */
+        .unit3-coin,
+        .unit3-banknote {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+
+        /* 確保錢幣容器能接收觸控事件 */
+        .unit3-coin-container,
+        .unit3-banknote-container,
+        .money-item {
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* Unit3 確保淡化狀態下金額數字仍然可見且清晰 */
+        .exchange-item.faded .money-value,
+        .money-item.faded .money-value,
+        .placeholder-money .faded + .money-value,
+        .target-money .faded + .money-value,
+        .placeholder-money .money-value,
+        .target-money .money-value {
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
+            z-index: 15;
+        }
+
+
+
+/* ── 自動補上的「跟隨系統」鏡射（node tests/_audit_dark_mirror.js --fix）
+   這一區是機器補的：上面那些 [data-theme="dark"] 規則原本只在「站台強制深色」時生效，
+   「跟隨系統深色」（localStorage 沒有 mt_theme，也就是**預設狀態**）完全吃不到。
+   ⚠️ 要改色值時**改上面那一份**，然後重跑 node tests/_audit_dark_mirror.js --fix 重生這一區；
+   只改這裡會讓兩邊漂移，稽核會把它報成「缺鏡射」。
+   ────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #app {
+                background: var(--background-primary) !important;
+                color: var(--text-primary) !important;
+                min-height: 100vh !important;
+    }
+
+    :root:not([data-theme="light"]) #dynamic-game-container,
+    :root:not([data-theme="light"]) #game-container {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: var(--border-thick) solid var(--border-color) !important;
+                border-radius: var(--radius-large) !important;
+                box-shadow: var(--shadow-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .unit3-easy-section-title,
+    :root:not([data-theme="light"]) .unit3-normal-section-title,
+    :root:not([data-theme="light"]) .unit3-hard-section-title {
+                background: var(--background-secondary) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-medium) !important;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    :root:not([data-theme="light"]) .my-money-area {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .exchange-area,
+    :root:not([data-theme="light"]) .drop-zone,
+    :root:not([data-theme="light"]) .exchange-drop-zone {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--warning-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .drop-zone.filled,
+    :root:not([data-theme="light"]) .exchange-drop-zone.filled {
+                background: var(--background-card) !important;
+                border-color: var(--success-color) !important;
+    }
+
+    :root:not([data-theme="light"]) .unified-results-container {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--success-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .unit3-coin-container,
+    :root:not([data-theme="light"]) .unit3-banknote-container {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--success-color) !important;
+                border-radius: var(--radius-small) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .money-item {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--success-color) !important;
+    }
+
+    :root:not([data-theme="light"]) .exchange-money-item {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) .money-source-container {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--border-color) !important;
+    }
+
+    :root:not([data-theme="light"]) #exchange-results-area {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .unit3-coin-container:hover,
+    :root:not([data-theme="light"]) .unit3-banknote-container:hover {
+                background: var(--background-secondary) !important;
+                border-color: var(--primary-color) !important;
+                box-shadow: var(--shadow-orange) !important;
+    }
+
+    :root:not([data-theme="light"]) .money-value {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                color: var(--text-primary) !important;
+                background: var(--background-secondary) !important;
+                border: 1px solid var(--border-color) !important;
+                border-radius: var(--radius-small) !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+                z-index: 15;
+    }
+
+    :root:not([data-theme="light"]) .exchange-item.faded .money-value,
+    :root:not([data-theme="light"]) .money-item.faded .money-value,
+    :root:not([data-theme="light"]) .placeholder-money .faded + .money-value,
+    :root:not([data-theme="light"]) .target-money .faded + .money-value,
+    :root:not([data-theme="light"]) .placeholder-money .money-value,
+    :root:not([data-theme="light"]) .target-money .money-value {
+                opacity: 1 !important;
+                display: block !important;
+                visibility: visible !important;
+                z-index: 15;
+    }
+
+    :root:not([data-theme="light"]) .target-display,
+    :root:not([data-theme="light"]) .target-money-row {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) .target-display.active {
+                background: var(--background-secondary) !important;
+                border-color: var(--primary-color) !important;
+                box-shadow: var(--shadow-orange) !important;
+    }
+
+    :root:not([data-theme="light"]) .target-display.faded {
+                background: var(--background-light) !important;
+                opacity: 0.4 !important;
+    }
+
+    :root:not([data-theme="light"]) .complete-exchange-btn,
+    :root:not([data-theme="light"]) .next-question-btn,
+    :root:not([data-theme="light"]) .return-money-btn {
+                background: linear-gradient(145deg, var(--primary-color), var(--primary-dark)) !important;
+                color: var(--text-inverse) !important;
+                border: 2px solid var(--primary-dark) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-orange) !important;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+    }
+
+    :root:not([data-theme="light"]) .complete-exchange-btn:hover,
+    :root:not([data-theme="light"]) .next-question-btn:hover,
+    :root:not([data-theme="light"]) .return-money-btn:hover {
+                background: linear-gradient(145deg, var(--primary-light), var(--primary-color)) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 15px rgba(79, 140, 255, 0.4) !important;
+    }
+
+    :root:not([data-theme="light"]) .transparent-drop-hint {
+                color: var(--text-secondary) !important;
+                background: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) .drop-zone:hover .transparent-drop-hint,
+    :root:not([data-theme="light"]) .exchange-drop-zone:hover .transparent-drop-hint {
+                color: var(--text-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) .placed-coins-container {
+                background: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) .progress-display,
+    :root:not([data-theme="light"]) .status-display,
+    :root:not([data-theme="light"]) .score-display {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .count-highlight {
+                color: #ff6b35 !important;
+                background: linear-gradient(135deg, var(--background-secondary), var(--background-light)) !important;
+                border: 1px solid var(--border-color) !important;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+    }
+
+    :root:not([data-theme="light"]) .count-highlight:hover {
+                background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+                box-shadow: 0 2px 4px rgba(255,107,53,0.3) !important;
+    }
+
+    :root:not([data-theme="light"]) .money-item.selected-item,
+    :root:not([data-theme="light"]) .unit3-coin-container.selected-item,
+    :root:not([data-theme="light"]) .unit3-banknote-container.selected-item {
+                border: 3px solid var(--success-color) !important;
+                box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+                transform: scale(1.05) !important;
+                z-index: 10 !important;
+                background: rgba(76, 175, 80, 0.15) !important;
+                transition: all 0.3s ease !important;
+    }
+
+    :root:not([data-theme="light"]) .results-placeholder {
+                color: var(--text-secondary) !important;
+                background: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) .new-result-coin {
+                border-color: var(--success-color) !important;
+    }
+
+    :root:not([data-theme="light"]) .difficulty-indicator {
+                background: var(--background-light) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-small) !important;
+    }
+
+    :root:not([data-theme="light"]) .game-stats,
+    :root:not([data-theme="light"]) .quiz-progress {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .setup-section,
+    :root:not([data-theme="light"]) .game-section,
+    :root:not([data-theme="light"]) .question-section,
+    :root:not([data-theme="light"]) .answer-section {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+                border: 2px solid var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+    }
+
+    :root:not([data-theme="light"]) div[class*="area"],
+    :root:not([data-theme="light"]) div[class*="container"]:not(.unit3-coin-container):not(.unit3-banknote-container),
+    :root:not([data-theme="light"]) div[class*="section"] {
+                background: var(--background-card) !important;
+                color: var(--text-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) * {
+                background-color: inherit !important;
+    }
+
+    :root:not([data-theme="light"]) #app,
+    :root:not([data-theme="light"]) #dynamic-game-container,
+    :root:not([data-theme="light"]) .my-money-area,
+    :root:not([data-theme="light"]) .exchange-area,
+    :root:not([data-theme="light"]) .unified-results-container,
+    :root:not([data-theme="light"]) .unit3-coin-container,
+    :root:not([data-theme="light"]) .unit3-banknote-container {
+                background: var(--background-light) !important;
+    }
+
+    :root:not([data-theme="light"]) #app {
+                background: var(--background-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) #dynamic-game-container {
+                background: var(--background-card) !important;
+    }
+
+    :root:not([data-theme="light"]) div:not([style*="background"]) {
+                background-color: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) .my-money-area,
+    :root:not([data-theme="light"]) .money-source-container {
+                background: linear-gradient(135deg, var(--background-light), var(--background-secondary)) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--border-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .exchange-area,
+    :root:not([data-theme="light"]) .drop-zone,
+    :root:not([data-theme="light"]) .exchange-drop-zone {
+                background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--warning-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .unified-results-container,
+    :root:not([data-theme="light"]) #exchange-results-area {
+                background: linear-gradient(135deg, var(--background-card), var(--background-light)) !important;
+                color: var(--text-primary) !important;
+                border: 2px dashed var(--success-color) !important;
+                border-radius: var(--radius-medium) !important;
+                box-shadow: var(--shadow-light) !important;
+    }
+
+    :root:not([data-theme="light"]) .placeholder-money,
+    :root:not([data-theme="light"]) .target-money,
+    :root:not([data-theme="light"]) .exchange-item,
+    :root:not([data-theme="light"]) .placed-coins-container {
+                background: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) div:not(.unit3-coin):not(.unit3-banknote):not(img) {
+                background-color: inherit !important;
+    }
+
+    :root:not([data-theme="light"]) body,
+    :root:not([data-theme="light"]) {
+                background: var(--background-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) #app {
+                background: var(--background-primary) !important;
+    }
+
+    :root:not([data-theme="light"]) #dynamic-game-container {
+                background: var(--background-card) !important;
+    }
+
+    :root:not([data-theme="light"]) .my-money-area,
+    :root:not([data-theme="light"]) .money-source-container {
+                background: linear-gradient(135deg, var(--background-light), var(--background-secondary)) !important;
+    }
+
+    :root:not([data-theme="light"]) .exchange-area,
+    :root:not([data-theme="light"]) .drop-zone,
+    :root:not([data-theme="light"]) .exchange-drop-zone {
+                background: linear-gradient(135deg, var(--background-light), var(--background-card)) !important;
+    }
+
+    :root:not([data-theme="light"]) .unified-results-container,
+    :root:not([data-theme="light"]) #exchange-results-area {
+                background: linear-gradient(135deg, var(--background-card), var(--background-light)) !important;
+    }
+
+    :root:not([data-theme="light"]) .placeholder-money,
+    :root:not([data-theme="light"]) .target-money,
+    :root:not([data-theme="light"]) .exchange-item,
+    :root:not([data-theme="light"]) .placed-coins-container,
+    :root:not([data-theme="light"]) img {
+                background: transparent !important;
+    }
+
+    :root:not([data-theme="light"]) .placeholder-money {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                visibility: visible !important;
+    }
+
+    :root:not([data-theme="light"]) .placeholder-money img {
+                display: block !important;
+                visibility: visible !important;
+    }
+
+    :root:not([data-theme="light"]) .unit3-coin.target-active,
+    :root:not([data-theme="light"]) .unit3-banknote.target-active,
+    :root:not([data-theme="light"]) .target-active {
+                opacity: 1 !important;
+                transform: scale(1.05);
+                transition: all 0.5s ease-in-out;
+                filter: brightness(1.2);
+    }
+
+    :root:not([data-theme="light"]) .faded .unit3-coin,
+    :root:not([data-theme="light"]) .faded .unit3-banknote {
+                opacity: 0.4 !important;
+                display: block !important;
+                visibility: visible !important;
+    }
+
+    :root:not([data-theme="light"]) .exchange-item.faded,
+    :root:not([data-theme="light"]) .exchange-item.faded img,
+    :root:not([data-theme="light"]) .money-item.faded,
+    :root:not([data-theme="light"]) .money-item.faded img,
+    :root:not([data-theme="light"]) .placeholder-money .faded,
+    :root:not([data-theme="light"]) .placeholder-money .faded img,
+    :root:not([data-theme="light"]) .target-money .faded,
+    :root:not([data-theme="light"]) .target-money .faded img {
+                opacity: 0.4 !important;
+                display: block !important;
+                visibility: visible !important;
+    }
+}
+
+/* 設定頁深色補丁（2026-09-24）：本檔上方舊的萬用規則 `* { background-color: inherit !important }`
+   會把選中按鈕的紫底、學生提示條與「選擇」鈕的紅／藍底一起蓋掉 → 逐一補回（值同 C2／student-picker.js）。
+   提示條選擇器刻意墊到 (0,5,1)：舊規則 div:not(.unit3-coin):not(.unit3-banknote):not(img) 也是 (0,5,1)，本段寫在它後面才贏。 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .selection-btn.active { background-color: #667eea !important; color: #ffffff !important; }
+    :root:not([data-theme="light"]) div.sp-bar[class][class] { background-color: #1E3A5F !important; }
+    :root:not([data-theme="light"]) div.sp-bar.sp-bar--guest[class] { background-color: #450A0A !important; }
+    :root:not([data-theme="light"]) .sp-bar-btn { background-color: #3b82f6 !important; }
+    :root:not([data-theme="light"]) .sp-bar--guest .sp-bar-btn { background-color: #ef4444 !important; }
+}
+[data-theme="dark"] .selection-btn.active { background-color: #667eea !important; color: #ffffff !important; }
+[data-theme="dark"] div.sp-bar[class][class] { background-color: #1E3A5F !important; }
+[data-theme="dark"] div.sp-bar.sp-bar--guest[class] { background-color: #450A0A !important; }
+[data-theme="dark"] .sp-bar-btn { background-color: #3b82f6 !important; }
+[data-theme="dark"] .sp-bar--guest .sp-bar-btn { background-color: #ef4444 !important; }
+
+/* 測驗頁深色補丁（2026-09-24 使用者附圖）：錢幣不要綠框、面額文字看得清楚、兌換區放置區與兌換結果區（含兌換完才出現的 .unified-results-container，它的舊深色規則用的 var(--background-card) 在這裡是白色）不要白底（淺色漸層背景圖拿掉）；版面層的暗紅漸層改在規則庫的 .unit3-*-layout
+   （淺色模式本來就是透明無框，這裡只是把舊萬用深色規則加上的東西拿掉；
+   區塊標題的長條外框改在規則庫 tests/_dark_auto_rules.json 的 .unit3-*-section-title）。
+   前綴 body.c3-unit.c-series 是為了壓過上方 (0,5,1) 的舊規則。 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body.c3-unit.c-series .flexible-zone { background-image: none !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series #exchange-results-area { background: #2d2d44 !important; background-image: none !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unified-results-container { background: #2d2d44 !important; background-image: none !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unified-results-container .money-item { background: transparent !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .money-item { border-color: transparent !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .money-value { background: transparent !important; border: none !important; color: #e2e8f0 !important; }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .placed-coins-container, :root:not([data-theme="light"]) body.c3-unit.c-series .placed-coins-display, :root:not([data-theme="light"]) body.c3-unit.c-series .partial-coins-display { background: transparent !important; }
+}
+[data-theme="dark"] body.c3-unit.c-series .flexible-zone { background-image: none !important; }
+[data-theme="dark"] body.c3-unit.c-series #exchange-results-area { background: #2d2d44 !important; background-image: none !important; }
+[data-theme="dark"] body.c3-unit.c-series .unified-results-container { background: #2d2d44 !important; background-image: none !important; }
+[data-theme="dark"] body.c3-unit.c-series .unified-results-container .money-item { background: transparent !important; }
+[data-theme="dark"] body.c3-unit.c-series .money-item { border-color: transparent !important; }
+[data-theme="dark"] body.c3-unit.c-series .money-value { background: transparent !important; border: none !important; color: #e2e8f0 !important; }
+[data-theme="dark"] body.c3-unit.c-series .placed-coins-container, [data-theme="dark"] body.c3-unit.c-series .placed-coins-display, [data-theme="dark"] body.c3-unit.c-series .partial-coins-display { background: transparent !important; }
+
+/* ── 兌換區（2026-10-02 使用者定，桌面與 iPad 平板版都適用）──────────────────────────
+   ① 放置框一開始就預留「放進一枚錢後」的高度，放錢時框不會突然長高
+      （實量：普通／困難單一大框放一枚後約 170px、簡單每一格約 145px）。
+   ② 兌換的目標金錢：圖跟下面的「5元」原本重疊 2～3px → 拉開一點距離。
+   選擇器帶 #game-area：樣式主體是 c3_money_exchange.js 進測驗才插入的 <style>，要靠 ID 特異性勝過它。 */
+.c3-unit #game-area .drop-zone {
+    min-height: 170px;
+}
+.c3-unit .unit3-easy-layout #game-area .drop-zone {
+    min-height: 145px;
+}
+.c3-unit #game-area .target-money .money-value {
+    margin-top: 16px;
+}
+
+/* 困難模式「我的金錢區」紙鈔重疊（2026-10-05 使用者回報）：紙鈔圖 120px 寬，但把框撐到 124px 的那段規則
+   寫在 js 的普通模式樣式裡，困難模式沒插入 → 框只剩 63px、圖片擠出框外互相蓋住。這裡補上同樣的尺寸（只補尺寸，顏色照舊） */
+.c3-unit .unit3-hard-money-source .unit3-banknote-container {
+    width: 124px !important;
+    min-width: 124px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 2px 2px 4px 2px !important;
+    margin: 0 !important;
+}
+
+/* 兌換結果區：測驗頁平常不顯示，一題換完才由 JS 搬進彈窗（2026-10-06 使用者定） */
+.c3-unit :is(.unit3-easy-results-section, .unit3-normal-results-section, .unit3-hard-results-section) { display: none !important; }
+.c3-results-overlay {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.45); padding: 16px;
+}
+.c3-results-overlay > :is(.unit3-easy-results-section, .unit3-normal-results-section, .unit3-hard-results-section) {
+    display: block !important;
+    width: min(1000px, 94vw); max-height: 90dvh; overflow-y: auto;
+    margin: 0 !important; text-align: center;
+}
+.c3-results-next-btn {
+    margin: 16px auto 4px; padding: 12px 36px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #4caf50, #2e7d32); color: #fff;
+    font-size: 1.15rem; font-weight: 700; cursor: pointer; touch-action: manipulation;
+}
+.c3-results-next-btn:active { filter: brightness(0.9); }
+
+/* 測驗頁順序：兌換區在上、我的金錢區在下（2026-10-06 使用者定；版面是 flex，靠 order 換，模板不動）。
+   iPad 橫式是左右兩欄（tablet-landscape.css 指定格位），不受影響 */
+.c3-unit :is(.unit3-easy-layout, .unit3-normal-layout, .unit3-hard-layout) > :is(.unit3-easy-exchange-section, .unit3-normal-exchange-section, .unit3-hard-exchange-section) { order: 1; }
+.c3-unit :is(.unit3-easy-layout, .unit3-normal-layout, .unit3-hard-layout) > :is(.unit3-easy-money-section, .unit3-normal-money-section, .unit3-hard-money-section) { order: 2; }
+
+/* >>> DARK-AUTO 深色：遊戲／任務／完成畫面（2026-09-23）
+   亮底改同色相深色、深色字改淺色；狀態規則（.selected/:hover…）一併給深色版本。
+   兩塊選擇器與數值逐字對應，只有外層 gate 不同（改一邊就要改另一邊）；淺色模式不受影響。
+   守門：node tests/_e2e_units_dark.js <單元> ＋ node tests/_audit_dark_mirror.js */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body.c3-unit.c-series .btn-text {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .title-bar {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .result-card {
+        background: linear-gradient(135deg, #383a52, #32344a) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .result-label {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .result-value {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .results-grid {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .main-menu-btn {
+        background: linear-gradient(135deg, #8e44ad, #9b59b6) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .progress-info {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .play-again-btn {
+        background: linear-gradient(135deg, #1c4a2f, #1c4a30) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .result-buttons {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .count-highlight {
+        background: linear-gradient(135deg, #2d2d44, #1c344a) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .reward-btn-link {
+        background: linear-gradient(135deg, #4a1c2c, #e91e63) !important;
+        color: #a3dbf5 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .achievement-item {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .achievement-list {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .back-to-menu-btn {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .title-bar-center {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .performance-badge {
+        background: linear-gradient(45deg, #2d2d44, #2d2d44) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .results-container {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-layout {
+        background: transparent !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-layout {
+        background: transparent !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .main-menu-btn:hover {
+        background: linear-gradient(135deg, #2d2d44, #1c3b4a) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .performance-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-layout {
+        background: transparent !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .play-again-btn:hover {
+        background: linear-gradient(135deg, #1c4a1c, #1c4a30) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .reward-btn-container {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .count-highlight:hover {
+        background: linear-gradient(135deg, #2d2d44, #2d2d44) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .learning-achievements {
+        background: linear-gradient(135deg, #1e3a29, #24472f) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .back-to-menu-btn:hover {
+        background: linear-gradient(135deg, #4a1c23, #4a1c33) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series #dynamic-game-container {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .button-group > div > h4 {
+        color: #e2e8f0 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-money-source {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-money-source {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .performance-section > h3 {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-exchange-area {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-money-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-section-title {
+        background: transparent !important;
+        color: #b5e3e3 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-exchange-area {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-money-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-section-title {
+        background: transparent !important;
+        color: #b5e3e3 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-money-source {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .learning-achievements > h3 {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-results-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-results-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-money-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-section-title {
+        background: transparent !important;
+        color: #b5e3e3 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-easy-exchange-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-exchange-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-results-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-exchange-section {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-money-section > div {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-hard-money-source.dragover {
+        background: linear-gradient(135deg, #354a1c 0%, #204621 100%) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-money-section > div {
+        background: #2d2d44 !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .unit3-normal-money-source.dragover {
+        background: linear-gradient(135deg, #354a1c 0%, #204621 100%) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .results-grid .result-card:nth-child(1) {
+        background: linear-gradient(135deg, #1c4a2f, #1c4a30) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .results-grid .result-card:nth-child(2) {
+        background: linear-gradient(135deg, #2980b9, #3498db) !important;
+    }
+    :root:not([data-theme="light"]) body.c3-unit.c-series .results-grid .result-card:nth-child(3) {
+        background: linear-gradient(135deg, #2d2d44, #2d2d44) !important;
+    }
+}
+[data-theme="dark"] body.c3-unit.c-series .btn-text {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .title-bar {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .result-card {
+    background: linear-gradient(135deg, #383a52, #32344a) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .result-label {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .result-value {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .results-grid {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .main-menu-btn {
+    background: linear-gradient(135deg, #8e44ad, #9b59b6) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .progress-info {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .play-again-btn {
+    background: linear-gradient(135deg, #1c4a2f, #1c4a30) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .result-buttons {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .count-highlight {
+    background: linear-gradient(135deg, #2d2d44, #1c344a) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .reward-btn-link {
+    background: linear-gradient(135deg, #4a1c2c, #e91e63) !important;
+    color: #a3dbf5 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .achievement-item {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .achievement-list {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .back-to-menu-btn {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .title-bar-center {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .performance-badge {
+    background: linear-gradient(45deg, #2d2d44, #2d2d44) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .results-container {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-layout {
+    background: transparent !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-layout {
+    background: transparent !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .main-menu-btn:hover {
+    background: linear-gradient(135deg, #2d2d44, #1c3b4a) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .performance-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-layout {
+    background: transparent !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .play-again-btn:hover {
+    background: linear-gradient(135deg, #1c4a1c, #1c4a30) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .reward-btn-container {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .count-highlight:hover {
+    background: linear-gradient(135deg, #2d2d44, #2d2d44) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .learning-achievements {
+    background: linear-gradient(135deg, #1e3a29, #24472f) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .back-to-menu-btn:hover {
+    background: linear-gradient(135deg, #4a1c23, #4a1c33) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series #dynamic-game-container {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .button-group > div > h4 {
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-money-source {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-money-source {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .performance-section > h3 {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-exchange-area {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-money-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-section-title {
+    background: transparent !important;
+    color: #b5e3e3 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-exchange-area {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-money-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-section-title {
+    background: transparent !important;
+    color: #b5e3e3 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-money-source {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .learning-achievements > h3 {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-results-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-results-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-money-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-section-title {
+    background: transparent !important;
+    color: #b5e3e3 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-easy-exchange-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-exchange-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-results-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-exchange-section {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-money-section > div {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-hard-money-source.dragover {
+    background: linear-gradient(135deg, #354a1c 0%, #204621 100%) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-money-section > div {
+    background: #2d2d44 !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .unit3-normal-money-source.dragover {
+    background: linear-gradient(135deg, #354a1c 0%, #204621 100%) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .results-grid .result-card:nth-child(1) {
+    background: linear-gradient(135deg, #1c4a2f, #1c4a30) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .results-grid .result-card:nth-child(2) {
+    background: linear-gradient(135deg, #2980b9, #3498db) !important;
+}
+[data-theme="dark"] body.c3-unit.c-series .results-grid .result-card:nth-child(3) {
+    background: linear-gradient(135deg, #2d2d44, #2d2d44) !important;
+}
+/* <<< DARK-AUTO */
